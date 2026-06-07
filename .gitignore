@@ -1,0 +1,12 @@
+.idea/
+
+backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+*.log
+*.tmp
+*.png
