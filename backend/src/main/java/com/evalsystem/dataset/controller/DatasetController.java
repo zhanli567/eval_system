@@ -1,5 +1,6 @@
 package com.evalsystem.dataset.controller;
 
+import com.evalsystem.common.ApiResponse;
 import com.evalsystem.common.PageResponse;
 import com.evalsystem.dataset.dto.BatchRowsRequest;
 import com.evalsystem.dataset.dto.CreateDatasetRequest;
@@ -7,6 +8,7 @@ import com.evalsystem.dataset.dto.DatasetSummary;
 import com.evalsystem.dataset.dto.DatasetVersionDto;
 import com.evalsystem.dataset.dto.FieldDto;
 import com.evalsystem.dataset.dto.FieldInput;
+import com.evalsystem.dataset.dto.ImportRowsResult;
 import com.evalsystem.dataset.dto.RowDto;
 import com.evalsystem.dataset.dto.RowInput;
 import com.evalsystem.dataset.dto.VersionDetail;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/datasets")
@@ -32,77 +35,90 @@ public class DatasetController {
   }
 
   @GetMapping
-  public PageResponse<DatasetSummary> listDatasets(
+  public ApiResponse<PageResponse<DatasetSummary>> listDatasets(
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "10") int size,
       @RequestParam(required = false) String keyword
   ) {
-    return datasetService.listDatasets(page, size, keyword);
+    return ApiResponse.ok(datasetService.listDatasets(page, size, keyword));
   }
 
   @PostMapping
-  public DatasetSummary createDataset(@RequestBody CreateDatasetRequest request) {
-    return datasetService.createDataset(request);
+  public ApiResponse<DatasetSummary> createDataset(@RequestBody CreateDatasetRequest request) {
+    return ApiResponse.ok(datasetService.createDataset(request));
   }
 
   @DeleteMapping("/{datasetId}")
-  public void deleteDataset(@PathVariable String datasetId) {
+  public ApiResponse<Void> deleteDataset(@PathVariable String datasetId) {
     datasetService.deleteDataset(datasetId);
+    return ApiResponse.ok(null);
   }
 
   @GetMapping("/{datasetId}/versions")
-  public List<DatasetVersionDto> listVersions(@PathVariable String datasetId) {
-    return datasetService.listVersions(datasetId);
+  public ApiResponse<List<DatasetVersionDto>> listVersions(@PathVariable String datasetId) {
+    return ApiResponse.ok(datasetService.listVersions(datasetId));
   }
 
   @PostMapping("/{datasetId}/publish")
-  public DatasetVersionDto publish(@PathVariable String datasetId) {
-    return datasetService.publish(datasetId);
+  public ApiResponse<DatasetVersionDto> publish(@PathVariable String datasetId) {
+    return ApiResponse.ok(datasetService.publish(datasetId));
   }
 
   @PostMapping("/{datasetId}/versions/{versionId}/cover-draft")
-  public DatasetVersionDto coverDraft(@PathVariable String datasetId, @PathVariable String versionId) {
-    return datasetService.coverDraft(datasetId, versionId);
+  public ApiResponse<DatasetVersionDto> coverDraft(@PathVariable String datasetId, @PathVariable String versionId) {
+    return ApiResponse.ok(datasetService.coverDraft(datasetId, versionId));
   }
 
   @DeleteMapping("/versions/{versionId}")
-  public void deleteVersion(@PathVariable String versionId) {
+  public ApiResponse<Void> deleteVersion(@PathVariable String versionId) {
     datasetService.deleteVersion(versionId);
+    return ApiResponse.ok(null);
   }
 
   @GetMapping("/versions/{versionId}")
-  public VersionDetail getVersionDetail(
+  public ApiResponse<VersionDetail> getVersionDetail(
       @PathVariable String versionId,
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "10") int size,
       @RequestParam(required = false) String fieldId,
       @RequestParam(required = false) String keyword
   ) {
-    return datasetService.getVersionDetail(versionId, page, size, fieldId, keyword);
+    return ApiResponse.ok(datasetService.getVersionDetail(versionId, page, size, fieldId, keyword));
   }
 
   @PutMapping("/versions/{versionId}/fields")
-  public List<FieldDto> replaceFields(@PathVariable String versionId, @RequestBody List<FieldInput> fields) {
-    return datasetService.replaceFields(versionId, fields);
+  public ApiResponse<List<FieldDto>> replaceFields(@PathVariable String versionId, @RequestBody List<FieldInput> fields) {
+    return ApiResponse.ok(datasetService.replaceFields(versionId, fields));
   }
 
   @PostMapping("/versions/{versionId}/items")
-  public RowDto addRow(@PathVariable String versionId, @RequestBody RowInput request) {
-    return datasetService.addRow(versionId, request);
+  public ApiResponse<RowDto> addRow(@PathVariable String versionId, @RequestBody RowInput request) {
+    return ApiResponse.ok(datasetService.addRow(versionId, request));
   }
 
   @PostMapping("/versions/{versionId}/items/batch")
-  public List<RowDto> addRows(@PathVariable String versionId, @RequestBody BatchRowsRequest request) {
-    return datasetService.addRows(versionId, request);
+  public ApiResponse<List<RowDto>> addRows(@PathVariable String versionId, @RequestBody BatchRowsRequest request) {
+    return ApiResponse.ok(datasetService.addRows(versionId, request));
+  }
+
+  @PostMapping("/versions/{versionId}/items/import")
+  public ApiResponse<ImportRowsResult> importRows(@PathVariable String versionId, @RequestParam("file") MultipartFile file) {
+    return ApiResponse.ok(datasetService.importRows(versionId, file));
+  }
+
+  @PostMapping("/versions/{versionId}/items/import-cover")
+  public ApiResponse<ImportRowsResult> coverRowsByExcel(@PathVariable String versionId, @RequestParam("file") MultipartFile file) {
+    return ApiResponse.ok(datasetService.coverRowsByExcel(versionId, file));
   }
 
   @PutMapping("/versions/{versionId}/items/{itemId}")
-  public RowDto updateRow(@PathVariable String versionId, @PathVariable String itemId, @RequestBody RowInput request) {
-    return datasetService.updateRow(versionId, itemId, request);
+  public ApiResponse<RowDto> updateRow(@PathVariable String versionId, @PathVariable String itemId, @RequestBody RowInput request) {
+    return ApiResponse.ok(datasetService.updateRow(versionId, itemId, request));
   }
 
   @DeleteMapping("/versions/{versionId}/items/{itemId}")
-  public void deleteRow(@PathVariable String versionId, @PathVariable String itemId) {
+  public ApiResponse<Void> deleteRow(@PathVariable String versionId, @PathVariable String itemId) {
     datasetService.deleteRow(versionId, itemId);
+    return ApiResponse.ok(null);
   }
 }

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Plus, Refresh } from '@element-plus/icons-vue'
+import { ArrowDown, Delete, Plus, Refresh, Search } from '@element-plus/icons-vue'
+import type { AxiosError } from 'axios'
 import { datasetApi } from './api/dataset'
 import type { DatasetField, DatasetRow, DatasetSummary, DatasetVersion, VersionDetail } from './types'
 
@@ -13,6 +14,7 @@ const datasetPage = ref(1)
 const datasetSize = ref(8)
 const datasetKeyword = ref('')
 const selectedDataset = ref<DatasetSummary>()
+const activeModule = ref('datasets')
 
 const versions = ref<DatasetVersion[]>([])
 const activeVersionId = ref('')
@@ -25,9 +27,10 @@ const searchKeyword = ref('')
 const createVisible = ref(false)
 const fieldVisible = ref(false)
 const rowVisible = ref(false)
-const batchVisible = ref(false)
 const rowEditingId = ref('')
-const batchText = ref('')
+const excelInput = ref<HTMLInputElement>()
+const coverExcelInput = ref<HTMLInputElement>()
+const draggedFieldIndex = ref<number | null>(null)
 
 const createForm = reactive({
   name: '',
@@ -41,11 +44,20 @@ const createForm = reactive({
 const fieldForm = ref<DatasetField[]>([])
 const rowForm = reactive<Record<string, string>>({})
 
+const navItems = [
+  { key: 'datasets', title: '评测集管理', eyebrow: '应用评测', description: '维护评测集表头、草稿数据和发布版本。' },
+  { key: 'tags', title: '标签管理', eyebrow: '资源治理', description: '后续用于管理评测集、评估器和任务标签。' },
+  { key: 'evaluators', title: '评估器管理', eyebrow: '评估配置', description: '后续用于维护LLM评估器、提示词和评分规则。' },
+  { key: 'tasks', title: '评测任务', eyebrow: '运行评测', description: '后续用于创建任务、查看执行结果和评分明细。' }
+]
+
+const activeModuleMeta = computed(() => navItems.find((item) => item.key === activeModule.value) ?? navItems[0])
 const activeVersion = computed(() => detail.value?.version)
 const isDraft = computed(() => activeVersion.value?.draft === true)
 const tableRows = computed(() => detail.value?.rows.records ?? [])
 const tableTotal = computed(() => detail.value?.rows.total ?? 0)
 const fields = computed(() => detail.value?.fields ?? [])
+const dataTableKey = computed(() => fields.value.map((field) => `${field.id}:${field.fieldName}:${field.required}:${field.displayOrder}`).join('|'))
 
 onMounted(async () => {
   await loadDatasets()
@@ -162,6 +174,25 @@ function removeField(target: DatasetField[], index: number) {
   target.splice(index, 1)
 }
 
+function startFieldDrag(index: number) {
+  draggedFieldIndex.value = index
+}
+
+function dropField(target: DatasetField[], targetIndex: number) {
+  const sourceIndex = draggedFieldIndex.value
+  if (sourceIndex === null || sourceIndex === targetIndex) {
+    draggedFieldIndex.value = null
+    return
+  }
+  const [moved] = target.splice(sourceIndex, 1)
+  target.splice(targetIndex, 0, moved)
+  draggedFieldIndex.value = null
+}
+
+function endFieldDrag() {
+  draggedFieldIndex.value = null
+}
+
 function openFieldDialog() {
   fieldForm.value = fields.value.map((field) => ({ ...field }))
   fieldVisible.value = true
@@ -173,7 +204,10 @@ async function submitFields() {
     ElMessage.warning('请完善列名')
     return
   }
-  await datasetApi.replaceFields(activeVersionId.value, fieldForm.value)
+  const savedFields = await datasetApi.replaceFields(activeVersionId.value, fieldForm.value)
+  if (detail.value) {
+    detail.value = { ...detail.value, fields: savedFields }
+  }
   fieldVisible.value = false
   ElMessage.success('表头已保存')
   await loadDetail()
@@ -215,31 +249,77 @@ async function removeRow(row: DatasetRow) {
   await refreshSelectedDataset()
 }
 
-async function submitBatchRows() {
-  if (!activeVersionId.value) return
-  const rows = parseBatchRows()
-  if (!rows.length) {
-    ElMessage.warning('请输入批量数据')
+async function handleAddDataCommand(command: string | number | object) {
+  if (command === 'single') {
+    openRowDialog()
     return
   }
-  await datasetApi.addRows(activeVersionId.value, rows)
-  batchVisible.value = false
-  batchText.value = ''
-  ElMessage.success(`已新增 ${rows.length} 行`)
-  await loadDetail()
-  await refreshSelectedDataset()
+  if (command === 'import') {
+    openExcelImport()
+    return
+  }
+  if (command === 'cover') {
+    await openExcelCover()
+  }
 }
 
-function parseBatchRows() {
-  const lines = batchText.value.split('\n').map((line) => line.trim()).filter(Boolean)
-  return lines.map((line) => {
-    const values = line.split('\t')
-    const record: Record<string, string> = {}
-    fields.value.forEach((field, index) => {
-      if (field.id) record[field.id] = values[index] ?? ''
-    })
-    return record
-  })
+function openExcelImport() {
+  if (!activeVersionId.value) return
+  if (!fields.value.length) {
+    ElMessage.warning('请先维护表头')
+    return
+  }
+  excelInput.value?.click()
+}
+
+async function openExcelCover() {
+  if (!activeVersionId.value) return
+  if (!fields.value.length) {
+    ElMessage.warning('请先维护表头')
+    return
+  }
+  try {
+    await ElMessageBox.confirm('全量覆盖会清空草稿现有数据，并以Excel数据为准，确定继续吗？', '全量覆盖', { type: 'warning' })
+    coverExcelInput.value?.click()
+  } catch {
+    // 用户取消时不提示错误。
+  }
+}
+
+async function importExcel(event: Event) {
+  if (!activeVersionId.value) return
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  try {
+    const result = await datasetApi.importRows(activeVersionId.value, file)
+    ElMessage.success(`已导入 ${result.importedCount} 行`)
+    await loadDetail()
+    await refreshSelectedDataset()
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '导入失败，请确认Excel表头和当前表头完全一致'))
+  } finally {
+    input.value = ''
+  }
+}
+
+async function coverExcel(event: Event) {
+  if (!activeVersionId.value) return
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  try {
+    const result = await datasetApi.coverRowsByExcel(activeVersionId.value, file)
+    ElMessage.success(`已覆盖导入 ${result.importedCount} 行`)
+    await loadDetail()
+    await refreshSelectedDataset()
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '覆盖失败，请确认Excel表头和当前表头完全一致'))
+  } finally {
+    input.value = ''
+  }
 }
 
 async function publishDraft() {
@@ -280,21 +360,47 @@ function formatTime(value?: string) {
   if (Number.isNaN(numberValue)) return value
   return new Date(numberValue).toLocaleString()
 }
+
+function getErrorMessage(error: unknown, fallback: string) {
+  const axiosError = error as AxiosError<{ msg?: string; message?: string }>
+  return axiosError.response?.data?.msg || axiosError.response?.data?.message || fallback
+}
 </script>
 
 <template>
   <main class="app-shell">
+    <aside class="side-nav" aria-label="应用评测模块">
+      <div class="brand-block">
+        <span>智能体平台</span>
+        <strong>评测中心</strong>
+      </div>
+      <nav class="nav-list">
+        <button
+          v-for="item in navItems"
+          :key="item.key"
+          class="nav-item"
+          :class="{ active: activeModule === item.key }"
+          @click="activeModule = item.key"
+        >
+          <span>{{ item.title }}</span>
+          <small>{{ item.eyebrow }}</small>
+        </button>
+      </nav>
+    </aside>
+
+    <section class="workspace">
     <header class="topbar">
       <div>
-        <p class="eyebrow">应用评测</p>
-        <h1>评测集管理</h1>
+        <p class="eyebrow">{{ activeModuleMeta.eyebrow }}</p>
+        <h1>{{ activeModuleMeta.title }}</h1>
       </div>
-      <div class="top-actions">
+      <div v-if="activeModule === 'datasets'" class="top-actions">
         <el-button :icon="Refresh" @click="loadDatasets">刷新</el-button>
         <el-button type="primary" :icon="Plus" @click="openCreateDialog">创建评测集</el-button>
       </div>
     </header>
 
+    <template v-if="activeModule === 'datasets'">
     <section class="dataset-panel">
       <div class="panel-toolbar">
         <el-input
@@ -382,8 +488,21 @@ function formatTime(value?: string) {
           <div class="version-actions">
             <template v-if="isDraft">
               <el-button @click="openFieldDialog">编辑表头</el-button>
-              <el-button @click="batchVisible = true">批量新增</el-button>
-              <el-button type="primary" @click="openRowDialog()">添加数据</el-button>
+              <el-dropdown trigger="hover" @command="handleAddDataCommand">
+                <el-button type="primary">
+                  添加数据
+                  <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="single">单条新增</el-dropdown-item>
+                    <el-dropdown-item command="import">批量导入</el-dropdown-item>
+                    <el-dropdown-item command="cover">全量覆盖</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <input ref="excelInput" class="hidden-file" type="file" accept=".xlsx,.xls" @change="importExcel" />
+              <input ref="coverExcelInput" class="hidden-file" type="file" accept=".xlsx,.xls" @change="coverExcel" />
               <el-button type="success" @click="publishDraft">发布</el-button>
             </template>
             <template v-else-if="activeVersion">
@@ -401,13 +520,13 @@ function formatTime(value?: string) {
           <el-button @click="loadDetail">筛选</el-button>
         </div>
 
-        <el-table :data="tableRows" row-key="id" border class="data-table">
+        <el-table :key="dataTableKey" :data="tableRows" row-key="id" border class="data-table">
           <el-table-column label="序号" width="90">
             <template #default="{ row }"># {{ row.rowNo }}</template>
           </el-table-column>
           <el-table-column
             v-for="field in fields"
-            :key="field.id"
+            :key="`${field.id}:${field.fieldName}:${field.required}:${field.displayOrder}`"
             :label="field.fieldName"
             min-width="220"
             show-overflow-tooltip
@@ -441,6 +560,16 @@ function formatTime(value?: string) {
     </section>
 
     <el-empty v-else description="暂无评测集，创建一个开始演示" />
+    </template>
+
+    <section v-else class="module-placeholder">
+      <div>
+        <p class="eyebrow">{{ activeModuleMeta.eyebrow }}</p>
+        <h2>{{ activeModuleMeta.title }}</h2>
+        <span class="meta">{{ activeModuleMeta.description }}</span>
+      </div>
+      <el-empty description="该模块后续实现，当前先完成导航骨架" />
+    </section>
 
     <el-dialog v-model="createVisible" title="创建评测集" width="760px">
       <el-form label-position="top">
@@ -454,17 +583,34 @@ function formatTime(value?: string) {
           <span>表结构</span>
           <el-button link type="primary" :icon="Plus" @click="addField(createForm.fields)">添加列</el-button>
         </div>
-        <div v-for="(field, index) in createForm.fields" :key="index" class="field-editor">
-          <el-input v-model="field.fieldName" placeholder="列名" />
-          <el-select v-model="field.fieldType" placeholder="类型">
-            <el-option label="文本" value="string" />
-            <el-option label="数字" value="number" />
-            <el-option label="布尔" value="boolean" />
-            <el-option label="JSON" value="json" />
-          </el-select>
-          <el-checkbox v-model="field.required">必填</el-checkbox>
-          <el-input v-model="field.description" placeholder="描述" />
-          <el-button :icon="Delete" circle @click="removeField(createForm.fields, index)" />
+        <div class="field-editor-list">
+          <div
+            v-for="(field, index) in createForm.fields"
+            :key="index"
+            class="field-editor"
+            @dragover.prevent
+            @drop="dropField(createForm.fields, index)"
+          >
+            <button
+              class="drag-handle"
+              type="button"
+              draggable="true"
+              aria-label="拖动调整列顺序"
+              @dragstart="startFieldDrag(index)"
+              @dragend="endFieldDrag"
+            >
+              拖动
+            </button>
+            <el-input v-model="field.fieldName" placeholder="列名" />
+            <el-select v-model="field.fieldType" placeholder="类型">
+              <el-option label="文本" value="string" />
+              <el-option label="数字" value="number" />
+              <el-option label="布尔" value="boolean" />
+            </el-select>
+            <el-checkbox v-model="field.required">必填</el-checkbox>
+            <el-input v-model="field.description" placeholder="描述" />
+            <el-button :icon="Delete" circle @click="removeField(createForm.fields, index)" />
+          </div>
         </div>
       </el-form>
       <template #footer>
@@ -478,17 +624,34 @@ function formatTime(value?: string) {
         <span>草稿表结构</span>
         <el-button link type="primary" :icon="Plus" @click="addField(fieldForm)">添加列</el-button>
       </div>
-      <div v-for="(field, index) in fieldForm" :key="field.id || index" class="field-editor">
-        <el-input v-model="field.fieldName" placeholder="列名" />
-        <el-select v-model="field.fieldType" placeholder="类型">
-          <el-option label="文本" value="string" />
-          <el-option label="数字" value="number" />
-          <el-option label="布尔" value="boolean" />
-          <el-option label="JSON" value="json" />
-        </el-select>
-        <el-checkbox v-model="field.required">必填</el-checkbox>
-        <el-input v-model="field.description" placeholder="描述" />
-        <el-button :icon="Delete" circle @click="removeField(fieldForm, index)" />
+      <div class="field-editor-list">
+        <div
+          v-for="(field, index) in fieldForm"
+          :key="field.id || index"
+          class="field-editor"
+          @dragover.prevent
+          @drop="dropField(fieldForm, index)"
+        >
+          <button
+            class="drag-handle"
+            type="button"
+            draggable="true"
+            aria-label="拖动调整列顺序"
+            @dragstart="startFieldDrag(index)"
+            @dragend="endFieldDrag"
+          >
+            拖动
+          </button>
+          <el-input v-model="field.fieldName" placeholder="列名" />
+          <el-select v-model="field.fieldType" placeholder="类型">
+            <el-option label="文本" value="string" />
+            <el-option label="数字" value="number" />
+            <el-option label="布尔" value="boolean" />
+          </el-select>
+          <el-checkbox v-model="field.required">必填</el-checkbox>
+          <el-input v-model="field.description" placeholder="描述" />
+          <el-button :icon="Delete" circle @click="removeField(fieldForm, index)" />
+        </div>
       </div>
       <template #footer>
         <el-button @click="fieldVisible = false">取消</el-button>
@@ -508,18 +671,6 @@ function formatTime(value?: string) {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="batchVisible" title="批量新增数据" width="720px">
-      <p class="hint">每行一条数据，按当前表头顺序用 Tab 分隔。</p>
-      <el-input
-        v-model="batchText"
-        type="textarea"
-        :autosize="{ minRows: 8, maxRows: 14 }"
-        placeholder="问题1&#9;参考答案1&#10;问题2&#9;参考答案2"
-      />
-      <template #footer>
-        <el-button @click="batchVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitBatchRows">保存</el-button>
-      </template>
-    </el-dialog>
+    </section>
   </main>
 </template>

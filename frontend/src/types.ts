@@ -31,7 +31,7 @@ export interface DatasetField {
   id?: string
   versionId?: string
   fieldName: string
-  fieldType: 'string' | 'number' | 'boolean' | 'json'
+  fieldType: 'string' | 'number' | 'boolean'
   required: boolean
   description: string
   displayOrder?: number
