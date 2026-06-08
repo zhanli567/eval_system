@@ -13,7 +13,6 @@ import com.evalsystem.dataset.dto.RowInput;
 import com.evalsystem.dataset.dto.VersionDetail;
 import com.evalsystem.dataset.mapper.DatasetMapper;
 import com.evalsystem.dataset.service.DatasetService;
-import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,51 +37,6 @@ public class DatasetServiceImpl implements DatasetService {
 
   public DatasetServiceImpl(DatasetMapper datasetMapper) {
     this.datasetMapper = datasetMapper;
-  }
-
-  @PostConstruct
-  public void seedDemoData() {
-    if (datasetMapper.countDatasets() > 0) {
-      return;
-    }
-
-    DatasetSummary dataset = createDataset(new CreateDatasetRequest(
-        "计算机专业知识评测",
-        "用于演示智能体问答评测的样例数据集",
-        List.of(
-            new FieldInput(null, "query", "string", true, "用户问题"),
-            new FieldInput(null, "reference_response", "string", false, "参考答案"),
-            new FieldInput(null, "difficulty", "string", false, "难度")
-        )
-    ));
-    String draftVersionId = listVersions(dataset.id()).stream()
-        .filter(DatasetVersionDto::draft)
-        .findFirst()
-        .orElseThrow()
-        .id();
-    List<FieldDto> fields = listFields(draftVersionId);
-    String queryFieldId = fields.get(0).id();
-    String referenceFieldId = fields.get(1).id();
-    String difficultyFieldId = fields.get(2).id();
-
-    addRows(draftVersionId, new BatchRowsRequest(List.of(
-        Map.of(
-            queryFieldId, "什么是进程调度？常见的调度算法有哪些？",
-            referenceFieldId, "进程调度是操作系统从就绪队列中选择进程分配CPU的过程，常见算法包括先来先服务、短作业优先、时间片轮转和优先级调度。",
-            difficultyFieldId, "medium"
-        ),
-        Map.of(
-            queryFieldId, "什么是页面置换算法？常见的算法有哪些？",
-            referenceFieldId, "页面置换算法用于在缺页时选择被换出的页面，常见算法包括FIFO、LRU、LFU和Clock算法。",
-            difficultyFieldId, "medium"
-        ),
-        Map.of(
-            queryFieldId, "请解释TCP三次握手的过程。",
-            referenceFieldId, "客户端发送SYN，服务端返回SYN-ACK，客户端再发送ACK，连接建立。",
-            difficultyFieldId, "easy"
-        )
-    )));
-    publish(dataset.id());
   }
 
   public PageResponse<DatasetSummary> listDatasets(int page, int size, String keyword) {

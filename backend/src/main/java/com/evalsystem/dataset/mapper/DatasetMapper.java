@@ -13,9 +13,6 @@ import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 public interface DatasetMapper {
-  @Select("SELECT COUNT(*) FROM eval_dataset")
-  int countDatasets();
-
   List<DatasetSummary> listDatasetSummaries(@Param("like") String like, @Param("size") int size, @Param("offset") int offset);
 
   long countDatasetSummaries(@Param("like") String like);
