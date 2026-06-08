@@ -264,14 +264,17 @@ h2 {
 .preset-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 128px;
   gap: 16px;
-  min-height: 420px;
+  align-content: start;
+  align-items: start;
+  min-height: 0;
 }
 
 .preset-card {
   position: relative;
-  min-height: 136px;
-  padding: 18px;
+  height: 128px;
+  padding: 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #fff;
@@ -310,6 +313,10 @@ h2 {
   margin: 14px 0 0;
   color: var(--muted);
   line-height: 1.55;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .preset-card-actions {
@@ -351,7 +358,7 @@ h2 {
 }
 
 .picker-grid {
-  min-height: 520px;
+  min-height: 0;
 }
 
 .preset-detail {

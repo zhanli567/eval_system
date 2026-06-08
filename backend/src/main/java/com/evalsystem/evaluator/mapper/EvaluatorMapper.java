@@ -42,45 +42,6 @@ public interface EvaluatorMapper {
 
   EvaluatorConfigBase findVersionConfig(@Param("versionId") String versionId);
 
-  @Select("SELECT COUNT(*) FROM eval_preset_evaluator_category")
-  long countPresetCategories();
-
-  @Insert("""
-      INSERT INTO eval_preset_evaluator_category
-      (id, category_name, display_order, created_at, updated_at)
-      VALUES (#{categoryId}, #{categoryName}, #{displayOrder}, #{now}, #{now})
-      """)
-  void insertPresetCategory(
-      @Param("categoryId") String categoryId,
-      @Param("categoryName") String categoryName,
-      @Param("displayOrder") int displayOrder,
-      @Param("now") String now
-  );
-
-  @Insert("""
-      INSERT INTO eval_preset_evaluator
-      (id, category_id, evaluator_name, evaluator_type, description, model_id, prompt, execute_code,
-       score_min, score_max, pass_threshold, display_order, created_at, updated_at)
-      VALUES
-      (#{presetId}, #{categoryId}, #{evaluatorName}, #{evaluatorType}, #{description}, #{modelId}, #{prompt}, #{executeCode},
-       #{scoreMin}, #{scoreMax}, #{passThreshold}, #{displayOrder}, #{now}, #{now})
-      """)
-  void insertPresetEvaluator(
-      @Param("presetId") String presetId,
-      @Param("categoryId") String categoryId,
-      @Param("evaluatorName") String evaluatorName,
-      @Param("evaluatorType") String evaluatorType,
-      @Param("description") String description,
-      @Param("modelId") String modelId,
-      @Param("prompt") String prompt,
-      @Param("executeCode") String executeCode,
-      @Param("scoreMin") BigDecimal scoreMin,
-      @Param("scoreMax") BigDecimal scoreMax,
-      @Param("passThreshold") BigDecimal passThreshold,
-      @Param("displayOrder") int displayOrder,
-      @Param("now") String now
-  );
-
   @Insert("""
       INSERT INTO eval_evaluator
       (id, evaluator_name, evaluator_type, description, latest_version_id, is_deleted, created_at, updated_at)

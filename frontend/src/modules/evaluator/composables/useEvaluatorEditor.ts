@@ -178,6 +178,8 @@ export function useEvaluatorEditor() {
         activeVersionId.value = created.versionId
         activeDetail.value = created
       }
+    } catch (error) {
+      ElMessage.error(errorMessage(error, isEdit.value ? '保存草稿失败' : '创建评估器失败'))
     } finally {
       saving.value = false
     }
@@ -199,6 +201,8 @@ export function useEvaluatorEditor() {
       const published = await evaluatorApi.publish(evaluatorId.value)
       ElMessage.success(`已发布 ${published.versionName}`)
       await loadVersions(published.versionId)
+    } catch (error) {
+      ElMessage.error(errorMessage(error, '发布版本失败'))
     } finally {
       publishing.value = false
     }
@@ -293,6 +297,10 @@ export function useEvaluatorEditor() {
     const numberValue = Number(value)
     if (Number.isNaN(numberValue)) return value
     return new Date(numberValue).toLocaleString()
+  }
+
+  function errorMessage(error: unknown, fallback: string) {
+    return error instanceof Error && error.message ? error.message : fallback
   }
 
   return {

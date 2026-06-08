@@ -24,12 +24,17 @@ interface ApiResponse<T> {
 }
 
 function unwrap<T>(request: Promise<AxiosResponse<ApiResponse<T>>>) {
-  return request.then((res) => {
-    if (res.data.code !== 0) {
-      throw new Error(res.data.msg)
-    }
-    return res.data.data
-  })
+  return request
+    .then((res) => {
+      if (res.data.code !== 0) {
+        throw new Error(res.data.msg)
+      }
+      return res.data.data
+    })
+    .catch((error) => {
+      const message = error?.response?.data?.msg || error?.message || '请求失败'
+      throw new Error(message)
+    })
 }
 
 export interface SaveEvaluatorPayload {
