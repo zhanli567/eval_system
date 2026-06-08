@@ -67,6 +67,7 @@ body {
 }
 
 .nav-item {
+  display: block;
   width: 100%;
   min-height: 56px;
   padding: 10px 12px;
@@ -77,6 +78,7 @@ body {
   cursor: pointer;
   font: inherit;
   text-align: left;
+  text-decoration: none;
 }
 
 .nav-item span,
