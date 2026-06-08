@@ -1,0 +1,323 @@
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { evaluatorApi } from '../../../api/evaluator'
+import type {
+  EvaluatorConfig,
+  EvaluatorParam,
+  EvaluatorParamType,
+  EvaluatorType,
+  EvaluatorVersion,
+  PresetEvaluatorDetail
+} from '../../../types'
+
+const DEFAULT_PROMPT = `你是一位专业的AI评估员。
+请根据评分标准评估回复质量。
+
+<查询>
+\${query}
+</查询>
+
+<回复>
+\${response}
+</回复>
+
+请只输出JSON，例如：{"score": 5, "reason": "准确且简洁。"}`;
+
+const DEFAULT_CODE = `def evaluate(expected, actual):
+    score = 5 if str(expected).strip() == str(actual).strip() else 1
+    return {"score": score, "reason": "完全一致" if score == 5 else "内容不一致"}`;
+
+function defaultParams(): EvaluatorParam[] {
+  return [
+    { paramName: 'expected', dataType: 'string', defaultValue: '' },
+    { paramName: 'actual', dataType: 'string', defaultValue: '' }
+  ]
+}
+
+export function useEvaluatorEditor() {
+  const route = useRoute()
+  const router = useRouter()
+  const loading = ref(false)
+  const saving = ref(false)
+  const publishing = ref(false)
+  const versions = ref<EvaluatorVersion[]>([])
+  const activeVersionId = ref('')
+  const activeDetail = ref<EvaluatorConfig | null>(null)
+
+  const form = reactive({
+    evaluatorName: '',
+    description: '',
+    evaluatorType: 'llm' as EvaluatorType,
+    modelId: 'qwen-plus',
+    prompt: DEFAULT_PROMPT,
+    executeCode: DEFAULT_CODE,
+    scoreMin: 1,
+    scoreMax: 5,
+    passThreshold: 3,
+    params: defaultParams()
+  })
+
+  const evaluatorId = computed(() => String(route.params.evaluatorId ?? ''))
+  const presetId = computed(() => String(route.query.presetId ?? ''))
+  const isEdit = computed(() => Boolean(evaluatorId.value))
+  const canEdit = computed(() => !isEdit.value || Boolean(activeDetail.value?.draft))
+  const pageTitle = computed(() => (isEdit.value ? form.evaluatorName || '编辑评估器' : '创建评估器'))
+  const activeVersion = computed(() => versions.value.find((item) => item.id === activeVersionId.value))
+  const promptParams = computed(() => extractPromptParams(form.prompt))
+
+  const modelOptions = [
+    { label: '通义千问 Plus', value: 'qwen-plus' },
+    { label: '通义千问 Turbo', value: 'qwen-turbo' },
+    { label: '通义千问 Max', value: 'qwen-max' }
+  ]
+
+  onMounted(async () => {
+    if (isEdit.value) {
+      await loadVersions()
+    } else if (presetId.value) {
+      await loadPreset(presetId.value)
+    }
+  })
+
+  async function loadPreset(id: string) {
+    loading.value = true
+    try {
+      const preset = await evaluatorApi.getPresetEvaluator(id)
+      fillFromPreset(preset)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function loadVersions(preferredVersionId?: string) {
+    if (!evaluatorId.value) return
+    loading.value = true
+    try {
+      versions.value = await evaluatorApi.listVersions(evaluatorId.value)
+      const preferred = versions.value.find((item) => item.id === preferredVersionId)
+      const draft = versions.value.find((item) => item.draft)
+      const fallback = preferred ?? draft ?? versions.value[versions.value.length - 1]
+      if (fallback) {
+        await selectVersion(fallback.id)
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function selectVersion(versionId: string) {
+    activeVersionId.value = versionId
+    const detail = await evaluatorApi.getVersion(versionId)
+    activeDetail.value = detail
+    fillFromConfig(detail)
+  }
+
+  function fillFromPreset(preset: PresetEvaluatorDetail) {
+    form.evaluatorName = preset.evaluatorName
+    form.description = preset.description
+    form.evaluatorType = preset.evaluatorType
+    form.modelId = preset.modelId || 'qwen-plus'
+    form.prompt = preset.prompt
+    form.executeCode = preset.executeCode
+    form.scoreMin = Number(preset.scoreMin ?? 1)
+    form.scoreMax = Number(preset.scoreMax ?? 5)
+    form.passThreshold = Number(preset.passThreshold ?? 3)
+    form.params = preset.params.map(cloneParam)
+  }
+
+  function fillFromConfig(config: EvaluatorConfig) {
+    form.evaluatorName = config.evaluatorName
+    form.description = config.description
+    form.evaluatorType = config.evaluatorType
+    form.modelId = config.modelId || 'qwen-plus'
+    form.prompt = config.prompt || DEFAULT_PROMPT
+    form.executeCode = config.executeCode || DEFAULT_CODE
+    form.scoreMin = Number(config.scoreMin ?? 1)
+    form.scoreMax = Number(config.scoreMax ?? 5)
+    form.passThreshold = Number(config.passThreshold ?? 3)
+    form.params = config.params.map(cloneParam)
+    if (!form.params.length && form.evaluatorType === 'code') {
+      form.params = defaultParams()
+    }
+  }
+
+  function cloneParam(param: EvaluatorParam): EvaluatorParam {
+    return {
+      id: param.id,
+      paramName: param.paramName,
+      dataType: param.dataType,
+      defaultValue: param.defaultValue || '',
+      displayOrder: param.displayOrder
+    }
+  }
+
+  async function submit() {
+    if (!validateForm()) return
+    saving.value = true
+    try {
+      if (isEdit.value) {
+        if (!canEdit.value || !activeVersionId.value) return
+        const saved = await evaluatorApi.updateDraft(activeVersionId.value, payload())
+        activeDetail.value = saved
+        ElMessage.success('草稿已保存')
+        await loadVersions(saved.versionId)
+      } else {
+        const created = await evaluatorApi.createEvaluator(payload())
+        ElMessage.success('评估器已创建')
+        await router.replace({ name: 'evaluator-edit', params: { evaluatorId: created.evaluatorId } })
+        versions.value = [{
+          id: created.versionId,
+          evaluatorId: created.evaluatorId,
+          versionNo: created.versionNo,
+          versionName: created.versionName,
+          draft: created.draft,
+          createdAt: created.createdAt,
+          updatedAt: created.updatedAt
+        }]
+        activeVersionId.value = created.versionId
+        activeDetail.value = created
+      }
+    } finally {
+      saving.value = false
+    }
+  }
+
+  async function publishDraft() {
+    if (!isEdit.value || !evaluatorId.value) return
+    if (!canEdit.value) {
+      ElMessage.warning('当前版本不可发布')
+      return
+    }
+    await ElMessageBox.confirm('发布后将生成新的只读版本，确定发布当前草稿吗？', '发布版本', { type: 'success' })
+    publishing.value = true
+    try {
+      if (!validateForm()) {
+        return
+      }
+      await evaluatorApi.updateDraft(activeVersionId.value, payload())
+      const published = await evaluatorApi.publish(evaluatorId.value)
+      ElMessage.success(`已发布 ${published.versionName}`)
+      await loadVersions(published.versionId)
+    } finally {
+      publishing.value = false
+    }
+  }
+
+  function payload() {
+    return {
+      evaluatorName: form.evaluatorName.trim(),
+      evaluatorType: form.evaluatorType,
+      description: form.description.trim(),
+      modelId: form.evaluatorType === 'llm' ? form.modelId : '',
+      prompt: form.evaluatorType === 'llm' ? form.prompt : '',
+      executeCode: form.evaluatorType === 'code' ? form.executeCode : '',
+      scoreMin: Number(form.scoreMin),
+      scoreMax: Number(form.scoreMax),
+      passThreshold: Number(form.passThreshold),
+      params: form.evaluatorType === 'code' ? form.params : []
+    }
+  }
+
+  function validateForm() {
+    if (!form.evaluatorName.trim()) {
+      ElMessage.warning('请输入评估器名称')
+      return false
+    }
+    if (form.scoreMin >= form.scoreMax) {
+      ElMessage.warning('评分范围最大值必须大于最小值')
+      return false
+    }
+    if (form.passThreshold < form.scoreMin || form.passThreshold > form.scoreMax) {
+      ElMessage.warning('通过阈值必须位于评分范围内')
+      return false
+    }
+    if (form.evaluatorType === 'llm' && !form.prompt.trim()) {
+      ElMessage.warning('请输入Prompt')
+      return false
+    }
+    if (form.evaluatorType === 'code') {
+      if (!form.executeCode.trim()) {
+        ElMessage.warning('请输入执行函数')
+        return false
+      }
+      if (form.params.some((param) => !param.paramName.trim())) {
+        ElMessage.warning('请完善变量名')
+        return false
+      }
+    }
+    return true
+  }
+
+  function switchType(type: EvaluatorType) {
+    if (!canEdit.value || (isEdit.value && activeDetail.value?.evaluatorType !== type)) {
+      return
+    }
+    form.evaluatorType = type
+    if (type === 'code' && !form.params.length) {
+      form.params = defaultParams()
+    }
+  }
+
+  function addParam() {
+    form.params.push({ paramName: '', dataType: 'string', defaultValue: '' })
+  }
+
+  function removeParam(index: number) {
+    form.params.splice(index, 1)
+  }
+
+  function changeParamType(index: number, dataType: EvaluatorParamType) {
+    form.params[index].dataType = dataType
+  }
+
+  function backToList() {
+    router.push({ name: 'evaluators' })
+  }
+
+  function extractPromptParams(prompt: string) {
+    const result: string[] = []
+    const regex = /\$\{([a-zA-Z_][\w]*)\}/g
+    let match = regex.exec(prompt)
+    while (match) {
+      if (!result.includes(match[1])) {
+        result.push(match[1])
+      }
+      match = regex.exec(prompt)
+    }
+    return result
+  }
+
+  function formatTime(value?: string) {
+    if (!value) return '-'
+    const numberValue = Number(value)
+    if (Number.isNaN(numberValue)) return value
+    return new Date(numberValue).toLocaleString()
+  }
+
+  return {
+    loading,
+    saving,
+    publishing,
+    versions,
+    activeVersionId,
+    activeDetail,
+    form,
+    isEdit,
+    canEdit,
+    pageTitle,
+    activeVersion,
+    promptParams,
+    modelOptions,
+    loadVersions,
+    selectVersion,
+    submit,
+    publishDraft,
+    switchType,
+    addParam,
+    removeParam,
+    changeParamType,
+    backToList,
+    formatTime
+  }
+}

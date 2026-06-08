@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.evalsystem.evaluator.mapper.EvaluatorMapper">
+  <resultMap id="EvaluatorSummaryMap" type="com.evalsystem.evaluator.dto.EvaluatorSummary">
+    <constructor>
+      <arg column="id" javaType="java.lang.String"/>
+      <arg column="evaluatorName" javaType="java.lang.String"/>
+      <arg column="evaluatorType" javaType="java.lang.String"/>
+      <arg column="latestVersionId" javaType="java.lang.String"/>
+      <arg column="latestVersionNo" javaType="java.lang.Integer"/>
+      <arg column="latestVersionName" javaType="java.lang.String"/>
+      <arg column="description" javaType="java.lang.String"/>
+      <arg column="createdAt" javaType="java.lang.String"/>
+      <arg column="updatedAt" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <resultMap id="PresetCategoryMap" type="com.evalsystem.evaluator.dto.PresetCategoryDto">
+    <constructor>
+      <arg column="id" javaType="java.lang.String"/>
+      <arg column="categoryName" javaType="java.lang.String"/>
+      <arg column="displayOrder" javaType="java.lang.Integer"/>
+    </constructor>
+  </resultMap>
+
+  <resultMap id="PresetSummaryMap" type="com.evalsystem.evaluator.dto.PresetEvaluatorSummary">
+    <constructor>
+      <arg column="id" javaType="java.lang.String"/>
+      <arg column="categoryId" javaType="java.lang.String"/>
+      <arg column="categoryName" javaType="java.lang.String"/>
+      <arg column="evaluatorName" javaType="java.lang.String"/>
+      <arg column="evaluatorType" javaType="java.lang.String"/>
+      <arg column="description" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <resultMap id="PresetConfigMap" type="com.evalsystem.evaluator.dto.PresetEvaluatorConfig">
+    <constructor>
+      <arg column="id" javaType="java.lang.String"/>
+      <arg column="categoryId" javaType="java.lang.String"/>
+      <arg column="categoryName" javaType="java.lang.String"/>
+      <arg column="evaluatorName" javaType="java.lang.String"/>
+      <arg column="evaluatorType" javaType="java.lang.String"/>
+      <arg column="description" javaType="java.lang.String"/>
+      <arg column="modelId" javaType="java.lang.String"/>
+      <arg column="prompt" javaType="java.lang.String"/>
+      <arg column="executeCode" javaType="java.lang.String"/>
+      <arg column="scoreMin" javaType="java.math.BigDecimal"/>
+      <arg column="scoreMax" javaType="java.math.BigDecimal"/>
+      <arg column="passThreshold" javaType="java.math.BigDecimal"/>
+      <arg column="createdAt" javaType="java.lang.String"/>
+      <arg column="updatedAt" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <resultMap id="VersionMap" type="com.evalsystem.evaluator.dto.EvaluatorVersionDto">
+    <constructor>
+      <arg column="id" javaType="java.lang.String"/>
+      <arg column="evaluatorId" javaType="java.lang.String"/>
+      <arg column="versionNo" javaType="java.lang.Integer"/>
+      <arg column="versionName" javaType="java.lang.String"/>
+      <arg column="draft" javaType="java.lang.Boolean"/>
+      <arg column="createdAt" javaType="java.lang.String"/>
+      <arg column="updatedAt" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <resultMap id="VersionConfigMap" type="com.evalsystem.evaluator.dto.EvaluatorConfigBase">
+    <constructor>
+      <arg column="evaluatorId" javaType="java.lang.String"/>
+      <arg column="evaluatorName" javaType="java.lang.String"/>
+      <arg column="evaluatorType" javaType="java.lang.String"/>
+      <arg column="description" javaType="java.lang.String"/>
+      <arg column="versionId" javaType="java.lang.String"/>
+      <arg column="versionNo" javaType="java.lang.Integer"/>
+      <arg column="versionName" javaType="java.lang.String"/>
+      <arg column="draft" javaType="java.lang.Boolean"/>
+      <arg column="modelId" javaType="java.lang.String"/>
+      <arg column="prompt" javaType="java.lang.String"/>
+      <arg column="executeCode" javaType="java.lang.String"/>
+      <arg column="scoreMin" javaType="java.math.BigDecimal"/>
+      <arg column="scoreMax" javaType="java.math.BigDecimal"/>
+      <arg column="passThreshold" javaType="java.math.BigDecimal"/>
+      <arg column="createdAt" javaType="java.lang.String"/>
+      <arg column="updatedAt" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <select id="listEvaluators" resultMap="EvaluatorSummaryMap">
+    SELECT e.id AS id,
+           e.evaluator_name AS evaluatorName,
+           e.evaluator_type AS evaluatorType,
+           e.latest_version_id AS latestVersionId,
+           COALESCE(v.version_no, 0) AS latestVersionNo,
+           CASE WHEN COALESCE(v.version_no, 0) = 0 THEN '草稿' ELSE CONCAT('V', v.version_no) END AS latestVersionName,
+           e.description AS description,
+           e.created_at AS createdAt,
+           e.updated_at AS updatedAt
+    FROM eval_evaluator e
+    LEFT JOIN eval_evaluator_version v ON e.latest_version_id = v.id
+    WHERE e.is_deleted = 0
+      AND (#{evaluatorType} IS NULL OR e.evaluator_type = #{evaluatorType})
+      AND (#{like} = '%%' OR e.evaluator_name LIKE #{like})
+    ORDER BY e.updated_at DESC
+    LIMIT #{size} OFFSET #{offset}
+  </select>
+
+  <select id="countEvaluators" resultType="long">
+    SELECT COUNT(*)
+    FROM eval_evaluator
+    WHERE is_deleted = 0
+      AND (#{evaluatorType} IS NULL OR evaluator_type = #{evaluatorType})
+      AND (#{like} = '%%' OR evaluator_name LIKE #{like})
+  </select>
+
+  <select id="listPresetCategories" resultMap="PresetCategoryMap">
+    SELECT id AS id,
+           category_name AS categoryName,
+           display_order AS displayOrder
+    FROM eval_preset_evaluator_category
+    ORDER BY display_order ASC
+  </select>
+
+  <select id="listPresetEvaluators" resultMap="PresetSummaryMap">
+    SELECT p.id AS id,
+           p.category_id AS categoryId,
+           c.category_name AS categoryName,
+           p.evaluator_name AS evaluatorName,
+           p.evaluator_type AS evaluatorType,
+           p.description AS description
+    FROM eval_preset_evaluator p
+    LEFT JOIN eval_preset_evaluator_category c ON p.category_id = c.id
+    WHERE (#{categoryId} IS NULL OR p.category_id = #{categoryId})
+      AND (#{like} = '%%' OR p.evaluator_name LIKE #{like})
+    ORDER BY c.display_order ASC, p.display_order ASC
+    LIMIT #{size} OFFSET #{offset}
+  </select>
+
+  <select id="countPresetEvaluators" resultType="long">
+    SELECT COUNT(*)
+    FROM eval_preset_evaluator
+    WHERE (#{categoryId} IS NULL OR category_id = #{categoryId})
+      AND (#{like} = '%%' OR evaluator_name LIKE #{like})
+  </select>
+
+  <select id="findPresetConfig" resultMap="PresetConfigMap">
+    SELECT p.id AS id,
+           p.category_id AS categoryId,
+           c.category_name AS categoryName,
+           p.evaluator_name AS evaluatorName,
+           p.evaluator_type AS evaluatorType,
+           p.description AS description,
+           p.model_id AS modelId,
+           p.prompt AS prompt,
+           p.execute_code AS executeCode,
+           p.score_min AS scoreMin,
+           p.score_max AS scoreMax,
+           p.pass_threshold AS passThreshold,
+           p.created_at AS createdAt,
+           p.updated_at AS updatedAt
+    FROM eval_preset_evaluator p
+    LEFT JOIN eval_preset_evaluator_category c ON p.category_id = c.id
+    WHERE p.id = #{presetId}
+  </select>
+
+  <select id="listVersions" resultMap="VersionMap">
+    SELECT id AS id,
+           evaluator_id AS evaluatorId,
+           version_no AS versionNo,
+           CASE WHEN version_no = 0 THEN '草稿' ELSE CONCAT('V', version_no) END AS versionName,
+           CASE WHEN version_no = 0 THEN 1 ELSE 0 END AS draft,
+           created_at AS createdAt,
+           updated_at AS updatedAt
+    FROM eval_evaluator_version
+    WHERE evaluator_id = #{evaluatorId} AND is_deleted = 0
+    ORDER BY version_no ASC
+  </select>
+
+  <select id="findVersionConfig" resultMap="VersionConfigMap">
+    SELECT e.id AS evaluatorId,
+           e.evaluator_name AS evaluatorName,
+           e.evaluator_type AS evaluatorType,
+           e.description AS description,
+           v.id AS versionId,
+           v.version_no AS versionNo,
+           CASE WHEN v.version_no = 0 THEN '草稿' ELSE CONCAT('V', v.version_no) END AS versionName,
+           CASE WHEN v.version_no = 0 THEN 1 ELSE 0 END AS draft,
+           v.model_id AS modelId,
+           v.prompt AS prompt,
+           v.execute_code AS executeCode,
+           v.score_min AS scoreMin,
+           v.score_max AS scoreMax,
+           v.pass_threshold AS passThreshold,
+           v.created_at AS createdAt,
+           v.updated_at AS updatedAt
+    FROM eval_evaluator_version v
+    JOIN eval_evaluator e ON v.evaluator_id = e.id
+    WHERE v.id = #{versionId}
+      AND v.is_deleted = 0
+      AND e.is_deleted = 0
+  </select>
+</mapper>

@@ -80,3 +80,86 @@ export interface TagDetail extends TagSummary {
   passThreshold?: number
   options: TagOption[]
 }
+
+export type EvaluatorType = 'llm' | 'code'
+
+export type EvaluatorParamType = 'string' | 'number' | 'boolean'
+
+export interface EvaluatorParam {
+  id?: string
+  targetType?: 'preset' | 'version'
+  targetId?: string
+  paramName: string
+  dataType: EvaluatorParamType
+  defaultValue: string
+  displayOrder?: number
+}
+
+export interface EvaluatorSummary {
+  id: string
+  evaluatorName: string
+  evaluatorType: EvaluatorType
+  latestVersionId: string
+  latestVersionNo: number
+  latestVersionName: string
+  description: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EvaluatorVersion {
+  id: string
+  evaluatorId: string
+  versionNo: number
+  versionName: string
+  draft: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EvaluatorConfig {
+  evaluatorId: string
+  evaluatorName: string
+  evaluatorType: EvaluatorType
+  description: string
+  versionId: string
+  versionNo: number
+  versionName: string
+  draft: boolean
+  modelId: string
+  prompt: string
+  executeCode: string
+  scoreMin: number
+  scoreMax: number
+  passThreshold: number
+  createdAt: string
+  updatedAt: string
+  params: EvaluatorParam[]
+}
+
+export interface PresetCategory {
+  id: string
+  categoryName: string
+  displayOrder: number
+}
+
+export interface PresetEvaluatorSummary {
+  id: string
+  categoryId: string
+  categoryName: string
+  evaluatorName: string
+  evaluatorType: EvaluatorType
+  description: string
+}
+
+export interface PresetEvaluatorDetail extends PresetEvaluatorSummary {
+  modelId: string
+  prompt: string
+  executeCode: string
+  scoreMin: number
+  scoreMax: number
+  passThreshold: number
+  createdAt: string
+  updatedAt: string
+  params: EvaluatorParam[]
+}

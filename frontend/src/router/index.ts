@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '../layouts/AppLayout.vue'
 import DatasetDetailView from '../views/DatasetDetailView.vue'
 import DatasetManagementView from '../views/DatasetManagementView.vue'
+import EvaluatorEditorView from '../views/EvaluatorEditorView.vue'
+import EvaluatorManagementView from '../views/EvaluatorManagementView.vue'
 import ModulePlaceholderView from '../views/ModulePlaceholderView.vue'
 import TagManagementView from '../views/TagManagementView.vue'
 
@@ -37,7 +39,19 @@ const router = createRouter({
         {
           path: 'evaluators',
           name: 'evaluators',
-          component: ModulePlaceholderView,
+          component: EvaluatorManagementView,
+          meta: { moduleKey: 'evaluators' }
+        },
+        {
+          path: 'evaluators/create',
+          name: 'evaluator-create',
+          component: EvaluatorEditorView,
+          meta: { moduleKey: 'evaluators' }
+        },
+        {
+          path: 'evaluators/:evaluatorId',
+          name: 'evaluator-edit',
+          component: EvaluatorEditorView,
           meta: { moduleKey: 'evaluators' }
         },
         {

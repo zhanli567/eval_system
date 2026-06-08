@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-@MapperScan({"com.evalsystem.dataset.mapper", "com.evalsystem.tag.mapper"})
+@MapperScan({"com.evalsystem.dataset.mapper", "com.evalsystem.tag.mapper", "com.evalsystem.evaluator.mapper"})
 public class EvalSystemApplication {
   public static void main(String[] args) {
     SpringApplication.run(EvalSystemApplication.class, args);

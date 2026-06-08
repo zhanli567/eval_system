@@ -178,6 +178,363 @@ h2 {
   padding: 18px;
 }
 
+.evaluator-panel {
+  min-height: 640px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(31, 41, 66, 0.06);
+}
+
+.evaluator-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.evaluator-tabs button {
+  min-width: 82px;
+  height: 38px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.evaluator-tabs button:hover,
+.evaluator-tabs button.active {
+  border-color: #d9ddff;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.evaluator-table {
+  width: 100%;
+}
+
+.preset-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-height: 560px;
+}
+
+.preset-category-rail {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 4px 16px 4px 0;
+  border-right: 1px solid var(--line);
+}
+
+.preset-category-rail button {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.preset-category-rail button:hover,
+.preset-category-rail button.active {
+  border-color: #d9ddff;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.rail-caption {
+  padding: 4px 12px 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.preset-content {
+  min-width: 0;
+  padding-left: 18px;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  min-height: 420px;
+}
+
+.preset-card {
+  position: relative;
+  min-height: 136px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  overflow: hidden;
+}
+
+.preset-card:hover {
+  border-color: #cfd4ff;
+  box-shadow: 0 12px 28px rgba(31, 41, 66, 0.08);
+}
+
+.preset-card-head {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.preset-card-head strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preset-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #7c6cff, #21b6a8);
+  box-shadow: inset 0 0 0 5px #f1f0ff;
+}
+
+.preset-card p {
+  margin: 14px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.preset-card-actions {
+  position: absolute;
+  inset: auto 14px 14px;
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.preset-card:hover p {
+  opacity: 0;
+}
+
+.preset-card:hover .preset-card-actions {
+  display: grid;
+}
+
+.picker-layout {
+  min-height: 650px;
+}
+
+.picker-head,
+.picker-actions,
+.detail-header-line,
+.score-summary,
+.prompt-param-row {
+  display: flex;
+  align-items: center;
+}
+
+.picker-head {
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.picker-actions {
+  gap: 10px;
+}
+
+.picker-grid {
+  min-height: 520px;
+}
+
+.preset-detail {
+  min-height: 380px;
+}
+
+.detail-header-line {
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.preset-detail h3 {
+  margin: 18px 0 10px;
+  font-size: 15px;
+}
+
+.code-block {
+  max-height: 360px;
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #f8fafc;
+  color: #25304b;
+  font-family: "Cascadia Code", Consolas, monospace;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.score-summary {
+  gap: 18px;
+  margin-top: 16px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.evaluator-editor-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  align-items: start;
+}
+
+.evaluator-editor-shell:has(.evaluator-version-rail) {
+  grid-template-columns: 220px minmax(0, 1fr) 360px;
+}
+
+.evaluator-version-rail {
+  min-height: 720px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.editor-main,
+.run-panel {
+  min-width: 0;
+}
+
+.editor-form-panel,
+.run-panel {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(31, 41, 66, 0.06);
+}
+
+.editor-form-panel {
+  padding: 22px;
+}
+
+.evaluator-form {
+  margin-top: 18px;
+}
+
+.method-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.method-card {
+  min-height: 112px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+
+.method-card strong,
+.method-card span {
+  display: block;
+}
+
+.method-card strong {
+  margin-bottom: 10px;
+  font-size: 17px;
+}
+
+.method-card span {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.method-card.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.prompt-param-row {
+  width: 100%;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+  color: var(--muted);
+}
+
+.param-editor-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.param-editor {
+  display: grid;
+  grid-template-columns: 1.1fr 140px 1.2fr 42px;
+  gap: 10px;
+  align-items: center;
+}
+
+.run-panel {
+  position: sticky;
+  top: 18px;
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+}
+
+.run-empty {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  padding: 20px;
+  color: var(--muted);
+  text-align: center;
+  background:
+    linear-gradient(30deg, transparent 42%, rgba(99, 91, 255, 0.06) 43%, transparent 44%),
+    #fbfcff;
+  border: 1px dashed #dce2ee;
+  border-radius: var(--radius);
+}
+
+.run-cube {
+  width: 54px;
+  height: 54px;
+  border: 1px solid #dce2ee;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #fff, #eef2ff);
+  box-shadow: 0 12px 26px rgba(99, 91, 255, 0.12);
+}
+
+.run-inputs {
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.run-button {
+  width: 100%;
+  min-height: 44px;
+}
+
 .module-placeholder {
   min-height: 520px;
   padding: 28px;
@@ -425,7 +782,10 @@ h2 {
 @media (prefers-reduced-motion: no-preference) {
   .dataset-panel,
   .detail-panel,
-  .tag-panel {
+  .tag-panel,
+  .evaluator-panel,
+  .editor-form-panel,
+  .run-panel {
     animation: lift-in 260ms ease-out both;
   }
 }
