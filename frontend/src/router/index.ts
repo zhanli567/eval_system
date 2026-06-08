@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '../layouts/AppLayout.vue'
+import DatasetDetailView from '../views/DatasetDetailView.vue'
 import DatasetManagementView from '../views/DatasetManagementView.vue'
 import ModulePlaceholderView from '../views/ModulePlaceholderView.vue'
 import TagManagementView from '../views/TagManagementView.vue'
@@ -19,6 +20,12 @@ const router = createRouter({
           path: 'datasets',
           name: 'datasets',
           component: DatasetManagementView,
+          meta: { moduleKey: 'datasets' }
+        },
+        {
+          path: 'datasets/:datasetId',
+          name: 'dataset-detail',
+          component: DatasetDetailView,
           meta: { moduleKey: 'datasets' }
         },
         {

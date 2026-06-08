@@ -1,26 +1,14 @@
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch, type Ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { AxiosError } from 'axios'
 import { datasetApi } from '../../../api/dataset'
 import type { DatasetField, DatasetRow, DatasetSummary, DatasetVersion, VersionDetail } from '../../../types'
 
-function defaultFields(): DatasetField[] {
-  return [
-    { fieldName: 'query', fieldType: 'string', required: true, description: '用户问题' },
-    { fieldName: 'reference_response', fieldType: 'string', required: false, description: '参考答案' }
-  ]
-}
-
-export function useDatasetManagement() {
-  const datasetLoading = ref(false)
+export function useDatasetDetail(datasetId: Ref<string>) {
+  const router = useRouter()
   const detailLoading = ref(false)
-  const datasets = ref<DatasetSummary[]>([])
-  const datasetTotal = ref(0)
-  const datasetPage = ref(1)
-  const datasetSize = ref(8)
-  const datasetKeyword = ref('')
-  const selectedDataset = ref<DatasetSummary>()
-
+  const datasetSummary = ref<DatasetSummary>()
   const versions = ref<DatasetVersion[]>([])
   const activeVersionId = ref('')
   const detail = ref<VersionDetail>()
@@ -29,7 +17,6 @@ export function useDatasetManagement() {
   const searchFieldId = ref('')
   const searchKeyword = ref('')
 
-  const createVisible = ref(false)
   const fieldVisible = ref(false)
   const rowVisible = ref(false)
   const rowEditingId = ref('')
@@ -37,15 +24,10 @@ export function useDatasetManagement() {
   const coverExcelInput = ref<HTMLInputElement>()
   const draggedFieldIndex = ref<number | null>(null)
 
-  const createForm = reactive({
-    name: '',
-    description: '',
-    fields: defaultFields()
-  })
-
   const fieldForm = ref<DatasetField[]>([])
   const rowForm = reactive<Record<string, string>>({})
 
+  const datasetTitle = computed(() => datasetSummary.value?.name || '评测集详情')
   const activeVersion = computed(() => detail.value?.version)
   const isDraft = computed(() => activeVersion.value?.draft === true)
   const tableRows = computed(() => detail.value?.rows.records ?? [])
@@ -55,45 +37,37 @@ export function useDatasetManagement() {
     fields.value.map((field) => `${field.id}:${field.fieldName}:${field.required}:${field.displayOrder}`).join('|')
   )
 
-  onMounted(async () => {
-    await loadDatasets()
-  })
+  watch(
+    datasetId,
+    async () => {
+      await loadDataset()
+    },
+    { immediate: true }
+  )
 
-  async function loadDatasets() {
-    datasetLoading.value = true
+  async function loadDataset() {
+    detailLoading.value = true
     try {
-      const page = await datasetApi.listDatasets({
-        page: datasetPage.value,
-        size: datasetSize.value,
-        keyword: datasetKeyword.value
-      })
-      datasets.value = page.records
-      datasetTotal.value = page.total
-      if (!selectedDataset.value && datasets.value.length) {
-        await selectDataset(datasets.value[0])
-      }
+      await loadDatasetSummary()
+      await loadVersions()
     } finally {
-      datasetLoading.value = false
+      detailLoading.value = false
     }
   }
 
-  async function selectDataset(dataset: DatasetSummary) {
-    selectedDataset.value = dataset
-    activeVersionId.value = ''
-    tablePage.value = 1
-    searchFieldId.value = ''
-    searchKeyword.value = ''
-    await loadVersions()
+  async function loadDatasetSummary() {
+    const page = await datasetApi.listDatasets({ page: 1, size: 100 })
+    datasetSummary.value = page.records.find((item) => item.id === datasetId.value)
   }
 
   async function loadVersions(preferredVersionId?: string) {
-    if (!selectedDataset.value) return
-    versions.value = await datasetApi.listVersions(selectedDataset.value.id)
+    versions.value = await datasetApi.listVersions(datasetId.value)
     const preferred = versions.value.find((item) => item.id === preferredVersionId)
     const fallback = versions.value.find((item) => item.draft) ?? versions.value[0]
     if (preferred ?? fallback) {
       await selectVersion((preferred ?? fallback).id)
     } else {
+      activeVersionId.value = ''
       detail.value = undefined
     }
   }
@@ -119,44 +93,8 @@ export function useDatasetManagement() {
     }
   }
 
-  function openCreateDialog() {
-    createForm.name = ''
-    createForm.description = ''
-    createForm.fields = defaultFields()
-    createVisible.value = true
-  }
-
-  async function submitCreate() {
-    if (!createForm.name.trim()) {
-      ElMessage.warning('请输入评测集名称')
-      return
-    }
-    if (!createForm.fields.length || createForm.fields.some((field) => !field.fieldName.trim())) {
-      ElMessage.warning('请完善表结构')
-      return
-    }
-    const created = await datasetApi.createDataset({
-      name: createForm.name,
-      description: createForm.description,
-      fields: createForm.fields
-    })
-    createVisible.value = false
-    ElMessage.success('评测集已创建')
-    await loadDatasets()
-    const match = datasets.value.find((item) => item.id === created.id)
-    if (match) await selectDataset(match)
-  }
-
-  async function removeDataset(row: DatasetSummary) {
-    await ElMessageBox.confirm(`确定删除评测集“${row.name}”吗？`, '删除评测集', { type: 'warning' })
-    await datasetApi.deleteDataset(row.id)
-    ElMessage.success('已删除')
-    if (selectedDataset.value?.id === row.id) {
-      selectedDataset.value = undefined
-      detail.value = undefined
-      versions.value = []
-    }
-    await loadDatasets()
+  function backToList() {
+    router.push({ name: 'datasets' })
   }
 
   function addField(target: DatasetField[]) {
@@ -230,7 +168,7 @@ export function useDatasetManagement() {
     }
     rowVisible.value = false
     await loadDetail()
-    await refreshSelectedDataset()
+    await loadDatasetSummary()
   }
 
   async function removeRow(row: DatasetRow) {
@@ -239,7 +177,7 @@ export function useDatasetManagement() {
     await datasetApi.deleteRow(activeVersionId.value, row.id)
     ElMessage.success('已删除')
     await loadDetail()
-    await refreshSelectedDataset()
+    await loadDatasetSummary()
   }
 
   async function handleAddDataCommand(command: string | number | object) {
@@ -289,7 +227,7 @@ export function useDatasetManagement() {
       const result = await datasetApi.importRows(activeVersionId.value, file)
       ElMessage.success(`已导入 ${result.importedCount} 行`)
       await loadDetail()
-      await refreshSelectedDataset()
+      await loadDatasetSummary()
     } catch (error) {
       ElMessage.error(getErrorMessage(error, '导入失败，请确认Excel表头和当前表头完全一致'))
     } finally {
@@ -307,7 +245,7 @@ export function useDatasetManagement() {
       const result = await datasetApi.coverRowsByExcel(activeVersionId.value, file)
       ElMessage.success(`已覆盖导入 ${result.importedCount} 行`)
       await loadDetail()
-      await refreshSelectedDataset()
+      await loadDatasetSummary()
     } catch (error) {
       ElMessage.error(getErrorMessage(error, '覆盖失败，请确认Excel表头和当前表头完全一致'))
     } finally {
@@ -316,11 +254,10 @@ export function useDatasetManagement() {
   }
 
   async function publishDraft() {
-    if (!selectedDataset.value) return
     await ElMessageBox.confirm('发布后将生成新的只读版本，确定发布当前草稿吗？', '发布版本', { type: 'success' })
-    const version = await datasetApi.publish(selectedDataset.value.id)
+    const version = await datasetApi.publish(datasetId.value)
     ElMessage.success(`已发布 ${version.versionName}`)
-    await loadDatasets()
+    await loadDatasetSummary()
     await loadVersions(version.id)
   }
 
@@ -328,23 +265,15 @@ export function useDatasetManagement() {
     await ElMessageBox.confirm(`确定删除 ${version.versionName} 吗？`, '删除版本', { type: 'warning' })
     await datasetApi.deleteVersion(version.id)
     ElMessage.success('版本已删除')
-    await loadDatasets()
+    await loadDatasetSummary()
     await loadVersions()
   }
 
   async function coverDraft(version: DatasetVersion) {
-    if (!selectedDataset.value) return
     await ElMessageBox.confirm(`确定用 ${version.versionName} 全量覆盖草稿吗？`, '覆盖草稿', { type: 'warning' })
-    const draft = await datasetApi.coverDraft(selectedDataset.value.id, version.id)
+    const draft = await datasetApi.coverDraft(datasetId.value, version.id)
     ElMessage.success('草稿已覆盖')
     await loadVersions(draft.id)
-  }
-
-  async function refreshSelectedDataset() {
-    if (!selectedDataset.value) return
-    const page = await datasetApi.listDatasets({ page: 1, size: 100 })
-    const fresh = page.records.find((item) => item.id === selectedDataset.value?.id)
-    if (fresh) selectedDataset.value = fresh
   }
 
   function formatTime(value?: string) {
@@ -363,27 +292,20 @@ export function useDatasetManagement() {
   }
 
   return {
-    datasetLoading,
     detailLoading,
-    datasets,
-    datasetTotal,
-    datasetPage,
-    datasetSize,
-    datasetKeyword,
-    selectedDataset,
+    datasetSummary,
+    datasetTitle,
     versions,
     activeVersionId,
     tablePage,
     tableSize,
     searchFieldId,
     searchKeyword,
-    createVisible,
     fieldVisible,
     rowVisible,
     rowEditingId,
     excelInput,
     coverExcelInput,
-    createForm,
     fieldForm,
     rowForm,
     activeVersion,
@@ -392,13 +314,10 @@ export function useDatasetManagement() {
     tableTotal,
     fields,
     dataTableKey,
-    loadDatasets,
-    selectDataset,
+    loadDataset,
     selectVersion,
     loadDetail,
-    openCreateDialog,
-    submitCreate,
-    removeDataset,
+    backToList,
     addField,
     removeField,
     startFieldDrag,

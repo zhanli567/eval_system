@@ -129,6 +129,15 @@ body {
   margin-bottom: 18px;
 }
 
+.detail-topbar {
+  align-items: flex-end;
+}
+
+.back-link {
+  margin: 0 0 8px -4px;
+  padding-left: 0;
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: var(--accent);
@@ -211,6 +220,10 @@ h2 {
   grid-template-columns: 240px minmax(0, 1fr);
   margin-top: 18px;
   overflow: hidden;
+}
+
+.standalone-detail-panel {
+  margin-top: 0;
 }
 
 .version-rail {
