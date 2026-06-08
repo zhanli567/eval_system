@@ -50,3 +50,33 @@ export interface VersionDetail {
   fields: DatasetField[]
   rows: PageResponse<DatasetRow>
 }
+
+export type TagType = 'category' | 'boolean' | 'number' | 'text'
+
+export type TagOptionGroup = 'pass' | 'fail'
+
+export interface TagSummary {
+  id: string
+  tagName: string
+  tagType: TagType
+  description: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TagOption {
+  id?: string
+  tagId?: string
+  optionName: string
+  optionGroup: TagOptionGroup
+  displayOrder?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface TagDetail extends TagSummary {
+  minValue?: number
+  maxValue?: number
+  passThreshold?: number
+  options: TagOption[]
+}

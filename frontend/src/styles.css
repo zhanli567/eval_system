@@ -156,14 +156,16 @@ h2 {
 }
 
 .dataset-panel,
-.detail-panel {
+.detail-panel,
+.tag-panel {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: 0 12px 32px rgba(31, 41, 66, 0.06);
 }
 
-.dataset-panel {
+.dataset-panel,
+.tag-panel {
   padding: 18px;
 }
 
@@ -187,6 +189,10 @@ h2 {
 
 .field-select {
   width: 180px;
+}
+
+.wide-control {
+  width: 100%;
 }
 
 .linkish {
@@ -264,7 +270,8 @@ h2 {
 }
 
 .dataset-table,
-.data-table {
+.data-table,
+.tag-table {
   width: 100%;
 }
 
@@ -311,6 +318,88 @@ h2 {
   cursor: grabbing;
 }
 
+.tag-dialog .el-dialog__body {
+  max-height: 68vh;
+  overflow-y: auto;
+}
+
+.tag-form {
+  padding-right: 2px;
+}
+
+.tag-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.option-group-card,
+.boolean-config,
+.number-config,
+.text-config {
+  padding: 18px 20px;
+  border-radius: var(--radius);
+  background: #fafbff;
+  border: 1px solid #edf0f7;
+}
+
+.option-group-card.pass {
+  background: #f7fdfb;
+  border-color: #d9f3ea;
+}
+
+.option-group-card.fail {
+  background: #fff8f8;
+  border-color: #f7dddd;
+}
+
+.option-group-head,
+.option-editor,
+.boolean-row,
+.range-row {
+  display: flex;
+  align-items: center;
+}
+
+.option-group-head {
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.option-list {
+  display: grid;
+  gap: 10px;
+}
+
+.option-editor {
+  gap: 10px;
+}
+
+.boolean-config {
+  display: grid;
+  gap: 12px;
+}
+
+.boolean-row {
+  justify-content: space-between;
+  min-height: 42px;
+}
+
+.range-row {
+  width: 100%;
+  gap: 14px;
+}
+
+.range-row .el-input-number {
+  flex: 1;
+}
+
+.text-config {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+}
+
 .el-button {
   border-radius: 7px;
 }
@@ -322,7 +411,8 @@ h2 {
 
 @media (prefers-reduced-motion: no-preference) {
   .dataset-panel,
-  .detail-panel {
+  .detail-panel,
+  .tag-panel {
     animation: lift-in 260ms ease-out both;
   }
 }

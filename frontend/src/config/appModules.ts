@@ -18,8 +18,8 @@ export const appModules: AppModuleMeta[] = [
     key: 'tags',
     path: '/tags',
     title: '标签管理',
-    eyebrow: '资源治理',
-    description: '后续用于管理评测集、评估器和任务标签。'
+    eyebrow: '人工评测',
+    description: '维护分类、布尔值、数字和文本评分标签。'
   },
   {
     key: 'evaluators',
