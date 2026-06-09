@@ -1,0 +1,123 @@
+import { computed, ref, watch, type Ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { taskApi } from '../../../api/task'
+import type { TaskDetail, TaskItemDetail } from '../../../types'
+
+export function useTaskDetail(taskId: Ref<string>) {
+  const router = useRouter()
+  const loading = ref(false)
+  const detail = ref<TaskDetail>()
+  const page = ref(1)
+  const size = ref(8)
+
+  const base = computed(() => detail.value?.base)
+  const fields = computed(() => detail.value?.fields ?? [])
+  const evaluators = computed(() => detail.value?.evaluators ?? [])
+  const tags = computed(() => detail.value?.tags ?? [])
+  const rows = computed(() => detail.value?.items.records ?? [])
+  const total = computed(() => detail.value?.items.total ?? 0)
+
+  watch(
+    taskId,
+    async () => {
+      await loadDetail()
+    },
+    { immediate: true }
+  )
+
+  async function loadDetail() {
+    if (!taskId.value) return
+    loading.value = true
+    try {
+      detail.value = await taskApi.getTask(taskId.value, { page: page.value, size: size.value })
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function backToList() {
+    router.push({ name: 'tasks' })
+  }
+
+  async function startTask() {
+    if (!taskId.value) return
+    await taskApi.startTask(taskId.value)
+    ElMessage.success('评测任务已开始')
+    await loadDetail()
+  }
+
+  async function terminateTask() {
+    if (!taskId.value || !base.value) return
+    await ElMessageBox.confirm(`确定终止评测任务“${base.value.taskName}”吗？`, '终止评测任务', { type: 'warning' })
+    await taskApi.terminateTask(taskId.value)
+    ElMessage.success('评测任务已终止')
+    await loadDetail()
+  }
+
+  function openAnnotation(row: TaskItemDetail) {
+    router.push({ name: 'task-annotation', params: { taskId: taskId.value, taskItemId: row.id } })
+  }
+
+  function statusLabel(value?: string) {
+    const map: Record<string, string> = {
+      pending: '待执行',
+      running: '进行中',
+      completed: '评测完成',
+      terminated: '评测终止',
+      failed: '评测失败',
+      annotation_pending: '待标注',
+      annotating: '标注中',
+      skipped: '跳过'
+    }
+    return value ? map[value] || value : '-'
+  }
+
+  function statusTagType(value?: string) {
+    if (value === 'completed') return 'success'
+    if (value === 'running' || value === 'annotation_pending') return 'primary'
+    if (value === 'failed') return 'danger'
+    if (value === 'terminated') return 'warning'
+    return 'info'
+  }
+
+  function passTagType(value?: string) {
+    if (value === 'pass') return 'success'
+    if (value === 'fail') return 'danger'
+    return 'info'
+  }
+
+  function formatRate(value?: number) {
+    return value === undefined || value === null ? '-' : `${value}%`
+  }
+
+  function formatTime(value?: string) {
+    if (!value) return '-'
+    const numberValue = Number(value)
+    if (Number.isNaN(numberValue)) return value
+    return new Date(numberValue).toLocaleString()
+  }
+
+  return {
+    loading,
+    detail,
+    page,
+    size,
+    base,
+    fields,
+    evaluators,
+    tags,
+    rows,
+    total,
+    loadDetail,
+    backToList,
+    startTask,
+    terminateTask,
+    openAnnotation,
+    statusLabel,
+    statusTagType,
+    passTagType,
+    formatRate,
+    formatTime
+  }
+}

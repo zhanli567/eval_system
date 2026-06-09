@@ -165,3 +165,145 @@ export interface PresetEvaluatorDetail extends PresetEvaluatorSummary {
   updatedAt: string
   params: EvaluatorParam[]
 }
+
+export type TaskStatus = 'pending' | 'running' | 'completed' | 'terminated' | 'failed'
+
+export type TaskItemStatus = 'pending' | 'running' | 'annotation_pending' | 'completed' | 'failed'
+
+export type AppType = 'none' | 'agent'
+
+export type EvaluatorSource = 'preset' | 'custom'
+
+export type MappingSourceType = 'dataset_field' | 'app_output'
+
+export interface TaskBase {
+  id: string
+  taskName: string
+  status: TaskStatus
+  description: string
+  datasetId: string
+  datasetName: string
+  datasetVersionId: string
+  datasetVersionNo: number
+  datasetVersionName: string
+  itemCount: number
+  appType: AppType
+  appId: string
+  appVersionId: string
+  startedAt: string
+  finishedAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TaskEvaluatorDimension {
+  taskEvaluatorId: string
+  evaluatorSource: EvaluatorSource
+  evaluatorId: string
+  evaluatorVersionId: string
+  evaluatorName: string
+  evaluatorType: EvaluatorType
+  versionName: string
+  status: string
+  passCount: number
+  completedCount: number
+  totalCount: number
+  passRate?: number
+  displayOrder: number
+}
+
+export interface TaskTagDimension {
+  taskTagId: string
+  tagId: string
+  tagName: string
+  tagType: TagType
+  status: string
+  passCount: number
+  completedCount: number
+  totalCount: number
+  passRate?: number
+  displayOrder: number
+}
+
+export interface TaskSummary {
+  base: TaskBase
+  evaluators: TaskEvaluatorDimension[]
+  tags: TaskTagDimension[]
+}
+
+export interface TaskEvaluatorResult {
+  id: string
+  taskItemId: string
+  taskEvaluatorId: string
+  evaluatorName: string
+  evaluatorType: EvaluatorType
+  versionName: string
+  status: string
+  score?: number
+  passResult: 'pass' | 'fail' | ''
+  resultValue: string
+  errorMessage: string
+  startedAt: string
+  finishedAt: string
+}
+
+export interface TaskTagResult {
+  id: string
+  taskItemId: string
+  taskTagId: string
+  tagId: string
+  tagName: string
+  tagType: TagType
+  status: string
+  valueText: string
+  valueNumber?: number
+  tagOptionId: string
+  optionName: string
+  passResult: 'pass' | 'fail' | ''
+  annotatedAt: string
+}
+
+export interface TaskItemDetail {
+  id: string
+  datasetItemId: string
+  rowNo: number
+  status: TaskItemStatus
+  values: Record<string, string>
+  appOutput: string
+  appOutputStatus: string
+  evaluatorResults: TaskEvaluatorResult[]
+  tagResults: TaskTagResult[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TaskDetail {
+  base: TaskBase
+  fields: DatasetField[]
+  evaluators: TaskEvaluatorDimension[]
+  tags: TaskTagDimension[]
+  items: PageResponse<TaskItemDetail>
+}
+
+export interface TaskTagAnnotation {
+  taskTagId: string
+  tagId: string
+  tagName: string
+  tagType: TagType
+  description: string
+  minValue?: number
+  maxValue?: number
+  passThreshold?: number
+  options: TagOption[]
+  result?: TaskTagResult
+}
+
+export interface AnnotationDetail {
+  task: TaskBase
+  item: TaskItemDetail
+  fields: DatasetField[]
+  tags: TaskTagAnnotation[]
+  evaluators: TaskEvaluatorResult[]
+  previousItemId?: string
+  nextItemId?: string
+}

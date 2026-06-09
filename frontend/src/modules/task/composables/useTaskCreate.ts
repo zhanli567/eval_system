@@ -1,0 +1,437 @@
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { datasetApi } from '../../../api/dataset'
+import { evaluatorApi } from '../../../api/evaluator'
+import { tagApi } from '../../../api/tag'
+import { taskApi, type TaskEvaluatorPayload } from '../../../api/task'
+import type {
+  DatasetField,
+  DatasetSummary,
+  DatasetVersion,
+  EvaluatorConfig,
+  EvaluatorParam,
+  EvaluatorSummary,
+  EvaluatorVersion,
+  MappingSourceType,
+  PresetCategory,
+  PresetEvaluatorDetail,
+  PresetEvaluatorSummary,
+  TagSummary
+} from '../../../types'
+
+interface ParamMappingState {
+  sourceType: MappingSourceType
+  datasetFieldId: string
+  appOutputName: string
+}
+
+export interface EvaluatorBlockState {
+  key: string
+  evaluatorSource: 'preset' | 'custom'
+  presetCategoryId: string
+  evaluatorId: string
+  evaluatorVersionId: string
+  evaluatorName: string
+  evaluatorType: string
+  description: string
+  versionName: string
+  scoreMin?: number
+  scoreMax?: number
+  passThreshold?: number
+  prompt: string
+  executeCode: string
+  params: EvaluatorParam[]
+  paramMappings: Record<string, ParamMappingState>
+  presetOptions: PresetEvaluatorSummary[]
+  versions: EvaluatorVersion[]
+  detailExpanded: boolean
+  loading: boolean
+}
+
+function createEvaluatorBlock(): EvaluatorBlockState {
+  return {
+    key: `${Date.now()}-${Math.random()}`,
+    evaluatorSource: 'preset',
+    presetCategoryId: '',
+    evaluatorId: '',
+    evaluatorVersionId: '',
+    evaluatorName: '',
+    evaluatorType: '',
+    description: '',
+    versionName: '',
+    prompt: '',
+    executeCode: '',
+    params: [],
+    paramMappings: {},
+    presetOptions: [],
+    versions: [],
+    detailExpanded: false,
+    loading: false
+  }
+}
+
+export function useTaskCreate() {
+  const router = useRouter()
+  const loading = ref(false)
+  const saving = ref(false)
+  const datasets = ref<DatasetSummary[]>([])
+  const versions = ref<DatasetVersion[]>([])
+  const fields = ref<DatasetField[]>([])
+  const tags = ref<TagSummary[]>([])
+  const selectedTagIds = ref<string[]>([])
+  const customEvaluators = ref<EvaluatorSummary[]>([])
+  const presetCategories = ref<PresetCategory[]>([])
+  const evaluatorBlocks = ref<EvaluatorBlockState[]>([createEvaluatorBlock()])
+
+  const form = reactive({
+    taskName: '',
+    description: '',
+    datasetId: '',
+    datasetVersionId: '',
+    appType: 'none' as 'none' | 'agent',
+    appId: '',
+    appVersionId: ''
+  })
+
+  const selectedVersion = computed(() => versions.value.find((item) => item.id === form.datasetVersionId))
+  const publishedVersions = computed(() => versions.value.filter((item) => !item.draft).sort((a, b) => b.versionNo - a.versionNo))
+  const canSubmit = computed(() => Boolean(form.taskName.trim() && form.datasetVersionId && evaluatorBlocks.value.length && selectedTagIds.value.length))
+  const categoryOptions = computed(() => [{ id: '', categoryName: '全部分类', displayOrder: 0 }, ...presetCategories.value])
+
+  onMounted(async () => {
+    loading.value = true
+    try {
+      await Promise.all([loadDatasets(), loadTags(), loadCustomEvaluators(), loadPresetCategories()])
+      await Promise.all(evaluatorBlocks.value.map((block) => loadPresetOptions(block)))
+    } finally {
+      loading.value = false
+    }
+  })
+
+  watch(
+    () => form.datasetId,
+    async () => {
+      await loadVersions()
+    }
+  )
+
+  watch(
+    () => form.datasetVersionId,
+    async () => {
+      await loadFields()
+    }
+  )
+
+  async function loadDatasets() {
+    const page = await datasetApi.listDatasets({ page: 1, size: 100 })
+    datasets.value = page.records
+  }
+
+  async function loadVersions() {
+    versions.value = []
+    fields.value = []
+    form.datasetVersionId = ''
+    if (!form.datasetId) return
+    versions.value = await datasetApi.listVersions(form.datasetId)
+    const latest = publishedVersions.value[0]
+    if (latest) {
+      form.datasetVersionId = latest.id
+    }
+  }
+
+  async function loadFields() {
+    fields.value = []
+    if (!form.datasetVersionId) return
+    const detail = await datasetApi.getVersionDetail(form.datasetVersionId, { page: 1, size: 1 })
+    fields.value = detail.fields
+    for (const block of evaluatorBlocks.value) {
+      ensureParamMappings(block)
+    }
+  }
+
+  async function loadTags() {
+    const page = await tagApi.listTags({ page: 1, size: 100 })
+    tags.value = page.records
+  }
+
+  async function loadCustomEvaluators() {
+    const page = await evaluatorApi.listEvaluators({ page: 1, size: 100 })
+    customEvaluators.value = page.records
+  }
+
+  async function loadPresetCategories() {
+    presetCategories.value = await evaluatorApi.listPresetCategories()
+  }
+
+  async function loadPresetOptions(block: EvaluatorBlockState) {
+    const page = await evaluatorApi.listPresetEvaluators({
+      page: 1,
+      size: 100,
+      categoryId: block.presetCategoryId,
+      keyword: ''
+    })
+    block.presetOptions = page.records
+  }
+
+  async function changePresetCategory(block: EvaluatorBlockState) {
+    block.evaluatorId = ''
+    clearEvaluatorDetail(block)
+    await loadPresetOptions(block)
+  }
+
+  async function changeEvaluatorSource(block: EvaluatorBlockState) {
+    block.evaluatorId = ''
+    block.evaluatorVersionId = ''
+    clearEvaluatorDetail(block)
+    if (block.evaluatorSource === 'preset') {
+      await loadPresetOptions(block)
+    }
+  }
+
+  async function selectEvaluator(block: EvaluatorBlockState) {
+    if (!block.evaluatorId) {
+      clearEvaluatorDetail(block)
+      return
+    }
+    block.loading = true
+    try {
+      if (block.evaluatorSource === 'preset') {
+        const detail = await evaluatorApi.getPresetEvaluator(block.evaluatorId)
+        fillFromPreset(block, detail)
+      } else {
+        block.versions = await evaluatorApi.listVersions(block.evaluatorId)
+        const latest = [...block.versions].sort((a, b) => b.versionNo - a.versionNo)[0]
+        block.evaluatorVersionId = latest?.id || ''
+        if (block.evaluatorVersionId) {
+          await selectCustomVersion(block)
+        }
+      }
+    } finally {
+      block.loading = false
+    }
+  }
+
+  async function selectCustomVersion(block: EvaluatorBlockState) {
+    if (!block.evaluatorVersionId) return
+    block.loading = true
+    try {
+      const detail = await evaluatorApi.getVersion(block.evaluatorVersionId)
+      fillFromCustom(block, detail)
+    } finally {
+      block.loading = false
+    }
+  }
+
+  function fillFromPreset(block: EvaluatorBlockState, detail: PresetEvaluatorDetail) {
+    block.evaluatorName = detail.evaluatorName
+    block.evaluatorType = detail.evaluatorType
+    block.description = detail.description
+    block.versionName = '预置'
+    block.scoreMin = Number(detail.scoreMin)
+    block.scoreMax = Number(detail.scoreMax)
+    block.passThreshold = Number(detail.passThreshold)
+    block.prompt = detail.prompt
+    block.executeCode = detail.executeCode
+    block.params = detail.params
+    ensureParamMappings(block)
+  }
+
+  function fillFromCustom(block: EvaluatorBlockState, detail: EvaluatorConfig) {
+    block.evaluatorName = detail.evaluatorName
+    block.evaluatorType = detail.evaluatorType
+    block.description = detail.description
+    block.versionName = detail.versionName
+    block.scoreMin = Number(detail.scoreMin)
+    block.scoreMax = Number(detail.scoreMax)
+    block.passThreshold = Number(detail.passThreshold)
+    block.prompt = detail.prompt
+    block.executeCode = detail.executeCode
+    block.params = detail.params
+    ensureParamMappings(block)
+  }
+
+  function clearEvaluatorDetail(block: EvaluatorBlockState) {
+    block.evaluatorName = ''
+    block.evaluatorType = ''
+    block.description = ''
+    block.versionName = ''
+    block.prompt = ''
+    block.executeCode = ''
+    block.scoreMin = undefined
+    block.scoreMax = undefined
+    block.passThreshold = undefined
+    block.params = []
+    block.paramMappings = {}
+    block.versions = []
+  }
+
+  function ensureParamMappings(block: EvaluatorBlockState) {
+    const next: Record<string, ParamMappingState> = {}
+    for (const param of block.params) {
+      const key = paramKey(param)
+      next[key] = block.paramMappings[key] || {
+        sourceType: 'dataset_field',
+        datasetFieldId: '',
+        appOutputName: ''
+      }
+    }
+    block.paramMappings = next
+  }
+
+  function addEvaluator() {
+    if (evaluatorBlocks.value.length >= 5) {
+      ElMessage.warning('评估器最多添加5个')
+      return
+    }
+    const block = createEvaluatorBlock()
+    evaluatorBlocks.value.push(block)
+    loadPresetOptions(block)
+  }
+
+  function removeEvaluator(index: number) {
+    evaluatorBlocks.value.splice(index, 1)
+  }
+
+  async function submit() {
+    if (!validate()) return
+    saving.value = true
+    try {
+      const created = await taskApi.createTask({
+        taskName: form.taskName.trim(),
+        description: form.description.trim(),
+        datasetId: form.datasetId,
+        datasetVersionId: form.datasetVersionId,
+        appType: form.appType,
+        appId: form.appType === 'agent' ? form.appId : '',
+        appVersionId: form.appType === 'agent' ? form.appVersionId : '',
+        appFieldMappings: [],
+        evaluators: evaluatorBlocks.value.map(toEvaluatorPayload),
+        tagIds: selectedTagIds.value
+      })
+      ElMessage.success('评测任务已创建')
+      await router.replace({ name: 'task-detail', params: { taskId: created.base.id } })
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '创建评测任务失败')
+    } finally {
+      saving.value = false
+    }
+  }
+
+  function toEvaluatorPayload(block: EvaluatorBlockState): TaskEvaluatorPayload {
+    return {
+      evaluatorSource: block.evaluatorSource,
+      evaluatorId: block.evaluatorId,
+      evaluatorVersionId: block.evaluatorSource === 'custom' ? block.evaluatorVersionId : '',
+      paramMappings: block.params.map((param) => {
+        const mapping = block.paramMappings[paramKey(param)]
+        return {
+          paramId: param.id,
+          paramName: param.paramName,
+          sourceType: mapping.sourceType,
+          datasetFieldId: mapping.sourceType === 'dataset_field' ? mapping.datasetFieldId : '',
+          appOutputName: mapping.sourceType === 'app_output' ? mapping.appOutputName : ''
+        }
+      })
+    }
+  }
+
+  function validate() {
+    if (!form.taskName.trim()) {
+      ElMessage.warning('请输入任务名称')
+      return false
+    }
+    if (!form.datasetId || !form.datasetVersionId) {
+      ElMessage.warning('请选择评测集及版本')
+      return false
+    }
+    if (!selectedVersion.value || selectedVersion.value.draft) {
+      ElMessage.warning('请选择已发布的评测集版本')
+      return false
+    }
+    if (!evaluatorBlocks.value.length || evaluatorBlocks.value.length > 5) {
+      ElMessage.warning('请添加1-5个评估器')
+      return false
+    }
+    if (!selectedTagIds.value.length || selectedTagIds.value.length > 5) {
+      ElMessage.warning('请添加1-5个标签')
+      return false
+    }
+    for (const block of evaluatorBlocks.value) {
+      if (!block.evaluatorId || (block.evaluatorSource === 'custom' && !block.evaluatorVersionId)) {
+        ElMessage.warning('请选择评估器及版本')
+        return false
+      }
+      for (const param of block.params) {
+        if (!param.required) continue
+        const mapping = block.paramMappings[paramKey(param)]
+        if (!mapping) {
+          ElMessage.warning(`请完成字段映射：${param.paramName}`)
+          return false
+        }
+        if (mapping.sourceType === 'dataset_field' && !mapping.datasetFieldId) {
+          ElMessage.warning(`请选择评测集字段：${param.paramName}`)
+          return false
+        }
+        if (mapping.sourceType === 'app_output' && form.appType !== 'agent') {
+          ElMessage.warning('未关联应用时不能映射到应用输出')
+          return false
+        }
+      }
+    }
+    return true
+  }
+
+  function paramKey(param: EvaluatorParam) {
+    return param.id ? `id:${param.id}` : `name:${param.paramName}`
+  }
+
+  function fieldTypeLabel(value?: string) {
+    if (value === 'number') return '数字'
+    if (value === 'boolean') return '布尔'
+    return '文本'
+  }
+
+  function tagTypeLabel(value?: string) {
+    const map: Record<string, string> = {
+      category: '分类',
+      boolean: '布尔',
+      number: '数字',
+      text: '文本'
+    }
+    return value ? map[value] || value : '-'
+  }
+
+  function backToList() {
+    router.push({ name: 'tasks' })
+  }
+
+  return {
+    loading,
+    saving,
+    datasets,
+    versions,
+    publishedVersions,
+    fields,
+    tags,
+    selectedTagIds,
+    customEvaluators,
+    presetCategories,
+    categoryOptions,
+    evaluatorBlocks,
+    form,
+    canSubmit,
+    loadPresetOptions,
+    changePresetCategory,
+    changeEvaluatorSource,
+    selectEvaluator,
+    selectCustomVersion,
+    addEvaluator,
+    removeEvaluator,
+    submit,
+    paramKey,
+    fieldTypeLabel,
+    tagTypeLabel,
+    backToList
+  }
+}

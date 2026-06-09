@@ -1,0 +1,170 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { Back, Refresh, VideoPlay, Warning } from '@element-plus/icons-vue'
+import { useTaskDetail } from '../modules/task/composables/useTaskDetail'
+import type { TaskItemDetail } from '../types'
+
+const route = useRoute()
+const taskId = computed(() => String(route.params.taskId ?? ''))
+
+const {
+  loading,
+  page,
+  size,
+  base,
+  fields,
+  evaluators,
+  tags,
+  rows,
+  total,
+  loadDetail,
+  backToList,
+  startTask,
+  terminateTask,
+  openAnnotation,
+  statusLabel,
+  statusTagType,
+  passTagType,
+  formatRate,
+  formatTime
+} = useTaskDetail(taskId)
+
+function findTagResult(row: TaskItemDetail, taskTagId: string) {
+  return row.tagResults.find((item) => item.taskTagId === taskTagId)
+}
+
+function findEvaluatorResult(row: TaskItemDetail, taskEvaluatorId: string) {
+  return row.evaluatorResults.find((item) => item.taskEvaluatorId === taskEvaluatorId)
+}
+</script>
+
+<template>
+  <header class="topbar detail-topbar">
+    <div>
+      <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评测任务列表</el-button>
+      <p class="eyebrow">应用评测 / 评测任务详情</p>
+      <h1>
+        {{ base?.taskName || '评测任务详情' }}
+        <el-tag v-if="base" :type="statusTagType(base.status)" effect="plain">{{ statusLabel(base.status) }}</el-tag>
+      </h1>
+    </div>
+    <div class="top-actions">
+      <el-button :icon="Refresh" @click="loadDetail">刷新</el-button>
+      <el-button v-if="base?.status !== 'completed' && base?.status !== 'running'" type="primary" :icon="VideoPlay" @click="startTask">
+        开始
+      </el-button>
+      <el-button v-if="base?.status === 'running' || base?.status === 'pending'" type="warning" :icon="Warning" @click="terminateTask">
+        终止
+      </el-button>
+    </div>
+  </header>
+
+  <section class="task-detail-shell" v-loading="loading">
+    <section class="task-basic-band">
+      <h2>基础信息</h2>
+      <div class="task-basic-grid">
+        <div>
+          <span>评测集</span>
+          <strong>{{ base?.datasetName || '-' }} {{ base?.datasetVersionName || '' }}</strong>
+        </div>
+        <div>
+          <span>评测应用</span>
+          <strong>{{ base?.appType === 'agent' ? base?.appId || '智能体应用' : '-' }}</strong>
+        </div>
+        <div>
+          <span>创建时间</span>
+          <strong>{{ formatTime(base?.createdAt) }}</strong>
+        </div>
+        <div>
+          <span>更新时间</span>
+          <strong>{{ formatTime(base?.updatedAt) }}</strong>
+        </div>
+        <div>
+          <span>描述</span>
+          <strong>{{ base?.description || '暂无描述' }}</strong>
+        </div>
+      </div>
+      <div class="dimension-summary-row">
+        <span>评测维度</span>
+        <el-tag v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" effect="plain">
+          评估器 {{ evaluator.evaluatorName }} · 通过率 {{ formatRate(evaluator.passRate) }}
+        </el-tag>
+        <el-tag v-for="tag in tags" :key="tag.taskTagId" type="info" effect="plain">
+          标签 {{ tag.tagName }} · {{ statusLabel(tag.status) }}
+        </el-tag>
+      </div>
+    </section>
+
+    <section class="task-data-panel">
+      <div class="panel-toolbar">
+        <span class="meta">数据明细</span>
+      </div>
+
+      <el-table :data="rows" row-key="id" border class="task-detail-table">
+        <el-table-column label="状态" width="120" fixed="left">
+          <template #default="{ row }">
+            <el-tag :type="statusTagType(row.status)" effect="plain">{{ statusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="序号" width="90" fixed="left">
+          <template #default="{ row }"># {{ row.rowNo }}</template>
+        </el-table-column>
+        <el-table-column v-for="field in fields" :key="field.id" :label="field.fieldName" min-width="220" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.values[field.id || ''] || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="应用输出" min-width="260" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.appOutput || '-' }}</template>
+        </el-table-column>
+        <el-table-column v-for="tag in tags" :key="tag.taskTagId" :label="tag.tagName" min-width="190">
+          <template #default="{ row }">
+            <template v-if="findTagResult(row, tag.taskTagId)?.status === 'completed'">
+              <el-tag :type="passTagType(findTagResult(row, tag.taskTagId)?.passResult)" effect="plain">
+                {{ findTagResult(row, tag.taskTagId)?.passResult || '-' }}
+              </el-tag>
+              <span class="result-value">
+                {{
+                  findTagResult(row, tag.taskTagId)?.optionName ||
+                  findTagResult(row, tag.taskTagId)?.valueText ||
+                  findTagResult(row, tag.taskTagId)?.valueNumber ||
+                  '-'
+                }}
+              </span>
+            </template>
+            <el-tag v-else type="info" effect="plain">未标注</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" :label="evaluator.evaluatorName" min-width="190">
+          <template #default="{ row }">
+            <template v-if="findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status === 'completed'">
+              <el-tag :type="passTagType(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.passResult)" effect="plain">
+                {{ findEvaluatorResult(row, evaluator.taskEvaluatorId)?.passResult || '-' }}
+              </el-tag>
+              <span class="result-value">
+                {{ findEvaluatorResult(row, evaluator.taskEvaluatorId)?.score ?? '-' }}
+              </span>
+            </template>
+            <el-tag v-else :type="statusTagType(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" effect="plain">
+              {{ statusLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openAnnotation(row)">标注</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pager-row">
+        <el-pagination
+          v-model:current-page="page"
+          v-model:page-size="size"
+          layout="total, prev, pager, next"
+          :total="total"
+          @current-change="loadDetail"
+        />
+      </div>
+    </section>
+  </section>
+</template>

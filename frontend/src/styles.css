@@ -166,7 +166,13 @@ h2 {
 
 .dataset-panel,
 .detail-panel,
-.tag-panel {
+.tag-panel,
+.task-panel,
+.task-basic-band,
+.task-data-panel,
+.task-create-section,
+.annotation-column,
+.annotation-output {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -174,7 +180,13 @@ h2 {
 }
 
 .dataset-panel,
-.tag-panel {
+.tag-panel,
+.task-panel,
+.task-basic-band,
+.task-data-panel,
+.task-create-section,
+.annotation-column,
+.annotation-output {
   padding: 18px;
 }
 
@@ -659,7 +671,9 @@ h2 {
 
 .dataset-table,
 .data-table,
-.tag-table {
+.tag-table,
+.task-table,
+.task-detail-table {
   width: 100%;
 }
 
@@ -788,6 +802,354 @@ h2 {
   align-items: center;
 }
 
+.task-toolbar {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.task-sort-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.task-sort-actions .active {
+  color: var(--accent);
+  border-color: #d9ddff;
+  background: var(--accent-soft);
+}
+
+.dimension-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dimension-chip {
+  max-width: 190px;
+  min-height: 42px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+}
+
+.dimension-chip strong,
+.dimension-chip span,
+.time-stack span {
+  display: block;
+}
+
+.dimension-chip strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dimension-chip span,
+.time-stack {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.task-create-shell,
+.task-detail-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.task-create-main {
+  display: grid;
+  gap: 16px;
+}
+
+.task-create-section {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.section-index {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.section-body {
+  min-width: 0;
+}
+
+.section-head,
+.inline-controls,
+.evaluator-config-head,
+.annotation-tag-head,
+.auto-result-item {
+  display: flex;
+  align-items: center;
+}
+
+.section-head,
+.evaluator-config-head {
+  justify-content: space-between;
+}
+
+.task-create-form {
+  margin-top: 16px;
+}
+
+.inline-controls {
+  width: 100%;
+  gap: 12px;
+}
+
+.inline-controls .el-select {
+  flex: 1;
+}
+
+.mapping-placeholder {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px dashed #dce2ee;
+  border-radius: var(--radius);
+  background: #fbfcff;
+  color: var(--muted);
+}
+
+.evaluator-config-card {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.evaluator-config-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.param-mapping-list {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 12px;
+}
+
+.param-mapping-list h3 {
+  margin: 4px 0;
+  font-size: 15px;
+}
+
+.param-mapping-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 24px 140px minmax(220px, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.param-cell {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fafbff;
+}
+
+.mapping-arrow {
+  color: var(--muted);
+  text-align: center;
+}
+
+.evaluator-inline-detail {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.evaluator-inline-detail p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.selected-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 38px;
+  margin-top: 12px;
+}
+
+.task-basic-band {
+  display: grid;
+  gap: 14px;
+}
+
+.task-basic-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.task-basic-grid div {
+  min-width: 0;
+}
+
+.task-basic-grid span,
+.dimension-summary-row > span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 7px;
+}
+
+.task-basic-grid strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dimension-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.dimension-summary-row > span {
+  margin: 0 8px 0 0;
+}
+
+.task-data-panel {
+  min-width: 0;
+}
+
+.result-value {
+  margin-left: 8px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.annotation-shell {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr) 420px;
+  gap: 16px;
+  align-items: start;
+}
+
+.annotation-column,
+.annotation-output {
+  min-height: 680px;
+}
+
+.annotation-field-list,
+.auto-result-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.annotation-field {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+}
+
+.annotation-field span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.annotation-field p,
+.app-output-box p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+
+.app-output-box {
+  min-height: 260px;
+  margin: 14px 0 24px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fbfcff;
+}
+
+.auto-result-item {
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+}
+
+.auto-result-item div {
+  min-width: 0;
+}
+
+.auto-result-item strong,
+.auto-result-item span {
+  display: block;
+}
+
+.auto-result-item div span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.annotation-form-column {
+  position: sticky;
+  top: 18px;
+}
+
+.annotation-tag-editor {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.annotation-tag-editor:last-child {
+  border-bottom: 0;
+}
+
+.annotation-tag-head {
+  justify-content: space-between;
+}
+
+.option-radio-group {
+  width: 100%;
+}
+
+.annotation-current-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .el-button {
   border-radius: 7px;
 }
@@ -801,6 +1163,12 @@ h2 {
   .dataset-panel,
   .detail-panel,
   .tag-panel,
+  .task-panel,
+  .task-basic-band,
+  .task-data-panel,
+  .task-create-section,
+  .annotation-column,
+  .annotation-output,
   .evaluator-panel,
   .editor-form-panel,
   .run-panel {
