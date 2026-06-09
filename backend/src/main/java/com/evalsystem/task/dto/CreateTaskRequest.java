@@ -1,0 +1,17 @@
+package com.evalsystem.task.dto;
+
+import java.util.List;
+
+public record CreateTaskRequest(
+    String taskName,
+    String description,
+    String datasetId,
+    String datasetVersionId,
+    String appType,
+    String appId,
+    String appVersionId,
+    List<AppFieldMappingInput> appFieldMappings,
+    List<TaskEvaluatorInput> evaluators,
+    List<String> tagIds
+) {
+}
