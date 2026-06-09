@@ -10,6 +10,8 @@ public class EvalEvaluatorParam {
   private String paramName;
   private String dataType;
   private String defaultValue;
+  private Boolean required;
+  private String description;
   private Integer displayOrder;
   private String createdAt;
   private String updatedAt;
@@ -60,6 +62,22 @@ public class EvalEvaluatorParam {
 
   public void setDefaultValue(String defaultValue) {
     this.defaultValue = defaultValue;
+  }
+
+  public Boolean getRequired() {
+    return required;
+  }
+
+  public void setRequired(Boolean required) {
+    this.required = required;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(String description) {
+    this.description = description;
   }
 
   public Integer getDisplayOrder() {

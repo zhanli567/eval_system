@@ -4,6 +4,8 @@ public record EvaluatorParamInput(
     String id,
     String paramName,
     String dataType,
-    String defaultValue
+    String defaultValue,
+    Boolean required,
+    String description
 ) {
 }

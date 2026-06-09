@@ -16,8 +16,14 @@ import com.evalsystem.evaluator.mapper.EvaluatorMapper;
 import com.evalsystem.evaluator.service.EvaluatorService;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -28,11 +34,14 @@ public class EvaluatorServiceImpl implements EvaluatorService {
   private static final String TYPE_CODE = "code";
   private static final String TARGET_PRESET = "preset";
   private static final String TARGET_VERSION = "version";
+  private static final String PARAM_TYPE_STRING = "string";
   private static final List<String> SUPPORTED_TYPES = List.of(TYPE_LLM, TYPE_CODE);
-  private static final List<String> SUPPORTED_PARAM_TYPES = List.of("string", "number", "boolean");
+  private static final List<String> SUPPORTED_PARAM_TYPES = List.of(PARAM_TYPE_STRING, "number", "boolean");
   private static final BigDecimal DEFAULT_SCORE_MIN = BigDecimal.ONE;
   private static final BigDecimal DEFAULT_SCORE_MAX = BigDecimal.valueOf(5);
   private static final BigDecimal DEFAULT_PASS_THRESHOLD = BigDecimal.valueOf(3);
+  private static final int MAX_PARAM_DESCRIPTION_LENGTH = 200;
+  private static final Pattern PROMPT_PARAM_PATTERN = Pattern.compile("\\$\\{([a-zA-Z_][\\w]*)}");
 
   private final EvaluatorMapper evaluatorMapper;
 
@@ -86,7 +95,7 @@ public class EvaluatorServiceImpl implements EvaluatorService {
         config.passThreshold(),
         config.createdAt(),
         config.updatedAt(),
-        evaluatorMapper.listParams(TARGET_PRESET, config.id()));
+        listEvaluatorParams(TARGET_PRESET, config.id(), config.evaluatorType(), config.prompt()));
   }
 
   @Transactional
@@ -129,7 +138,13 @@ public class EvaluatorServiceImpl implements EvaluatorService {
         source.scoreMax(),
         source.passThreshold(),
         source.params().stream()
-            .map(param -> new EvaluatorParamInput(null, param.paramName(), param.dataType(), param.defaultValue()))
+            .map(param -> new EvaluatorParamInput(
+                null,
+                param.paramName(),
+                param.dataType(),
+                param.defaultValue(),
+                param.required(),
+                param.description()))
             .toList());
     return createEvaluator(input);
   }
@@ -191,7 +206,13 @@ public class EvaluatorServiceImpl implements EvaluatorService {
         draft.passThreshold(),
         now);
     saveParams(TARGET_VERSION, newVersionId, draft.params().stream()
-        .map(param -> new EvaluatorParamInput(null, param.paramName(), param.dataType(), param.defaultValue()))
+        .map(param -> new EvaluatorParamInput(
+            null,
+            param.paramName(),
+            param.dataType(),
+            param.defaultValue(),
+            param.required(),
+            param.description()))
         .toList(), now);
     evaluatorMapper.updateLatestVersion(evaluatorId, newVersionId, now);
     return getVersion(newVersionId);
@@ -222,7 +243,29 @@ public class EvaluatorServiceImpl implements EvaluatorService {
         base.passThreshold(),
         base.createdAt(),
         base.updatedAt(),
-        evaluatorMapper.listParams(TARGET_VERSION, base.versionId()));
+        listEvaluatorParams(TARGET_VERSION, base.versionId(), base.evaluatorType(), base.prompt()));
+  }
+
+  private List<EvaluatorParamDto> listEvaluatorParams(String targetType, String targetId, String evaluatorType, String prompt) {
+    List<EvaluatorParamDto> params = evaluatorMapper.listParams(targetType, targetId);
+    if (!TYPE_LLM.equals(evaluatorType) || !params.isEmpty() || !StringUtils.hasText(prompt)) {
+      return params;
+    }
+    List<EvaluatorParamDto> extracted = new ArrayList<>();
+    int order = 1;
+    for (String paramName : extractPromptParamNames(prompt)) {
+      extracted.add(new EvaluatorParamDto(
+          null,
+          targetType,
+          targetId,
+          paramName,
+          PARAM_TYPE_STRING,
+          "",
+          true,
+          "",
+          order++));
+    }
+    return extracted;
   }
 
   private NormalizedEvaluator normalizeEvaluatorInput(EvaluatorInput request, String existingType) {
@@ -249,9 +292,10 @@ public class EvaluatorServiceImpl implements EvaluatorService {
     if (TYPE_LLM.equals(evaluatorType)) {
       modelId = request.modelId() == null ? "" : request.modelId().trim();
       prompt = requireText(request.prompt(), "Prompt不能为空");
+      params = normalizePromptParams(prompt, request.params());
     } else {
       executeCode = requireText(request.executeCode(), "执行函数不能为空");
-      params = normalizeParams(request.params());
+      params = normalizeCodeParams(request.params());
     }
 
     return new NormalizedEvaluator(
@@ -298,11 +342,12 @@ public class EvaluatorServiceImpl implements EvaluatorService {
     return normalized;
   }
 
-  private List<EvaluatorParamInput> normalizeParams(List<EvaluatorParamInput> params) {
+  private List<EvaluatorParamInput> normalizeCodeParams(List<EvaluatorParamInput> params) {
     if (params == null) {
       return List.of();
     }
     List<EvaluatorParamInput> normalized = new ArrayList<>();
+    Set<String> names = new HashSet<>();
     for (EvaluatorParamInput param : params) {
       if (param == null || !StringUtils.hasText(param.paramName())) {
         continue;
@@ -311,11 +356,81 @@ public class EvaluatorServiceImpl implements EvaluatorService {
       if (paramName.length() > 64) {
         throw new IllegalArgumentException("变量名不能超过64个字符");
       }
-      String dataType = StringUtils.hasText(param.dataType()) ? param.dataType().trim() : "string";
-      if (!SUPPORTED_PARAM_TYPES.contains(dataType)) {
-        throw new IllegalArgumentException("变量类型仅支持string/number/boolean");
+      if (!names.add(paramName)) {
+        throw new IllegalArgumentException("变量名不能重复");
       }
-      normalized.add(new EvaluatorParamInput(param.id(), paramName, dataType, param.defaultValue() == null ? "" : param.defaultValue()));
+      normalized.add(new EvaluatorParamInput(
+          param.id(),
+          paramName,
+          normalizeParamType(param.dataType()),
+          param.defaultValue() == null ? "" : param.defaultValue(),
+          normalizeRequired(param.required()),
+          normalizeParamDescription(param.description())));
+    }
+    return normalized;
+  }
+
+  private List<EvaluatorParamInput> normalizePromptParams(String prompt, List<EvaluatorParamInput> params) {
+    List<String> paramNames = extractPromptParamNames(prompt);
+    if (paramNames.isEmpty()) {
+      return List.of();
+    }
+    Map<String, EvaluatorParamInput> providedParams = mapParamsByName(params);
+    List<EvaluatorParamInput> normalized = new ArrayList<>();
+    for (String paramName : paramNames) {
+      EvaluatorParamInput provided = providedParams.get(paramName);
+      normalized.add(new EvaluatorParamInput(
+          provided == null ? null : provided.id(),
+          paramName,
+          provided == null ? PARAM_TYPE_STRING : normalizeParamType(provided.dataType()),
+          provided == null || provided.defaultValue() == null ? "" : provided.defaultValue(),
+          provided == null ? true : normalizeRequired(provided.required()),
+          provided == null ? "" : normalizeParamDescription(provided.description())));
+    }
+    return normalized;
+  }
+
+  private Map<String, EvaluatorParamInput> mapParamsByName(List<EvaluatorParamInput> params) {
+    Map<String, EvaluatorParamInput> mapped = new LinkedHashMap<>();
+    if (params == null) {
+      return mapped;
+    }
+    for (EvaluatorParamInput param : params) {
+      if (param != null && StringUtils.hasText(param.paramName())) {
+        mapped.putIfAbsent(param.paramName().trim(), param);
+      }
+    }
+    return mapped;
+  }
+
+  private List<String> extractPromptParamNames(String prompt) {
+    List<String> names = new ArrayList<>();
+    Matcher matcher = PROMPT_PARAM_PATTERN.matcher(prompt);
+    while (matcher.find()) {
+      String paramName = matcher.group(1);
+      if (!names.contains(paramName)) {
+        names.add(paramName);
+      }
+    }
+    return names;
+  }
+
+  private String normalizeParamType(String dataType) {
+    String normalized = StringUtils.hasText(dataType) ? dataType.trim() : PARAM_TYPE_STRING;
+    if (!SUPPORTED_PARAM_TYPES.contains(normalized)) {
+      throw new IllegalArgumentException("变量类型仅支持string/number/boolean");
+    }
+    return normalized;
+  }
+
+  private Boolean normalizeRequired(Boolean required) {
+    return required == null || required;
+  }
+
+  private String normalizeParamDescription(String description) {
+    String normalized = description == null ? "" : description.trim();
+    if (normalized.length() > MAX_PARAM_DESCRIPTION_LENGTH) {
+      throw new IllegalArgumentException("变量描述不能超过200个字符");
     }
     return normalized;
   }
@@ -339,6 +454,8 @@ public class EvaluatorServiceImpl implements EvaluatorService {
           param.paramName(),
           param.dataType(),
           param.defaultValue(),
+          param.required(),
+          param.description(),
           order++,
           now);
     }

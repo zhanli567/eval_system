@@ -92,6 +92,8 @@ export interface EvaluatorParam {
   paramName: string
   dataType: EvaluatorParamType
   defaultValue: string
+  required: boolean
+  description: string
   displayOrder?: number
 }
 

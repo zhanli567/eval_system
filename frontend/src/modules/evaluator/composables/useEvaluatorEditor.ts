@@ -1,4 +1,4 @@
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { evaluatorApi } from '../../../api/evaluator'
@@ -30,9 +30,13 @@ const DEFAULT_CODE = `def evaluate(expected, actual):
 
 function defaultParams(): EvaluatorParam[] {
   return [
-    { paramName: 'expected', dataType: 'string', defaultValue: '' },
-    { paramName: 'actual', dataType: 'string', defaultValue: '' }
+    { paramName: 'expected', dataType: 'string', defaultValue: '', required: true, description: '预期输出' },
+    { paramName: 'actual', dataType: 'string', defaultValue: '', required: true, description: '实际输出' }
   ]
+}
+
+function createParam(paramName = ''): EvaluatorParam {
+  return { paramName, dataType: 'string', defaultValue: '', required: true, description: '' }
 }
 
 export function useEvaluatorEditor() {
@@ -64,7 +68,7 @@ export function useEvaluatorEditor() {
   const canEdit = computed(() => !isEdit.value || Boolean(activeDetail.value?.draft))
   const pageTitle = computed(() => (isEdit.value ? form.evaluatorName || '编辑评估器' : '创建评估器'))
   const activeVersion = computed(() => versions.value.find((item) => item.id === activeVersionId.value))
-  const promptParams = computed(() => extractPromptParams(form.prompt))
+  const promptParams = computed(() => (form.evaluatorType === 'llm' ? form.params : []))
 
   const modelOptions = [
     { label: '通义千问 Plus', value: 'qwen-plus' },
@@ -77,8 +81,19 @@ export function useEvaluatorEditor() {
       await loadVersions()
     } else if (presetId.value) {
       await loadPreset(presetId.value)
+    } else {
+      syncPromptParams()
     }
   })
+
+  watch(
+    () => [form.evaluatorType, form.prompt] as const,
+    () => {
+      if (form.evaluatorType === 'llm') {
+        syncPromptParams()
+      }
+    }
+  )
 
   async function loadPreset(id: string) {
     loading.value = true
@@ -124,6 +139,9 @@ export function useEvaluatorEditor() {
     form.scoreMax = Number(preset.scoreMax ?? 5)
     form.passThreshold = Number(preset.passThreshold ?? 3)
     form.params = preset.params.map(cloneParam)
+    if (form.evaluatorType === 'llm') {
+      syncPromptParams()
+    }
   }
 
   function fillFromConfig(config: EvaluatorConfig) {
@@ -137,6 +155,9 @@ export function useEvaluatorEditor() {
     form.scoreMax = Number(config.scoreMax ?? 5)
     form.passThreshold = Number(config.passThreshold ?? 3)
     form.params = config.params.map(cloneParam)
+    if (form.evaluatorType === 'llm') {
+      syncPromptParams()
+    }
     if (!form.params.length && form.evaluatorType === 'code') {
       form.params = defaultParams()
     }
@@ -148,6 +169,8 @@ export function useEvaluatorEditor() {
       paramName: param.paramName,
       dataType: param.dataType,
       defaultValue: param.defaultValue || '',
+      required: param.required ?? true,
+      description: param.description || '',
       displayOrder: param.displayOrder
     }
   }
@@ -209,6 +232,7 @@ export function useEvaluatorEditor() {
   }
 
   function payload() {
+    const params = form.evaluatorType === 'llm' ? syncPromptParams() : form.params
     return {
       evaluatorName: form.evaluatorName.trim(),
       evaluatorType: form.evaluatorType,
@@ -219,8 +243,34 @@ export function useEvaluatorEditor() {
       scoreMin: Number(form.scoreMin),
       scoreMax: Number(form.scoreMax),
       passThreshold: Number(form.passThreshold),
-      params: form.evaluatorType === 'code' ? form.params : []
+      params: params.map(toParamPayload)
     }
+  }
+
+  function toParamPayload(param: EvaluatorParam): EvaluatorParam {
+    return {
+      id: param.id,
+      paramName: param.paramName.trim(),
+      dataType: param.dataType || 'string',
+      defaultValue: param.defaultValue || '',
+      required: param.required ?? true,
+      description: param.description?.trim() || '',
+      displayOrder: param.displayOrder
+    }
+  }
+
+  function syncPromptParams() {
+    const names = extractPromptParams(form.prompt)
+    const mappedParams = new Map(form.params.map((param) => [param.paramName, param]))
+    form.params = names.map((name, index) => {
+      const existing = mappedParams.get(name)
+      return {
+        ...(existing ? cloneParam(existing) : createParam(name)),
+        paramName: name,
+        displayOrder: index + 1
+      }
+    })
+    return form.params
   }
 
   function validateForm() {
@@ -249,6 +299,11 @@ export function useEvaluatorEditor() {
         ElMessage.warning('请完善变量名')
         return false
       }
+      const paramNames = form.params.map((param) => param.paramName.trim()).filter(Boolean)
+      if (new Set(paramNames).size !== paramNames.length) {
+        ElMessage.warning('变量名不能重复')
+        return false
+      }
     }
     return true
   }
@@ -257,14 +312,17 @@ export function useEvaluatorEditor() {
     if (!canEdit.value || (isEdit.value && activeDetail.value?.evaluatorType !== type)) {
       return
     }
+    const previousType = form.evaluatorType
     form.evaluatorType = type
-    if (type === 'code' && !form.params.length) {
+    if (type === 'code' && (previousType !== 'code' || !form.params.length)) {
       form.params = defaultParams()
+    } else if (type === 'llm') {
+      syncPromptParams()
     }
   }
 
   function addParam() {
-    form.params.push({ paramName: '', dataType: 'string', defaultValue: '' })
+    form.params.push(createParam())
   }
 
   function removeParam(index: number) {

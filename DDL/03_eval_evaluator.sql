@@ -56,7 +56,9 @@ CREATE TABLE IF NOT EXISTS eval_evaluator_param (
   param_name VARCHAR(64) COMMENT '变量名',
   data_type VARCHAR(32) COMMENT '数据类型：string/number/boolean',
   default_value LONGTEXT COMMENT '默认值',
+  is_required TINYINT COMMENT '是否必填：0否，1是',
+  description VARCHAR(200) COMMENT '参数描述，用于评测任务绑定时理解参数含义',
   display_order INT COMMENT '展示顺序',
   created_at VARCHAR(32) COMMENT '创建时间',
   updated_at VARCHAR(32) COMMENT '更新时间'
-) COMMENT='评估器Code入参配置表';
+) COMMENT='评估器参数配置表';

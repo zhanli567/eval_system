@@ -258,6 +258,15 @@ const {
         </div>
 
         <template v-if="selectedPreset.evaluatorType === 'llm'">
+          <h3>参数设置</h3>
+          <el-table :data="selectedPreset.params" border>
+            <el-table-column prop="paramName" label="变量名" />
+            <el-table-column prop="dataType" label="数据类型" width="120" />
+            <el-table-column label="是否必填" width="110">
+              <template #default="{ row }">{{ row.required ? '是' : '否' }}</template>
+            </el-table-column>
+            <el-table-column prop="description" label="描述" />
+          </el-table>
           <h3>Prompt</h3>
           <pre class="code-block">{{ selectedPreset.prompt }}</pre>
         </template>
@@ -265,7 +274,11 @@ const {
           <h3>代码入参设置</h3>
           <el-table :data="selectedPreset.params" border>
             <el-table-column prop="paramName" label="变量名" />
-            <el-table-column prop="dataType" label="数据类型" width="140" />
+            <el-table-column prop="dataType" label="数据类型" width="120" />
+            <el-table-column label="是否必填" width="110">
+              <template #default="{ row }">{{ row.required ? '是' : '否' }}</template>
+            </el-table-column>
+            <el-table-column prop="description" label="描述" />
             <el-table-column prop="defaultValue" label="默认值" />
           </el-table>
           <h3>执行函数</h3>

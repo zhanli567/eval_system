@@ -113,10 +113,27 @@ const {
               />
               <div class="prompt-param-row">
                 <span>被引用的参数</span>
-                <el-tag v-for="param in promptParams" :key="param" size="small">{{ param }}</el-tag>
+                <el-tag v-for="param in promptParams" :key="param.paramName" size="small">{{ param.paramName }}</el-tag>
                 <span v-if="!promptParams.length" class="meta">暂无</span>
               </div>
             </el-form-item>
+
+            <div class="dialog-subtitle">
+              <span>Prompt 参数配置</span>
+            </div>
+            <div class="param-editor-list">
+              <div v-for="param in promptParams" :key="param.paramName" class="param-editor param-editor-llm">
+                <el-input v-model="param.paramName" disabled placeholder="变量名" />
+                <el-select v-model="param.dataType" :disabled="!canEdit" placeholder="数据类型">
+                  <el-option label="string" value="string" />
+                  <el-option label="number" value="number" />
+                  <el-option label="boolean" value="boolean" />
+                </el-select>
+                <el-checkbox v-model="param.required" :disabled="!canEdit">必填</el-checkbox>
+                <el-input v-model="param.description" :disabled="!canEdit" maxlength="200" placeholder="参数描述" />
+              </div>
+              <el-empty v-if="!promptParams.length" description="暂无参数" :image-size="72" />
+            </div>
           </template>
 
           <template v-else>
@@ -132,6 +149,8 @@ const {
                   <el-option label="number" value="number" />
                   <el-option label="boolean" value="boolean" />
                 </el-select>
+                <el-checkbox v-model="param.required" :disabled="!canEdit">必填</el-checkbox>
+                <el-input v-model="param.description" :disabled="!canEdit" maxlength="200" placeholder="参数描述" />
                 <el-input v-model="param.defaultValue" :disabled="!canEdit" placeholder="默认值" />
                 <el-button :icon="Delete" circle :disabled="!canEdit" @click="removeParam(index)" />
               </div>
@@ -173,8 +192,8 @@ const {
       <div class="run-inputs">
         <template v-if="form.evaluatorType === 'llm'">
           <el-form label-position="top">
-            <el-form-item v-for="param in promptParams" :key="param" :label="param">
-              <el-input placeholder="请输入" maxlength="2000" show-word-limit />
+            <el-form-item v-for="param in promptParams" :key="param.paramName" :label="param.paramName">
+              <el-input :placeholder="param.defaultValue || '请输入'" maxlength="2000" show-word-limit />
             </el-form-item>
           </el-form>
         </template>

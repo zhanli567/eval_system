@@ -7,6 +7,8 @@ public record EvaluatorParamDto(
     String paramName,
     String dataType,
     String defaultValue,
+    Boolean required,
+    String description,
     Integer displayOrder
 ) {
 }
