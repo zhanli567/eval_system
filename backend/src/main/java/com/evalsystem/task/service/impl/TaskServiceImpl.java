@@ -9,6 +9,12 @@ import com.evalsystem.evaluator.dto.EvaluatorConfig;
 import com.evalsystem.evaluator.dto.EvaluatorParamDto;
 import com.evalsystem.evaluator.dto.PresetEvaluatorDetail;
 import com.evalsystem.evaluator.service.EvaluatorService;
+import com.evalsystem.mock.dto.MockAgentChatRequest;
+import com.evalsystem.mock.dto.MockAgentChatResponse;
+import com.evalsystem.mock.dto.MockAgentMessage;
+import com.evalsystem.mock.dto.MockEvaluatorRequest;
+import com.evalsystem.mock.dto.MockEvaluatorResponse;
+import com.evalsystem.mock.service.MockRuntimeService;
 import com.evalsystem.tag.dto.TagConfig;
 import com.evalsystem.tag.dto.TagOptionDto;
 import com.evalsystem.tag.mapper.TagMapper;
@@ -31,7 +37,6 @@ import com.evalsystem.task.dto.TaskTagResultDto;
 import com.evalsystem.task.mapper.TaskMapper;
 import com.evalsystem.task.service.TaskService;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,6 +46,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,22 +69,26 @@ public class TaskServiceImpl implements TaskService {
   private static final String SOURCE_DATASET_FIELD = "dataset_field";
   private static final String SOURCE_APP_OUTPUT = "app_output";
   private static final int MAX_DIMENSION_COUNT = 5;
+  private static final Pattern PROMPT_PARAM_PATTERN = Pattern.compile("\\$\\{([a-zA-Z_][\\w]*)}");
 
   private final TaskMapper taskMapper;
   private final DatasetMapper datasetMapper;
   private final EvaluatorService evaluatorService;
   private final TagMapper tagMapper;
+  private final MockRuntimeService mockRuntimeService;
 
   public TaskServiceImpl(
       TaskMapper taskMapper,
       DatasetMapper datasetMapper,
       EvaluatorService evaluatorService,
-      TagMapper tagMapper
+      TagMapper tagMapper,
+      MockRuntimeService mockRuntimeService
   ) {
     this.taskMapper = taskMapper;
     this.datasetMapper = datasetMapper;
     this.evaluatorService = evaluatorService;
     this.tagMapper = tagMapper;
+    this.mockRuntimeService = mockRuntimeService;
   }
 
   public PageResponse<TaskSummary> listTasks(int page, int size, String status, String keyword, String sortBy, String sortOrder) {
@@ -151,6 +162,7 @@ public class TaskServiceImpl implements TaskService {
     taskMapper.updateTaskStatus(taskId, STATUS_RUNNING, startedAt, null, startedAt);
     List<TaskMapper.TaskItemRecord> items = taskMapper.listAllTaskItems(taskId);
     List<TaskMapper.TaskEvaluatorBindingRecord> evaluators = taskMapper.listTaskEvaluatorBindings(taskId);
+    List<TaskMapper.TaskAppFieldMappingRecord> appMappings = taskMapper.listAppFieldMappings(taskId);
     Map<String, EvaluationRuntimeConfig> evaluatorConfigs = loadEvaluatorRuntimeConfigs(evaluators);
     Map<String, List<TaskMapper.TaskEvaluatorParamMappingRecord>> mappingsByEvaluator = taskMapper.listAllParamMappings(taskId)
         .stream()
@@ -161,46 +173,83 @@ public class TaskServiceImpl implements TaskService {
       taskMapper.updateTaskEvaluatorStatus(evaluator.id(), STATUS_RUNNING, startedAt);
     }
 
+    boolean hasTaskFailure = false;
+    Set<String> failedEvaluatorIds = new HashSet<>();
     for (TaskMapper.TaskItemRecord item : items) {
       String itemStartedAt = now();
-      String appOutput = buildAppOutput(base, item, valuesByItem.getOrDefault(item.datasetItemId(), Map.of()));
-      String appOutputStatus = APP_AGENT.equals(base.appType()) ? STATUS_COMPLETED : RESULT_SKIPPED;
-      boolean hasFailedEvaluator = false;
-      for (TaskMapper.TaskEvaluatorBindingRecord evaluator : evaluators) {
-        EvaluationRuntimeConfig config = evaluatorConfigs.get(evaluator.id());
-        List<TaskMapper.TaskEvaluatorParamMappingRecord> mappings = mappingsByEvaluator.getOrDefault(evaluator.id(), List.of());
-        EvaluationSimulationResult result = simulateEvaluation(config, mappings, valuesByItem.getOrDefault(item.datasetItemId(), Map.of()), appOutput);
-        hasFailedEvaluator = hasFailedEvaluator || STATUS_FAILED.equals(result.status());
-        String finishedAt = now();
-        taskMapper.updateEvaluatorResult(
-            item.id(),
-            evaluator.id(),
-            result.status(),
-            result.score(),
-            result.passResult(),
-            result.resultValue(),
-            result.errorMessage(),
-            itemStartedAt,
-            finishedAt,
-            finishedAt);
+      Map<String, String> rowValues = valuesByItem.getOrDefault(item.datasetItemId(), Map.of());
+      AgentInvocationResult agentResult = invokeMockAgent(base, item, appMappings, rowValues);
+      boolean hasFailedEvaluator = STATUS_FAILED.equals(agentResult.status());
+      if (hasFailedEvaluator) {
+        hasTaskFailure = true;
+        for (TaskMapper.TaskEvaluatorBindingRecord evaluator : evaluators) {
+          failedEvaluatorIds.add(evaluator.id());
+          String finishedAt = now();
+          taskMapper.updateEvaluatorResult(
+              item.id(),
+              evaluator.id(),
+              RESULT_SKIPPED,
+              null,
+              "",
+              "",
+              "智能体调用失败，跳过评估：" + agentResult.errorMessage(),
+              itemStartedAt,
+              finishedAt,
+              finishedAt);
+        }
+      } else {
+        for (TaskMapper.TaskEvaluatorBindingRecord evaluator : evaluators) {
+          EvaluationRuntimeConfig config = evaluatorConfigs.get(evaluator.id());
+          List<TaskMapper.TaskEvaluatorParamMappingRecord> mappings = mappingsByEvaluator.getOrDefault(evaluator.id(), List.of());
+          EvaluationSimulationResult result = evaluateWithMock(base, item, evaluator, config, mappings, rowValues, agentResult.outputs());
+          if (STATUS_FAILED.equals(result.status())) {
+            hasFailedEvaluator = true;
+            hasTaskFailure = true;
+            failedEvaluatorIds.add(evaluator.id());
+          }
+          String finishedAt = now();
+          taskMapper.updateEvaluatorResult(
+              item.id(),
+              evaluator.id(),
+              result.status(),
+              result.score(),
+              result.passResult(),
+              result.resultValue(),
+              result.errorMessage(),
+              itemStartedAt,
+              finishedAt,
+              finishedAt);
+        }
       }
       String itemFinishedAt = now();
       String itemStatus = hasFailedEvaluator ? STATUS_FAILED : ITEM_ANNOTATION_PENDING;
       if (taskMapper.countUnfinishedTagResultsByItem(item.id()) == 0 && !hasFailedEvaluator) {
         itemStatus = STATUS_COMPLETED;
       }
-      taskMapper.updateTaskItemRunResult(item.id(), itemStatus, appOutput, appOutputStatus, "", itemStartedAt, itemFinishedAt, itemFinishedAt);
+      taskMapper.updateTaskItemRunResult(
+          item.id(),
+          itemStatus,
+          agentResult.content(),
+          agentResult.status(),
+          agentResult.errorMessage(),
+          itemStartedAt,
+          itemFinishedAt,
+          itemFinishedAt);
     }
 
     for (TaskMapper.TaskEvaluatorBindingRecord evaluator : evaluators) {
-      taskMapper.updateTaskEvaluatorStatus(evaluator.id(), STATUS_COMPLETED, now());
+      String evaluatorStatus = failedEvaluatorIds.contains(evaluator.id()) ? STATUS_FAILED : STATUS_COMPLETED;
+      taskMapper.updateTaskEvaluatorStatus(evaluator.id(), evaluatorStatus, now());
     }
-    String finalStatus = taskMapper.countUnfinishedTagResultsByTask(taskId) == 0
-        && taskMapper.countUnfinishedEvaluatorResultsByTask(taskId) == 0
-        && taskMapper.countUnfinishedTaskItems(taskId) == 0
-        ? STATUS_COMPLETED
-        : STATUS_RUNNING;
-    taskMapper.updateTaskStatus(taskId, finalStatus, null, STATUS_COMPLETED.equals(finalStatus) ? now() : null, now());
+    String finalStatus = hasTaskFailure
+        ? STATUS_FAILED
+        : (taskMapper.countUnfinishedTagResultsByTask(taskId) == 0
+            && taskMapper.countUnfinishedEvaluatorResultsByTask(taskId) == 0
+            && taskMapper.countUnfinishedTaskItems(taskId) == 0
+            ? STATUS_COMPLETED
+            : STATUS_RUNNING);
+    boolean finished = STATUS_COMPLETED.equals(finalStatus) || STATUS_FAILED.equals(finalStatus);
+    taskMapper.updateTaskStatus(taskId, finalStatus, null, finished ? now() : null, now());
     return getTask(taskId, 1, 10);
   }
 
@@ -319,6 +368,9 @@ public class TaskServiceImpl implements TaskService {
     List<AppFieldMappingInput> appMappings = normalizeAppMappings(appType, request.appFieldMappings(), fieldById);
     List<NormalizedEvaluator> evaluators = normalizeEvaluators(appType, request.evaluators(), fieldById, datasetVersionId);
     List<String> tagIds = normalizeTags(request.tagIds());
+    if (evaluators.isEmpty() && tagIds.isEmpty()) {
+      throw new IllegalArgumentException("请至少添加一个评估器或标签");
+    }
     return new NormalizedTask(
         taskName,
         description,
@@ -369,7 +421,7 @@ public class TaskServiceImpl implements TaskService {
       String datasetVersionId
   ) {
     if (evaluators == null || evaluators.isEmpty()) {
-      throw new IllegalArgumentException("请至少添加一个评估器");
+      return List.of();
     }
     if (evaluators.size() > MAX_DIMENSION_COUNT) {
       throw new IllegalArgumentException("评估器最多添加5个");
@@ -484,7 +536,7 @@ public class TaskServiceImpl implements TaskService {
 
   private List<String> normalizeTags(List<String> tagIds) {
     if (tagIds == null || tagIds.isEmpty()) {
-      throw new IllegalArgumentException("请至少添加一个标签");
+      return List.of();
     }
     if (tagIds.size() > MAX_DIMENSION_COUNT) {
       throw new IllegalArgumentException("标签最多添加5个");
@@ -658,6 +710,9 @@ public class TaskServiceImpl implements TaskService {
         configs.put(evaluator.id(), new EvaluationRuntimeConfig(
             preset.evaluatorName(),
             preset.evaluatorType(),
+            preset.modelId(),
+            preset.prompt(),
+            preset.executeCode(),
             preset.scoreMin(),
             preset.scoreMax(),
             preset.passThreshold(),
@@ -667,6 +722,9 @@ public class TaskServiceImpl implements TaskService {
         configs.put(evaluator.id(), new EvaluationRuntimeConfig(
             config.evaluatorName(),
             config.evaluatorType(),
+            config.modelId(),
+            config.prompt(),
+            config.executeCode(),
             config.scoreMin(),
             config.scoreMax(),
             config.passThreshold(),
@@ -676,58 +734,209 @@ public class TaskServiceImpl implements TaskService {
     return configs;
   }
 
-  private String buildAppOutput(TaskBase base, TaskMapper.TaskItemRecord item, Map<String, String> values) {
+  private AgentInvocationResult invokeMockAgent(
+      TaskBase base,
+      TaskMapper.TaskItemRecord item,
+      List<TaskMapper.TaskAppFieldMappingRecord> appMappings,
+      Map<String, String> values
+  ) {
     if (!APP_AGENT.equals(base.appType())) {
-      return "";
+      return new AgentInvocationResult("", RESULT_SKIPPED, "", Map.of());
     }
-    String seed = values.values().stream().filter(StringUtils::hasText).findFirst().orElse("第" + item.rowNo() + "条数据");
-    return "模拟智能体输出：" + truncate(seed, 200);
+    String content = buildAgentMessageContent(appMappings, values);
+    MockAgentChatResponse response = mockRuntimeService.invokeAgent(new MockAgentChatRequest(
+        base.id() + "-" + item.id(),
+        List.of(new MockAgentMessage(content, "user")),
+        false));
+    if (response == null) {
+      return new AgentInvocationResult("", STATUS_FAILED, "Mock智能体未返回结果", Map.of());
+    }
+    if (STATUS_FAILED.equals(response.status())) {
+      return new AgentInvocationResult("", STATUS_FAILED, response.errorMessage(), Map.of());
+    }
+    Map<String, String> outputs = new LinkedHashMap<>();
+    if (response.outputs() != null) {
+      outputs.putAll(response.outputs());
+    }
+    String responseContent = response.message() == null ? "" : response.message().content();
+    if (StringUtils.hasText(responseContent)) {
+      outputs.putIfAbsent("answer", responseContent);
+      outputs.putIfAbsent("content", responseContent);
+      outputs.putIfAbsent("rawText", responseContent);
+    }
+    return new AgentInvocationResult(
+        outputs.getOrDefault("answer", responseContent == null ? "" : responseContent),
+        STATUS_COMPLETED,
+        "",
+        outputs);
   }
 
-  private EvaluationSimulationResult simulateEvaluation(
+  private String buildAgentMessageContent(
+      List<TaskMapper.TaskAppFieldMappingRecord> appMappings,
+      Map<String, String> values
+  ) {
+    Map<String, String> inputs = new LinkedHashMap<>();
+    if (appMappings != null && !appMappings.isEmpty()) {
+      for (TaskMapper.TaskAppFieldMappingRecord mapping : appMappings) {
+        inputs.put(mapping.appInputName(), values.getOrDefault(mapping.datasetFieldId(), ""));
+      }
+    } else {
+      inputs.putAll(values);
+    }
+    if (inputs.isEmpty()) {
+      return "空输入";
+    }
+    return inputs.entrySet().stream()
+        .map(entry -> entry.getKey() + ": " + entry.getValue())
+        .collect(Collectors.joining("\n"));
+  }
+
+  private EvaluationSimulationResult evaluateWithMock(
+      TaskBase base,
+      TaskMapper.TaskItemRecord item,
+      TaskMapper.TaskEvaluatorBindingRecord evaluator,
       EvaluationRuntimeConfig config,
       List<TaskMapper.TaskEvaluatorParamMappingRecord> mappings,
       Map<String, String> values,
-      String appOutput
+      Map<String, String> appOutputs
   ) {
-    Map<String, TaskMapper.TaskEvaluatorParamMappingRecord> mappingByParam = mappings.stream()
-        .collect(Collectors.toMap(mapping -> paramKey(mapping.paramId(), mapping.paramName()), Function.identity(), (a, b) -> a));
-    for (EvaluatorParamDto param : config.params()) {
-      if (!Boolean.TRUE.equals(param.required())) {
-        continue;
-      }
-      TaskMapper.TaskEvaluatorParamMappingRecord mapping = mappingByParam.get(paramKey(param.id(), param.paramName()));
-      String value = resolveMappingValue(mapping, values, appOutput);
-      if (!StringUtils.hasText(value)) {
-        return new EvaluationSimulationResult(
-            STATUS_FAILED,
-            config.scoreMin(),
-            "fail",
-            "",
-            "必填参数未完成映射或数据为空：" + param.paramName());
-      }
+    if (config == null) {
+      return new EvaluationSimulationResult(
+          STATUS_FAILED,
+          null,
+          "",
+          "",
+          "评估器配置不存在");
     }
-    BigDecimal score = config.passThreshold().setScale(4, RoundingMode.HALF_UP);
+    PreparedEvaluationInput prepared = prepareEvaluationInput(config, mappings, values, appOutputs);
+    if (StringUtils.hasText(prepared.errorMessage())) {
+      return new EvaluationSimulationResult(
+          STATUS_FAILED,
+          null,
+          "",
+          "",
+          prepared.errorMessage());
+    }
+    String renderedPrompt = renderPrompt(config.prompt(), prepared.params());
+    MockEvaluatorResponse response = mockRuntimeService.evaluateEvaluator(new MockEvaluatorRequest(
+        base.id(),
+        item.id(),
+        evaluator.id(),
+        config.evaluatorName(),
+        config.evaluatorType(),
+        config.modelId(),
+        config.prompt(),
+        renderedPrompt,
+        config.executeCode(),
+        config.scoreMin(),
+        config.scoreMax(),
+        config.passThreshold(),
+        prepared.params()));
+    if (response == null) {
+      return new EvaluationSimulationResult(
+          STATUS_FAILED,
+          null,
+          "",
+          "",
+          "Mock评估器未返回结果");
+    }
+    if (STATUS_FAILED.equals(response.status())) {
+      return new EvaluationSimulationResult(
+          STATUS_FAILED,
+          null,
+          "",
+          "",
+          response.errorMessage());
+    }
+    BigDecimal score = response.score();
+    if (score == null) {
+      return new EvaluationSimulationResult(
+          STATUS_FAILED,
+          null,
+          "",
+          "",
+          "Mock评估器返回的score为空");
+    }
+    if (score.compareTo(config.scoreMin()) < 0 || score.compareTo(config.scoreMax()) > 0) {
+      return new EvaluationSimulationResult(
+          STATUS_FAILED,
+          score,
+          "",
+          response.reason(),
+          "Mock评估器返回的score超出评分范围");
+    }
+    String passResult = score.compareTo(config.passThreshold()) >= 0 ? "pass" : "fail";
     return new EvaluationSimulationResult(
         STATUS_COMPLETED,
         score,
-        "pass",
-        "本地模拟评估完成，后续接入真实评估执行器。",
+        passResult,
+        response.reason(),
         "");
+  }
+
+  private PreparedEvaluationInput prepareEvaluationInput(
+      EvaluationRuntimeConfig config,
+      List<TaskMapper.TaskEvaluatorParamMappingRecord> mappings,
+      Map<String, String> values,
+      Map<String, String> appOutputs
+  ) {
+    Map<String, Object> params = new LinkedHashMap<>();
+    Map<String, TaskMapper.TaskEvaluatorParamMappingRecord> mappingByParam = mappings.stream()
+        .collect(Collectors.toMap(mapping -> paramKey(mapping.paramId(), mapping.paramName()), Function.identity(), (a, b) -> a));
+    for (EvaluatorParamDto param : config.params()) {
+      TaskMapper.TaskEvaluatorParamMappingRecord mapping = mappingByParam.get(paramKey(param.id(), param.paramName()));
+      String value = resolveMappingValue(mapping, values, appOutputs);
+      if (!StringUtils.hasText(value) && StringUtils.hasText(param.defaultValue())) {
+        value = param.defaultValue();
+      }
+      if (!StringUtils.hasText(value)) {
+        if (Boolean.TRUE.equals(param.required())) {
+          return new PreparedEvaluationInput(
+              params,
+              "必填参数未完成映射或数据为空：" + param.paramName());
+        }
+        continue;
+      }
+      params.put(param.paramName(), value);
+    }
+    return new PreparedEvaluationInput(params, "");
   }
 
   private String resolveMappingValue(
       TaskMapper.TaskEvaluatorParamMappingRecord mapping,
       Map<String, String> values,
-      String appOutput
+      Map<String, String> appOutputs
   ) {
     if (mapping == null) {
       return "";
     }
     if (SOURCE_APP_OUTPUT.equals(mapping.sourceType())) {
-      return appOutput;
+      if (StringUtils.hasText(mapping.appOutputName()) && appOutputs.containsKey(mapping.appOutputName())) {
+        return appOutputs.get(mapping.appOutputName());
+      }
+      if (appOutputs.containsKey("answer")) {
+        return appOutputs.get("answer");
+      }
+      if (appOutputs.containsKey("content")) {
+        return appOutputs.get("content");
+      }
+      return appOutputs.getOrDefault("rawText", "");
     }
     return values.getOrDefault(mapping.datasetFieldId(), "");
+  }
+
+  private String renderPrompt(String prompt, Map<String, Object> params) {
+    if (!StringUtils.hasText(prompt)) {
+      return "";
+    }
+    Matcher matcher = PROMPT_PARAM_PATTERN.matcher(prompt);
+    StringBuffer rendered = new StringBuffer();
+    while (matcher.find()) {
+      Object value = params.get(matcher.group(1));
+      matcher.appendReplacement(rendered, Matcher.quoteReplacement(value == null ? "" : String.valueOf(value)));
+    }
+    matcher.appendTail(rendered);
+    return rendered.toString();
   }
 
   private NormalizedAnnotation normalizeAnnotation(TaskMapper.TaskTagBindingRecord tag, TagAnnotationInput input) {
@@ -920,10 +1129,27 @@ public class TaskServiceImpl implements TaskService {
   private record EvaluationRuntimeConfig(
       String evaluatorName,
       String evaluatorType,
+      String modelId,
+      String prompt,
+      String executeCode,
       BigDecimal scoreMin,
       BigDecimal scoreMax,
       BigDecimal passThreshold,
       List<EvaluatorParamDto> params
+  ) {
+  }
+
+  private record AgentInvocationResult(
+      String content,
+      String status,
+      String errorMessage,
+      Map<String, String> outputs
+  ) {
+  }
+
+  private record PreparedEvaluationInput(
+      Map<String, Object> params,
+      String errorMessage
   ) {
   }
 

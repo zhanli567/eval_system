@@ -3,8 +3,9 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { datasetApi } from '../../../api/dataset'
 import { evaluatorApi } from '../../../api/evaluator'
+import { mockApi, type MockAgentDefinition, type MockAgentField } from '../../../api/mock'
 import { tagApi } from '../../../api/tag'
-import { taskApi, type TaskEvaluatorPayload } from '../../../api/task'
+import { taskApi, type AppFieldMappingPayload, type TaskEvaluatorPayload } from '../../../api/task'
 import type {
   DatasetField,
   DatasetSummary,
@@ -75,6 +76,9 @@ export function useTaskCreate() {
   const router = useRouter()
   const loading = ref(false)
   const saving = ref(false)
+  const tagDrawerVisible = ref(false)
+  const tagKeyword = ref('')
+  const tagTypeFilter = ref('')
   const datasets = ref<DatasetSummary[]>([])
   const versions = ref<DatasetVersion[]>([])
   const fields = ref<DatasetField[]>([])
@@ -82,7 +86,9 @@ export function useTaskCreate() {
   const selectedTagIds = ref<string[]>([])
   const customEvaluators = ref<EvaluatorSummary[]>([])
   const presetCategories = ref<PresetCategory[]>([])
-  const evaluatorBlocks = ref<EvaluatorBlockState[]>([createEvaluatorBlock()])
+  const evaluatorBlocks = ref<EvaluatorBlockState[]>([])
+  const mockAgents = ref<MockAgentDefinition[]>([])
+  const appFieldMappings = reactive<Record<string, string>>({})
 
   const form = reactive({
     taskName: '',
@@ -96,13 +102,40 @@ export function useTaskCreate() {
 
   const selectedVersion = computed(() => versions.value.find((item) => item.id === form.datasetVersionId))
   const publishedVersions = computed(() => versions.value.filter((item) => !item.draft).sort((a, b) => b.versionNo - a.versionNo))
-  const canSubmit = computed(() => Boolean(form.taskName.trim() && form.datasetVersionId && evaluatorBlocks.value.length && selectedTagIds.value.length))
+  const canSubmit = computed(() => Boolean(
+    form.taskName.trim()
+    && form.datasetVersionId
+    && (evaluatorBlocks.value.length || selectedTagIds.value.length)
+  ))
   const categoryOptions = computed(() => [{ id: '', categoryName: '全部分类', displayOrder: 0 }, ...presetCategories.value])
+  const selectedMockAgent = computed(() => mockAgents.value.find((agent) => agent.id === form.appId))
+  const mockAgentVersions = computed(() => selectedMockAgent.value?.versions || [])
+  const mockAgentInputs = computed(() => selectedMockAgent.value?.inputs || [])
+  const mockAgentOutputs = computed(() => selectedMockAgent.value?.outputs || defaultMockOutputs())
+  const tagTypeOptions = computed(() => [
+    { value: 'category', label: '分类' },
+    { value: 'boolean', label: '布尔' },
+    { value: 'number', label: '数字' },
+    { value: 'text', label: '文本' }
+  ])
+  const selectedTags = computed(() => selectedTagIds.value
+    .map((tagId) => tags.value.find((tag) => tag.id === tagId))
+    .filter((tag): tag is TagSummary => Boolean(tag)))
+  const filteredTags = computed(() => {
+    const keyword = tagKeyword.value.trim().toLowerCase()
+    return tags.value.filter((tag) => {
+      const matchesType = !tagTypeFilter.value || tag.tagType === tagTypeFilter.value
+      const matchesKeyword = !keyword
+        || tag.tagName.toLowerCase().includes(keyword)
+        || tag.description.toLowerCase().includes(keyword)
+      return matchesType && matchesKeyword
+    })
+  })
 
   onMounted(async () => {
     loading.value = true
     try {
-      await Promise.all([loadDatasets(), loadTags(), loadCustomEvaluators(), loadPresetCategories()])
+      await Promise.all([loadDatasets(), loadTags(), loadCustomEvaluators(), loadPresetCategories(), loadMockAgents()])
       await Promise.all(evaluatorBlocks.value.map((block) => loadPresetOptions(block)))
     } finally {
       loading.value = false
@@ -120,6 +153,29 @@ export function useTaskCreate() {
     () => form.datasetVersionId,
     async () => {
       await loadFields()
+    }
+  )
+
+  watch(
+    () => form.appType,
+    () => {
+      if (form.appType === 'agent') {
+        selectDefaultMockAgent()
+      } else {
+        form.appId = ''
+        form.appVersionId = ''
+        clearAppFieldMappings()
+      }
+      normalizeParamOutputMappings()
+    }
+  )
+
+  watch(
+    () => form.appId,
+    () => {
+      selectDefaultMockAgentVersion()
+      ensureAppFieldMappings()
+      normalizeParamOutputMappings()
     }
   )
 
@@ -148,6 +204,7 @@ export function useTaskCreate() {
     for (const block of evaluatorBlocks.value) {
       ensureParamMappings(block)
     }
+    ensureAppFieldMappings()
   }
 
   async function loadTags() {
@@ -162,6 +219,13 @@ export function useTaskCreate() {
 
   async function loadPresetCategories() {
     presetCategories.value = await evaluatorApi.listPresetCategories()
+  }
+
+  async function loadMockAgents() {
+    mockAgents.value = await mockApi.listAgents()
+    if (form.appType === 'agent') {
+      selectDefaultMockAgent()
+    }
   }
 
   async function loadPresetOptions(block: EvaluatorBlockState) {
@@ -273,10 +337,118 @@ export function useTaskCreate() {
       next[key] = block.paramMappings[key] || {
         sourceType: 'dataset_field',
         datasetFieldId: '',
-        appOutputName: ''
+        appOutputName: defaultAppOutputName()
       }
     }
     block.paramMappings = next
+  }
+
+  function selectDefaultMockAgent() {
+    if (!mockAgents.value.length) {
+      form.appId = ''
+      form.appVersionId = ''
+      return
+    }
+    const exists = mockAgents.value.some((agent) => agent.id === form.appId)
+    if (!exists) {
+      form.appId = mockAgents.value[0].id
+    }
+    selectDefaultMockAgentVersion()
+    ensureAppFieldMappings()
+  }
+
+  function selectDefaultMockAgentVersion() {
+    const versions = mockAgentVersions.value
+    if (!versions.length) {
+      form.appVersionId = ''
+      return
+    }
+    const exists = versions.some((version) => version.id === form.appVersionId)
+    if (!exists) {
+      form.appVersionId = versions[0].id
+    }
+  }
+
+  function ensureAppFieldMappings() {
+    if (form.appType !== 'agent') {
+      clearAppFieldMappings()
+      return
+    }
+    const inputIds = new Set(mockAgentInputs.value.map((input) => input.id))
+    for (const key of Object.keys(appFieldMappings)) {
+      if (!inputIds.has(key)) {
+        delete appFieldMappings[key]
+      }
+    }
+    for (const input of mockAgentInputs.value) {
+      if (appFieldMappings[input.id] === undefined) {
+        appFieldMappings[input.id] = findSuggestedDatasetField(input)
+      }
+    }
+  }
+
+  function clearAppFieldMappings() {
+    for (const key of Object.keys(appFieldMappings)) {
+      delete appFieldMappings[key]
+    }
+  }
+
+  function findSuggestedDatasetField(input: MockAgentField) {
+    if (!fields.value.length) {
+      return ''
+    }
+    const aliases = inputAliases(input.fieldName)
+    const exactMatch = fields.value.find((field) => aliases.includes(normalizeFieldName(field.fieldName)))
+    if (exactMatch?.id) {
+      return exactMatch.id
+    }
+    const fuzzyMatch = fields.value.find((field) => {
+      const fieldName = normalizeFieldName(field.fieldName)
+      return aliases.some((alias) => fieldName.includes(alias) || alias.includes(fieldName))
+    })
+    if (fuzzyMatch?.id) {
+      return fuzzyMatch.id
+    }
+    return fields.value.length === 1 ? fields.value[0].id || '' : ''
+  }
+
+  function inputAliases(fieldName: string) {
+    const normalized = normalizeFieldName(fieldName)
+    if (normalized === 'query') {
+      return ['query', 'question', 'input', 'prompt', '用户输入', '用户问题', '问题']
+    }
+    return [normalized]
+  }
+
+  function normalizeFieldName(value: string) {
+    return value.trim().toLowerCase()
+  }
+
+  function defaultMockOutputs(): MockAgentField[] {
+    return [
+      { id: 'answer', fieldName: 'answer', fieldType: 'string', description: '标准应用输出字段', displayOrder: 1 },
+      { id: 'content', fieldName: 'content', fieldType: 'string', description: '兼容消息内容字段', displayOrder: 2 },
+      { id: 'rawText', fieldName: 'rawText', fieldType: 'string', description: '原始文本输出字段', displayOrder: 3 }
+    ]
+  }
+
+  function defaultAppOutputName() {
+    return mockAgentOutputs.value[0]?.fieldName || 'answer'
+  }
+
+  function normalizeParamOutputMappings() {
+    for (const block of evaluatorBlocks.value) {
+      for (const mapping of Object.values(block.paramMappings)) {
+        if (mapping.sourceType === 'app_output') {
+          if (form.appType !== 'agent') {
+            mapping.sourceType = 'dataset_field'
+            mapping.appOutputName = ''
+          } else if (!mapping.appOutputName) {
+            mapping.appOutputName = defaultAppOutputName()
+          }
+        }
+      }
+    }
   }
 
   function addEvaluator() {
@@ -293,6 +465,27 @@ export function useTaskCreate() {
     evaluatorBlocks.value.splice(index, 1)
   }
 
+  function openTagDrawer() {
+    tagDrawerVisible.value = true
+  }
+
+  function addTag(tag: TagSummary) {
+    if (isTagSelected(tag.id)) return
+    if (selectedTagIds.value.length >= 5) {
+      ElMessage.warning('标签最多添加5个')
+      return
+    }
+    selectedTagIds.value.push(tag.id)
+  }
+
+  function removeTag(tagId: string) {
+    selectedTagIds.value = selectedTagIds.value.filter((item) => item !== tagId)
+  }
+
+  function isTagSelected(tagId: string) {
+    return selectedTagIds.value.includes(tagId)
+  }
+
   async function submit() {
     if (!validate()) return
     saving.value = true
@@ -305,7 +498,7 @@ export function useTaskCreate() {
         appType: form.appType,
         appId: form.appType === 'agent' ? form.appId : '',
         appVersionId: form.appType === 'agent' ? form.appVersionId : '',
-        appFieldMappings: [],
+        appFieldMappings: toAppFieldMappingPayload(),
         evaluators: evaluatorBlocks.value.map(toEvaluatorPayload),
         tagIds: selectedTagIds.value
       })
@@ -316,6 +509,18 @@ export function useTaskCreate() {
     } finally {
       saving.value = false
     }
+  }
+
+  function toAppFieldMappingPayload(): AppFieldMappingPayload[] {
+    if (form.appType !== 'agent') {
+      return []
+    }
+    return mockAgentInputs.value.map((input) => ({
+      appInputId: input.id,
+      appInputName: input.fieldName,
+      appInputType: input.fieldType || 'string',
+      datasetFieldId: appFieldMappings[input.id] || ''
+    }))
   }
 
   function toEvaluatorPayload(block: EvaluatorBlockState): TaskEvaluatorPayload {
@@ -349,12 +554,32 @@ export function useTaskCreate() {
       ElMessage.warning('请选择已发布的评测集版本')
       return false
     }
-    if (!evaluatorBlocks.value.length || evaluatorBlocks.value.length > 5) {
-      ElMessage.warning('请添加1-5个评估器')
+    if (form.appType === 'agent') {
+      if (!form.appId || !form.appVersionId) {
+        ElMessage.warning('请选择智能体应用及版本')
+        return false
+      }
+      if (!mockAgentInputs.value.length) {
+        ElMessage.warning('当前智能体暂无输入定义，不能创建关联应用任务')
+        return false
+      }
+      for (const input of mockAgentInputs.value) {
+        if (!appFieldMappings[input.id]) {
+          ElMessage.warning(`请选择智能体入参映射：${input.fieldName}`)
+          return false
+        }
+      }
+    }
+    if (!evaluatorBlocks.value.length && !selectedTagIds.value.length) {
+      ElMessage.warning('请至少添加一个评估器或标签')
       return false
     }
-    if (!selectedTagIds.value.length || selectedTagIds.value.length > 5) {
-      ElMessage.warning('请添加1-5个标签')
+    if (evaluatorBlocks.value.length > 5) {
+      ElMessage.warning('评估器最多添加5个')
+      return false
+    }
+    if (selectedTagIds.value.length > 5) {
+      ElMessage.warning('标签最多添加5个')
       return false
     }
     for (const block of evaluatorBlocks.value) {
@@ -409,16 +634,28 @@ export function useTaskCreate() {
   return {
     loading,
     saving,
+    tagDrawerVisible,
+    tagKeyword,
+    tagTypeFilter,
     datasets,
     versions,
     publishedVersions,
     fields,
     tags,
     selectedTagIds,
+    selectedTags,
+    filteredTags,
+    tagTypeOptions,
     customEvaluators,
     presetCategories,
     categoryOptions,
     evaluatorBlocks,
+    mockAgents,
+    selectedMockAgent,
+    mockAgentVersions,
+    mockAgentInputs,
+    mockAgentOutputs,
+    appFieldMappings,
     form,
     canSubmit,
     loadPresetOptions,
@@ -428,6 +665,10 @@ export function useTaskCreate() {
     selectCustomVersion,
     addEvaluator,
     removeEvaluator,
+    openTagDrawer,
+    addTag,
+    removeTag,
+    isTagSelected,
     submit,
     paramKey,
     fieldTypeLabel,

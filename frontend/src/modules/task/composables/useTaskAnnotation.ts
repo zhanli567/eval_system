@@ -8,6 +8,7 @@ export function useTaskAnnotation(taskId: Ref<string>, taskItemId: Ref<string>) 
   const router = useRouter()
   const loading = ref(false)
   const saving = ref(false)
+  const loadError = ref('')
   const detail = ref<AnnotationDetail>()
   const form = reactive<Record<string, string | number | undefined>>({})
 
@@ -30,9 +31,14 @@ export function useTaskAnnotation(taskId: Ref<string>, taskItemId: Ref<string>) 
   async function loadAnnotation() {
     if (!taskId.value || !taskItemId.value) return
     loading.value = true
+    loadError.value = ''
     try {
       detail.value = await taskApi.getAnnotation(taskId.value, taskItemId.value)
       fillForm()
+    } catch (error) {
+      detail.value = undefined
+      loadError.value = error instanceof Error ? error.message : '加载标注数据失败'
+      ElMessage.error(loadError.value)
     } finally {
       loading.value = false
     }
@@ -126,9 +132,26 @@ export function useTaskAnnotation(taskId: Ref<string>, taskItemId: Ref<string>) 
     return tag.description || '暂无描述'
   }
 
+  function appOutputEmptyDescription() {
+    if (!task.value) {
+      return '标注数据加载后展示应用输出'
+    }
+    if (task.value.appType !== 'agent') {
+      return '当前任务未关联应用，无应用输出'
+    }
+    if (item.value?.appOutputStatus === 'failed') {
+      return '应用调用失败，暂无应用输出'
+    }
+    if (item.value?.appOutputStatus === 'pending') {
+      return '应用输出待生成'
+    }
+    return '暂无应用输出'
+  }
+
   return {
     loading,
     saving,
+    loadError,
     detail,
     form,
     task,
@@ -144,6 +167,7 @@ export function useTaskAnnotation(taskId: Ref<string>, taskItemId: Ref<string>) 
     goItem,
     passTagType,
     tagTypeLabel,
-    optionLabel
+    optionLabel,
+    appOutputEmptyDescription
   }
 }

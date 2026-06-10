@@ -41,6 +41,8 @@ public interface TaskMapper {
 
   List<TaskTagResultDto> listTagResultsByTaskItemIds(@Param("taskItemIds") List<String> taskItemIds);
 
+  List<TaskAppFieldMappingRecord> listAppFieldMappings(@Param("taskId") String taskId);
+
   @Insert("""
       INSERT INTO eval_task
       (id, task_name, status, description, dataset_id, dataset_version_id, item_count, app_type, app_id, app_version_id,
@@ -367,6 +369,18 @@ public interface TaskMapper {
       String appOutputStatus,
       String createdAt,
       String updatedAt
+  ) {
+  }
+
+  record TaskAppFieldMappingRecord(
+      String id,
+      String taskId,
+      String appInputId,
+      String appInputName,
+      String appInputType,
+      String datasetVersionId,
+      String datasetFieldId,
+      Integer displayOrder
   ) {
   }
 

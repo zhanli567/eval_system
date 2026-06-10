@@ -11,6 +11,7 @@ const taskItemId = computed(() => String(route.params.taskItemId ?? ''))
 const {
   loading,
   saving,
+  loadError,
   form,
   task,
   item,
@@ -24,7 +25,8 @@ const {
   goItem,
   passTagType,
   tagTypeLabel,
-  optionLabel
+  optionLabel,
+  appOutputEmptyDescription
 } = useTaskAnnotation(taskId, taskItemId)
 </script>
 
@@ -41,11 +43,22 @@ const {
         下一条
         <el-icon class="el-icon--right"><ArrowRight /></el-icon>
       </el-button>
-      <el-button type="primary" :loading="saving" @click="saveAnnotation">保存标注</el-button>
+      <el-button type="primary" :loading="saving" :disabled="!!loadError || !item || !tags.length" @click="saveAnnotation">保存标注</el-button>
     </div>
   </header>
 
   <section class="annotation-shell" v-loading="loading">
+    <el-alert
+      v-if="loadError"
+      class="annotation-load-error"
+      type="error"
+      show-icon
+      :closable="false"
+      title="标注数据加载失败"
+      :description="loadError"
+    />
+    <el-empty v-else-if="!item" class="annotation-empty-state" description="暂无可标注数据" />
+    <template v-else>
     <aside class="annotation-column">
       <h2>评测集数据</h2>
       <div class="annotation-field-list">
@@ -53,6 +66,7 @@ const {
           <span>{{ field.fieldName }}</span>
           <p>{{ item?.values[field.id || ''] || '-' }}</p>
         </div>
+        <el-empty v-if="!fields.length" description="暂无评测集字段" :image-size="72" />
       </div>
     </aside>
 
@@ -60,7 +74,7 @@ const {
       <h2>应用输出</h2>
       <div class="app-output-box">
         <p v-if="item?.appOutput">{{ item.appOutput }}</p>
-        <el-empty v-else description="当前任务未关联应用，无应用输出" :image-size="80" />
+        <el-empty v-else :description="appOutputEmptyDescription()" :image-size="80" />
       </div>
 
       <h2>评估器（自动）</h2>
@@ -75,6 +89,7 @@ const {
           </el-tag>
           <span class="result-value">得分 {{ result.score ?? '-' }}</span>
         </div>
+        <el-empty v-if="!evaluators.length" description="暂无自动评估结果" :image-size="72" />
       </div>
     </main>
 
@@ -122,7 +137,9 @@ const {
             <span>已标注</span>
           </div>
         </div>
+        <el-empty v-if="!tags.length" description="当前任务暂无人工标签" :image-size="72" />
       </el-form>
     </aside>
+    </template>
   </section>
 </template>

@@ -74,6 +74,19 @@
     </constructor>
   </resultMap>
 
+  <resultMap id="AppFieldMappingMap" type="com.evalsystem.task.mapper.TaskMapper$TaskAppFieldMappingRecord">
+    <constructor>
+      <arg column="id" javaType="java.lang.String"/>
+      <arg column="taskId" javaType="java.lang.String"/>
+      <arg column="appInputId" javaType="java.lang.String"/>
+      <arg column="appInputName" javaType="java.lang.String"/>
+      <arg column="appInputType" javaType="java.lang.String"/>
+      <arg column="datasetVersionId" javaType="java.lang.String"/>
+      <arg column="datasetFieldId" javaType="java.lang.String"/>
+      <arg column="displayOrder" javaType="java.lang.Integer"/>
+    </constructor>
+  </resultMap>
+
   <resultMap id="EvaluatorResultMap" type="com.evalsystem.task.dto.TaskEvaluatorResultDto">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
@@ -302,6 +315,20 @@
     WHERE id = #{taskItemId}
   </select>
 
+  <select id="listAppFieldMappings" resultMap="AppFieldMappingMap">
+    SELECT id AS id,
+           task_id AS taskId,
+           app_input_id AS appInputId,
+           app_input_name AS appInputName,
+           app_input_type AS appInputType,
+           dataset_version_id AS datasetVersionId,
+           dataset_field_id AS datasetFieldId,
+           display_order AS displayOrder
+    FROM eval_task_app_field_mapping
+    WHERE task_id = #{taskId}
+    ORDER BY display_order ASC
+  </select>
+
   <select id="listEvaluatorResultsByTaskItemIds" resultMap="EvaluatorResultMap">
     SELECT r.id AS id,
            r.task_item_id AS taskItemId,
@@ -408,9 +435,9 @@
            tag.tag_name AS tagName,
            tag.tag_type AS tagType,
            tag.description AS description,
-           tag.min_value AS minValue,
-           tag.max_value AS maxValue,
-           tag.pass_threshold AS passThreshold,
+           tag.min_value AS `minValue`,
+           tag.max_value AS `maxValue`,
+           tag.pass_threshold AS `passThreshold`,
            tt.status AS status,
            tt.display_order AS displayOrder
     FROM eval_task_tag tt
