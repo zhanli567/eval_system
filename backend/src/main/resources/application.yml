@@ -16,3 +16,10 @@ mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
+
+mock:
+  agent:
+    # 配置真实超级智能体请求地址后，Mock模块会转发调用；留空时使用本地模拟响应。
+    url:
+    connect-timeout-ms: 5000
+    read-timeout-ms: 60000

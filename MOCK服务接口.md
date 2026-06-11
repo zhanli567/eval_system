@@ -10,6 +10,33 @@ Mock模块用于在未接入真实智能体、评估LLM和Code执行器前，模
 }
 ```
 
+## 0. 配置真实超级智能体地址
+
+在 `backend/src/main/resources/application.yml` 中配置：
+
+```yaml
+mock:
+  agent:
+    # 留空时使用本地Mock响应；配置真实地址后，Mock模块会转发请求到该URL。
+    url: ""
+    connect-timeout-ms: 5000
+    read-timeout-ms: 60000
+```
+
+调用链保持不变：
+
+```text
+评测任务 -> Mock模块 -> 真实超级智能体URL
+```
+
+Mock模块转发时会：
+
+- 使用原请求体结构：`conversationId/message/stream`
+- 强制将转发请求中的 `stream` 设置为 `true`，以便接收真实智能体SSE响应
+- 携带请求头 `x-agent-alias`，值来自调用 Mock 接口时传入的请求头；评测任务内调用时使用任务绑定的 `appId`，默认是 `router-agent`
+- 兼容 `data: {...}` SSE、普通JSON响应和非JSON文本响应
+- 将流式返回的 `debug/reasoning/text` 聚合为 `outputs.debug / outputs.reasoning / outputs.text / outputs.rawText`
+
 ## 1. 智能体模拟
 
 `GET /api/mock/agents`

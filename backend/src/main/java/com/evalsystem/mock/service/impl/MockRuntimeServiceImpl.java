@@ -1,5 +1,6 @@
 package com.evalsystem.mock.service.impl;
 
+import com.evalsystem.mock.config.MockAgentProperties;
 import com.evalsystem.mock.dto.MockAgentChatRequest;
 import com.evalsystem.mock.dto.MockAgentChatResponse;
 import com.evalsystem.mock.dto.MockAgentChoice;
@@ -12,8 +13,18 @@ import com.evalsystem.mock.dto.MockAgentVersion;
 import com.evalsystem.mock.dto.MockEvaluatorRequest;
 import com.evalsystem.mock.dto.MockEvaluatorResponse;
 import com.evalsystem.mock.service.MockRuntimeService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,6 +52,18 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
   private static final Pattern FORCE_AGENT_DEBUG_PATTERN = Pattern.compile("\\[mock:debug=([^\\]]*)]");
   private static final Pattern FORCE_AGENT_REASONING_PATTERN = Pattern.compile("\\[mock:reasoning=([^\\]]*)]");
   private static final Pattern FORCE_SCORE_PATTERN = Pattern.compile("\\[mock:score=([+-]?\\d+(?:\\.\\d+)?)\\]");
+  private static final TypeReference<List<Map<String, Object>>> TOOL_CALLS_TYPE = new TypeReference<>() {
+  };
+  private static final TypeReference<Map<String, Object>> EXTRA_TYPE = new TypeReference<>() {
+  };
+
+  private final MockAgentProperties agentProperties;
+  private final ObjectMapper objectMapper;
+
+  public MockRuntimeServiceImpl(MockAgentProperties agentProperties, ObjectMapper objectMapper) {
+    this.agentProperties = agentProperties;
+    this.objectMapper = objectMapper;
+  }
 
   @Override
   public List<MockAgentDefinition> listAgents() {
@@ -70,6 +93,9 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
     }
     if (containsToken(latestUserContent, "[mock:timeout]")) {
       return agentFailure(safeAgentAlias, conversationId, startedAt, "Mock智能体按指令模拟超时");
+    }
+    if (StringUtils.hasText(agentProperties.getUrl())) {
+      return invokeConfiguredAgent(safeAgentAlias, request, startedAt, conversationId);
     }
 
     String forcedOutput = firstMatch(FORCE_AGENT_OUTPUT_PATTERN, latestUserContent);
@@ -102,6 +128,108 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
         System.currentTimeMillis() - startedAt,
         "",
         outputs.get("rawText"));
+  }
+
+  private MockAgentChatResponse invokeConfiguredAgent(
+      String agentAlias,
+      MockAgentChatRequest request,
+      long startedAt,
+      String fallbackConversationId
+  ) {
+    HttpURLConnection connection = null;
+    try {
+      MockAgentChatRequest outboundRequest = new MockAgentChatRequest(
+          fallbackConversationId,
+          request == null || request.message() == null ? List.of() : request.message(),
+          true);
+      connection = (HttpURLConnection) URI.create(agentProperties.getUrl()).toURL().openConnection();
+      connection.setRequestMethod("POST");
+      connection.setConnectTimeout(Math.max(agentProperties.getConnectTimeoutMs(), 1));
+      connection.setReadTimeout(Math.max(agentProperties.getReadTimeoutMs(), 1));
+      connection.setDoOutput(true);
+      connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+      connection.setRequestProperty("Accept", "text/event-stream, application/json");
+      connection.setRequestProperty("x-agent-alias", agentAlias);
+      byte[] body = objectMapper.writeValueAsBytes(outboundRequest);
+      connection.setFixedLengthStreamingMode(body.length);
+      try (var outputStream = connection.getOutputStream()) {
+        outputStream.write(body);
+      }
+
+      int statusCode = connection.getResponseCode();
+      if (statusCode < 200 || statusCode >= 300) {
+        String errorBody = readAll(connection.getErrorStream());
+        return agentFailure(
+            agentAlias,
+            fallbackConversationId,
+            startedAt,
+            "真实智能体调用失败，HTTP " + statusCode + "：" + truncate(errorBody, 500));
+      }
+      return parseAgentStream(agentAlias, fallbackConversationId, startedAt, connection.getInputStream());
+    } catch (Exception e) {
+      return agentFailure(
+          agentAlias,
+          fallbackConversationId,
+          startedAt,
+          "真实智能体调用失败：" + e.getMessage());
+    } finally {
+      if (connection != null) {
+        connection.disconnect();
+      }
+    }
+  }
+
+  private MockAgentChatResponse parseAgentStream(
+      String agentAlias,
+      String fallbackConversationId,
+      long startedAt,
+      InputStream inputStream
+  ) throws IOException {
+    RemoteAgentAggregate aggregate = new RemoteAgentAggregate(fallbackConversationId);
+    if (inputStream == null) {
+      return agentFailure(agentAlias, fallbackConversationId, startedAt, "真实智能体响应为空");
+    }
+    StringBuilder plainText = new StringBuilder();
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        String payload = normalizeSsePayload(line);
+        if (!StringUtils.hasText(payload) || "[DONE]".equals(payload)) {
+          continue;
+        }
+        aggregate.rawPayloads.add(payload);
+        if (payload.startsWith("{")) {
+          mergeAgentPayload(aggregate, payload);
+        } else {
+          if (!plainText.isEmpty()) {
+            plainText.append('\n');
+          }
+          plainText.append(payload);
+        }
+      }
+    }
+
+    if (aggregate.choices.isEmpty() && StringUtils.hasText(plainText.toString())) {
+      aggregate.choices.add(choice(0, contentBlock("text", plainText.toString())));
+    }
+    Map<String, String> outputs = buildAgentOutputs(aggregate.choices, aggregate.outputs);
+    String rawOutput = StringUtils.hasText(outputs.get("rawText"))
+        ? outputs.get("rawText")
+        : String.join("\n", aggregate.rawPayloads);
+    return new MockAgentChatResponse(
+        firstNonBlank(aggregate.id, UUID.randomUUID().toString().replace("-", "")),
+        firstNonBlank(aggregate.conversationId, fallbackConversationId),
+        firstNonBlank(aggregate.masterAgent, agentAlias),
+        firstNonBlank(aggregate.metaAgent, ""),
+        firstNonBlank(aggregate.object, MOCK_RESPONSE_OBJECT),
+        aggregate.created == null ? System.currentTimeMillis() : aggregate.created,
+        firstNonBlank(aggregate.nmodel, ""),
+        aggregate.choices,
+        STATUS_COMPLETED,
+        outputs,
+        System.currentTimeMillis() - startedAt,
+        "",
+        rawOutput);
   }
 
   private MockAgentChatResponse agentResponse(
@@ -290,6 +418,207 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
     return matcher.find() ? matcher.group(1) : "";
   }
 
+  private String normalizeSsePayload(String line) {
+    if (!StringUtils.hasText(line)) {
+      return "";
+    }
+    String trimmed = line.trim();
+    if (trimmed.startsWith(":") || trimmed.startsWith("event:") || trimmed.startsWith("id:") || trimmed.startsWith("retry:")) {
+      return "";
+    }
+    if (trimmed.startsWith("data:")) {
+      return trimmed.substring("data:".length()).trim();
+    }
+    return trimmed;
+  }
+
+  private void mergeAgentPayload(RemoteAgentAggregate aggregate, String payload) throws IOException {
+    JsonNode root = objectMapper.readTree(payload);
+    aggregate.id = firstNonBlank(textValue(root, "id"), aggregate.id);
+    aggregate.conversationId = firstNonBlank(textValue(root, "conversationId"), aggregate.conversationId);
+    aggregate.masterAgent = firstNonBlank(textValue(root, "masterAgent"), aggregate.masterAgent);
+    aggregate.metaAgent = firstNonBlank(textValue(root, "metaAgent"), aggregate.metaAgent);
+    aggregate.object = firstNonBlank(textValue(root, "object"), aggregate.object);
+    aggregate.nmodel = firstNonBlank(textValue(root, "nmodel"), aggregate.nmodel);
+    if (root.hasNonNull("created")) {
+      aggregate.created = root.get("created").asLong();
+    }
+    JsonNode outputsNode = root.get("outputs");
+    if (outputsNode != null && outputsNode.isObject()) {
+      outputsNode.fields().forEachRemaining(entry -> aggregate.outputs.put(entry.getKey(), scalarText(entry.getValue())));
+    }
+    JsonNode choicesNode = root.get("choices");
+    if (choicesNode != null && choicesNode.isArray()) {
+      for (JsonNode choiceNode : choicesNode) {
+        aggregate.choices.add(parseChoice(choiceNode, aggregate.choices.size()));
+      }
+    }
+  }
+
+  private MockAgentChoice parseChoice(JsonNode choiceNode, int fallbackIndex) {
+    Integer index = choiceNode != null && choiceNode.hasNonNull("index") ? choiceNode.get("index").asInt() : fallbackIndex;
+    String finishReason = textValue(choiceNode, "finish_reason");
+    JsonNode deltaNode = choiceNode == null ? null : choiceNode.get("delta");
+    String role = firstNonBlank(textValue(deltaNode, "role"), ROLE_ASSISTANT);
+    List<MockAgentDeltaContent> contents = parseDeltaContents(deltaNode == null ? null : deltaNode.get("content"));
+    List<Map<String, Object>> toolCalls = null;
+    JsonNode toolCallsNode = deltaNode == null ? null : deltaNode.get("tool_calls");
+    if (toolCallsNode != null && !toolCallsNode.isNull()) {
+      toolCalls = objectMapper.convertValue(toolCallsNode, TOOL_CALLS_TYPE);
+    }
+    Map<String, Object> extra = null;
+    JsonNode extraNode = deltaNode == null ? null : deltaNode.get("extra");
+    if (extraNode != null && !extraNode.isNull()) {
+      extra = objectMapper.convertValue(extraNode, EXTRA_TYPE);
+    }
+    return new MockAgentChoice(index, new MockAgentDelta(role, contents, toolCalls, extra), finishReason);
+  }
+
+  private List<MockAgentDeltaContent> parseDeltaContents(JsonNode contentNode) {
+    if (contentNode == null || contentNode.isNull()) {
+      return List.of();
+    }
+    List<MockAgentDeltaContent> contents = new ArrayList<>();
+    if (contentNode.isArray()) {
+      for (JsonNode item : contentNode) {
+        contents.add(parseDeltaContent(item));
+      }
+    } else {
+      contents.add(parseDeltaContent(contentNode));
+    }
+    return contents;
+  }
+
+  private MockAgentDeltaContent parseDeltaContent(JsonNode item) {
+    if (item == null || item.isNull()) {
+      return new MockAgentDeltaContent("text", "", null);
+    }
+    if (item.isTextual()) {
+      return new MockAgentDeltaContent("text", item.asText(), null);
+    }
+    String type = firstNonBlank(textValue(item, "type"), "text");
+    String text = textValue(item, "text");
+    String reasoning = textValue(item, "reasoning");
+    String fallbackValue = firstNonBlank(text, reasoning, firstNonTypeFieldValue(item));
+    if ("reasoning".equals(type)) {
+      return new MockAgentDeltaContent(type, null, fallbackValue);
+    }
+    return new MockAgentDeltaContent(type, fallbackValue, null);
+  }
+
+  private String firstNonTypeFieldValue(JsonNode item) {
+    if (item == null || !item.isObject()) {
+      return "";
+    }
+    var fields = item.fields();
+    while (fields.hasNext()) {
+      Map.Entry<String, JsonNode> entry = fields.next();
+      if (!"type".equals(entry.getKey())) {
+        String value = scalarText(entry.getValue());
+        if (StringUtils.hasText(value)) {
+          return value;
+        }
+      }
+    }
+    return "";
+  }
+
+  private Map<String, String> buildAgentOutputs(List<MockAgentChoice> choices, Map<String, String> remoteOutputs) {
+    Map<String, String> outputs = new LinkedHashMap<>();
+    List<String> debugParts = new ArrayList<>();
+    List<String> reasoningParts = new ArrayList<>();
+    List<String> textParts = new ArrayList<>();
+    for (MockAgentChoice choice : choices) {
+      if (choice == null || choice.delta() == null || choice.delta().content() == null) {
+        continue;
+      }
+      for (MockAgentDeltaContent content : choice.delta().content()) {
+        appendContentPart(debugParts, reasoningParts, textParts, content);
+      }
+    }
+    putIfPresent(outputs, "debug", joinNonBlank("\n", debugParts.toArray(String[]::new)));
+    putIfPresent(outputs, "reasoning", joinNonBlank("\n", reasoningParts.toArray(String[]::new)));
+    putIfPresent(outputs, "text", joinNonBlank("\n", textParts.toArray(String[]::new)));
+    if (remoteOutputs != null) {
+      remoteOutputs.forEach((key, value) -> {
+        if (StringUtils.hasText(key) && !outputs.containsKey(key)) {
+          outputs.put(key, value == null ? "" : value);
+        }
+      });
+    }
+    putIfPresent(outputs, "answer", firstNonBlank(outputs.get("answer"), outputs.get("text"), outputs.get("content")));
+    putIfPresent(outputs, "content", firstNonBlank(outputs.get("content"), outputs.get("text"), outputs.get("answer")));
+    putIfPresent(outputs, "rawText", firstNonBlank(
+        outputs.get("rawText"),
+        joinNonBlank("\n", outputs.get("debug"), outputs.get("reasoning"), outputs.get("text"))));
+    return outputs;
+  }
+
+  private void appendContentPart(
+      List<String> debugParts,
+      List<String> reasoningParts,
+      List<String> textParts,
+      MockAgentDeltaContent content
+  ) {
+    if (content == null || !StringUtils.hasText(content.type())) {
+      return;
+    }
+    String value = firstNonBlank(content.text(), content.reasoning());
+    if (!StringUtils.hasText(value)) {
+      return;
+    }
+    if ("debug".equals(content.type())) {
+      debugParts.add(value);
+    } else if ("reasoning".equals(content.type())) {
+      reasoningParts.add(value);
+    } else if ("text".equals(content.type())) {
+      textParts.add(value);
+    }
+  }
+
+  private String textValue(JsonNode node, String fieldName) {
+    if (node == null || !node.hasNonNull(fieldName)) {
+      return "";
+    }
+    return scalarText(node.get(fieldName));
+  }
+
+  private String scalarText(JsonNode node) {
+    if (node == null || node.isNull()) {
+      return "";
+    }
+    if (node.isTextual()) {
+      return node.asText();
+    }
+    if (node.isNumber() || node.isBoolean()) {
+      return node.asText();
+    }
+    return node.toString();
+  }
+
+  private void putIfPresent(Map<String, String> outputs, String key, String value) {
+    if (StringUtils.hasText(value)) {
+      outputs.put(key, value);
+    }
+  }
+
+  private String readAll(InputStream inputStream) throws IOException {
+    if (inputStream == null) {
+      return "";
+    }
+    StringBuilder content = new StringBuilder();
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        if (!content.isEmpty()) {
+          content.append('\n');
+        }
+        content.append(line);
+      }
+    }
+    return content.toString();
+  }
+
   private MockAgentChoice choice(Integer index, MockAgentDeltaContent content) {
     return new MockAgentChoice(
         index,
@@ -352,5 +681,22 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
       }
     }
     return String.join(delimiter, parts);
+  }
+
+  private static class RemoteAgentAggregate {
+    private String id = "";
+    private String conversationId;
+    private String masterAgent = "";
+    private String metaAgent = "";
+    private String object = "";
+    private Long created;
+    private String nmodel = "";
+    private final List<MockAgentChoice> choices = new ArrayList<>();
+    private final Map<String, String> outputs = new LinkedHashMap<>();
+    private final List<String> rawPayloads = new ArrayList<>();
+
+    private RemoteAgentAggregate(String conversationId) {
+      this.conversationId = conversationId;
+    }
   }
 }
