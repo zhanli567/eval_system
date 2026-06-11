@@ -22,12 +22,12 @@ Mock模块用于在未接入真实智能体、评估LLM和Code执行器前，模
   "msg": "success",
   "data": [
     {
-      "id": "mock-agent",
-      "agentName": "Mock智能体",
-      "description": "用于评测任务联调的本地模拟智能体，会把映射后的输入拼接为回答。",
+      "id": "router-agent",
+      "agentName": "Mock超级智能体",
+      "description": "用于评测任务联调的本地模拟超级智能体，按debug/reasoning/text三类消息模拟SSE输出。",
       "versions": [
         {
-          "id": "mock-agent-v1",
+          "id": "router-agent-v1",
           "versionName": "V1"
         }
       ],
@@ -42,25 +42,32 @@ Mock模块用于在未接入真实智能体、评估LLM和Code执行器前，模
       ],
       "outputs": [
         {
-          "id": "answer",
-          "fieldName": "answer",
+          "id": "text",
+          "fieldName": "text",
           "fieldType": "string",
-          "description": "标准应用输出字段",
+          "description": "返回给用户的信息",
           "displayOrder": 1
         },
         {
-          "id": "content",
-          "fieldName": "content",
+          "id": "reasoning",
+          "fieldName": "reasoning",
           "fieldType": "string",
-          "description": "兼容消息内容字段",
+          "description": "智能体思考过程",
           "displayOrder": 2
+        },
+        {
+          "id": "debug",
+          "fieldName": "debug",
+          "fieldType": "string",
+          "description": "智能体调试信息",
+          "displayOrder": 3
         },
         {
           "id": "rawText",
           "fieldName": "rawText",
           "fieldType": "string",
-          "description": "原始文本输出字段",
-          "displayOrder": 3
+          "description": "三类消息合并后的原始文本",
+          "displayOrder": 4
         }
       ]
     }
@@ -69,6 +76,12 @@ Mock模块用于在未接入真实智能体、评估LLM和Code执行器前，模
 ```
 
 `POST /api/mock/agent/chat`
+
+请求头：
+
+```http
+x-agent-alias: router-agent
+```
 
 请求：
 
@@ -92,23 +105,88 @@ Mock模块用于在未接入真实智能体、评估LLM和Code执行器前，模
   "code": 0,
   "msg": "success",
   "data": {
+    "id": "mock_chunk_id",
     "conversationId": "mock_conversation_id",
-    "message": {
-      "content": "Mock智能体回复：question: 什么是评测系统？",
-      "role": "assistant"
-    },
+    "masterAgent": "router-agent",
+    "metaAgent": "mock-meta-agent",
+    "object": "com.evalsystem.mock.dto.MockAgentChatResponse",
+    "created": 1710000000000,
+    "nmodel": "mock-super-agent-model",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "debug",
+              "text": "Mock调试信息：x-agent-alias=router-agent，stream=false",
+              "reasoning": null
+            }
+          ],
+          "tool_calls": null,
+          "extra": null
+        },
+        "finish_reason": null
+      },
+      {
+        "index": 1,
+        "delta": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": null,
+              "reasoning": "Mock思考过程：读取用户输入，抽取关键信息，并生成用于评测的稳定回复。"
+            }
+          ],
+          "tool_calls": null,
+          "extra": null
+        },
+        "finish_reason": null
+      },
+      {
+        "index": 2,
+        "delta": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Mock智能体回复：question: 什么是评测系统？",
+              "reasoning": null
+            }
+          ],
+          "tool_calls": null,
+          "extra": null
+        },
+        "finish_reason": "stop"
+      }
+    ],
     "status": "completed",
     "outputs": {
+      "debug": "Mock调试信息：x-agent-alias=router-agent，stream=false",
+      "reasoning": "Mock思考过程：读取用户输入，抽取关键信息，并生成用于评测的稳定回复。",
+      "text": "Mock智能体回复：question: 什么是评测系统？",
       "answer": "Mock智能体回复：question: 什么是评测系统？",
       "content": "Mock智能体回复：question: 什么是评测系统？",
-      "rawText": "Mock智能体回复：question: 什么是评测系统？"
+      "rawText": "Mock调试信息：x-agent-alias=router-agent，stream=false\nMock思考过程：读取用户输入，抽取关键信息，并生成用于评测的稳定回复。\nMock智能体回复：question: 什么是评测系统？"
     },
     "latencyMs": 1,
     "errorMessage": "",
-    "rawOutput": "Mock智能体回复：question: 什么是评测系统？"
+    "rawOutput": "Mock调试信息：x-agent-alias=router-agent，stream=false\nMock思考过程：读取用户输入，抽取关键信息，并生成用于评测的稳定回复。\nMock智能体回复：question: 什么是评测系统？"
   }
 }
 ```
+
+评测任务启动时会从 `choices[].delta.content[]` 中归并三类输出：
+
+| 类型 | 任务输出键 | 用途 |
+| --- | --- | --- |
+| `debug` | `debug` | 调试信息 |
+| `reasoning` | `reasoning` | 智能体思考过程 |
+| `text` | `text` | 返回给用户的信息，默认用于评估器映射 |
+
+为了兼容旧任务，任务模块也会把 `text` 映射为 `answer` 和 `content` 别名；`app_output` 数据库存储为包含 `debug/reasoning/text/rawText` 的JSON字符串。
 
 ## 2. 评估器模拟
 
@@ -189,3 +267,5 @@ Code型请求：
 | `[mock:timeout]` | 模拟调用超时失败 |
 | `[mock:score=88]` | 强制评估器返回指定分数，会按评分范围裁剪 |
 | `[mock:agent_output=指定输出]` | 强制智能体返回指定内容 |
+| `[mock:debug=指定调试信息]` | 强制智能体返回指定debug内容 |
+| `[mock:reasoning=指定思考过程]` | 强制智能体返回指定reasoning内容 |

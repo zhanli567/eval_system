@@ -10,7 +10,7 @@ import java.util.List;
 public interface MockRuntimeService {
   List<MockAgentDefinition> listAgents();
 
-  MockAgentChatResponse invokeAgent(MockAgentChatRequest request);
+  MockAgentChatResponse invokeAgent(String agentAlias, MockAgentChatRequest request);
 
   MockEvaluatorResponse evaluateEvaluator(MockEvaluatorRequest request);
 }

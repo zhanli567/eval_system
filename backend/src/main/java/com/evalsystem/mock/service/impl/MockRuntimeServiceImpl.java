@@ -2,6 +2,9 @@ package com.evalsystem.mock.service.impl;
 
 import com.evalsystem.mock.dto.MockAgentChatRequest;
 import com.evalsystem.mock.dto.MockAgentChatResponse;
+import com.evalsystem.mock.dto.MockAgentChoice;
+import com.evalsystem.mock.dto.MockAgentDelta;
+import com.evalsystem.mock.dto.MockAgentDeltaContent;
 import com.evalsystem.mock.dto.MockAgentDefinition;
 import com.evalsystem.mock.dto.MockAgentField;
 import com.evalsystem.mock.dto.MockAgentMessage;
@@ -28,56 +31,103 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
   private static final String STATUS_FAILED = "failed";
   private static final String ROLE_ASSISTANT = "assistant";
   private static final String ROLE_USER = "user";
+  private static final String DEFAULT_AGENT_ALIAS = "router-agent";
+  private static final String MOCK_RESPONSE_OBJECT = "com.evalsystem.mock.dto.MockAgentChatResponse";
+  private static final String MOCK_MODEL = "mock-super-agent-model";
   private static final BigDecimal DEFAULT_SCORE_MIN = BigDecimal.ONE;
   private static final BigDecimal DEFAULT_SCORE_MAX = BigDecimal.valueOf(5);
   private static final Pattern PROMPT_PARAM_PATTERN = Pattern.compile("\\$\\{([a-zA-Z_][\\w]*)}");
   private static final Pattern FORCE_AGENT_OUTPUT_PATTERN = Pattern.compile("\\[mock:agent_output=([^\\]]*)]");
+  private static final Pattern FORCE_AGENT_DEBUG_PATTERN = Pattern.compile("\\[mock:debug=([^\\]]*)]");
+  private static final Pattern FORCE_AGENT_REASONING_PATTERN = Pattern.compile("\\[mock:reasoning=([^\\]]*)]");
   private static final Pattern FORCE_SCORE_PATTERN = Pattern.compile("\\[mock:score=([+-]?\\d+(?:\\.\\d+)?)\\]");
 
   @Override
   public List<MockAgentDefinition> listAgents() {
     return List.of(new MockAgentDefinition(
-        "mock-agent",
-        "Mock智能体",
-        "用于评测任务联调的本地模拟智能体，会把映射后的输入拼接为回答。",
-        List.of(new MockAgentVersion("mock-agent-v1", "V1")),
+        DEFAULT_AGENT_ALIAS,
+        "Mock超级智能体",
+        "用于评测任务联调的本地模拟超级智能体，按debug/reasoning/text三类消息模拟SSE输出。",
+        List.of(new MockAgentVersion(DEFAULT_AGENT_ALIAS + "-v1", "V1")),
         List.of(new MockAgentField("query", "query", "string", "用户输入或问题", 1)),
         List.of(
-            new MockAgentField("answer", "answer", "string", "标准应用输出字段", 1),
-            new MockAgentField("content", "content", "string", "兼容消息内容字段", 2),
-            new MockAgentField("rawText", "rawText", "string", "原始文本输出字段", 3))));
+            new MockAgentField("text", "text", "string", "返回给用户的信息", 1),
+            new MockAgentField("reasoning", "reasoning", "string", "智能体思考过程", 2),
+            new MockAgentField("debug", "debug", "string", "智能体调试信息", 3),
+            new MockAgentField("rawText", "rawText", "string", "三类消息合并后的原始文本", 4))));
   }
 
   @Override
-  public MockAgentChatResponse invokeAgent(MockAgentChatRequest request) {
+  public MockAgentChatResponse invokeAgent(String agentAlias, MockAgentChatRequest request) {
     long startedAt = System.currentTimeMillis();
+    String safeAgentAlias = StringUtils.hasText(agentAlias) ? agentAlias.trim() : DEFAULT_AGENT_ALIAS;
     String conversationId = StringUtils.hasText(request == null ? null : request.conversationId())
         ? request.conversationId().trim()
         : UUID.randomUUID().toString().replace("-", "");
     String latestUserContent = latestUserContent(request == null ? List.of() : request.message());
     if (containsToken(latestUserContent, "[mock:agent_fail]")) {
-      return agentFailure(conversationId, startedAt, "Mock智能体按指令返回失败");
+      return agentFailure(safeAgentAlias, conversationId, startedAt, "Mock智能体按指令返回失败");
     }
     if (containsToken(latestUserContent, "[mock:timeout]")) {
-      return agentFailure(conversationId, startedAt, "Mock智能体按指令模拟超时");
+      return agentFailure(safeAgentAlias, conversationId, startedAt, "Mock智能体按指令模拟超时");
     }
 
     String forcedOutput = firstMatch(FORCE_AGENT_OUTPUT_PATTERN, latestUserContent);
-    String content = StringUtils.hasText(forcedOutput)
+    String text = StringUtils.hasText(forcedOutput)
         ? forcedOutput.trim()
         : "Mock智能体回复：" + truncate(cleanMockTokens(latestUserContent), 500);
+    String debug = firstNonBlank(
+        firstMatch(FORCE_AGENT_DEBUG_PATTERN, latestUserContent),
+        "Mock调试信息：x-agent-alias=" + safeAgentAlias + "，stream=" + Boolean.TRUE.equals(request == null ? null : request.stream()));
+    String reasoning = firstNonBlank(
+        firstMatch(FORCE_AGENT_REASONING_PATTERN, latestUserContent),
+        "Mock思考过程：读取用户输入，抽取关键信息，并生成用于评测的稳定回复。");
     Map<String, String> outputs = new LinkedHashMap<>();
-    outputs.put("answer", content);
-    outputs.put("content", content);
-    outputs.put("rawText", content);
-    return new MockAgentChatResponse(
+    outputs.put("debug", debug);
+    outputs.put("reasoning", reasoning);
+    outputs.put("text", text);
+    outputs.put("answer", text);
+    outputs.put("content", text);
+    outputs.put("rawText", joinNonBlank("\n", debug, reasoning, text));
+    List<MockAgentChoice> choices = List.of(
+        choice(0, contentBlock("debug", debug)),
+        choice(1, reasoningBlock(reasoning)),
+        choice(2, contentBlock("text", text)));
+    return agentResponse(
+        safeAgentAlias,
         conversationId,
-        new MockAgentMessage(content, ROLE_ASSISTANT),
         STATUS_COMPLETED,
+        choices,
         outputs,
         System.currentTimeMillis() - startedAt,
         "",
-        content);
+        outputs.get("rawText"));
+  }
+
+  private MockAgentChatResponse agentResponse(
+      String agentAlias,
+      String conversationId,
+      String status,
+      List<MockAgentChoice> choices,
+      Map<String, String> outputs,
+      Long latencyMs,
+      String errorMessage,
+      String rawOutput
+  ) {
+    return new MockAgentChatResponse(
+        UUID.randomUUID().toString().replace("-", ""),
+        conversationId,
+        agentAlias,
+        "mock-meta-agent",
+        MOCK_RESPONSE_OBJECT,
+        System.currentTimeMillis(),
+        MOCK_MODEL,
+        choices,
+        status,
+        outputs,
+        latencyMs,
+        errorMessage,
+        rawOutput);
   }
 
   @Override
@@ -110,12 +160,18 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
         System.currentTimeMillis() - startedAt);
   }
 
-  private MockAgentChatResponse agentFailure(String conversationId, long startedAt, String errorMessage) {
-    return new MockAgentChatResponse(
+  private MockAgentChatResponse agentFailure(String agentAlias, String conversationId, long startedAt, String errorMessage) {
+    Map<String, String> outputs = new LinkedHashMap<>();
+    outputs.put("debug", errorMessage);
+    outputs.put("reasoning", "");
+    outputs.put("text", "");
+    outputs.put("rawText", errorMessage);
+    return agentResponse(
+        agentAlias,
         conversationId,
-        new MockAgentMessage("", ROLE_ASSISTANT),
         STATUS_FAILED,
-        Map.of(),
+        List.of(choice(0, contentBlock("debug", errorMessage))),
+        outputs,
         System.currentTimeMillis() - startedAt,
         errorMessage,
         "");
@@ -234,6 +290,21 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
     return matcher.find() ? matcher.group(1) : "";
   }
 
+  private MockAgentChoice choice(Integer index, MockAgentDeltaContent content) {
+    return new MockAgentChoice(
+        index,
+        new MockAgentDelta(ROLE_ASSISTANT, List.of(content), null, null),
+        index != null && index == 2 ? "stop" : null);
+  }
+
+  private MockAgentDeltaContent contentBlock(String type, String text) {
+    return new MockAgentDeltaContent(type, text, null);
+  }
+
+  private MockAgentDeltaContent reasoningBlock(String reasoning) {
+    return new MockAgentDeltaContent("reasoning", null, reasoning);
+  }
+
   private String cleanMockTokens(String value) {
     if (!StringUtils.hasText(value)) {
       return "空输入";
@@ -244,6 +315,8 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
         .replace("[mock:timeout]", "")
         .replaceAll("\\[mock:score=[^\\]]*]", "")
         .replaceAll("\\[mock:agent_output=[^\\]]*]", "")
+        .replaceAll("\\[mock:debug=[^\\]]*]", "")
+        .replaceAll("\\[mock:reasoning=[^\\]]*]", "")
         .trim();
   }
 
@@ -260,5 +333,24 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
 
   private String nullToEmpty(String value) {
     return value == null ? "" : value;
+  }
+
+  private String firstNonBlank(String... values) {
+    for (String value : values) {
+      if (StringUtils.hasText(value)) {
+        return value.trim();
+      }
+    }
+    return "";
+  }
+
+  private String joinNonBlank(String delimiter, String... values) {
+    List<String> parts = new ArrayList<>();
+    for (String value : values) {
+      if (StringUtils.hasText(value)) {
+        parts.add(value);
+      }
+    }
+    return String.join(delimiter, parts);
   }
 }

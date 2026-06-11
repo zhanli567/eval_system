@@ -11,6 +11,7 @@ import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -29,8 +30,11 @@ public class MockRuntimeController {
   }
 
   @PostMapping("/agent/chat")
-  public ApiResponse<MockAgentChatResponse> invokeAgent(@RequestBody MockAgentChatRequest request) {
-    return ApiResponse.ok(mockRuntimeService.invokeAgent(request));
+  public ApiResponse<MockAgentChatResponse> invokeAgent(
+      @RequestHeader(name = "x-agent-alias", defaultValue = "router-agent") String agentAlias,
+      @RequestBody MockAgentChatRequest request
+  ) {
+    return ApiResponse.ok(mockRuntimeService.invokeAgent(agentAlias, request));
   }
 
   @PostMapping("/evaluators/evaluate")

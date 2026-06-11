@@ -11,6 +11,8 @@ import com.evalsystem.evaluator.dto.PresetEvaluatorDetail;
 import com.evalsystem.evaluator.service.EvaluatorService;
 import com.evalsystem.mock.dto.MockAgentChatRequest;
 import com.evalsystem.mock.dto.MockAgentChatResponse;
+import com.evalsystem.mock.dto.MockAgentChoice;
+import com.evalsystem.mock.dto.MockAgentDeltaContent;
 import com.evalsystem.mock.dto.MockAgentMessage;
 import com.evalsystem.mock.dto.MockEvaluatorRequest;
 import com.evalsystem.mock.dto.MockEvaluatorResponse;
@@ -68,6 +70,7 @@ public class TaskServiceImpl implements TaskService {
   private static final String EVALUATOR_CUSTOM = "custom";
   private static final String SOURCE_DATASET_FIELD = "dataset_field";
   private static final String SOURCE_APP_OUTPUT = "app_output";
+  private static final String DEFAULT_AGENT_ALIAS = "router-agent";
   private static final int MAX_DIMENSION_COUNT = 5;
   private static final Pattern PROMPT_PARAM_PATTERN = Pattern.compile("\\$\\{([a-zA-Z_][\\w]*)}");
 
@@ -744,31 +747,28 @@ public class TaskServiceImpl implements TaskService {
       return new AgentInvocationResult("", RESULT_SKIPPED, "", Map.of());
     }
     String content = buildAgentMessageContent(appMappings, values);
-    MockAgentChatResponse response = mockRuntimeService.invokeAgent(new MockAgentChatRequest(
-        base.id() + "-" + item.id(),
-        List.of(new MockAgentMessage(content, "user")),
-        false));
+    MockAgentChatResponse response = mockRuntimeService.invokeAgent(
+        resolveAgentAlias(base),
+        new MockAgentChatRequest(
+            base.id() + "-" + item.id(),
+            List.of(new MockAgentMessage(content, "user")),
+            false));
     if (response == null) {
       return new AgentInvocationResult("", STATUS_FAILED, "Mock智能体未返回结果", Map.of());
     }
     if (STATUS_FAILED.equals(response.status())) {
       return new AgentInvocationResult("", STATUS_FAILED, response.errorMessage(), Map.of());
     }
-    Map<String, String> outputs = new LinkedHashMap<>();
-    if (response.outputs() != null) {
-      outputs.putAll(response.outputs());
-    }
-    String responseContent = response.message() == null ? "" : response.message().content();
-    if (StringUtils.hasText(responseContent)) {
-      outputs.putIfAbsent("answer", responseContent);
-      outputs.putIfAbsent("content", responseContent);
-      outputs.putIfAbsent("rawText", responseContent);
-    }
+    Map<String, String> outputs = extractAgentOutputs(response);
     return new AgentInvocationResult(
-        outputs.getOrDefault("answer", responseContent == null ? "" : responseContent),
+        formatAgentOutputs(outputs),
         STATUS_COMPLETED,
         "",
         outputs);
+  }
+
+  private String resolveAgentAlias(TaskBase base) {
+    return StringUtils.hasText(base.appId()) ? base.appId() : DEFAULT_AGENT_ALIAS;
   }
 
   private String buildAgentMessageContent(
@@ -914,6 +914,9 @@ public class TaskServiceImpl implements TaskService {
       if (StringUtils.hasText(mapping.appOutputName()) && appOutputs.containsKey(mapping.appOutputName())) {
         return appOutputs.get(mapping.appOutputName());
       }
+      if (appOutputs.containsKey("text")) {
+        return appOutputs.get("text");
+      }
       if (appOutputs.containsKey("answer")) {
         return appOutputs.get("answer");
       }
@@ -923,6 +926,112 @@ public class TaskServiceImpl implements TaskService {
       return appOutputs.getOrDefault("rawText", "");
     }
     return values.getOrDefault(mapping.datasetFieldId(), "");
+  }
+
+  private Map<String, String> extractAgentOutputs(MockAgentChatResponse response) {
+    Map<String, String> outputs = new LinkedHashMap<>();
+    List<String> debugParts = new ArrayList<>();
+    List<String> reasoningParts = new ArrayList<>();
+    List<String> textParts = new ArrayList<>();
+    if (response.choices() != null) {
+      for (MockAgentChoice choice : response.choices()) {
+        if (choice == null || choice.delta() == null || choice.delta().content() == null) {
+          continue;
+        }
+        for (MockAgentDeltaContent content : choice.delta().content()) {
+          appendAgentContent(debugParts, reasoningParts, textParts, content);
+        }
+      }
+    }
+
+    putIfText(outputs, "debug", joinLines(debugParts));
+    putIfText(outputs, "reasoning", joinLines(reasoningParts));
+    putIfText(outputs, "text", joinLines(textParts));
+    if (response.outputs() != null) {
+      response.outputs().forEach((key, value) -> {
+        if (StringUtils.hasText(key) && !outputs.containsKey(key)) {
+          outputs.put(key, value == null ? "" : value);
+        }
+      });
+    }
+    putIfText(outputs, "rawText", firstNonBlank(
+        outputs.get("rawText"),
+        joinLines(List.of(outputs.getOrDefault("debug", ""), outputs.getOrDefault("reasoning", ""), outputs.getOrDefault("text", ""))),
+        response.rawOutput()));
+    putIfText(outputs, "answer", firstNonBlank(outputs.get("answer"), outputs.get("text"), outputs.get("content")));
+    putIfText(outputs, "content", firstNonBlank(outputs.get("content"), outputs.get("text"), outputs.get("answer")));
+    return outputs;
+  }
+
+  private void appendAgentContent(
+      List<String> debugParts,
+      List<String> reasoningParts,
+      List<String> textParts,
+      MockAgentDeltaContent content
+  ) {
+    if (content == null || !StringUtils.hasText(content.type())) {
+      return;
+    }
+    String type = content.type().trim();
+    String value = firstNonBlank(content.text(), content.reasoning());
+    if (!StringUtils.hasText(value)) {
+      return;
+    }
+    if ("debug".equals(type)) {
+      debugParts.add(value);
+    } else if ("reasoning".equals(type)) {
+      reasoningParts.add(value);
+    } else if ("text".equals(type)) {
+      textParts.add(value);
+    }
+  }
+
+  private String formatAgentOutputs(Map<String, String> outputs) {
+    if (outputs == null || outputs.isEmpty()) {
+      return "";
+    }
+    List<String> fields = new ArrayList<>();
+    addJsonField(fields, "debug", outputs.get("debug"));
+    addJsonField(fields, "reasoning", outputs.get("reasoning"));
+    addJsonField(fields, "text", outputs.get("text"));
+    addJsonField(fields, "rawText", outputs.get("rawText"));
+    return "{" + String.join(",", fields) + "}";
+  }
+
+  private void addJsonField(List<String> fields, String key, String value) {
+    fields.add("\"" + escapeJson(key) + "\":\"" + escapeJson(value == null ? "" : value) + "\"");
+  }
+
+  private void putIfText(Map<String, String> outputs, String key, String value) {
+    if (StringUtils.hasText(value)) {
+      outputs.put(key, value);
+    }
+  }
+
+  private String joinLines(List<String> parts) {
+    if (parts == null || parts.isEmpty()) {
+      return "";
+    }
+    return parts.stream()
+        .filter(StringUtils::hasText)
+        .collect(Collectors.joining("\n"));
+  }
+
+  private String firstNonBlank(String... values) {
+    for (String value : values) {
+      if (StringUtils.hasText(value)) {
+        return value;
+      }
+    }
+    return "";
+  }
+
+  private String escapeJson(String value) {
+    return value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\r", "\\r")
+        .replace("\n", "\\n");
   }
 
   private String renderPrompt(String prompt, Map<String, Object> params) {

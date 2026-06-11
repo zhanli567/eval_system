@@ -426,14 +426,15 @@ export function useTaskCreate() {
 
   function defaultMockOutputs(): MockAgentField[] {
     return [
-      { id: 'answer', fieldName: 'answer', fieldType: 'string', description: '标准应用输出字段', displayOrder: 1 },
-      { id: 'content', fieldName: 'content', fieldType: 'string', description: '兼容消息内容字段', displayOrder: 2 },
-      { id: 'rawText', fieldName: 'rawText', fieldType: 'string', description: '原始文本输出字段', displayOrder: 3 }
+      { id: 'text', fieldName: 'text', fieldType: 'string', description: '返回给用户的信息', displayOrder: 1 },
+      { id: 'reasoning', fieldName: 'reasoning', fieldType: 'string', description: '智能体思考过程', displayOrder: 2 },
+      { id: 'debug', fieldName: 'debug', fieldType: 'string', description: '智能体调试信息', displayOrder: 3 },
+      { id: 'rawText', fieldName: 'rawText', fieldType: 'string', description: '三类消息合并后的原始文本', displayOrder: 4 }
     ]
   }
 
   function defaultAppOutputName() {
-    return mockAgentOutputs.value[0]?.fieldName || 'answer'
+    return mockAgentOutputs.value[0]?.fieldName || 'text'
   }
 
   function normalizeParamOutputMappings() {
