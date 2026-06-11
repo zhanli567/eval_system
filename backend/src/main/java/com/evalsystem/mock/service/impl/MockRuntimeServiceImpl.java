@@ -51,6 +51,7 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
   private static final Pattern FORCE_AGENT_OUTPUT_PATTERN = Pattern.compile("\\[mock:agent_output=([^\\]]*)]");
   private static final Pattern FORCE_AGENT_DEBUG_PATTERN = Pattern.compile("\\[mock:debug=([^\\]]*)]");
   private static final Pattern FORCE_AGENT_REASONING_PATTERN = Pattern.compile("\\[mock:reasoning=([^\\]]*)]");
+  private static final Pattern FORCE_AGENT_ERROR_PATTERN = Pattern.compile("\\[mock:error=([^\\]]*)]");
   private static final Pattern FORCE_SCORE_PATTERN = Pattern.compile("\\[mock:score=([+-]?\\d+(?:\\.\\d+)?)\\]");
   private static final TypeReference<List<Map<String, Object>>> TOOL_CALLS_TYPE = new TypeReference<>() {
   };
@@ -77,7 +78,8 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
             new MockAgentField("text", "text", "string", "返回给用户的信息", 1),
             new MockAgentField("reasoning", "reasoning", "string", "智能体思考过程", 2),
             new MockAgentField("debug", "debug", "string", "智能体调试信息", 3),
-            new MockAgentField("rawText", "rawText", "string", "三类消息合并后的原始文本", 4))));
+            new MockAgentField("error", "error", "string", "智能体错误信息", 4),
+            new MockAgentField("rawText", "rawText", "string", "消息合并后的原始文本", 5))));
   }
 
   @Override
@@ -108,25 +110,31 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
     String reasoning = firstNonBlank(
         firstMatch(FORCE_AGENT_REASONING_PATTERN, latestUserContent),
         "Mock思考过程：读取用户输入，抽取关键信息，并生成用于评测的稳定回复。");
+    String error = firstMatch(FORCE_AGENT_ERROR_PATTERN, latestUserContent);
     Map<String, String> outputs = new LinkedHashMap<>();
     outputs.put("debug", debug);
     outputs.put("reasoning", reasoning);
     outputs.put("text", text);
+    if (StringUtils.hasText(error)) {
+      outputs.put("error", error);
+    }
     outputs.put("answer", text);
     outputs.put("content", text);
-    outputs.put("rawText", joinNonBlank("\n", debug, reasoning, text));
+    outputs.put("rawText", joinNonBlank("\n", debug, reasoning, text, error));
     List<MockAgentChoice> choices = List.of(
         choice(0, contentBlock("debug", debug)),
         choice(1, reasoningBlock(reasoning)),
-        choice(2, contentBlock("text", text)));
+        choice(2, contentBlock("text", text)),
+        choice(3, errorBlock(error)));
+    String status = StringUtils.hasText(error) ? STATUS_FAILED : STATUS_COMPLETED;
     return agentResponse(
         safeAgentAlias,
         conversationId,
-        STATUS_COMPLETED,
-        choices,
+        status,
+        choices.stream().filter(choice -> choice.delta() != null && choice.delta().content() != null && !choice.delta().content().isEmpty()).toList(),
         outputs,
         System.currentTimeMillis() - startedAt,
-        "",
+        error,
         outputs.get("rawText"));
   }
 
@@ -213,6 +221,7 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
       aggregate.choices.add(choice(0, contentBlock("text", plainText.toString())));
     }
     Map<String, String> outputs = buildAgentOutputs(aggregate.choices, aggregate.outputs);
+    boolean hasError = StringUtils.hasText(outputs.get("error"));
     String rawOutput = StringUtils.hasText(outputs.get("rawText"))
         ? outputs.get("rawText")
         : String.join("\n", aggregate.rawPayloads);
@@ -225,10 +234,10 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
         aggregate.created == null ? System.currentTimeMillis() : aggregate.created,
         firstNonBlank(aggregate.nmodel, ""),
         aggregate.choices,
-        STATUS_COMPLETED,
+        hasError ? STATUS_FAILED : STATUS_COMPLETED,
         outputs,
         System.currentTimeMillis() - startedAt,
-        "",
+        hasError ? outputs.get("error") : "",
         rawOutput);
   }
 
@@ -290,15 +299,16 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
 
   private MockAgentChatResponse agentFailure(String agentAlias, String conversationId, long startedAt, String errorMessage) {
     Map<String, String> outputs = new LinkedHashMap<>();
-    outputs.put("debug", errorMessage);
+    outputs.put("debug", "");
     outputs.put("reasoning", "");
     outputs.put("text", "");
+    outputs.put("error", errorMessage);
     outputs.put("rawText", errorMessage);
     return agentResponse(
         agentAlias,
         conversationId,
         STATUS_FAILED,
-        List.of(choice(0, contentBlock("debug", errorMessage))),
+        List.of(choice(0, errorBlock(errorMessage))),
         outputs,
         System.currentTimeMillis() - startedAt,
         errorMessage,
@@ -491,19 +501,23 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
 
   private MockAgentDeltaContent parseDeltaContent(JsonNode item) {
     if (item == null || item.isNull()) {
-      return new MockAgentDeltaContent("text", "", null);
+      return new MockAgentDeltaContent("text", "", null, null);
     }
     if (item.isTextual()) {
-      return new MockAgentDeltaContent("text", item.asText(), null);
+      return new MockAgentDeltaContent("text", item.asText(), null, null);
     }
     String type = firstNonBlank(textValue(item, "type"), "text");
     String text = textValue(item, "text");
     String reasoning = textValue(item, "reasoning");
-    String fallbackValue = firstNonBlank(text, reasoning, firstNonTypeFieldValue(item));
+    String error = textValue(item, "error");
+    String fallbackValue = firstNonBlank(text, reasoning, error, firstNonTypeFieldValue(item));
     if ("reasoning".equals(type)) {
-      return new MockAgentDeltaContent(type, null, fallbackValue);
+      return new MockAgentDeltaContent(type, null, fallbackValue, null);
     }
-    return new MockAgentDeltaContent(type, fallbackValue, null);
+    if ("error".equals(type)) {
+      return new MockAgentDeltaContent(type, null, null, fallbackValue);
+    }
+    return new MockAgentDeltaContent(type, fallbackValue, null, null);
   }
 
   private String firstNonTypeFieldValue(JsonNode item) {
@@ -528,17 +542,19 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
     List<String> debugParts = new ArrayList<>();
     List<String> reasoningParts = new ArrayList<>();
     List<String> textParts = new ArrayList<>();
+    List<String> errorParts = new ArrayList<>();
     for (MockAgentChoice choice : choices) {
       if (choice == null || choice.delta() == null || choice.delta().content() == null) {
         continue;
       }
       for (MockAgentDeltaContent content : choice.delta().content()) {
-        appendContentPart(debugParts, reasoningParts, textParts, content);
+        appendContentPart(debugParts, reasoningParts, textParts, errorParts, content);
       }
     }
     putIfPresent(outputs, "debug", joinNonBlank("\n", debugParts.toArray(String[]::new)));
     putIfPresent(outputs, "reasoning", joinNonBlank("\n", reasoningParts.toArray(String[]::new)));
     putIfPresent(outputs, "text", joinNonBlank("\n", textParts.toArray(String[]::new)));
+    putIfPresent(outputs, "error", joinNonBlank("\n", errorParts.toArray(String[]::new)));
     if (remoteOutputs != null) {
       remoteOutputs.forEach((key, value) -> {
         if (StringUtils.hasText(key) && !outputs.containsKey(key)) {
@@ -550,7 +566,7 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
     putIfPresent(outputs, "content", firstNonBlank(outputs.get("content"), outputs.get("text"), outputs.get("answer")));
     putIfPresent(outputs, "rawText", firstNonBlank(
         outputs.get("rawText"),
-        joinNonBlank("\n", outputs.get("debug"), outputs.get("reasoning"), outputs.get("text"))));
+        joinNonBlank("\n", outputs.get("debug"), outputs.get("reasoning"), outputs.get("text"), outputs.get("error"))));
     return outputs;
   }
 
@@ -558,12 +574,13 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
       List<String> debugParts,
       List<String> reasoningParts,
       List<String> textParts,
+      List<String> errorParts,
       MockAgentDeltaContent content
   ) {
     if (content == null || !StringUtils.hasText(content.type())) {
       return;
     }
-    String value = firstNonBlank(content.text(), content.reasoning());
+    String value = firstNonBlank(content.text(), content.reasoning(), content.error());
     if (!StringUtils.hasText(value)) {
       return;
     }
@@ -573,6 +590,8 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
       reasoningParts.add(value);
     } else if ("text".equals(content.type())) {
       textParts.add(value);
+    } else if ("error".equals(content.type())) {
+      errorParts.add(value);
     }
   }
 
@@ -622,16 +641,20 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
   private MockAgentChoice choice(Integer index, MockAgentDeltaContent content) {
     return new MockAgentChoice(
         index,
-        new MockAgentDelta(ROLE_ASSISTANT, List.of(content), null, null),
+        new MockAgentDelta(ROLE_ASSISTANT, content == null ? List.of() : List.of(content), null, null),
         index != null && index == 2 ? "stop" : null);
   }
 
   private MockAgentDeltaContent contentBlock(String type, String text) {
-    return new MockAgentDeltaContent(type, text, null);
+    return StringUtils.hasText(text) ? new MockAgentDeltaContent(type, text, null, null) : null;
   }
 
   private MockAgentDeltaContent reasoningBlock(String reasoning) {
-    return new MockAgentDeltaContent("reasoning", null, reasoning);
+    return StringUtils.hasText(reasoning) ? new MockAgentDeltaContent("reasoning", null, reasoning, null) : null;
+  }
+
+  private MockAgentDeltaContent errorBlock(String error) {
+    return StringUtils.hasText(error) ? new MockAgentDeltaContent("error", null, null, error) : null;
   }
 
   private String cleanMockTokens(String value) {
@@ -646,6 +669,7 @@ public class MockRuntimeServiceImpl implements MockRuntimeService {
         .replaceAll("\\[mock:agent_output=[^\\]]*]", "")
         .replaceAll("\\[mock:debug=[^\\]]*]", "")
         .replaceAll("\\[mock:reasoning=[^\\]]*]", "")
+        .replaceAll("\\[mock:error=[^\\]]*]", "")
         .trim();
   }
 

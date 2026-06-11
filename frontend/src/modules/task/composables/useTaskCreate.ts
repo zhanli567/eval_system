@@ -429,7 +429,8 @@ export function useTaskCreate() {
       { id: 'text', fieldName: 'text', fieldType: 'string', description: '返回给用户的信息', displayOrder: 1 },
       { id: 'reasoning', fieldName: 'reasoning', fieldType: 'string', description: '智能体思考过程', displayOrder: 2 },
       { id: 'debug', fieldName: 'debug', fieldType: 'string', description: '智能体调试信息', displayOrder: 3 },
-      { id: 'rawText', fieldName: 'rawText', fieldType: 'string', description: '三类消息合并后的原始文本', displayOrder: 4 }
+      { id: 'error', fieldName: 'error', fieldType: 'string', description: '智能体错误信息', displayOrder: 4 },
+      { id: 'rawText', fieldName: 'rawText', fieldType: 'string', description: '消息合并后的原始文本', displayOrder: 5 }
     ]
   }
 

@@ -756,10 +756,21 @@ public class TaskServiceImpl implements TaskService {
     if (response == null) {
       return new AgentInvocationResult("", STATUS_FAILED, "Mock智能体未返回结果", Map.of());
     }
-    if (STATUS_FAILED.equals(response.status())) {
-      return new AgentInvocationResult("", STATUS_FAILED, response.errorMessage(), Map.of());
-    }
     Map<String, String> outputs = extractAgentOutputs(response);
+    if (STATUS_FAILED.equals(response.status())) {
+      return new AgentInvocationResult(
+          formatAgentOutputs(outputs),
+          STATUS_FAILED,
+          firstNonBlank(response.errorMessage(), outputs.get("error"), outputs.get("rawText")),
+          outputs);
+    }
+    if (StringUtils.hasText(outputs.get("error"))) {
+      return new AgentInvocationResult(
+          formatAgentOutputs(outputs),
+          STATUS_FAILED,
+          outputs.get("error"),
+          outputs);
+    }
     return new AgentInvocationResult(
         formatAgentOutputs(outputs),
         STATUS_COMPLETED,
@@ -933,13 +944,14 @@ public class TaskServiceImpl implements TaskService {
     List<String> debugParts = new ArrayList<>();
     List<String> reasoningParts = new ArrayList<>();
     List<String> textParts = new ArrayList<>();
+    List<String> errorParts = new ArrayList<>();
     if (response.choices() != null) {
       for (MockAgentChoice choice : response.choices()) {
         if (choice == null || choice.delta() == null || choice.delta().content() == null) {
           continue;
         }
         for (MockAgentDeltaContent content : choice.delta().content()) {
-          appendAgentContent(debugParts, reasoningParts, textParts, content);
+          appendAgentContent(debugParts, reasoningParts, textParts, errorParts, content);
         }
       }
     }
@@ -947,6 +959,7 @@ public class TaskServiceImpl implements TaskService {
     putIfText(outputs, "debug", joinLines(debugParts));
     putIfText(outputs, "reasoning", joinLines(reasoningParts));
     putIfText(outputs, "text", joinLines(textParts));
+    putIfText(outputs, "error", joinLines(errorParts));
     if (response.outputs() != null) {
       response.outputs().forEach((key, value) -> {
         if (StringUtils.hasText(key) && !outputs.containsKey(key)) {
@@ -956,7 +969,11 @@ public class TaskServiceImpl implements TaskService {
     }
     putIfText(outputs, "rawText", firstNonBlank(
         outputs.get("rawText"),
-        joinLines(List.of(outputs.getOrDefault("debug", ""), outputs.getOrDefault("reasoning", ""), outputs.getOrDefault("text", ""))),
+        joinLines(List.of(
+            outputs.getOrDefault("debug", ""),
+            outputs.getOrDefault("reasoning", ""),
+            outputs.getOrDefault("text", ""),
+            outputs.getOrDefault("error", ""))),
         response.rawOutput()));
     putIfText(outputs, "answer", firstNonBlank(outputs.get("answer"), outputs.get("text"), outputs.get("content")));
     putIfText(outputs, "content", firstNonBlank(outputs.get("content"), outputs.get("text"), outputs.get("answer")));
@@ -967,13 +984,14 @@ public class TaskServiceImpl implements TaskService {
       List<String> debugParts,
       List<String> reasoningParts,
       List<String> textParts,
+      List<String> errorParts,
       MockAgentDeltaContent content
   ) {
     if (content == null || !StringUtils.hasText(content.type())) {
       return;
     }
     String type = content.type().trim();
-    String value = firstNonBlank(content.text(), content.reasoning());
+    String value = firstNonBlank(content.text(), content.reasoning(), content.error());
     if (!StringUtils.hasText(value)) {
       return;
     }
@@ -983,6 +1001,8 @@ public class TaskServiceImpl implements TaskService {
       reasoningParts.add(value);
     } else if ("text".equals(type)) {
       textParts.add(value);
+    } else if ("error".equals(type)) {
+      errorParts.add(value);
     }
   }
 
@@ -994,6 +1014,7 @@ public class TaskServiceImpl implements TaskService {
     addJsonField(fields, "debug", outputs.get("debug"));
     addJsonField(fields, "reasoning", outputs.get("reasoning"));
     addJsonField(fields, "text", outputs.get("text"));
+    addJsonField(fields, "error", outputs.get("error"));
     addJsonField(fields, "rawText", outputs.get("rawText"));
     return "{" + String.join(",", fields) + "}";
   }

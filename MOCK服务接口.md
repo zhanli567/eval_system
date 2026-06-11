@@ -35,7 +35,8 @@ Mock模块转发时会：
 - 强制将转发请求中的 `stream` 设置为 `true`，以便接收真实智能体SSE响应
 - 携带请求头 `x-agent-alias`，值来自调用 Mock 接口时传入的请求头；评测任务内调用时使用任务绑定的 `appId`，默认是 `router-agent`
 - 兼容 `data: {...}` SSE、普通JSON响应和非JSON文本响应
-- 将流式返回的 `debug/reasoning/text` 聚合为 `outputs.debug / outputs.reasoning / outputs.text / outputs.rawText`
+- 将流式返回的 `debug/reasoning/text/error` 聚合为 `outputs.debug / outputs.reasoning / outputs.text / outputs.error / outputs.rawText`
+- 如果响应中出现 `type=error` 的内容块，Mock模块会将本次智能体调用状态标记为 `failed`，评测任务会记录错误并跳过该条数据的自动评估器执行
 
 ## 1. 智能体模拟
 
@@ -90,11 +91,18 @@ Mock模块转发时会：
           "displayOrder": 3
         },
         {
+          "id": "error",
+          "fieldName": "error",
+          "fieldType": "string",
+          "description": "智能体错误信息",
+          "displayOrder": 4
+        },
+        {
           "id": "rawText",
           "fieldName": "rawText",
           "fieldType": "string",
-          "description": "三类消息合并后的原始文本",
-          "displayOrder": 4
+          "description": "消息合并后的原始文本",
+          "displayOrder": 5
         }
       ]
     }
@@ -148,7 +156,8 @@ x-agent-alias: router-agent
             {
               "type": "debug",
               "text": "Mock调试信息：x-agent-alias=router-agent，stream=false",
-              "reasoning": null
+              "reasoning": null,
+              "error": null
             }
           ],
           "tool_calls": null,
@@ -164,7 +173,8 @@ x-agent-alias: router-agent
             {
               "type": "reasoning",
               "text": null,
-              "reasoning": "Mock思考过程：读取用户输入，抽取关键信息，并生成用于评测的稳定回复。"
+              "reasoning": "Mock思考过程：读取用户输入，抽取关键信息，并生成用于评测的稳定回复。",
+              "error": null
             }
           ],
           "tool_calls": null,
@@ -180,7 +190,8 @@ x-agent-alias: router-agent
             {
               "type": "text",
               "text": "Mock智能体回复：question: 什么是评测系统？",
-              "reasoning": null
+              "reasoning": null,
+              "error": null
             }
           ],
           "tool_calls": null,
@@ -194,6 +205,7 @@ x-agent-alias: router-agent
       "debug": "Mock调试信息：x-agent-alias=router-agent，stream=false",
       "reasoning": "Mock思考过程：读取用户输入，抽取关键信息，并生成用于评测的稳定回复。",
       "text": "Mock智能体回复：question: 什么是评测系统？",
+      "error": "",
       "answer": "Mock智能体回复：question: 什么是评测系统？",
       "content": "Mock智能体回复：question: 什么是评测系统？",
       "rawText": "Mock调试信息：x-agent-alias=router-agent，stream=false\nMock思考过程：读取用户输入，抽取关键信息，并生成用于评测的稳定回复。\nMock智能体回复：question: 什么是评测系统？"
@@ -212,8 +224,9 @@ x-agent-alias: router-agent
 | `debug` | `debug` | 调试信息 |
 | `reasoning` | `reasoning` | 智能体思考过程 |
 | `text` | `text` | 返回给用户的信息，默认用于评估器映射 |
+| `error` | `error` | 智能体错误信息，出现时任务会按智能体调用失败处理 |
 
-为了兼容旧任务，任务模块也会把 `text` 映射为 `answer` 和 `content` 别名；`app_output` 数据库存储为包含 `debug/reasoning/text/rawText` 的JSON字符串。
+为了兼容旧任务，任务模块也会把 `text` 映射为 `answer` 和 `content` 别名；`app_output` 数据库存储为包含 `debug/reasoning/text/error/rawText` 的JSON字符串。
 
 ## 2. 评估器模拟
 
@@ -296,3 +309,4 @@ Code型请求：
 | `[mock:agent_output=指定输出]` | 强制智能体返回指定内容 |
 | `[mock:debug=指定调试信息]` | 强制智能体返回指定debug内容 |
 | `[mock:reasoning=指定思考过程]` | 强制智能体返回指定reasoning内容 |
+| `[mock:error=指定错误信息]` | 强制智能体返回指定error内容，并标记调用失败 |
