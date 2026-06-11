@@ -1141,8 +1141,7 @@ h2 {
   min-width: 0;
 }
 
-.task-basic-grid span,
-.dimension-summary-row > span {
+.task-basic-grid span {
   display: block;
   color: var(--muted);
   font-size: 13px;
@@ -1159,12 +1158,52 @@ h2 {
 .dimension-summary-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px 28px;
   align-items: center;
+  padding-top: 4px;
 }
 
-.dimension-summary-row > span {
-  margin: 0 8px 0 0;
+.dimension-summary-label {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dimension-summary-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dimension-summary-group strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.dimension-summary-pill {
+  --el-tag-bg-color: #f2f4f8;
+  --el-tag-border-color: #edf0f6;
+  --el-tag-text-color: #6e7588;
+  max-width: 240px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.dimension-summary-pill .el-tag__content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dimension-summary-empty {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .task-data-panel {

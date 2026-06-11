@@ -91,6 +91,16 @@ export function useTaskDetail(taskId: Ref<string>) {
     return value === undefined || value === null ? '-' : `${value}%`
   }
 
+  function tagTypeLabel(value?: string) {
+    const map: Record<string, string> = {
+      category: '分类',
+      boolean: '布尔',
+      number: '数字',
+      text: '文本'
+    }
+    return value ? map[value] || value : '-'
+  }
+
   function formatTime(value?: string) {
     if (!value) return '-'
     const numberValue = Number(value)
@@ -118,6 +128,7 @@ export function useTaskDetail(taskId: Ref<string>) {
     statusTagType,
     passTagType,
     formatRate,
+    tagTypeLabel,
     formatTime
   }
 }

@@ -26,7 +26,7 @@ const {
   statusLabel,
   statusTagType,
   passTagType,
-  formatRate,
+  tagTypeLabel,
   formatTime
 } = useTaskDetail(taskId)
 
@@ -86,13 +86,20 @@ function findEvaluatorResult(row: TaskItemDetail, taskEvaluatorId: string) {
         </div>
       </div>
       <div class="dimension-summary-row">
-        <span>评测维度</span>
-        <el-tag v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" effect="plain">
-          评估器 {{ evaluator.evaluatorName }} · 通过率 {{ formatRate(evaluator.passRate) }}
-        </el-tag>
-        <el-tag v-for="tag in tags" :key="tag.taskTagId" type="info" effect="plain">
-          标签 {{ tag.tagName }} · {{ statusLabel(tag.status) }}
-        </el-tag>
+        <span class="dimension-summary-label">评测维度</span>
+        <div v-if="evaluators.length" class="dimension-summary-group">
+          <strong>评估器</strong>
+          <el-tag v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" class="dimension-summary-pill" type="info" effect="light">
+            {{ evaluator.evaluatorName }}
+          </el-tag>
+        </div>
+        <div v-if="tags.length" class="dimension-summary-group">
+          <strong>标签</strong>
+          <el-tag v-for="tag in tags" :key="tag.taskTagId" class="dimension-summary-pill" type="info" effect="light">
+            {{ tag.tagName }}（{{ tagTypeLabel(tag.tagType) }}）
+          </el-tag>
+        </div>
+        <span v-if="!evaluators.length && !tags.length" class="dimension-summary-empty">暂无评测维度</span>
       </div>
     </section>
 
