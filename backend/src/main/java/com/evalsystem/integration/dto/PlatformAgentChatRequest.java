@@ -4,7 +4,7 @@ import java.util.List;
 
 public record PlatformAgentChatRequest(
     String conversationId,
-    List<PlatformAgentMessage> message,
+    List<PlatformAgentMessage> messages,
     Boolean stream
 ) {
 }

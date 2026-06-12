@@ -3,7 +3,10 @@ package com.evalsystem.integration.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.evalsystem.integration.config.PlatformIntegrationProperties;
+import com.evalsystem.integration.dto.PlatformAgentChatRequest;
+import com.evalsystem.integration.dto.PlatformAgentMessage;
 import com.evalsystem.integration.dto.PlatformModelInfo;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -12,6 +15,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -75,6 +79,35 @@ class PlatformIntegrationServiceImplTest {
     assertThat(modelCalls).hasValue(2);
   }
 
+  @Test
+  void invokeAgentSendsMessagesArrayField() throws Exception {
+    AtomicReference<String> requestBody = new AtomicReference<>("");
+    ObjectMapper objectMapper = new ObjectMapper();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/login", exchange -> {
+      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
+      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
+    });
+    server.createContext("/agent/chat", exchange -> {
+      requestBody.set(readBody(exchange));
+      writeJson(exchange, 200, """
+          {"choices":[{"delta":{"content":[{"type":"text","text":"ok"}]}}]}
+          """);
+    });
+    server.start();
+
+    PlatformIntegrationServiceImpl service = new PlatformIntegrationServiceImpl(properties(), objectMapper);
+    service.invokeAgent(
+        "router-agent",
+        new PlatformAgentChatRequest("conversation-1", List.of(new PlatformAgentMessage("user", "hello")), true));
+
+    JsonNode root = objectMapper.readTree(requestBody.get());
+    assertThat(root.has("messages")).isTrue();
+    assertThat(root.has("message")).isFalse();
+    assertThat(root.get("messages").get(0).get("role").asText()).isEqualTo("user");
+    assertThat(root.get("messages").get(0).get("content").asText()).isEqualTo("hello");
+  }
+
   private PlatformIntegrationProperties properties() {
     String baseUrl = "http://localhost:" + server.getAddress().getPort();
     PlatformIntegrationProperties properties = new PlatformIntegrationProperties();
@@ -104,5 +137,9 @@ class PlatformIntegrationServiceImplTest {
 
   private String firstHeader(HttpExchange exchange, String headerName) {
     return exchange.getRequestHeaders().getOrDefault(headerName, List.of("")).getFirst();
+  }
+
+  private String readBody(HttpExchange exchange) throws IOException {
+    return new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
   }
 }

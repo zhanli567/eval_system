@@ -131,7 +131,7 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
         : UUID.randomUUID().toString().replace("-", "");
     PlatformAgentChatRequest outboundRequest = new PlatformAgentChatRequest(
         conversationId,
-        request == null || request.message() == null ? List.of() : request.message(),
+        request == null || request.messages() == null ? List.of() : request.messages(),
         Boolean.TRUE);
 
     for (int attempt = 0; attempt < 2; attempt++) {
