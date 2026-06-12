@@ -9,14 +9,13 @@ import com.evalsystem.evaluator.dto.EvaluatorConfig;
 import com.evalsystem.evaluator.dto.EvaluatorParamDto;
 import com.evalsystem.evaluator.dto.PresetEvaluatorDetail;
 import com.evalsystem.evaluator.service.EvaluatorService;
-import com.evalsystem.mock.dto.MockAgentChatRequest;
-import com.evalsystem.mock.dto.MockAgentChatResponse;
-import com.evalsystem.mock.dto.MockAgentChoice;
-import com.evalsystem.mock.dto.MockAgentDeltaContent;
-import com.evalsystem.mock.dto.MockAgentMessage;
-import com.evalsystem.mock.dto.MockEvaluatorRequest;
-import com.evalsystem.mock.dto.MockEvaluatorResponse;
-import com.evalsystem.mock.service.MockRuntimeService;
+import com.evalsystem.integration.dto.PlatformAgentChatRequest;
+import com.evalsystem.integration.dto.PlatformAgentChatResponse;
+import com.evalsystem.integration.dto.PlatformAgentChoice;
+import com.evalsystem.integration.dto.PlatformAgentContentBlock;
+import com.evalsystem.integration.dto.PlatformAgentMessage;
+import com.evalsystem.integration.dto.PlatformModelChatResult;
+import com.evalsystem.integration.service.PlatformIntegrationService;
 import com.evalsystem.tag.dto.TagConfig;
 import com.evalsystem.tag.dto.TagOptionDto;
 import com.evalsystem.tag.mapper.TagMapper;
@@ -51,6 +50,8 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -78,20 +79,23 @@ public class TaskServiceImpl implements TaskService {
   private final DatasetMapper datasetMapper;
   private final EvaluatorService evaluatorService;
   private final TagMapper tagMapper;
-  private final MockRuntimeService mockRuntimeService;
+  private final PlatformIntegrationService integrationService;
+  private final ObjectMapper objectMapper;
 
   public TaskServiceImpl(
       TaskMapper taskMapper,
       DatasetMapper datasetMapper,
       EvaluatorService evaluatorService,
       TagMapper tagMapper,
-      MockRuntimeService mockRuntimeService
+      PlatformIntegrationService integrationService,
+      ObjectMapper objectMapper
   ) {
     this.taskMapper = taskMapper;
     this.datasetMapper = datasetMapper;
     this.evaluatorService = evaluatorService;
     this.tagMapper = tagMapper;
-    this.mockRuntimeService = mockRuntimeService;
+    this.integrationService = integrationService;
+    this.objectMapper = objectMapper;
   }
 
   public PageResponse<TaskSummary> listTasks(int page, int size, String status, String keyword, String sortBy, String sortOrder) {
@@ -181,7 +185,7 @@ public class TaskServiceImpl implements TaskService {
     for (TaskMapper.TaskItemRecord item : items) {
       String itemStartedAt = now();
       Map<String, String> rowValues = valuesByItem.getOrDefault(item.datasetItemId(), Map.of());
-      AgentInvocationResult agentResult = invokeMockAgent(base, item, appMappings, rowValues);
+      AgentInvocationResult agentResult = invokeAgent(base, item, appMappings, rowValues);
       boolean hasFailedEvaluator = STATUS_FAILED.equals(agentResult.status());
       if (hasFailedEvaluator) {
         hasTaskFailure = true;
@@ -204,7 +208,7 @@ public class TaskServiceImpl implements TaskService {
         for (TaskMapper.TaskEvaluatorBindingRecord evaluator : evaluators) {
           EvaluationRuntimeConfig config = evaluatorConfigs.get(evaluator.id());
           List<TaskMapper.TaskEvaluatorParamMappingRecord> mappings = mappingsByEvaluator.getOrDefault(evaluator.id(), List.of());
-          EvaluationSimulationResult result = evaluateWithMock(base, item, evaluator, config, mappings, rowValues, agentResult.outputs());
+          EvaluationSimulationResult result = evaluateWithIntegration(config, mappings, rowValues, agentResult.outputs());
           if (STATUS_FAILED.equals(result.status())) {
             hasFailedEvaluator = true;
             hasTaskFailure = true;
@@ -737,7 +741,7 @@ public class TaskServiceImpl implements TaskService {
     return configs;
   }
 
-  private AgentInvocationResult invokeMockAgent(
+  private AgentInvocationResult invokeAgent(
       TaskBase base,
       TaskMapper.TaskItemRecord item,
       List<TaskMapper.TaskAppFieldMappingRecord> appMappings,
@@ -747,14 +751,14 @@ public class TaskServiceImpl implements TaskService {
       return new AgentInvocationResult("", RESULT_SKIPPED, "", Map.of());
     }
     String content = buildAgentMessageContent(appMappings, values);
-    MockAgentChatResponse response = mockRuntimeService.invokeAgent(
+    PlatformAgentChatResponse response = integrationService.invokeAgent(
         resolveAgentAlias(base),
-        new MockAgentChatRequest(
+        new PlatformAgentChatRequest(
             base.id() + "-" + item.id(),
-            List.of(new MockAgentMessage(content, "user")),
-            false));
+            List.of(new PlatformAgentMessage("user", content)),
+            true));
     if (response == null) {
-      return new AgentInvocationResult("", STATUS_FAILED, "Mock智能体未返回结果", Map.of());
+      return new AgentInvocationResult("", STATUS_FAILED, "Super智能体未返回结果", Map.of());
     }
     Map<String, String> outputs = extractAgentOutputs(response);
     if (STATUS_FAILED.equals(response.status())) {
@@ -802,10 +806,7 @@ public class TaskServiceImpl implements TaskService {
         .collect(Collectors.joining("\n"));
   }
 
-  private EvaluationSimulationResult evaluateWithMock(
-      TaskBase base,
-      TaskMapper.TaskItemRecord item,
-      TaskMapper.TaskEvaluatorBindingRecord evaluator,
+  private EvaluationSimulationResult evaluateWithIntegration(
       EvaluationRuntimeConfig config,
       List<TaskMapper.TaskEvaluatorParamMappingRecord> mappings,
       Map<String, String> values,
@@ -819,6 +820,30 @@ public class TaskServiceImpl implements TaskService {
           "",
           "评估器配置不存在");
     }
+    if ("code".equals(config.evaluatorType())) {
+      return new EvaluationSimulationResult(
+          STATUS_FAILED,
+          null,
+          "",
+          "",
+          "Code评估器暂未接入真实代码执行接口");
+    }
+    if (!"llm".equals(config.evaluatorType())) {
+      return new EvaluationSimulationResult(
+          STATUS_FAILED,
+          null,
+          "",
+          "",
+          "评估器类型不支持：" + config.evaluatorType());
+    }
+    if (!StringUtils.hasText(config.modelId())) {
+      return new EvaluationSimulationResult(
+          STATUS_FAILED,
+          null,
+          "",
+          "",
+          "LLM评估器未绑定模型");
+    }
     PreparedEvaluationInput prepared = prepareEvaluationInput(config, mappings, values, appOutputs);
     if (StringUtils.hasText(prepared.errorMessage())) {
       return new EvaluationSimulationResult(
@@ -829,59 +854,47 @@ public class TaskServiceImpl implements TaskService {
           prepared.errorMessage());
     }
     String renderedPrompt = renderPrompt(config.prompt(), prepared.params());
-    MockEvaluatorResponse response = mockRuntimeService.evaluateEvaluator(new MockEvaluatorRequest(
-        base.id(),
-        item.id(),
-        evaluator.id(),
-        config.evaluatorName(),
-        config.evaluatorType(),
-        config.modelId(),
-        config.prompt(),
-        renderedPrompt,
-        config.executeCode(),
-        config.scoreMin(),
-        config.scoreMax(),
-        config.passThreshold(),
-        prepared.params()));
-    if (response == null) {
+    PlatformModelChatResult response = integrationService.chatModel(config.modelId(), renderedPrompt);
+    if (response == null || !StringUtils.hasText(response.outputText())) {
       return new EvaluationSimulationResult(
           STATUS_FAILED,
           null,
           "",
           "",
-          "Mock评估器未返回结果");
+          "模型对话接口未返回评估结果");
     }
-    if (STATUS_FAILED.equals(response.status())) {
+    EvaluationParseResult parsed = parseEvaluationOutput(response.outputText());
+    if (StringUtils.hasText(parsed.errorMessage())) {
       return new EvaluationSimulationResult(
           STATUS_FAILED,
           null,
           "",
-          "",
-          response.errorMessage());
+          response.outputText(),
+          parsed.errorMessage());
     }
-    BigDecimal score = response.score();
+    BigDecimal score = parsed.score();
     if (score == null) {
       return new EvaluationSimulationResult(
           STATUS_FAILED,
           null,
           "",
           "",
-          "Mock评估器返回的score为空");
+          "模型评估结果中的score为空");
     }
     if (score.compareTo(config.scoreMin()) < 0 || score.compareTo(config.scoreMax()) > 0) {
       return new EvaluationSimulationResult(
           STATUS_FAILED,
           score,
           "",
-          response.reason(),
-          "Mock评估器返回的score超出评分范围");
+          parsed.reason(),
+          "模型评估结果中的score超出评分范围");
     }
     String passResult = score.compareTo(config.passThreshold()) >= 0 ? "pass" : "fail";
     return new EvaluationSimulationResult(
         STATUS_COMPLETED,
         score,
         passResult,
-        response.reason(),
+        parsed.reason(),
         "");
   }
 
@@ -939,18 +952,18 @@ public class TaskServiceImpl implements TaskService {
     return values.getOrDefault(mapping.datasetFieldId(), "");
   }
 
-  private Map<String, String> extractAgentOutputs(MockAgentChatResponse response) {
+  private Map<String, String> extractAgentOutputs(PlatformAgentChatResponse response) {
     Map<String, String> outputs = new LinkedHashMap<>();
     List<String> debugParts = new ArrayList<>();
     List<String> reasoningParts = new ArrayList<>();
     List<String> textParts = new ArrayList<>();
     List<String> errorParts = new ArrayList<>();
     if (response.choices() != null) {
-      for (MockAgentChoice choice : response.choices()) {
+      for (PlatformAgentChoice choice : response.choices()) {
         if (choice == null || choice.delta() == null || choice.delta().content() == null) {
           continue;
         }
-        for (MockAgentDeltaContent content : choice.delta().content()) {
+        for (PlatformAgentContentBlock content : choice.delta().content()) {
           appendAgentContent(debugParts, reasoningParts, textParts, errorParts, content);
         }
       }
@@ -985,7 +998,7 @@ public class TaskServiceImpl implements TaskService {
       List<String> reasoningParts,
       List<String> textParts,
       List<String> errorParts,
-      MockAgentDeltaContent content
+      PlatformAgentContentBlock content
   ) {
     if (content == null || !StringUtils.hasText(content.type())) {
       return;
@@ -1067,6 +1080,47 @@ public class TaskServiceImpl implements TaskService {
     }
     matcher.appendTail(rendered);
     return rendered.toString();
+  }
+
+  private EvaluationParseResult parseEvaluationOutput(String outputText) {
+    if (!StringUtils.hasText(outputText)) {
+      return new EvaluationParseResult(null, "", "模型评估结果为空");
+    }
+    String json = extractJson(outputText);
+    if (!StringUtils.hasText(json)) {
+      return new EvaluationParseResult(null, "", "模型评估结果不是JSON格式");
+    }
+    try {
+      JsonNode root = objectMapper.readTree(json);
+      JsonNode scoreNode = root.get("score");
+      if (scoreNode == null || scoreNode.isNull()) {
+        return new EvaluationParseResult(null, "", "模型评估结果缺少score字段");
+      }
+      BigDecimal score = scoreNode.isNumber()
+          ? scoreNode.decimalValue()
+          : new BigDecimal(scoreNode.asText().trim());
+      String reason = root.hasNonNull("reason") ? root.get("reason").asText() : outputText;
+      return new EvaluationParseResult(score, reason, "");
+    } catch (Exception e) {
+      return new EvaluationParseResult(null, "", "模型评估结果解析失败：" + e.getMessage());
+    }
+  }
+
+  private String extractJson(String outputText) {
+    String trimmed = outputText == null ? "" : outputText.trim();
+    if (trimmed.startsWith("```")) {
+      trimmed = trimmed.replaceFirst("^```[a-zA-Z]*\\s*", "");
+      int fenceIndex = trimmed.lastIndexOf("```");
+      if (fenceIndex >= 0) {
+        trimmed = trimmed.substring(0, fenceIndex).trim();
+      }
+    }
+    int start = trimmed.indexOf('{');
+    int end = trimmed.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      return trimmed.substring(start, end + 1);
+    }
+    return trimmed.startsWith("{") && trimmed.endsWith("}") ? trimmed : "";
   }
 
   private NormalizedAnnotation normalizeAnnotation(TaskMapper.TaskTagBindingRecord tag, TagAnnotationInput input) {
@@ -1279,6 +1333,13 @@ public class TaskServiceImpl implements TaskService {
 
   private record PreparedEvaluationInput(
       Map<String, Object> params,
+      String errorMessage
+  ) {
+  }
+
+  private record EvaluationParseResult(
+      BigDecimal score,
+      String reason,
       String errorMessage
   ) {
   }

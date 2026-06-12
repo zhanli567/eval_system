@@ -1,0 +1,173 @@
+package com.evalsystem.integration.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Component
+@ConfigurationProperties(prefix = "integration.platform")
+public class PlatformIntegrationProperties {
+  private String xSpaceId = "";
+  private String modelListUrl = "";
+  private String agentListUrl = "";
+  private String modelChatUrl = "";
+  private String superAgentChatUrl = "";
+  private String xAgentAlias = "router-agent";
+  private int connectTimeoutMs = 5000;
+  private int readTimeoutMs = 60000;
+  private Login login = new Login();
+
+  public String getXSpaceId() {
+    return xSpaceId;
+  }
+
+  public void setXSpaceId(String xSpaceId) {
+    this.xSpaceId = clean(xSpaceId);
+  }
+
+  public String getModelListUrl() {
+    return modelListUrl;
+  }
+
+  public void setModelListUrl(String modelListUrl) {
+    this.modelListUrl = clean(modelListUrl);
+  }
+
+  public String getAgentListUrl() {
+    return agentListUrl;
+  }
+
+  public void setAgentListUrl(String agentListUrl) {
+    this.agentListUrl = clean(agentListUrl);
+  }
+
+  public String getModelChatUrl() {
+    return modelChatUrl;
+  }
+
+  public void setModelChatUrl(String modelChatUrl) {
+    this.modelChatUrl = clean(modelChatUrl);
+  }
+
+  public String getSuperAgentChatUrl() {
+    return superAgentChatUrl;
+  }
+
+  public void setSuperAgentChatUrl(String superAgentChatUrl) {
+    this.superAgentChatUrl = clean(superAgentChatUrl);
+  }
+
+  public String getXAgentAlias() {
+    return xAgentAlias;
+  }
+
+  public void setXAgentAlias(String xAgentAlias) {
+    this.xAgentAlias = clean(xAgentAlias);
+  }
+
+  public int getConnectTimeoutMs() {
+    return connectTimeoutMs;
+  }
+
+  public void setConnectTimeoutMs(int connectTimeoutMs) {
+    this.connectTimeoutMs = connectTimeoutMs;
+  }
+
+  public int getReadTimeoutMs() {
+    return readTimeoutMs;
+  }
+
+  public void setReadTimeoutMs(int readTimeoutMs) {
+    this.readTimeoutMs = readTimeoutMs;
+  }
+
+  public Login getLogin() {
+    return login;
+  }
+
+  public void setLogin(Login login) {
+    this.login = login == null ? new Login() : login;
+  }
+
+  private String clean(String value) {
+    return value == null ? "" : value.trim();
+  }
+
+  public static class Login {
+    private String url = "";
+    private String loginAccount = "";
+    private String uid = "";
+    private String password = "";
+    private String lang = "";
+    private Boolean rememberAccountName = Boolean.TRUE;
+    private String appId = "";
+    private String encryptedPasswordSwitch = "";
+
+    public String getUrl() {
+      return url;
+    }
+
+    public void setUrl(String url) {
+      this.url = clean(url);
+    }
+
+    public String getLoginAccount() {
+      return loginAccount;
+    }
+
+    public void setLoginAccount(String loginAccount) {
+      this.loginAccount = clean(loginAccount);
+    }
+
+    public String getUid() {
+      return uid;
+    }
+
+    public void setUid(String uid) {
+      this.uid = clean(uid);
+    }
+
+    public String getPassword() {
+      return password;
+    }
+
+    public void setPassword(String password) {
+      this.password = clean(password);
+    }
+
+    public String getLang() {
+      return lang;
+    }
+
+    public void setLang(String lang) {
+      this.lang = clean(lang);
+    }
+
+    public Boolean getRememberAccountName() {
+      return rememberAccountName;
+    }
+
+    public void setRememberAccountName(Boolean rememberAccountName) {
+      this.rememberAccountName = rememberAccountName;
+    }
+
+    public String getAppId() {
+      return appId;
+    }
+
+    public void setAppId(String appId) {
+      this.appId = clean(appId);
+    }
+
+    public String getEncryptedPasswordSwitch() {
+      return encryptedPasswordSwitch;
+    }
+
+    public void setEncryptedPasswordSwitch(String encryptedPasswordSwitch) {
+      this.encryptedPasswordSwitch = clean(encryptedPasswordSwitch);
+    }
+
+    private String clean(String value) {
+      return value == null ? "" : value.trim();
+    }
+  }
+}

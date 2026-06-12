@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { datasetApi } from '../../../api/dataset'
 import { evaluatorApi } from '../../../api/evaluator'
-import { mockApi, type MockAgentDefinition, type MockAgentField } from '../../../api/mock'
+import { integrationApi, type PlatformAgentDefinition, type PlatformAgentField } from '../../../api/integration'
 import { tagApi } from '../../../api/tag'
 import { taskApi, type AppFieldMappingPayload, type TaskEvaluatorPayload } from '../../../api/task'
 import type {
@@ -87,7 +87,7 @@ export function useTaskCreate() {
   const customEvaluators = ref<EvaluatorSummary[]>([])
   const presetCategories = ref<PresetCategory[]>([])
   const evaluatorBlocks = ref<EvaluatorBlockState[]>([])
-  const mockAgents = ref<MockAgentDefinition[]>([])
+  const agents = ref<PlatformAgentDefinition[]>([])
   const appFieldMappings = reactive<Record<string, string>>({})
 
   const form = reactive({
@@ -108,10 +108,10 @@ export function useTaskCreate() {
     && (evaluatorBlocks.value.length || selectedTagIds.value.length)
   ))
   const categoryOptions = computed(() => [{ id: '', categoryName: '全部分类', displayOrder: 0 }, ...presetCategories.value])
-  const selectedMockAgent = computed(() => mockAgents.value.find((agent) => agent.id === form.appId))
-  const mockAgentVersions = computed(() => selectedMockAgent.value?.versions || [])
-  const mockAgentInputs = computed(() => selectedMockAgent.value?.inputs || [])
-  const mockAgentOutputs = computed(() => selectedMockAgent.value?.outputs || defaultMockOutputs())
+  const selectedAgent = computed(() => agents.value.find((agent) => agent.id === form.appId))
+  const agentVersions = computed(() => selectedAgent.value?.versions || [])
+  const agentInputs = computed(() => selectedAgent.value?.inputs || [])
+  const agentOutputs = computed(() => selectedAgent.value?.outputs || defaultAgentOutputs())
   const tagTypeOptions = computed(() => [
     { value: 'category', label: '分类' },
     { value: 'boolean', label: '布尔' },
@@ -135,7 +135,7 @@ export function useTaskCreate() {
   onMounted(async () => {
     loading.value = true
     try {
-      await Promise.all([loadDatasets(), loadTags(), loadCustomEvaluators(), loadPresetCategories(), loadMockAgents()])
+      await Promise.all([loadDatasets(), loadTags(), loadCustomEvaluators(), loadPresetCategories(), loadAgents()])
       await Promise.all(evaluatorBlocks.value.map((block) => loadPresetOptions(block)))
     } finally {
       loading.value = false
@@ -160,7 +160,7 @@ export function useTaskCreate() {
     () => form.appType,
     () => {
       if (form.appType === 'agent') {
-        selectDefaultMockAgent()
+        selectDefaultAgent()
       } else {
         form.appId = ''
         form.appVersionId = ''
@@ -173,7 +173,7 @@ export function useTaskCreate() {
   watch(
     () => form.appId,
     () => {
-      selectDefaultMockAgentVersion()
+      selectDefaultAgentVersion()
       ensureAppFieldMappings()
       normalizeParamOutputMappings()
     }
@@ -221,10 +221,10 @@ export function useTaskCreate() {
     presetCategories.value = await evaluatorApi.listPresetCategories()
   }
 
-  async function loadMockAgents() {
-    mockAgents.value = await mockApi.listAgents()
+  async function loadAgents() {
+    agents.value = await integrationApi.listAgents()
     if (form.appType === 'agent') {
-      selectDefaultMockAgent()
+      selectDefaultAgent()
     }
   }
 
@@ -343,22 +343,22 @@ export function useTaskCreate() {
     block.paramMappings = next
   }
 
-  function selectDefaultMockAgent() {
-    if (!mockAgents.value.length) {
+  function selectDefaultAgent() {
+    if (!agents.value.length) {
       form.appId = ''
       form.appVersionId = ''
       return
     }
-    const exists = mockAgents.value.some((agent) => agent.id === form.appId)
+    const exists = agents.value.some((agent) => agent.id === form.appId)
     if (!exists) {
-      form.appId = mockAgents.value[0].id
+      form.appId = agents.value[0].id
     }
-    selectDefaultMockAgentVersion()
+    selectDefaultAgentVersion()
     ensureAppFieldMappings()
   }
 
-  function selectDefaultMockAgentVersion() {
-    const versions = mockAgentVersions.value
+  function selectDefaultAgentVersion() {
+    const versions = agentVersions.value
     if (!versions.length) {
       form.appVersionId = ''
       return
@@ -374,13 +374,13 @@ export function useTaskCreate() {
       clearAppFieldMappings()
       return
     }
-    const inputIds = new Set(mockAgentInputs.value.map((input) => input.id))
+    const inputIds = new Set(agentInputs.value.map((input) => input.id))
     for (const key of Object.keys(appFieldMappings)) {
       if (!inputIds.has(key)) {
         delete appFieldMappings[key]
       }
     }
-    for (const input of mockAgentInputs.value) {
+    for (const input of agentInputs.value) {
       if (appFieldMappings[input.id] === undefined) {
         appFieldMappings[input.id] = findSuggestedDatasetField(input)
       }
@@ -393,7 +393,7 @@ export function useTaskCreate() {
     }
   }
 
-  function findSuggestedDatasetField(input: MockAgentField) {
+  function findSuggestedDatasetField(input: PlatformAgentField) {
     if (!fields.value.length) {
       return ''
     }
@@ -424,7 +424,7 @@ export function useTaskCreate() {
     return value.trim().toLowerCase()
   }
 
-  function defaultMockOutputs(): MockAgentField[] {
+  function defaultAgentOutputs(): PlatformAgentField[] {
     return [
       { id: 'text', fieldName: 'text', fieldType: 'string', description: '返回给用户的信息', displayOrder: 1 },
       { id: 'reasoning', fieldName: 'reasoning', fieldType: 'string', description: '智能体思考过程', displayOrder: 2 },
@@ -435,7 +435,7 @@ export function useTaskCreate() {
   }
 
   function defaultAppOutputName() {
-    return mockAgentOutputs.value[0]?.fieldName || 'text'
+    return agentOutputs.value[0]?.fieldName || 'text'
   }
 
   function normalizeParamOutputMappings() {
@@ -517,7 +517,7 @@ export function useTaskCreate() {
     if (form.appType !== 'agent') {
       return []
     }
-    return mockAgentInputs.value.map((input) => ({
+    return agentInputs.value.map((input) => ({
       appInputId: input.id,
       appInputName: input.fieldName,
       appInputType: input.fieldType || 'string',
@@ -561,11 +561,11 @@ export function useTaskCreate() {
         ElMessage.warning('请选择智能体应用及版本')
         return false
       }
-      if (!mockAgentInputs.value.length) {
+      if (!agentInputs.value.length) {
         ElMessage.warning('当前智能体暂无输入定义，不能创建关联应用任务')
         return false
       }
-      for (const input of mockAgentInputs.value) {
+      for (const input of agentInputs.value) {
         if (!appFieldMappings[input.id]) {
           ElMessage.warning(`请选择智能体入参映射：${input.fieldName}`)
           return false
@@ -652,11 +652,11 @@ export function useTaskCreate() {
     presetCategories,
     categoryOptions,
     evaluatorBlocks,
-    mockAgents,
-    selectedMockAgent,
-    mockAgentVersions,
-    mockAgentInputs,
-    mockAgentOutputs,
+    agents,
+    selectedAgent,
+    agentVersions,
+    agentInputs,
+    agentOutputs,
     appFieldMappings,
     form,
     canSubmit,

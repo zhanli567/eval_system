@@ -2,6 +2,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { evaluatorApi } from '../../../api/evaluator'
+import { integrationApi, type PlatformModelInfo } from '../../../api/integration'
 import type {
   EvaluatorConfig,
   EvaluatorParam,
@@ -48,12 +49,13 @@ export function useEvaluatorEditor() {
   const versions = ref<EvaluatorVersion[]>([])
   const activeVersionId = ref('')
   const activeDetail = ref<EvaluatorConfig | null>(null)
+  const models = ref<PlatformModelInfo[]>([])
 
   const form = reactive({
     evaluatorName: '',
     description: '',
     evaluatorType: 'llm' as EvaluatorType,
-    modelId: 'qwen-plus',
+    modelId: '',
     prompt: DEFAULT_PROMPT,
     executeCode: DEFAULT_CODE,
     scoreMin: 1,
@@ -69,14 +71,13 @@ export function useEvaluatorEditor() {
   const pageTitle = computed(() => (isEdit.value ? form.evaluatorName || '编辑评估器' : '创建评估器'))
   const activeVersion = computed(() => versions.value.find((item) => item.id === activeVersionId.value))
   const promptParams = computed(() => (form.evaluatorType === 'llm' ? form.params : []))
-
-  const modelOptions = [
-    { label: '通义千问 Plus', value: 'qwen-plus' },
-    { label: '通义千问 Turbo', value: 'qwen-turbo' },
-    { label: '通义千问 Max', value: 'qwen-max' }
-  ]
+  const modelOptions = computed(() => models.value.map((model) => ({
+    label: model.name || model.modelName || model.modelId,
+    value: model.modelId
+  })))
 
   onMounted(async () => {
+    await loadModels()
     if (isEdit.value) {
       await loadVersions()
     } else if (presetId.value) {
@@ -85,6 +86,22 @@ export function useEvaluatorEditor() {
       syncPromptParams()
     }
   })
+
+  async function loadModels() {
+    try {
+      models.value = await integrationApi.listModels()
+      ensureModelSelected()
+    } catch (error) {
+      ElMessage.error(errorMessage(error, '获取模型列表失败'))
+    }
+  }
+
+  function ensureModelSelected() {
+    if (form.evaluatorType !== 'llm' || form.modelId || !models.value.length) {
+      return
+    }
+    form.modelId = models.value[0].modelId
+  }
 
   watch(
     () => [form.evaluatorType, form.prompt] as const,
@@ -132,7 +149,7 @@ export function useEvaluatorEditor() {
     form.evaluatorName = preset.evaluatorName
     form.description = preset.description
     form.evaluatorType = preset.evaluatorType
-    form.modelId = preset.modelId || 'qwen-plus'
+    form.modelId = preset.modelId || ''
     form.prompt = preset.prompt
     form.executeCode = preset.executeCode
     form.scoreMin = Number(preset.scoreMin ?? 1)
@@ -140,6 +157,7 @@ export function useEvaluatorEditor() {
     form.passThreshold = Number(preset.passThreshold ?? 3)
     form.params = preset.params.map(cloneParam)
     if (form.evaluatorType === 'llm') {
+      ensureModelSelected()
       syncPromptParams()
     }
   }
@@ -148,7 +166,7 @@ export function useEvaluatorEditor() {
     form.evaluatorName = config.evaluatorName
     form.description = config.description
     form.evaluatorType = config.evaluatorType
-    form.modelId = config.modelId || 'qwen-plus'
+    form.modelId = config.modelId || ''
     form.prompt = config.prompt || DEFAULT_PROMPT
     form.executeCode = config.executeCode || DEFAULT_CODE
     form.scoreMin = Number(config.scoreMin ?? 1)
@@ -156,6 +174,7 @@ export function useEvaluatorEditor() {
     form.passThreshold = Number(config.passThreshold ?? 3)
     form.params = config.params.map(cloneParam)
     if (form.evaluatorType === 'llm') {
+      ensureModelSelected()
       syncPromptParams()
     }
     if (!form.params.length && form.evaluatorType === 'code') {
@@ -290,6 +309,10 @@ export function useEvaluatorEditor() {
       ElMessage.warning('请输入Prompt')
       return false
     }
+    if (form.evaluatorType === 'llm' && !form.modelId) {
+      ElMessage.warning('请选择模型')
+      return false
+    }
     if (form.evaluatorType === 'code') {
       if (!form.executeCode.trim()) {
         ElMessage.warning('请输入执行函数')
@@ -317,6 +340,7 @@ export function useEvaluatorEditor() {
     if (type === 'code' && (previousType !== 'code' || !form.params.length)) {
       form.params = defaultParams()
     } else if (type === 'llm') {
+      ensureModelSelected()
       syncPromptParams()
     }
   }
@@ -375,6 +399,7 @@ export function useEvaluatorEditor() {
     activeVersion,
     promptParams,
     modelOptions,
+    loadModels,
     loadVersions,
     selectVersion,
     submit,

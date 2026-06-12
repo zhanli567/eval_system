@@ -1,6 +1,6 @@
-package com.evalsystem.mock.dto;
+package com.evalsystem.integration.dto;
 
-public record MockAgentField(
+public record PlatformAgentField(
     String id,
     String fieldName,
     String fieldType,

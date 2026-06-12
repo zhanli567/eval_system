@@ -1,17 +1,18 @@
-package com.evalsystem.mock.dto;
+package com.evalsystem.integration.dto;
 
 import java.util.List;
 import java.util.Map;
 
-public record MockAgentChatResponse(
+public record PlatformAgentChatResponse(
     String id,
     String conversationId,
-    String masterAgent,
-    String metaAgent,
+    Object masterAgent,
+    Object metaAgent,
+    String userId,
     String object,
     Long created,
-    String nmodel,
-    List<MockAgentChoice> choices,
+    String model,
+    List<PlatformAgentChoice> choices,
     String status,
     Map<String, String> outputs,
     Long latencyMs,

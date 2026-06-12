@@ -17,10 +17,10 @@ const {
   customEvaluators,
   categoryOptions,
   evaluatorBlocks,
-  mockAgents,
-  mockAgentVersions,
-  mockAgentInputs,
-  mockAgentOutputs,
+  agents,
+  agentVersions,
+  agentInputs,
+  agentOutputs,
   appFieldMappings,
   form,
   changePresetCategory,
@@ -87,10 +87,10 @@ const {
                 </el-radio-group>
                 <div v-if="form.appType === 'agent'" class="app-select-grid">
                   <el-select v-model="form.appId" placeholder="请选择智能体" filterable>
-                    <el-option v-for="agent in mockAgents" :key="agent.id" :label="agent.agentName" :value="agent.id" />
+                    <el-option v-for="agent in agents" :key="agent.id" :label="agent.agentName" :value="agent.id" />
                   </el-select>
                   <el-select v-model="form.appVersionId" placeholder="请选择智能体版本" :disabled="!form.appId">
-                    <el-option v-for="version in mockAgentVersions" :key="version.id" :label="version.versionName" :value="version.id" />
+                    <el-option v-for="version in agentVersions" :key="version.id" :label="version.versionName" :value="version.id" />
                   </el-select>
                 </div>
               </div>
@@ -105,7 +105,7 @@ const {
           <h2>字段映射</h2>
           <div class="app-mapping-panel">
             <div class="param-mapping-list app-field-mapping-list">
-              <div v-for="input in mockAgentInputs" :key="input.id" class="param-mapping-row app-field-mapping-row">
+              <div v-for="input in agentInputs" :key="input.id" class="param-mapping-row app-field-mapping-row">
                 <div class="param-cell">
                   <strong>{{ input.fieldName }}</strong>
                   <el-tag size="small" effect="plain">{{ input.fieldType || 'string' }}</el-tag>
@@ -198,7 +198,7 @@ const {
                   :disabled="form.appType !== 'agent'"
                 >
                   <el-option
-                    v-for="output in mockAgentOutputs"
+                    v-for="output in agentOutputs"
                     :key="output.id"
                     :label="`${output.fieldName} · ${output.description || fieldTypeLabel(output.fieldType)}`"
                     :value="output.fieldName"

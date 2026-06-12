@@ -17,9 +17,23 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
 
-mock:
-  agent:
-    # 配置真实超级智能体请求地址后，Mock模块会转发调用；留空时使用本地模拟响应。
-    url:
+integration:
+  platform:
+    x-space-id:
+    model-list-url:
+    agent-list-url:
+    # 模型对话接口，支持使用 {modelId} 作为路径占位符。
+    model-chat-url:
+    super-agent-chat-url:
+    x-agent-alias: router-agent
     connect-timeout-ms: 5000
     read-timeout-ms: 60000
+    login:
+      url:
+      login-account:
+      uid:
+      password:
+      lang:
+      remember-account-name: true
+      app-id:
+      encrypted-password-switch:

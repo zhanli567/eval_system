@@ -1,10 +1,10 @@
-package com.evalsystem.mock.dto;
+package com.evalsystem.integration.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public record MockAgentChoice(
+public record PlatformAgentChoice(
     Integer index,
-    MockAgentDelta delta,
+    PlatformAgentDelta delta,
     @JsonProperty("finish_reason") String finishReason
 ) {
 }
