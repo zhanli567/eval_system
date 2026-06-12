@@ -12,6 +12,7 @@ public class PlatformIntegrationProperties {
   private String modelChatUrl = "";
   private String superAgentChatUrl = "";
   private String xAgentAlias = "router-agent";
+  private boolean trustAllSsl = true;
   private int connectTimeoutMs = 5000;
   private int readTimeoutMs = 60000;
   private Login login = new Login();
@@ -62,6 +63,14 @@ public class PlatformIntegrationProperties {
 
   public void setXAgentAlias(String xAgentAlias) {
     this.xAgentAlias = clean(xAgentAlias);
+  }
+
+  public boolean isTrustAllSsl() {
+    return trustAllSsl;
+  }
+
+  public void setTrustAllSsl(boolean trustAllSsl) {
+    this.trustAllSsl = trustAllSsl;
   }
 
   public int getConnectTimeoutMs() {

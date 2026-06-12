@@ -32,11 +32,21 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -47,6 +57,7 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
   private static final String ROLE_ASSISTANT = "assistant";
   private static final String DEFAULT_AGENT_ALIAS = "router-agent";
   private static final String RESPONSE_OBJECT = "com.evalsystem.integration.dto.PlatformAgentChatResponse";
+  private static final HostnameVerifier TRUST_ALL_HOSTNAME_VERIFIER = (hostname, session) -> true;
   private static final TypeReference<List<Map<String, Object>>> TOOL_CALLS_TYPE = new TypeReference<>() {
   };
   private static final TypeReference<Map<String, Object>> EXTRA_TYPE = new TypeReference<>() {
@@ -54,6 +65,7 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
 
   private final PlatformIntegrationProperties properties;
   private final ObjectMapper objectMapper;
+  private static volatile SSLSocketFactory trustAllSocketFactory;
   private String cookieCache = "";
 
   public PlatformIntegrationServiceImpl(PlatformIntegrationProperties properties, ObjectMapper objectMapper) {
@@ -122,30 +134,38 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
         request == null || request.message() == null ? List.of() : request.message(),
         Boolean.TRUE);
 
-    HttpURLConnection connection = null;
-    try {
-      connection = openConnection(properties.getSuperAgentChatUrl(), "POST");
-      connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
-      connection.setRequestProperty("Accept", "text/event-stream, application/json");
-      connection.setRequestProperty("Cookie", ensureCookie());
-      connection.setRequestProperty("x-agent-alias", safeAgentAlias);
-      writeJson(connection, outboundRequest);
-      int statusCode = connection.getResponseCode();
-      if (statusCode < 200 || statusCode >= 300) {
-        return agentFailure(
-            safeAgentAlias,
-            conversationId,
-            startedAt,
-            "Super智能体接口调用失败，HTTP " + statusCode + "：" + truncate(readAll(connection.getErrorStream()), 500));
-      }
-      return parseAgentStream(safeAgentAlias, conversationId, startedAt, connection.getInputStream());
-    } catch (Exception e) {
-      return agentFailure(safeAgentAlias, conversationId, startedAt, "Super智能体接口调用失败：" + e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.disconnect();
+    for (int attempt = 0; attempt < 2; attempt++) {
+      HttpURLConnection connection = null;
+      try {
+        connection = openConnection(properties.getSuperAgentChatUrl(), "POST");
+        connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+        connection.setRequestProperty("Accept", "text/event-stream, application/json");
+        connection.setRequestProperty("Cookie", ensureCookie());
+        connection.setRequestProperty("x-agent-alias", safeAgentAlias);
+        writeJson(connection, outboundRequest);
+        int statusCode = connection.getResponseCode();
+        if (isUnauthorized(statusCode) && attempt == 0) {
+          readAll(connection.getErrorStream());
+          refreshCookie();
+          continue;
+        }
+        if (statusCode < 200 || statusCode >= 300) {
+          return agentFailure(
+              safeAgentAlias,
+              conversationId,
+              startedAt,
+              "Super智能体接口调用失败，HTTP " + statusCode + "：" + truncate(readAll(connection.getErrorStream()), 500));
+        }
+        return parseAgentStream(safeAgentAlias, conversationId, startedAt, connection.getInputStream());
+      } catch (Exception e) {
+        return agentFailure(safeAgentAlias, conversationId, startedAt, "Super智能体接口调用失败：" + e.getMessage());
+      } finally {
+        if (connection != null) {
+          connection.disconnect();
+        }
       }
     }
+    return agentFailure(safeAgentAlias, conversationId, startedAt, "Super智能体接口认证失败");
   }
 
   private PlatformAgentDefinition toAgentDefinition(PlatformSuperAgentInfo agent) {
@@ -217,6 +237,11 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
     }
   }
 
+  private synchronized String refreshCookie() {
+    cookieCache = "";
+    return ensureCookie();
+  }
+
   private String extractCookie(Map<String, List<String>> headers) {
     if (headers == null || headers.isEmpty()) {
       return "";
@@ -231,34 +256,45 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
   }
 
   private <T> T exchangeJson(String method, String url, Object body, Map<String, String> headers, Class<T> responseType) {
-    HttpURLConnection connection = null;
-    try {
-      connection = openConnection(url, method);
-      connection.setRequestProperty("Accept", "application/json");
-      if (headers != null) {
-        headers.forEach(connection::setRequestProperty);
-      }
-      if (body != null) {
-        connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
-        writeJson(connection, body);
-      }
-      int statusCode = connection.getResponseCode();
-      String responseBody = readAll(statusCode >= 200 && statusCode < 300 ? connection.getInputStream() : connection.getErrorStream());
-      if (statusCode < 200 || statusCode >= 300) {
-        throw new IllegalStateException("接口调用失败，HTTP " + statusCode + "：" + truncate(responseBody, 500));
-      }
-      return objectMapper.readValue(responseBody, responseType);
-    } catch (IOException e) {
-      throw new IllegalStateException("接口调用失败：" + e.getMessage(), e);
-    } finally {
-      if (connection != null) {
-        connection.disconnect();
+    Map<String, String> requestHeaders = headers == null ? new LinkedHashMap<>() : new LinkedHashMap<>(headers);
+    for (int attempt = 0; attempt < 2; attempt++) {
+      HttpURLConnection connection = null;
+      try {
+        connection = openConnection(url, method);
+        connection.setRequestProperty("Accept", "application/json");
+        if (!requestHeaders.isEmpty()) {
+          requestHeaders.forEach(connection::setRequestProperty);
+        }
+        if (body != null) {
+          connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+          writeJson(connection, body);
+        }
+        int statusCode = connection.getResponseCode();
+        String responseBody = readAll(statusCode >= 200 && statusCode < 300 ? connection.getInputStream() : connection.getErrorStream());
+        if (isUnauthorized(statusCode) && requestHeaders.containsKey("Cookie") && attempt == 0) {
+          requestHeaders.put("Cookie", refreshCookie());
+          continue;
+        }
+        if (statusCode < 200 || statusCode >= 300) {
+          throw new IllegalStateException("接口调用失败，HTTP " + statusCode + "：" + truncate(responseBody, 500));
+        }
+        return objectMapper.readValue(responseBody, responseType);
+      } catch (IOException e) {
+        throw new IllegalStateException("接口调用失败：" + e.getMessage(), e);
+      } finally {
+        if (connection != null) {
+          connection.disconnect();
+        }
       }
     }
+    throw new IllegalStateException("接口调用失败");
   }
 
   private HttpURLConnection openConnection(String url, String method) throws IOException {
     HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
+    if (connection instanceof HttpsURLConnection httpsConnection) {
+      configureHttps(httpsConnection);
+    }
     connection.setRequestMethod(method);
     connection.setConnectTimeout(Math.max(properties.getConnectTimeoutMs(), 1));
     connection.setReadTimeout(Math.max(properties.getReadTimeoutMs(), 1));
@@ -266,6 +302,53 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
       connection.setDoOutput(true);
     }
     return connection;
+  }
+
+  private void configureHttps(HttpsURLConnection connection) {
+    if (!properties.isTrustAllSsl()) {
+      return;
+    }
+    connection.setSSLSocketFactory(trustAllSocketFactory());
+    connection.setHostnameVerifier(TRUST_ALL_HOSTNAME_VERIFIER);
+  }
+
+  private SSLSocketFactory trustAllSocketFactory() {
+    SSLSocketFactory current = trustAllSocketFactory;
+    if (current != null) {
+      return current;
+    }
+    synchronized (PlatformIntegrationServiceImpl.class) {
+      if (trustAllSocketFactory == null) {
+        try {
+          TrustManager[] trustManagers = new TrustManager[] {
+              new X509TrustManager() {
+                @Override
+                public void checkClientTrusted(X509Certificate[] chain, String authType) {
+                }
+
+                @Override
+                public void checkServerTrusted(X509Certificate[] chain, String authType) {
+                }
+
+                @Override
+                public X509Certificate[] getAcceptedIssuers() {
+                  return new X509Certificate[0];
+                }
+              }
+          };
+          SSLContext context = SSLContext.getInstance("TLS");
+          context.init(null, trustManagers, new SecureRandom());
+          trustAllSocketFactory = context.getSocketFactory();
+        } catch (NoSuchAlgorithmException | KeyManagementException e) {
+          throw new IllegalStateException("初始化HTTPS证书信任配置失败：" + e.getMessage(), e);
+        }
+      }
+      return trustAllSocketFactory;
+    }
+  }
+
+  private boolean isUnauthorized(int statusCode) {
+    return statusCode == HttpURLConnection.HTTP_UNAUTHORIZED || statusCode == HttpURLConnection.HTTP_FORBIDDEN;
   }
 
   private void writeJson(HttpURLConnection connection, Object body) throws IOException {

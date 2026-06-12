@@ -222,9 +222,14 @@ export function useTaskCreate() {
   }
 
   async function loadAgents() {
-    agents.value = await integrationApi.listAgents()
-    if (form.appType === 'agent') {
-      selectDefaultAgent()
+    try {
+      agents.value = await integrationApi.listAgents()
+      if (form.appType === 'agent') {
+        selectDefaultAgent()
+      }
+    } catch (error) {
+      agents.value = []
+      ElMessage.error(errorMessage(error, '获取智能体列表失败'))
     }
   }
 
@@ -627,6 +632,10 @@ export function useTaskCreate() {
       text: '文本'
     }
     return value ? map[value] || value : '-'
+  }
+
+  function errorMessage(error: unknown, fallback: string) {
+    return error instanceof Error && error.message ? error.message : fallback
   }
 
   function backToList() {

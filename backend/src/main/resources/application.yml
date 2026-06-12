@@ -26,6 +26,7 @@ integration:
     model-chat-url:
     super-agent-chat-url:
     x-agent-alias: router-agent
+    trust-all-ssl: true
     connect-timeout-ms: 5000
     read-timeout-ms: 60000
     login:

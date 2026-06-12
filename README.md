@@ -163,6 +163,7 @@ integration:
     model-chat-url:
     super-agent-chat-url:
     x-agent-alias: router-agent
+    trust-all-ssl: true
     connect-timeout-ms: 5000
     read-timeout-ms: 60000
     login:
@@ -389,6 +390,8 @@ integration:
     model-chat-url:
     super-agent-chat-url:
     x-agent-alias: router-agent
+    # 本地调试内部HTTPS接口时可保持 true；导入正式证书后可改为 false。
+    trust-all-ssl: true
     connect-timeout-ms: 5000
     read-timeout-ms: 60000
     login:
