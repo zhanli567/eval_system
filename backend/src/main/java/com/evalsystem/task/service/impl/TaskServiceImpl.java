@@ -54,7 +54,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
+import org.springframework.core.task.TaskExecutor;
 
 @Service
 public class TaskServiceImpl implements TaskService {
@@ -81,6 +84,7 @@ public class TaskServiceImpl implements TaskService {
   private final TagMapper tagMapper;
   private final PlatformIntegrationService integrationService;
   private final ObjectMapper objectMapper;
+  private final TaskExecutor taskExecutor;
 
   public TaskServiceImpl(
       TaskMapper taskMapper,
@@ -88,7 +92,8 @@ public class TaskServiceImpl implements TaskService {
       EvaluatorService evaluatorService,
       TagMapper tagMapper,
       PlatformIntegrationService integrationService,
-      ObjectMapper objectMapper
+      ObjectMapper objectMapper,
+      TaskExecutor taskExecutor
   ) {
     this.taskMapper = taskMapper;
     this.datasetMapper = datasetMapper;
@@ -96,6 +101,7 @@ public class TaskServiceImpl implements TaskService {
     this.tagMapper = tagMapper;
     this.integrationService = integrationService;
     this.objectMapper = objectMapper;
+    this.taskExecutor = taskExecutor;
   }
 
   public PageResponse<TaskSummary> listTasks(int page, int size, String status, String keyword, String sortBy, String sortOrder) {
@@ -167,6 +173,40 @@ public class TaskServiceImpl implements TaskService {
 
     String startedAt = now();
     taskMapper.updateTaskStatus(taskId, STATUS_RUNNING, startedAt, null, startedAt);
+    for (TaskMapper.TaskEvaluatorBindingRecord evaluator : taskMapper.listTaskEvaluatorBindings(taskId)) {
+      taskMapper.updateTaskEvaluatorStatus(evaluator.id(), STATUS_RUNNING, startedAt);
+    }
+    scheduleTaskExecution(taskId);
+    return getTask(taskId, 1, 10);
+  }
+
+  private void scheduleTaskExecution(String taskId) {
+    Runnable task = () -> taskExecutor.execute(() -> runTaskSafely(taskId));
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+          task.run();
+        }
+      });
+    } else {
+      task.run();
+    }
+  }
+
+  private void runTaskSafely(String taskId) {
+    try {
+      executeTask(taskId);
+    } catch (Exception e) {
+      markTaskExecutionFailed(taskId, e);
+    }
+  }
+
+  private void executeTask(String taskId) {
+    TaskBase base = findTask(taskId);
+    if (!STATUS_RUNNING.equals(base.status())) {
+      return;
+    }
     List<TaskMapper.TaskItemRecord> items = taskMapper.listAllTaskItems(taskId);
     List<TaskMapper.TaskEvaluatorBindingRecord> evaluators = taskMapper.listTaskEvaluatorBindings(taskId);
     List<TaskMapper.TaskAppFieldMappingRecord> appMappings = taskMapper.listAppFieldMappings(taskId);
@@ -176,13 +216,13 @@ public class TaskServiceImpl implements TaskService {
         .collect(Collectors.groupingBy(TaskMapper.TaskEvaluatorParamMappingRecord::taskEvaluatorId));
 
     Map<String, Map<String, String>> valuesByItem = loadDatasetValues(items);
-    for (TaskMapper.TaskEvaluatorBindingRecord evaluator : evaluators) {
-      taskMapper.updateTaskEvaluatorStatus(evaluator.id(), STATUS_RUNNING, startedAt);
-    }
 
     boolean hasTaskFailure = false;
     Set<String> failedEvaluatorIds = new HashSet<>();
     for (TaskMapper.TaskItemRecord item : items) {
+      if (STATUS_TERMINATED.equals(findTask(taskId).status())) {
+        return;
+      }
       String itemStartedAt = now();
       Map<String, String> rowValues = valuesByItem.getOrDefault(item.datasetItemId(), Map.of());
       AgentInvocationResult agentResult = invokeAgent(base, item, appMappings, rowValues);
@@ -255,9 +295,24 @@ public class TaskServiceImpl implements TaskService {
             && taskMapper.countUnfinishedTaskItems(taskId) == 0
             ? STATUS_COMPLETED
             : STATUS_RUNNING);
+    if (STATUS_TERMINATED.equals(findTask(taskId).status())) {
+      return;
+    }
     boolean finished = STATUS_COMPLETED.equals(finalStatus) || STATUS_FAILED.equals(finalStatus);
     taskMapper.updateTaskStatus(taskId, finalStatus, null, finished ? now() : null, now());
-    return getTask(taskId, 1, 10);
+  }
+
+  private void markTaskExecutionFailed(String taskId, Exception error) {
+    String now = now();
+    for (TaskMapper.TaskEvaluatorBindingRecord evaluator : taskMapper.listTaskEvaluatorBindings(taskId)) {
+      taskMapper.updateTaskEvaluatorStatus(evaluator.id(), STATUS_FAILED, now);
+    }
+    taskMapper.updateTaskStatus(
+        taskId,
+        STATUS_FAILED,
+        null,
+        now,
+        now);
   }
 
   @Transactional
@@ -1020,20 +1075,7 @@ public class TaskServiceImpl implements TaskService {
   }
 
   private String formatAgentOutputs(Map<String, String> outputs) {
-    if (outputs == null || outputs.isEmpty()) {
-      return "";
-    }
-    List<String> fields = new ArrayList<>();
-    addJsonField(fields, "debug", outputs.get("debug"));
-    addJsonField(fields, "reasoning", outputs.get("reasoning"));
-    addJsonField(fields, "text", outputs.get("text"));
-    addJsonField(fields, "error", outputs.get("error"));
-    addJsonField(fields, "rawText", outputs.get("rawText"));
-    return "{" + String.join(",", fields) + "}";
-  }
-
-  private void addJsonField(List<String> fields, String key, String value) {
-    fields.add("\"" + escapeJson(key) + "\":\"" + escapeJson(value == null ? "" : value) + "\"");
+    return AgentOutputFormatter.toDisplayText(outputs);
   }
 
   private void putIfText(Map<String, String> outputs, String key, String value) {
@@ -1058,14 +1100,6 @@ public class TaskServiceImpl implements TaskService {
       }
     }
     return "";
-  }
-
-  private String escapeJson(String value) {
-    return value
-        .replace("\\", "\\\\")
-        .replace("\"", "\\\"")
-        .replace("\r", "\\r")
-        .replace("\n", "\\n");
   }
 
   private String renderPrompt(String prompt, Map<String, Object> params) {

@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { taskApi } from '../../../api/task'
@@ -7,9 +7,11 @@ import type { TaskDetail, TaskItemDetail } from '../../../types'
 export function useTaskDetail(taskId: Ref<string>) {
   const router = useRouter()
   const loading = ref(false)
+  const starting = ref(false)
   const detail = ref<TaskDetail>()
   const page = ref(1)
   const size = ref(8)
+  let pollTimer: number | undefined
 
   const base = computed(() => detail.value?.base)
   const fields = computed(() => detail.value?.fields ?? [])
@@ -26,13 +28,31 @@ export function useTaskDetail(taskId: Ref<string>) {
     { immediate: true }
   )
 
-  async function loadDetail() {
+  watch(
+    () => base.value?.status,
+    (status) => {
+      if (status === 'running') {
+        startPolling()
+      } else {
+        stopPolling()
+      }
+    }
+  )
+
+  onBeforeUnmount(stopPolling)
+
+  async function loadDetail(options: { silent?: boolean } | number = {}) {
     if (!taskId.value) return
-    loading.value = true
+    const silent = typeof options === 'object' && Boolean(options.silent)
+    if (!silent) {
+      loading.value = true
+    }
     try {
       detail.value = await taskApi.getTask(taskId.value, { page: page.value, size: size.value })
     } finally {
-      loading.value = false
+      if (!silent) {
+        loading.value = false
+      }
     }
   }
 
@@ -42,9 +62,29 @@ export function useTaskDetail(taskId: Ref<string>) {
 
   async function startTask() {
     if (!taskId.value) return
-    await taskApi.startTask(taskId.value)
-    ElMessage.success('评测任务已开始')
-    await loadDetail()
+    starting.value = true
+    try {
+      detail.value = await taskApi.startTask(taskId.value)
+      ElMessage.success('评测任务已开始')
+      startPolling()
+    } finally {
+      starting.value = false
+    }
+  }
+
+  function startPolling() {
+    if (pollTimer !== undefined) return
+    pollTimer = window.setInterval(() => {
+      if (!loading.value && !starting.value) {
+        loadDetail({ silent: true })
+      }
+    }, 3000)
+  }
+
+  function stopPolling() {
+    if (pollTimer === undefined) return
+    window.clearInterval(pollTimer)
+    pollTimer = undefined
   }
 
   async function terminateTask() {
@@ -110,6 +150,7 @@ export function useTaskDetail(taskId: Ref<string>) {
 
   return {
     loading,
+    starting,
     detail,
     page,
     size,

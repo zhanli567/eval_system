@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, ArrowRight, Back } from '@element-plus/icons-vue'
 import { useTaskAnnotation } from '../modules/task/composables/useTaskAnnotation'
+import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay'
 
 const route = useRoute()
 const taskId = computed(() => String(route.params.taskId ?? ''))
@@ -28,6 +29,8 @@ const {
   optionLabel,
   appOutputEmptyDescription
 } = useTaskAnnotation(taskId, taskItemId)
+
+const formattedAppOutput = computed(() => formatAppOutput(item.value?.appOutput || ''))
 </script>
 
 <template>
@@ -73,7 +76,7 @@ const {
     <main class="annotation-output">
       <h2>应用输出</h2>
       <div class="app-output-box">
-        <p v-if="item?.appOutput">{{ item.appOutput }}</p>
+        <p v-if="formattedAppOutput">{{ formattedAppOutput }}</p>
         <el-empty v-else :description="appOutputEmptyDescription()" :image-size="80" />
       </div>
 
@@ -88,6 +91,9 @@ const {
             {{ result.passResult || result.status }}
           </el-tag>
           <span class="result-value">得分 {{ result.score ?? '-' }}</span>
+          <p v-if="formatEvaluatorReason(result.resultValue)" class="auto-result-reason">
+            {{ formatEvaluatorReason(result.resultValue) }}
+          </p>
         </div>
         <el-empty v-if="!evaluators.length" description="暂无自动评估结果" :image-size="72" />
       </div>

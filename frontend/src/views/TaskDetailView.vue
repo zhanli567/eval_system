@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { Back, Refresh, VideoPlay, Warning } from '@element-plus/icons-vue'
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail'
+import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay'
 import type { TaskItemDetail } from '../types'
 
 const route = useRoute()
@@ -10,6 +11,7 @@ const taskId = computed(() => String(route.params.taskId ?? ''))
 
 const {
   loading,
+  starting,
   page,
   size,
   base,
@@ -51,7 +53,14 @@ function findEvaluatorResult(row: TaskItemDetail, taskEvaluatorId: string) {
     </div>
     <div class="top-actions">
       <el-button :icon="Refresh" @click="loadDetail">刷新</el-button>
-      <el-button v-if="base?.status !== 'completed' && base?.status !== 'running'" type="primary" :icon="VideoPlay" @click="startTask">
+      <el-button
+        v-if="base?.status !== 'completed' && base?.status !== 'running'"
+        type="primary"
+        :icon="VideoPlay"
+        :loading="starting"
+        :disabled="starting"
+        @click="startTask"
+      >
         开始
       </el-button>
       <el-button v-if="base?.status === 'running' || base?.status === 'pending'" type="warning" :icon="Warning" @click="terminateTask">
@@ -121,7 +130,9 @@ function findEvaluatorResult(row: TaskItemDetail, taskEvaluatorId: string) {
           <template #default="{ row }">{{ row.values[field.id || ''] || '-' }}</template>
         </el-table-column>
         <el-table-column label="应用输出" min-width="260" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.appOutput || '-' }}</template>
+          <template #default="{ row }">
+            <div class="app-output-preview">{{ compactText(formatAppOutput(row.appOutput)) || '-' }}</div>
+          </template>
         </el-table-column>
         <el-table-column v-for="tag in tags" :key="tag.taskTagId" :label="tag.tagName" min-width="190">
           <template #default="{ row }">
@@ -150,6 +161,9 @@ function findEvaluatorResult(row: TaskItemDetail, taskEvaluatorId: string) {
               <span class="result-value">
                 {{ findEvaluatorResult(row, evaluator.taskEvaluatorId)?.score ?? '-' }}
               </span>
+              <p v-if="formatEvaluatorReason(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.resultValue)" class="result-reason-preview">
+                {{ compactText(formatEvaluatorReason(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.resultValue), 96) }}
+              </p>
             </template>
             <el-tag v-else :type="statusTagType(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" effect="plain">
               {{ statusLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status) }}

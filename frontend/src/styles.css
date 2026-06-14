@@ -1216,6 +1216,29 @@ h2 {
   font-weight: 700;
 }
 
+.app-output-preview {
+  display: -webkit-box;
+  max-height: 66px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  white-space: pre-line;
+  word-break: break-word;
+  line-height: 1.55;
+}
+
+.result-reason-preview {
+  display: -webkit-box;
+  max-height: 38px;
+  margin: 6px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .annotation-shell {
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr) 420px;
@@ -1258,20 +1281,24 @@ h2 {
 .app-output-box p {
   margin: 0;
   white-space: pre-wrap;
+  word-break: break-word;
   line-height: 1.7;
 }
 
 .app-output-box {
-  min-height: 260px;
+  min-height: 180px;
+  max-height: 360px;
   margin: 14px 0 24px;
   padding: 16px;
+  overflow: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #fbfcff;
 }
 
 .auto-result-item {
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   min-height: 56px;
   padding: 10px 12px;
@@ -1282,6 +1309,18 @@ h2 {
 
 .auto-result-item div {
   min-width: 0;
+}
+
+.auto-result-reason {
+  grid-column: 1 / -1;
+  max-height: 96px;
+  margin: 0;
+  overflow: auto;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .auto-result-item strong,

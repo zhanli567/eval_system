@@ -18,6 +18,7 @@ const {
   openCreate,
   openDetail,
   startTask,
+  isStartingTask,
   terminateTask,
   removeTask,
   toggleSort,
@@ -131,7 +132,14 @@ const {
       <el-table-column label="操作" width="220" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDetail(row)">详情</el-button>
-          <el-button v-if="row.base.status !== 'completed' && row.base.status !== 'running'" link type="primary" @click.stop="startTask(row)">
+          <el-button
+            v-if="row.base.status !== 'completed' && row.base.status !== 'running'"
+            link
+            type="primary"
+            :loading="isStartingTask(row.base.id)"
+            :disabled="isStartingTask(row.base.id)"
+            @click.stop="startTask(row)"
+          >
             开始
           </el-button>
           <el-button v-if="row.base.status === 'running' || row.base.status === 'pending'" link type="warning" @click.stop="terminateTask(row)">

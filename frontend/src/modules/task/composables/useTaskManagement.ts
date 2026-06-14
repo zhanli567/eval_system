@@ -8,6 +8,7 @@ export function useTaskManagement() {
   const router = useRouter()
   const loading = ref(false)
   const tasks = ref<TaskSummary[]>([])
+  const startingTaskIds = ref<Set<string>>(new Set())
   const total = ref(0)
   const page = ref(1)
   const size = ref(8)
@@ -59,9 +60,28 @@ export function useTaskManagement() {
   }
 
   async function startTask(row: TaskSummary) {
-    await taskApi.startTask(row.base.id)
-    ElMessage.success('评测任务已开始')
-    await loadTasks()
+    setStarting(row.base.id, true)
+    try {
+      await taskApi.startTask(row.base.id)
+      ElMessage.success('评测任务已开始')
+      await loadTasks()
+    } finally {
+      setStarting(row.base.id, false)
+    }
+  }
+
+  function setStarting(taskId: string, value: boolean) {
+    const next = new Set(startingTaskIds.value)
+    if (value) {
+      next.add(taskId)
+    } else {
+      next.delete(taskId)
+    }
+    startingTaskIds.value = next
+  }
+
+  function isStartingTask(taskId: string) {
+    return startingTaskIds.value.has(taskId)
   }
 
   async function terminateTask(row: TaskSummary) {
@@ -122,6 +142,7 @@ export function useTaskManagement() {
   return {
     loading,
     tasks,
+    startingTaskIds,
     total,
     page,
     size,
@@ -135,6 +156,7 @@ export function useTaskManagement() {
     openCreate,
     openDetail,
     startTask,
+    isStartingTask,
     terminateTask,
     removeTask,
     toggleSort,
