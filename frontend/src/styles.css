@@ -598,6 +598,12 @@ h2 {
   cursor: pointer;
 }
 
+.linkish:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
 .pager-row {
   justify-content: flex-end;
   padding-top: 14px;
@@ -730,6 +736,18 @@ h2 {
   padding-right: 2px;
 }
 
+.required-mark {
+  color: #f56c6c;
+  font-weight: 700;
+}
+
+.label-tip {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
 .tag-config-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -801,6 +819,71 @@ h2 {
   min-height: 72px;
   display: flex;
   align-items: center;
+}
+
+.tag-detail-body {
+  min-height: 180px;
+}
+
+.tag-detail-descriptions {
+  margin-bottom: 18px;
+}
+
+.detail-section {
+  display: grid;
+  gap: 12px;
+}
+
+.detail-section h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.detail-option-grid,
+.detail-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.detail-option-card,
+.detail-metric-card {
+  min-height: 82px;
+  padding: 16px;
+  border: 1px solid #edf0f7;
+  border-radius: var(--radius);
+  background: #fafbff;
+}
+
+.detail-option-card.pass {
+  background: #f7fdfb;
+  border-color: #d9f3ea;
+}
+
+.detail-option-card.fail {
+  background: #fff8f8;
+  border-color: #f7dddd;
+}
+
+.detail-option-card {
+  display: grid;
+  gap: 12px;
+}
+
+.detail-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detail-metric-card {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.detail-metric-card strong {
+  font-size: 20px;
 }
 
 .task-toolbar {

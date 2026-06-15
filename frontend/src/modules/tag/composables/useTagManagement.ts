@@ -26,6 +26,9 @@ export function useTagManagement() {
   const tagKeyword = ref('')
   const tagType = ref<TagType | ''>('')
   const dialogVisible = ref(false)
+  const detailDialogVisible = ref(false)
+  const detailLoading = ref(false)
+  const tagDetail = ref<TagDetail | null>(null)
   const editingId = ref('')
 
   const tagForm = reactive({
@@ -41,6 +44,8 @@ export function useTagManagement() {
 
   const editing = computed(() => Boolean(editingId.value))
   const dialogTitle = computed(() => (editing.value ? '编辑标签' : '创建标签'))
+  const detailPassOptions = computed(() => tagDetail.value?.options.filter((option) => option.optionGroup === 'pass') ?? [])
+  const detailFailOptions = computed(() => tagDetail.value?.options.filter((option) => option.optionGroup === 'fail') ?? [])
 
   onMounted(async () => {
     await loadTags()
@@ -73,6 +78,20 @@ export function useTagManagement() {
     editingId.value = row.id
     fillForm(detail)
     dialogVisible.value = true
+  }
+
+  async function openDetailDialog(row: TagSummary) {
+    detailDialogVisible.value = true
+    detailLoading.value = true
+    tagDetail.value = null
+    try {
+      tagDetail.value = await tagApi.getTag(row.id)
+    } catch (error) {
+      detailDialogVisible.value = false
+      ElMessage.error(getErrorMessage(error, '加载标签详情失败'))
+    } finally {
+      detailLoading.value = false
+    }
   }
 
   async function submitTag() {
@@ -217,6 +236,11 @@ export function useTagManagement() {
     tagKeyword,
     tagType,
     dialogVisible,
+    detailDialogVisible,
+    detailLoading,
+    tagDetail,
+    detailPassOptions,
+    detailFailOptions,
     editing,
     dialogTitle,
     tagForm,
@@ -225,6 +249,7 @@ export function useTagManagement() {
     loadTags,
     openCreateDialog,
     openEditDialog,
+    openDetailDialog,
     submitTag,
     addCategoryOption,
     removeCategoryOption,
