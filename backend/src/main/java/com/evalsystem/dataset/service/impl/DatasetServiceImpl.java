@@ -14,9 +14,12 @@ import com.evalsystem.dataset.dto.VersionDetail;
 import com.evalsystem.dataset.mapper.DatasetMapper;
 import com.evalsystem.dataset.service.DatasetService;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
@@ -24,6 +27,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -281,20 +285,24 @@ public class DatasetServiceImpl implements DatasetService {
       if (headerRow == null) {
         throw new IllegalArgumentException("Excel第一行必须是表头");
       }
-      validateExcelHeader(headerRow, fields, formatter);
+      Map<CellPosition, String> mergedCellTextMap = buildMergedCellTextMap(sheet, formatter);
+      Map<Integer, FieldDto> matchedColumns = mapExcelColumns(headerRow, fields, formatter, mergedCellTextMap);
 
       List<Map<String, String>> rows = new ArrayList<>();
+      Set<String> rowKeys = new HashSet<>();
       for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
         Row row = sheet.getRow(rowIndex);
-        if (row == null || isBlankRow(row, fields.size(), formatter)) {
+        if (row == null || isBlankRow(sheet, rowIndex, matchedColumns.keySet(), formatter, mergedCellTextMap)) {
           continue;
         }
         Map<String, String> values = new LinkedHashMap<>();
-        for (int columnIndex = 0; columnIndex < fields.size(); columnIndex++) {
-          FieldDto field = fields.get(columnIndex);
-          values.put(field.id(), getCellText(row.getCell(columnIndex), formatter));
+        for (Map.Entry<Integer, FieldDto> entry : matchedColumns.entrySet()) {
+          values.put(entry.getValue().id(), getCellText(sheet, rowIndex, entry.getKey(), formatter, mergedCellTextMap));
         }
-        rows.add(values);
+        String rowKey = excelRowDuplicateKey(fields, values);
+        if (rowKeys.add(rowKey)) {
+          rows.add(values);
+        }
       }
       return rows;
     } catch (IllegalArgumentException exception) {
@@ -304,31 +312,115 @@ public class DatasetServiceImpl implements DatasetService {
     }
   }
 
-  private void validateExcelHeader(Row headerRow, List<FieldDto> fields, DataFormatter formatter) {
-    int lastCellNum = headerRow.getLastCellNum();
-    if (lastCellNum != fields.size()) {
-      throw new IllegalArgumentException("Excel表头列数必须和评测集表头一致");
-    }
-    for (int columnIndex = 0; columnIndex < fields.size(); columnIndex++) {
-      String actual = getCellText(headerRow.getCell(columnIndex), formatter);
-      String expected = fields.get(columnIndex).fieldName();
-      if (!expected.equals(actual)) {
-        throw new IllegalArgumentException("Excel第" + (columnIndex + 1) + "列表头应为：" + expected);
+  private Map<Integer, FieldDto> mapExcelColumns(
+      Row headerRow,
+      List<FieldDto> fields,
+      DataFormatter formatter,
+      Map<CellPosition, String> mergedCellTextMap
+  ) {
+    Map<String, FieldDto> fieldByName = new LinkedHashMap<>();
+    for (FieldDto field : fields) {
+      if (fieldByName.putIfAbsent(field.fieldName(), field) != null) {
+        throw new IllegalArgumentException("评测集表头存在重复列名：" + field.fieldName());
       }
     }
+
+    Map<Integer, FieldDto> matchedColumns = new LinkedHashMap<>();
+    Set<String> matchedFieldIds = new HashSet<>();
+    int lastCellNum = headerRow.getLastCellNum();
+    if (lastCellNum < 0) {
+      throw new IllegalArgumentException("Excel第一行必须是表头");
+    }
+
+    Sheet sheet = headerRow.getSheet();
+    int firstCellNum = Math.max(headerRow.getFirstCellNum(), 0);
+    for (int columnIndex = firstCellNum; columnIndex < lastCellNum; columnIndex++) {
+      String header = getCellText(sheet, headerRow.getRowNum(), columnIndex, formatter, mergedCellTextMap);
+      if (!StringUtils.hasText(header)) {
+        continue;
+      }
+      FieldDto matchedField = fieldByName.get(header);
+      if (matchedField == null) {
+        continue;
+      }
+      if (!matchedFieldIds.add(matchedField.id())) {
+        throw new IllegalArgumentException("Excel表头存在重复列：" + header);
+      }
+      matchedColumns.put(columnIndex, matchedField);
+    }
+
+    List<String> missingRequiredFields = fields.stream()
+        .filter(field -> Boolean.TRUE.equals(field.required()))
+        .filter(field -> !matchedFieldIds.contains(field.id()))
+        .map(FieldDto::fieldName)
+        .toList();
+    if (!missingRequiredFields.isEmpty()) {
+      throw new IllegalArgumentException("Excel缺少必填列：" + String.join("、", missingRequiredFields));
+    }
+    if (matchedColumns.isEmpty()) {
+      throw new IllegalArgumentException("Excel表头未匹配到评测集字段");
+    }
+    return matchedColumns;
   }
 
-  private boolean isBlankRow(Row row, int fieldCount, DataFormatter formatter) {
-    for (int columnIndex = 0; columnIndex < fieldCount; columnIndex++) {
-      if (StringUtils.hasText(getCellText(row.getCell(columnIndex), formatter))) {
+  private boolean isBlankRow(
+      Sheet sheet,
+      int rowIndex,
+      Set<Integer> columnIndexes,
+      DataFormatter formatter,
+      Map<CellPosition, String> mergedCellTextMap
+  ) {
+    for (Integer columnIndex : columnIndexes) {
+      if (StringUtils.hasText(getCellText(sheet, rowIndex, columnIndex, formatter, mergedCellTextMap))) {
         return false;
       }
     }
     return true;
   }
 
+  private Map<CellPosition, String> buildMergedCellTextMap(Sheet sheet, DataFormatter formatter) {
+    Map<CellPosition, String> mergedCellTextMap = new HashMap<>();
+    for (CellRangeAddress range : sheet.getMergedRegions()) {
+      Row firstRow = sheet.getRow(range.getFirstRow());
+      Cell firstCell = firstRow == null ? null : firstRow.getCell(range.getFirstColumn());
+      String text = getCellText(firstCell, formatter);
+      for (int rowIndex = range.getFirstRow(); rowIndex <= range.getLastRow(); rowIndex++) {
+        for (int columnIndex = range.getFirstColumn(); columnIndex <= range.getLastColumn(); columnIndex++) {
+          mergedCellTextMap.put(new CellPosition(rowIndex, columnIndex), text);
+        }
+      }
+    }
+    return mergedCellTextMap;
+  }
+
+  private String excelRowDuplicateKey(List<FieldDto> fields, Map<String, String> values) {
+    StringBuilder builder = new StringBuilder();
+    for (FieldDto field : fields) {
+      builder.append(values.getOrDefault(field.id(), "")).append('\u001F');
+    }
+    return builder.toString();
+  }
+
+  private String getCellText(
+      Sheet sheet,
+      int rowIndex,
+      int columnIndex,
+      DataFormatter formatter,
+      Map<CellPosition, String> mergedCellTextMap
+  ) {
+    String mergedText = mergedCellTextMap.get(new CellPosition(rowIndex, columnIndex));
+    if (mergedText != null) {
+      return mergedText;
+    }
+    Row row = sheet.getRow(rowIndex);
+    return row == null ? "" : getCellText(row.getCell(columnIndex), formatter);
+  }
+
   private String getCellText(Cell cell, DataFormatter formatter) {
     return cell == null ? "" : formatter.formatCellValue(cell).trim();
+  }
+
+  private record CellPosition(int rowIndex, int columnIndex) {
   }
 
   private RowDto getRow(String itemId) {

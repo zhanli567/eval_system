@@ -21,6 +21,7 @@ export function useDatasetList() {
   const datasetKeyword = ref('')
   const createVisible = ref(false)
   const draggedFieldIndex = ref<number | null>(null)
+  const dragOverFieldIndex = ref<number | null>(null)
 
   const createForm = reactive({
     name: '',
@@ -96,19 +97,28 @@ export function useDatasetList() {
     draggedFieldIndex.value = index
   }
 
+  function enterFieldDrag(index: number) {
+    if (draggedFieldIndex.value !== null && draggedFieldIndex.value !== index) {
+      dragOverFieldIndex.value = index
+    }
+  }
+
   function dropField(target: DatasetField[], targetIndex: number) {
     const sourceIndex = draggedFieldIndex.value
     if (sourceIndex === null || sourceIndex === targetIndex) {
       draggedFieldIndex.value = null
+      dragOverFieldIndex.value = null
       return
     }
     const [moved] = target.splice(sourceIndex, 1)
     target.splice(targetIndex, 0, moved)
     draggedFieldIndex.value = null
+    dragOverFieldIndex.value = null
   }
 
   function endFieldDrag() {
     draggedFieldIndex.value = null
+    dragOverFieldIndex.value = null
   }
 
   function formatTime(value?: string) {
@@ -126,6 +136,8 @@ export function useDatasetList() {
     datasetSize,
     datasetKeyword,
     createVisible,
+    draggedFieldIndex,
+    dragOverFieldIndex,
     createForm,
     loadDatasets,
     openDataset,
@@ -135,6 +147,7 @@ export function useDatasetList() {
     addField,
     removeField,
     startFieldDrag,
+    enterFieldDrag,
     dropField,
     endFieldDrag,
     formatTime

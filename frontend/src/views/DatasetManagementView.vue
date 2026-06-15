@@ -10,6 +10,8 @@ const {
   datasetSize,
   datasetKeyword,
   createVisible,
+  draggedFieldIndex,
+  dragOverFieldIndex,
   createForm,
   loadDatasets,
   openDataset,
@@ -19,6 +21,7 @@ const {
   addField,
   removeField,
   startFieldDrag,
+  enterFieldDrag,
   dropField,
   endFieldDrag,
   formatTime
@@ -60,11 +63,10 @@ const {
       row-key="id"
       highlight-current-row
       class="dataset-table"
-      @row-click="openDataset"
     >
       <el-table-column prop="name" label="评测集名称" min-width="220">
         <template #default="{ row }">
-          <span class="linkish">{{ row.name }}</span>
+          <button class="table-link" type="button" @click.stop="openDataset(row)">{{ row.name }}</button>
         </template>
       </el-table-column>
       <el-table-column prop="publishedVersionCount" label="版本数量" width="110" />
@@ -78,8 +80,9 @@ const {
       <el-table-column label="更新时间" width="190">
         <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="操作" width="150" fixed="right">
         <template #default="{ row }">
+          <el-button link type="primary" @click.stop="openDataset(row)">详情</el-button>
           <el-button link type="danger" @click.stop="removeDataset(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -113,6 +116,8 @@ const {
           v-for="(field, index) in createForm.fields"
           :key="index"
           class="field-editor"
+          :class="{ 'is-dragging': draggedFieldIndex === index, 'is-drop-target': dragOverFieldIndex === index }"
+          @dragenter.prevent="enterFieldDrag(index)"
           @dragover.prevent
           @drop="dropField(createForm.fields, index)"
         >
@@ -124,7 +129,11 @@ const {
             @dragstart="startFieldDrag(index)"
             @dragend="endFieldDrag"
           >
-            拖动
+            <span class="drag-grip" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
           </button>
           <el-input v-model="field.fieldName" placeholder="列名" />
           <el-select v-model="field.fieldType" placeholder="类型">

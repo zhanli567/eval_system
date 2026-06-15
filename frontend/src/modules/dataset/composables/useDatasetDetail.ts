@@ -23,11 +23,17 @@ export function useDatasetDetail(datasetId: Ref<string>) {
   const excelInput = ref<HTMLInputElement>()
   const coverExcelInput = ref<HTMLInputElement>()
   const draggedFieldIndex = ref<number | null>(null)
+  const dragOverFieldIndex = ref<number | null>(null)
 
   const fieldForm = ref<DatasetField[]>([])
   const rowForm = reactive<Record<string, string>>({})
 
   const datasetTitle = computed(() => datasetSummary.value?.name || '评测集详情')
+  const datasetHeading = computed(() => {
+    const name = datasetSummary.value?.name || '评测集详情'
+    const description = datasetSummary.value?.description?.trim()
+    return description ? `${name} - ${description}` : name
+  })
   const activeVersion = computed(() => detail.value?.version)
   const isDraft = computed(() => activeVersion.value?.draft === true)
   const tableRows = computed(() => detail.value?.rows.records ?? [])
@@ -109,19 +115,28 @@ export function useDatasetDetail(datasetId: Ref<string>) {
     draggedFieldIndex.value = index
   }
 
+  function enterFieldDrag(index: number) {
+    if (draggedFieldIndex.value !== null && draggedFieldIndex.value !== index) {
+      dragOverFieldIndex.value = index
+    }
+  }
+
   function dropField(target: DatasetField[], targetIndex: number) {
     const sourceIndex = draggedFieldIndex.value
     if (sourceIndex === null || sourceIndex === targetIndex) {
       draggedFieldIndex.value = null
+      dragOverFieldIndex.value = null
       return
     }
     const [moved] = target.splice(sourceIndex, 1)
     target.splice(targetIndex, 0, moved)
     draggedFieldIndex.value = null
+    dragOverFieldIndex.value = null
   }
 
   function endFieldDrag() {
     draggedFieldIndex.value = null
+    dragOverFieldIndex.value = null
   }
 
   function openFieldDialog() {
@@ -229,7 +244,7 @@ export function useDatasetDetail(datasetId: Ref<string>) {
       await loadDetail()
       await loadDatasetSummary()
     } catch (error) {
-      ElMessage.error(getErrorMessage(error, '导入失败，请确认Excel表头和当前表头完全一致'))
+      ElMessage.error(getErrorMessage(error, '导入失败，请确认Excel包含所有必填列'))
     } finally {
       input.value = ''
     }
@@ -247,7 +262,7 @@ export function useDatasetDetail(datasetId: Ref<string>) {
       await loadDetail()
       await loadDatasetSummary()
     } catch (error) {
-      ElMessage.error(getErrorMessage(error, '覆盖失败，请确认Excel表头和当前表头完全一致'))
+      ElMessage.error(getErrorMessage(error, '覆盖失败，请确认Excel包含所有必填列'))
     } finally {
       input.value = ''
     }
@@ -295,6 +310,7 @@ export function useDatasetDetail(datasetId: Ref<string>) {
     detailLoading,
     datasetSummary,
     datasetTitle,
+    datasetHeading,
     versions,
     activeVersionId,
     tablePage,
@@ -306,6 +322,8 @@ export function useDatasetDetail(datasetId: Ref<string>) {
     rowEditingId,
     excelInput,
     coverExcelInput,
+    draggedFieldIndex,
+    dragOverFieldIndex,
     fieldForm,
     rowForm,
     activeVersion,
@@ -321,6 +339,7 @@ export function useDatasetDetail(datasetId: Ref<string>) {
     addField,
     removeField,
     startFieldDrag,
+    enterFieldDrag,
     dropField,
     endFieldDrag,
     openFieldDialog,

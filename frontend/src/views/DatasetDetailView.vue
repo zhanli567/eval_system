@@ -9,8 +9,7 @@ const datasetId = computed(() => String(route.params.datasetId ?? ''))
 
 const {
   detailLoading,
-  datasetSummary,
-  datasetTitle,
+  datasetHeading,
   versions,
   activeVersionId,
   tablePage,
@@ -22,6 +21,8 @@ const {
   rowEditingId,
   excelInput,
   coverExcelInput,
+  draggedFieldIndex,
+  dragOverFieldIndex,
   fieldForm,
   rowForm,
   activeVersion,
@@ -37,6 +38,7 @@ const {
   addField,
   removeField,
   startFieldDrag,
+  enterFieldDrag,
   dropField,
   endFieldDrag,
   openFieldDialog,
@@ -57,9 +59,7 @@ const {
   <header class="topbar detail-topbar">
     <div>
       <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评测集列表</el-button>
-      <p class="eyebrow">评测集详情</p>
-      <h1>{{ datasetTitle }}</h1>
-      <span class="meta">{{ datasetSummary?.description || '暂无描述' }}</span>
+      <h1>{{ datasetHeading }}</h1>
     </div>
     <div class="top-actions">
       <el-button :icon="Refresh" @click="loadDataset">刷新</el-button>
@@ -87,7 +87,6 @@ const {
     <div class="version-content" v-loading="detailLoading">
       <div class="version-head">
         <div>
-          <p class="eyebrow">{{ datasetTitle }}</p>
           <h2>{{ activeVersion?.versionName || '-' }}</h2>
           <span class="meta">数据量 {{ activeVersion?.itemCount ?? 0 }} · {{ isDraft ? '草稿可编辑' : '发布版本只读' }}</span>
         </div>
@@ -139,7 +138,7 @@ const {
         >
           <template #header>
             <span>{{ field.fieldName }}</span>
-            <el-tag v-if="field.required" size="small" type="danger" effect="plain">必填</el-tag>
+            <span v-if="field.required" class="required-mark">*</span>
           </template>
           <template #default="{ row }">
             {{ row.values[field.id || ''] || '-' }}
@@ -177,6 +176,8 @@ const {
         v-for="(field, index) in fieldForm"
         :key="field.id || index"
         class="field-editor"
+        :class="{ 'is-dragging': draggedFieldIndex === index, 'is-drop-target': dragOverFieldIndex === index }"
+        @dragenter.prevent="enterFieldDrag(index)"
         @dragover.prevent
         @drop="dropField(fieldForm, index)"
       >
@@ -188,7 +189,11 @@ const {
           @dragstart="startFieldDrag(index)"
           @dragend="endFieldDrag"
         >
-          拖动
+          <span class="drag-grip" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
         </button>
         <el-input v-model="field.fieldName" placeholder="列名" />
         <el-select v-model="field.fieldType" placeholder="类型">
@@ -209,7 +214,10 @@ const {
 
   <el-dialog v-model="rowVisible" :title="rowEditingId ? '编辑数据' : '新增数据'" width="720px">
     <el-form label-position="top">
-      <el-form-item v-for="field in fields" :key="field.id" :label="field.fieldName">
+      <el-form-item v-for="field in fields" :key="field.id">
+        <template #label>
+          {{ field.fieldName }} <span v-if="field.required" class="required-mark">*</span>
+        </template>
         <el-input v-model="rowForm[field.id || '']" type="textarea" :autosize="{ minRows: 2, maxRows: 5 }" />
       </el-form-item>
     </el-form>

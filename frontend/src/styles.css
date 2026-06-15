@@ -604,6 +604,27 @@ h2 {
   border-radius: 4px;
 }
 
+.table-link {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+  text-align: left;
+}
+
+.table-link:hover {
+  text-decoration: underline;
+}
+
+.table-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
 .pager-row {
   justify-content: flex-end;
   padding-top: 14px;
@@ -702,29 +723,56 @@ h2 {
 
 .field-editor {
   display: grid;
-  grid-template-columns: 58px 1.1fr 150px 88px 1.4fr 42px;
+  grid-template-columns: 42px 1.1fr 150px 88px 1.4fr 42px;
   gap: 10px;
   align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
+  transition: background-color 160ms ease, box-shadow 160ms ease, opacity 160ms ease, transform 160ms ease;
 }
 
 .field-editor:last-child {
   border-bottom: 0;
 }
 
+.field-editor.is-dragging {
+  opacity: 0.56;
+  transform: scale(0.992);
+}
+
+.field-editor.is-drop-target {
+  background: #f4f6ff;
+  box-shadow: inset 0 0 0 1px #ccd3ff;
+  transform: translateY(2px) scale(0.988);
+}
+
 .drag-handle {
-  height: 30px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
   border: 1px dashed #cbd5e1;
   border-radius: 7px;
   background: #f8fafc;
   color: var(--muted);
   cursor: grab;
-  font-size: 12px;
+  padding: 0;
 }
 
 .drag-handle:active {
   cursor: grabbing;
+}
+
+.drag-grip {
+  display: grid;
+  gap: 3px;
+}
+
+.drag-grip span {
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: #8b95a7;
 }
 
 .tag-dialog .el-dialog__body {
@@ -737,6 +785,7 @@ h2 {
 }
 
 .required-mark {
+  margin-left: 3px;
   color: #f56c6c;
   font-weight: 700;
 }
