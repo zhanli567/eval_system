@@ -240,6 +240,16 @@ public interface TaskMapper {
   void updateTaskItemStatus(@Param("taskItemId") String taskItemId, @Param("status") String status, @Param("now") String now);
 
   @Update("""
+      UPDATE eval_task_item
+      SET status = #{status},
+          finished_at = CASE WHEN #{status} = 'failed' THEN #{now} ELSE finished_at END,
+          updated_at = #{now}
+      WHERE task_id = #{taskId}
+        AND status IN ('pending', 'running')
+      """)
+  void updateUnfinishedTaskItemsStatus(@Param("taskId") String taskId, @Param("status") String status, @Param("now") String now);
+
+  @Update("""
       UPDATE eval_task_evaluator_result
       SET status = #{status},
           score = #{score},

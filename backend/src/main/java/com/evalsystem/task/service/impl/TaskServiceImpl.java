@@ -224,6 +224,7 @@ public class TaskServiceImpl implements TaskService {
         return;
       }
       String itemStartedAt = now();
+      taskMapper.updateTaskItemStatus(item.id(), STATUS_RUNNING, itemStartedAt);
       Map<String, String> rowValues = valuesByItem.getOrDefault(item.datasetItemId(), Map.of());
       AgentInvocationResult agentResult = invokeAgent(base, item, appMappings, rowValues);
       boolean hasFailedEvaluator = STATUS_FAILED.equals(agentResult.status());
@@ -307,6 +308,7 @@ public class TaskServiceImpl implements TaskService {
     for (TaskMapper.TaskEvaluatorBindingRecord evaluator : taskMapper.listTaskEvaluatorBindings(taskId)) {
       taskMapper.updateTaskEvaluatorStatus(evaluator.id(), STATUS_FAILED, now);
     }
+    taskMapper.updateUnfinishedTaskItemsStatus(taskId, STATUS_FAILED, now);
     taskMapper.updateTaskStatus(
         taskId,
         STATUS_FAILED,
@@ -570,6 +572,9 @@ public class TaskServiceImpl implements TaskService {
       if (mapping == null) {
         continue;
       }
+      if (!Boolean.TRUE.equals(param.required()) && isBlankOptionalParamMapping(mapping)) {
+        continue;
+      }
       String sourceType = normalizeSourceType(mapping.sourceType());
       String datasetFieldId = "";
       String appOutputName = "";
@@ -594,6 +599,14 @@ public class TaskServiceImpl implements TaskService {
           order++));
     }
     return normalized;
+  }
+
+  private boolean isBlankOptionalParamMapping(TaskEvaluatorParamMappingInput mapping) {
+    if (mapping == null || !StringUtils.hasText(mapping.sourceType())) {
+      return true;
+    }
+    return SOURCE_DATASET_FIELD.equals(mapping.sourceType().trim())
+        && !StringUtils.hasText(mapping.datasetFieldId());
   }
 
   private List<String> normalizeTags(List<String> tagIds) {

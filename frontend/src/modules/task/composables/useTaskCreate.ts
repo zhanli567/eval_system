@@ -535,17 +535,31 @@ export function useTaskCreate() {
       evaluatorSource: block.evaluatorSource,
       evaluatorId: block.evaluatorId,
       evaluatorVersionId: block.evaluatorSource === 'custom' ? block.evaluatorVersionId : '',
-      paramMappings: block.params.map((param) => {
-        const mapping = block.paramMappings[paramKey(param)]
-        return {
-          paramId: param.id,
-          paramName: param.paramName,
-          sourceType: mapping.sourceType,
-          datasetFieldId: mapping.sourceType === 'dataset_field' ? mapping.datasetFieldId : '',
-          appOutputName: mapping.sourceType === 'app_output' ? mapping.appOutputName : ''
-        }
-      })
+      paramMappings: block.params
+        .map((param) => {
+          const mapping = block.paramMappings[paramKey(param)]
+          return mapping && shouldSubmitParamMapping(param, mapping)
+            ? {
+                paramId: param.id,
+                paramName: param.paramName,
+                sourceType: mapping.sourceType,
+                datasetFieldId: mapping.sourceType === 'dataset_field' ? mapping.datasetFieldId : '',
+                appOutputName: mapping.sourceType === 'app_output' ? mapping.appOutputName : ''
+              }
+            : null
+        })
+        .filter((mapping): mapping is NonNullable<typeof mapping> => Boolean(mapping))
     }
+  }
+
+  function shouldSubmitParamMapping(param: EvaluatorParam, mapping: ParamMappingState) {
+    if (param.required) {
+      return true
+    }
+    if (mapping.sourceType === 'dataset_field') {
+      return Boolean(mapping.datasetFieldId)
+    }
+    return form.appType === 'agent' && Boolean(mapping.appOutputName)
   }
 
   function validate() {
