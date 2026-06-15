@@ -108,6 +108,37 @@ class PlatformIntegrationServiceImplTest {
     assertThat(root.get("messages").get(0).get("content").asText()).isEqualTo("hello");
   }
 
+  @Test
+  void invokeAgentConcatenatesStreamingTextChunks() throws Exception {
+    ObjectMapper objectMapper = new ObjectMapper();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/login", exchange -> {
+      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
+      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
+    });
+    server.createContext("/agent/chat", exchange -> {
+      byte[] payload = """
+          data: {"choices":[{"delta":{"content":[{"type":"text","text":"Hello"}]}}]}
+          data: {"choices":[{"delta":{"content":[{"type":"text","text":" "}]}}]}
+          data: {"choices":[{"delta":{"content":[{"type":"text","text":"world"}]}}]}
+          data: [DONE]
+          """.getBytes(StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().set("Content-Type", "text/event-stream;charset=UTF-8");
+      exchange.sendResponseHeaders(200, payload.length);
+      try (var output = exchange.getResponseBody()) {
+        output.write(payload);
+      }
+    });
+    server.start();
+
+    PlatformIntegrationServiceImpl service = new PlatformIntegrationServiceImpl(properties(), objectMapper);
+    var response = service.invokeAgent(
+        "router-agent",
+        new PlatformAgentChatRequest("conversation-1", List.of(new PlatformAgentMessage("user", "hello")), true));
+
+    assertThat(response.outputs().get("text")).isEqualTo("Hello world");
+  }
+
   private PlatformIntegrationProperties properties() {
     String baseUrl = "http://localhost:" + server.getAddress().getPort();
     PlatformIntegrationProperties properties = new PlatformIntegrationProperties();

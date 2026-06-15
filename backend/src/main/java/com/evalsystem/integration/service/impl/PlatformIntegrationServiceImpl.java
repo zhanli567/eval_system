@@ -515,7 +515,7 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
     String text = textValue(item, "text");
     String reasoning = textValue(item, "reasoning");
     String error = textValue(item, "error");
-    String fallbackValue = firstNonBlank(text, reasoning, error, firstNonTypeFieldValue(item));
+    String fallbackValue = firstNonEmpty(text, reasoning, error, firstNonTypeFieldValue(item));
     if ("reasoning".equals(type)) {
       return new PlatformAgentContentBlock(type, null, fallbackValue, null);
     }
@@ -539,10 +539,10 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
       }
     }
     Map<String, String> outputs = new LinkedHashMap<>();
-    putIfText(outputs, "debug", joinNonBlank("\n", debugParts.toArray(String[]::new)));
-    putIfText(outputs, "reasoning", joinNonBlank("\n", reasoningParts.toArray(String[]::new)));
-    putIfText(outputs, "text", joinNonBlank("\n", textParts.toArray(String[]::new)));
-    putIfText(outputs, "error", joinNonBlank("\n", errorParts.toArray(String[]::new)));
+    putIfText(outputs, "debug", joinStreamParts(debugParts));
+    putIfText(outputs, "reasoning", joinStreamParts(reasoningParts));
+    putIfText(outputs, "text", joinStreamParts(textParts));
+    putIfText(outputs, "error", joinStreamParts(errorParts));
     putIfText(outputs, "answer", firstNonBlank(outputs.get("text")));
     putIfText(outputs, "content", firstNonBlank(outputs.get("text")));
     putIfText(outputs, "rawText", joinNonBlank("\n", outputs.get("debug"), outputs.get("reasoning"), outputs.get("text"), outputs.get("error")));
@@ -559,8 +559,8 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
     if (content == null || !StringUtils.hasText(content.type())) {
       return;
     }
-    String value = firstNonBlank(content.text(), content.reasoning(), content.error());
-    if (!StringUtils.hasText(value)) {
+    String value = firstNonEmpty(content.text(), content.reasoning(), content.error());
+    if (value.isEmpty()) {
       return;
     }
     if ("debug".equals(content.type())) {
@@ -680,6 +680,15 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
     return "";
   }
 
+  private String firstNonEmpty(String... values) {
+    for (String value : values) {
+      if (value != null && !value.isEmpty()) {
+        return value;
+      }
+    }
+    return "";
+  }
+
   private void putIfText(Map<String, String> outputs, String key, String value) {
     if (StringUtils.hasText(value)) {
       outputs.put(key, value);
@@ -694,6 +703,19 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
       }
     }
     return String.join(delimiter, parts);
+  }
+
+  private String joinStreamParts(List<String> parts) {
+    if (parts == null || parts.isEmpty()) {
+      return "";
+    }
+    StringBuilder result = new StringBuilder();
+    for (String part : parts) {
+      if (part != null && !part.isEmpty()) {
+        result.append(part);
+      }
+    }
+    return result.toString();
   }
 
   private String requireText(String value, String message) {

@@ -34,7 +34,7 @@ function pickAppOutputText(value: string) {
 }
 
 function cleanupDisplayText(value: string) {
-  return value
+  const normalized = value
     .replace(/\\r\\n/g, '\n')
     .replace(/\\n/g, '\n')
     .replace(/\\r/g, '\n')
@@ -43,4 +43,29 @@ function cleanupDisplayText(value: string) {
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
+  return mergeFragmentedLines(normalized)
+}
+
+function mergeFragmentedLines(value: string) {
+  if (!value.includes('\n')) return value
+  return value
+    .split(/\n{2,}/)
+    .map((block) => {
+      const rawLines = block
+        .split('\n')
+        .filter((line) => line.trim())
+      const lines = rawLines.map((line) => line.trim())
+      if (shouldMergeLines(lines)) {
+        return rawLines.join('')
+      }
+      return block
+    })
+    .join('\n\n')
+}
+
+function shouldMergeLines(lines: string[]) {
+  if (lines.length < 5) return false
+  const averageLength = lines.reduce((sum, line) => sum + line.length, 0) / lines.length
+  const shortLineRatio = lines.filter((line) => line.length <= 8).length / lines.length
+  return averageLength <= 10 || shortLineRatio >= 0.75
 }

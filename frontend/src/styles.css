@@ -1241,9 +1241,10 @@ h2 {
 
 .annotation-shell {
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr) 420px;
+  grid-template-columns: minmax(300px, 0.75fr) minmax(520px, 1.45fr) minmax(340px, 0.9fr);
   gap: 16px;
   align-items: start;
+  overflow-x: auto;
 }
 
 .annotation-load-error,
@@ -1253,6 +1254,7 @@ h2 {
 
 .annotation-column,
 .annotation-output {
+  min-width: 0;
   min-height: 680px;
 }
 
@@ -1281,7 +1283,8 @@ h2 {
 .app-output-box p {
   margin: 0;
   white-space: pre-wrap;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: break-word;
   line-height: 1.7;
 }
 
@@ -1294,6 +1297,7 @@ h2 {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #fbfcff;
+  font-size: 14px;
 }
 
 .auto-result-item {
@@ -1391,6 +1395,29 @@ h2 {
   .task-create-bottom-bar {
     left: 0;
     right: 0;
+  }
+}
+
+@media (max-width: 1500px) {
+  .annotation-shell {
+    grid-template-columns: minmax(280px, 320px) minmax(480px, 1fr);
+  }
+
+  .annotation-form-column {
+    position: static;
+    grid-column: 1 / -1;
+    min-height: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .annotation-shell {
+    grid-template-columns: 1fr;
+    overflow-x: visible;
+  }
+
+  .annotation-form-column {
+    grid-column: auto;
   }
 }
 

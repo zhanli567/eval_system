@@ -1042,10 +1042,10 @@ public class TaskServiceImpl implements TaskService {
       }
     }
 
-    putIfText(outputs, "debug", joinLines(debugParts));
-    putIfText(outputs, "reasoning", joinLines(reasoningParts));
-    putIfText(outputs, "text", joinLines(textParts));
-    putIfText(outputs, "error", joinLines(errorParts));
+    putIfText(outputs, "debug", joinStreamParts(debugParts));
+    putIfText(outputs, "reasoning", joinStreamParts(reasoningParts));
+    putIfText(outputs, "text", joinStreamParts(textParts));
+    putIfText(outputs, "error", joinStreamParts(errorParts));
     if (response.outputs() != null) {
       response.outputs().forEach((key, value) -> {
         if (StringUtils.hasText(key) && !outputs.containsKey(key)) {
@@ -1077,8 +1077,8 @@ public class TaskServiceImpl implements TaskService {
       return;
     }
     String type = content.type().trim();
-    String value = firstNonBlank(content.text(), content.reasoning(), content.error());
-    if (!StringUtils.hasText(value)) {
+    String value = firstNonEmpty(content.text(), content.reasoning(), content.error());
+    if (value.isEmpty()) {
       return;
     }
     if ("debug".equals(type)) {
@@ -1111,9 +1111,31 @@ public class TaskServiceImpl implements TaskService {
         .collect(Collectors.joining("\n"));
   }
 
+  private String joinStreamParts(List<String> parts) {
+    if (parts == null || parts.isEmpty()) {
+      return "";
+    }
+    StringBuilder result = new StringBuilder();
+    for (String part : parts) {
+      if (part != null && !part.isEmpty()) {
+        result.append(part);
+      }
+    }
+    return result.toString();
+  }
+
   private String firstNonBlank(String... values) {
     for (String value : values) {
       if (StringUtils.hasText(value)) {
+        return value;
+      }
+    }
+    return "";
+  }
+
+  private String firstNonEmpty(String... values) {
+    for (String value : values) {
+      if (value != null && !value.isEmpty()) {
         return value;
       }
     }
