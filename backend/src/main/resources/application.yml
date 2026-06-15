@@ -2,6 +2,8 @@ server:
   port: 8080
 
 spring:
+  profiles:
+    active: dev
   datasource:
     url: jdbc:mysql://localhost:3306/eval_system?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -16,25 +18,3 @@ mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
-
-integration:
-  platform:
-    x-space-id:
-    model-list-url:
-    agent-list-url:
-    # 模型对话接口，支持使用 {modelId} 作为路径占位符。
-    model-chat-url:
-    super-agent-chat-url:
-    x-agent-alias: router-agent
-    trust-all-ssl: true
-    connect-timeout-ms: 5000
-    read-timeout-ms: 60000
-    login:
-      url:
-      login-account:
-      uid:
-      password:
-      lang:
-      remember-account-name: true
-      app-id:
-      encrypted-password-switch:
