@@ -16,8 +16,6 @@ public interface TaskService {
 
   TaskDetail startTask(String taskId);
 
-  TaskDetail terminateTask(String taskId);
-
   void deleteTask(String taskId);
 
   AnnotationDetail getAnnotation(String taskId, String taskItemId);

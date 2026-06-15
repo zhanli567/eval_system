@@ -1,4 +1,4 @@
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { datasetApi } from '../../../api/dataset'
@@ -45,6 +45,7 @@ export interface EvaluatorBlockState {
   params: EvaluatorParam[]
   paramMappings: Record<string, ParamMappingState>
   presetOptions: PresetEvaluatorSummary[]
+  presetOptionsLoaded: boolean
   versions: EvaluatorVersion[]
   detailExpanded: boolean
   loading: boolean
@@ -66,6 +67,7 @@ function createEvaluatorBlock(): EvaluatorBlockState {
     params: [],
     paramMappings: {},
     presetOptions: [],
+    presetOptionsLoaded: false,
     versions: [],
     detailExpanded: false,
     loading: false
@@ -89,6 +91,11 @@ export function useTaskCreate() {
   const evaluatorBlocks = ref<EvaluatorBlockState[]>([])
   const agents = ref<PlatformAgentDefinition[]>([])
   const appFieldMappings = reactive<Record<string, string>>({})
+  const datasetsLoaded = ref(false)
+  const tagsLoaded = ref(false)
+  const customEvaluatorsLoaded = ref(false)
+  const presetCategoriesLoaded = ref(false)
+  const agentsLoaded = ref(false)
 
   const form = reactive({
     taskName: '',
@@ -132,16 +139,6 @@ export function useTaskCreate() {
     })
   })
 
-  onMounted(async () => {
-    loading.value = true
-    try {
-      await Promise.all([loadDatasets(), loadTags(), loadCustomEvaluators(), loadPresetCategories(), loadAgents()])
-      await Promise.all(evaluatorBlocks.value.map((block) => loadPresetOptions(block)))
-    } finally {
-      loading.value = false
-    }
-  })
-
   watch(
     () => form.datasetId,
     async () => {
@@ -158,8 +155,9 @@ export function useTaskCreate() {
 
   watch(
     () => form.appType,
-    () => {
+    async () => {
       if (form.appType === 'agent') {
+        await ensureAgentsLoaded()
         selectDefaultAgent()
       } else {
         form.appId = ''
@@ -178,6 +176,100 @@ export function useTaskCreate() {
       normalizeParamOutputMappings()
     }
   )
+
+  async function ensureDatasetsLoaded() {
+    if (datasetsLoaded.value) return
+    await withPageLoading(async () => {
+      await loadDatasets()
+      datasetsLoaded.value = true
+    }, '获取评测集失败')
+  }
+
+  async function ensureTagsLoaded() {
+    if (tagsLoaded.value) return
+    await withPageLoading(async () => {
+      await loadTags()
+      tagsLoaded.value = true
+    }, '获取标签失败')
+  }
+
+  async function ensureCustomEvaluatorsLoaded() {
+    if (customEvaluatorsLoaded.value) return
+    await withPageLoading(async () => {
+      await loadCustomEvaluators()
+      customEvaluatorsLoaded.value = true
+    }, '获取自定义评估器失败')
+  }
+
+  async function ensurePresetCategoriesLoaded() {
+    if (presetCategoriesLoaded.value) return
+    await withPageLoading(async () => {
+      await loadPresetCategories()
+      presetCategoriesLoaded.value = true
+    }, '获取预置评估器分类失败')
+  }
+
+  async function ensureAgentsLoaded() {
+    if (agentsLoaded.value) return
+    await withPageLoading(async () => {
+      await loadAgents()
+      agentsLoaded.value = true
+    }, '获取智能体列表失败')
+  }
+
+  async function ensurePresetOptionsLoaded(block: EvaluatorBlockState, force = false) {
+    if (!force && block.presetOptionsLoaded) return
+    block.loading = true
+    try {
+      await loadPresetOptions(block)
+      block.presetOptionsLoaded = true
+    } catch (error) {
+      ElMessage.error(errorMessage(error, '获取预置评估器失败'))
+    } finally {
+      block.loading = false
+    }
+  }
+
+  async function withPageLoading(action: () => Promise<void>, fallback: string) {
+    loading.value = true
+    try {
+      await action()
+    } catch (error) {
+      ElMessage.error(errorMessage(error, fallback))
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function handleDatasetVisible(visible: boolean) {
+    if (visible) {
+      ensureDatasetsLoaded()
+    }
+  }
+
+  function handleAgentVisible(visible: boolean) {
+    if (visible) {
+      ensureAgentsLoaded()
+    }
+  }
+
+  function handleCustomEvaluatorVisible(visible: boolean) {
+    if (visible) {
+      ensureCustomEvaluatorsLoaded()
+    }
+  }
+
+  function handlePresetCategoryVisible(visible: boolean) {
+    if (visible) {
+      ensurePresetCategoriesLoaded()
+    }
+  }
+
+  function handlePresetEvaluatorVisible(block: EvaluatorBlockState, visible: boolean) {
+    if (visible) {
+      ensurePresetOptionsLoaded(block)
+    }
+  }
 
   async function loadDatasets() {
     const page = await datasetApi.listDatasets({ page: 1, size: 100 })
@@ -222,14 +314,9 @@ export function useTaskCreate() {
   }
 
   async function loadAgents() {
-    try {
-      agents.value = await integrationApi.listAgents()
-      if (form.appType === 'agent') {
-        selectDefaultAgent()
-      }
-    } catch (error) {
-      agents.value = []
-      ElMessage.error(errorMessage(error, '获取智能体列表失败'))
+    agents.value = await integrationApi.listAgents()
+    if (form.appType === 'agent') {
+      selectDefaultAgent()
     }
   }
 
@@ -246,7 +333,9 @@ export function useTaskCreate() {
   async function changePresetCategory(block: EvaluatorBlockState) {
     block.evaluatorId = ''
     clearEvaluatorDetail(block)
-    await loadPresetOptions(block)
+    block.presetOptions = []
+    block.presetOptionsLoaded = false
+    await ensurePresetOptionsLoaded(block, true)
   }
 
   async function changeEvaluatorSource(block: EvaluatorBlockState) {
@@ -254,7 +343,8 @@ export function useTaskCreate() {
     block.evaluatorVersionId = ''
     clearEvaluatorDetail(block)
     if (block.evaluatorSource === 'preset') {
-      await loadPresetOptions(block)
+      block.presetOptions = []
+      block.presetOptionsLoaded = false
     }
   }
 
@@ -333,6 +423,10 @@ export function useTaskCreate() {
     block.params = []
     block.paramMappings = {}
     block.versions = []
+    if (block.evaluatorSource !== 'preset') {
+      block.presetOptions = []
+      block.presetOptionsLoaded = false
+    }
   }
 
   function ensureParamMappings(block: EvaluatorBlockState) {
@@ -465,15 +559,15 @@ export function useTaskCreate() {
     }
     const block = createEvaluatorBlock()
     evaluatorBlocks.value.push(block)
-    loadPresetOptions(block)
   }
 
   function removeEvaluator(index: number) {
     evaluatorBlocks.value.splice(index, 1)
   }
 
-  function openTagDrawer() {
+  async function openTagDrawer() {
     tagDrawerVisible.value = true
+    await ensureTagsLoaded()
   }
 
   function addTag(tag: TagSummary) {
@@ -683,7 +777,17 @@ export function useTaskCreate() {
     appFieldMappings,
     form,
     canSubmit,
-    loadPresetOptions,
+    ensureDatasetsLoaded,
+    ensureTagsLoaded,
+    ensureCustomEvaluatorsLoaded,
+    ensurePresetCategoriesLoaded,
+    ensureAgentsLoaded,
+    ensurePresetOptionsLoaded,
+    handleDatasetVisible,
+    handleAgentVisible,
+    handleCustomEvaluatorVisible,
+    handlePresetCategoryVisible,
+    handlePresetEvaluatorVisible,
     changePresetCategory,
     changeEvaluatorSource,
     selectEvaluator,

@@ -11,7 +11,7 @@ public class PlatformIntegrationProperties {
   private String agentListUrl = "";
   private String modelChatUrl = "";
   private String superAgentChatUrl = "";
-  private String xAgentAlias = "router-agent";
+  private String xAgentAlias = "";
   private boolean trustAllSsl = true;
   private int connectTimeoutMs = 5000;
   private int readTimeoutMs = 60000;

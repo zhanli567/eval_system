@@ -23,6 +23,11 @@ const {
   agentOutputs,
   appFieldMappings,
   form,
+  handleDatasetVisible,
+  handleAgentVisible,
+  handleCustomEvaluatorVisible,
+  handlePresetCategoryVisible,
+  handlePresetEvaluatorVisible,
   changePresetCategory,
   changeEvaluatorSource,
   selectEvaluator,
@@ -57,15 +62,17 @@ const {
         <div class="section-body">
           <h2>基础信息</h2>
           <el-form label-position="top" class="task-create-form">
-            <el-form-item label="任务名称 *">
+            <el-form-item>
+              <template #label>任务名称 <span class="required-mark">*</span></template>
               <el-input v-model="form.taskName" maxlength="50" show-word-limit placeholder="请输入任务名称" />
             </el-form-item>
             <el-form-item label="描述">
               <el-input v-model="form.description" type="textarea" maxlength="200" show-word-limit :autosize="{ minRows: 4, maxRows: 6 }" />
             </el-form-item>
-            <el-form-item label="选择评测集及版本 *">
+            <el-form-item>
+              <template #label>选择评测集及版本 <span class="required-mark">*</span></template>
               <div class="inline-controls">
-                <el-select v-model="form.datasetId" placeholder="请选择评测集" filterable>
+                <el-select v-model="form.datasetId" placeholder="请选择评测集" filterable @visible-change="handleDatasetVisible">
                   <el-option v-for="dataset in datasets" :key="dataset.id" :label="dataset.name" :value="dataset.id" />
                 </el-select>
                 <el-select v-model="form.datasetVersionId" placeholder="请选择发布版本" :disabled="!form.datasetId">
@@ -86,7 +93,7 @@ const {
                   <el-radio label="agent">智能体</el-radio>
                 </el-radio-group>
                 <div v-if="form.appType === 'agent'" class="app-select-grid">
-                  <el-select v-model="form.appId" placeholder="请选择智能体" filterable>
+                  <el-select v-model="form.appId" placeholder="请选择智能体" filterable @visible-change="handleAgentVisible">
                     <el-option v-for="agent in agents" :key="agent.id" :label="agent.agentName" :value="agent.id" />
                   </el-select>
                   <el-select v-model="form.appVersionId" placeholder="请选择智能体版本" :disabled="!form.appId">
@@ -136,7 +143,8 @@ const {
             </div>
 
             <div class="evaluator-config-grid">
-              <el-form-item label="评估器类型 *">
+              <el-form-item>
+                <template #label>评估器类型 <span class="required-mark">*</span></template>
                 <el-radio-group v-model="block.evaluatorSource" class="plain-radio-group" @change="changeEvaluatorSource(block)">
                   <el-radio label="custom">自定义评估器</el-radio>
                   <el-radio label="preset">预置评估器</el-radio>
@@ -145,24 +153,39 @@ const {
 
               <template v-if="block.evaluatorSource === 'preset'">
                 <el-form-item label="分类">
-                  <el-select v-model="block.presetCategoryId" @change="changePresetCategory(block)">
+                  <el-select v-model="block.presetCategoryId" @visible-change="handlePresetCategoryVisible" @change="changePresetCategory(block)">
                     <el-option v-for="category in categoryOptions" :key="category.id || 'all'" :label="category.categoryName" :value="category.id" />
                   </el-select>
                 </el-form-item>
-                <el-form-item label="选择评估器 *">
-                  <el-select v-model="block.evaluatorId" filterable placeholder="请选择预置评估器" @change="selectEvaluator(block)">
+                <el-form-item>
+                  <template #label>选择评估器 <span class="required-mark">*</span></template>
+                  <el-select
+                    v-model="block.evaluatorId"
+                    filterable
+                    placeholder="请选择预置评估器"
+                    @visible-change="handlePresetEvaluatorVisible(block, $event)"
+                    @change="selectEvaluator(block)"
+                  >
                     <el-option v-for="item in block.presetOptions" :key="item.id" :label="item.evaluatorName" :value="item.id" />
                   </el-select>
                 </el-form-item>
               </template>
 
               <template v-else>
-                <el-form-item label="选择评估器 *">
-                  <el-select v-model="block.evaluatorId" filterable placeholder="请选择自定义评估器" @change="selectEvaluator(block)">
+                <el-form-item>
+                  <template #label>选择评估器 <span class="required-mark">*</span></template>
+                  <el-select
+                    v-model="block.evaluatorId"
+                    filterable
+                    placeholder="请选择自定义评估器"
+                    @visible-change="handleCustomEvaluatorVisible"
+                    @change="selectEvaluator(block)"
+                  >
                     <el-option v-for="item in customEvaluators" :key="item.id" :label="item.evaluatorName" :value="item.id" />
                   </el-select>
                 </el-form-item>
-                <el-form-item label="选择版本 *">
+                <el-form-item>
+                  <template #label>选择版本 <span class="required-mark">*</span></template>
                   <el-select v-model="block.evaluatorVersionId" placeholder="请选择版本" :disabled="!block.evaluatorId" @change="selectCustomVersion(block)">
                     <el-option v-for="version in block.versions" :key="version.id" :label="version.versionName" :value="version.id" />
                   </el-select>

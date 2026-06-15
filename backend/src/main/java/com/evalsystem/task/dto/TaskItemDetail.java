@@ -11,6 +11,7 @@ public record TaskItemDetail(
     Map<String, String> values,
     String appOutput,
     String appOutputStatus,
+    String appErrorMessage,
     List<TaskEvaluatorResultDto> evaluatorResults,
     List<TaskTagResultDto> tagResults,
     String createdAt,

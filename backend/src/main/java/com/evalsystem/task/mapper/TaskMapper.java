@@ -236,18 +236,24 @@ public interface TaskMapper {
       @Param("now") String now
   );
 
-  @Update("UPDATE eval_task_item SET status = #{status}, updated_at = #{now} WHERE id = #{taskItemId}")
-  void updateTaskItemStatus(@Param("taskItemId") String taskItemId, @Param("status") String status, @Param("now") String now);
-
   @Update("""
       UPDATE eval_task_item
-      SET status = #{status},
-          finished_at = CASE WHEN #{status} = 'failed' THEN #{now} ELSE finished_at END,
+      SET app_output = #{appOutput},
+          app_output_status = #{appOutputStatus},
+          app_error_message = #{appErrorMessage},
           updated_at = #{now}
-      WHERE task_id = #{taskId}
-        AND status IN ('pending', 'running')
+      WHERE id = #{taskItemId}
       """)
-  void updateUnfinishedTaskItemsStatus(@Param("taskId") String taskId, @Param("status") String status, @Param("now") String now);
+  void updateTaskItemAppResult(
+      @Param("taskItemId") String taskItemId,
+      @Param("appOutput") String appOutput,
+      @Param("appOutputStatus") String appOutputStatus,
+      @Param("appErrorMessage") String appErrorMessage,
+      @Param("now") String now
+  );
+
+  @Update("UPDATE eval_task_item SET status = #{status}, updated_at = #{now} WHERE id = #{taskItemId}")
+  void updateTaskItemStatus(@Param("taskItemId") String taskItemId, @Param("status") String status, @Param("now") String now);
 
   @Update("""
       UPDATE eval_task_evaluator_result
@@ -377,6 +383,7 @@ public interface TaskMapper {
       String status,
       String appOutput,
       String appOutputStatus,
+      String appErrorMessage,
       String createdAt,
       String updatedAt
   ) {

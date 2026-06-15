@@ -64,7 +64,6 @@ public class TaskServiceImpl implements TaskService {
   private static final String STATUS_PENDING = "pending";
   private static final String STATUS_RUNNING = "running";
   private static final String STATUS_COMPLETED = "completed";
-  private static final String STATUS_TERMINATED = "terminated";
   private static final String STATUS_FAILED = "failed";
   private static final String ITEM_ANNOTATION_PENDING = "annotation_pending";
   private static final String RESULT_SKIPPED = "skipped";
@@ -214,75 +213,23 @@ public class TaskServiceImpl implements TaskService {
     Map<String, List<TaskMapper.TaskEvaluatorParamMappingRecord>> mappingsByEvaluator = taskMapper.listAllParamMappings(taskId)
         .stream()
         .collect(Collectors.groupingBy(TaskMapper.TaskEvaluatorParamMappingRecord::taskEvaluatorId));
-
     Map<String, Map<String, String>> valuesByItem = loadDatasetValues(items);
 
     boolean hasTaskFailure = false;
     Set<String> failedEvaluatorIds = new HashSet<>();
     for (TaskMapper.TaskItemRecord item : items) {
-      if (STATUS_TERMINATED.equals(findTask(taskId).status())) {
-        return;
-      }
-      String itemStartedAt = now();
-      taskMapper.updateTaskItemStatus(item.id(), STATUS_RUNNING, itemStartedAt);
-      Map<String, String> rowValues = valuesByItem.getOrDefault(item.datasetItemId(), Map.of());
-      AgentInvocationResult agentResult = invokeAgent(base, item, appMappings, rowValues);
-      boolean hasFailedEvaluator = STATUS_FAILED.equals(agentResult.status());
-      if (hasFailedEvaluator) {
+      ItemExecutionResult itemResult = executeTaskItem(
+          base,
+          item,
+          evaluators,
+          appMappings,
+          evaluatorConfigs,
+          mappingsByEvaluator,
+          valuesByItem.getOrDefault(item.datasetItemId(), Map.of()));
+      if (itemResult.failed()) {
         hasTaskFailure = true;
-        for (TaskMapper.TaskEvaluatorBindingRecord evaluator : evaluators) {
-          failedEvaluatorIds.add(evaluator.id());
-          String finishedAt = now();
-          taskMapper.updateEvaluatorResult(
-              item.id(),
-              evaluator.id(),
-              RESULT_SKIPPED,
-              null,
-              "",
-              "",
-              "智能体调用失败，跳过评估：" + agentResult.errorMessage(),
-              itemStartedAt,
-              finishedAt,
-              finishedAt);
-        }
-      } else {
-        for (TaskMapper.TaskEvaluatorBindingRecord evaluator : evaluators) {
-          EvaluationRuntimeConfig config = evaluatorConfigs.get(evaluator.id());
-          List<TaskMapper.TaskEvaluatorParamMappingRecord> mappings = mappingsByEvaluator.getOrDefault(evaluator.id(), List.of());
-          EvaluationSimulationResult result = evaluateWithIntegration(config, mappings, rowValues, agentResult.outputs());
-          if (STATUS_FAILED.equals(result.status())) {
-            hasFailedEvaluator = true;
-            hasTaskFailure = true;
-            failedEvaluatorIds.add(evaluator.id());
-          }
-          String finishedAt = now();
-          taskMapper.updateEvaluatorResult(
-              item.id(),
-              evaluator.id(),
-              result.status(),
-              result.score(),
-              result.passResult(),
-              result.resultValue(),
-              result.errorMessage(),
-              itemStartedAt,
-              finishedAt,
-              finishedAt);
-        }
       }
-      String itemFinishedAt = now();
-      String itemStatus = hasFailedEvaluator ? STATUS_FAILED : ITEM_ANNOTATION_PENDING;
-      if (taskMapper.countUnfinishedTagResultsByItem(item.id()) == 0 && !hasFailedEvaluator) {
-        itemStatus = STATUS_COMPLETED;
-      }
-      taskMapper.updateTaskItemRunResult(
-          item.id(),
-          itemStatus,
-          agentResult.content(),
-          agentResult.status(),
-          agentResult.errorMessage(),
-          itemStartedAt,
-          itemFinishedAt,
-          itemFinishedAt);
+      failedEvaluatorIds.addAll(itemResult.failedEvaluatorIds());
     }
 
     for (TaskMapper.TaskEvaluatorBindingRecord evaluator : evaluators) {
@@ -296,11 +243,116 @@ public class TaskServiceImpl implements TaskService {
             && taskMapper.countUnfinishedTaskItems(taskId) == 0
             ? STATUS_COMPLETED
             : STATUS_RUNNING);
-    if (STATUS_TERMINATED.equals(findTask(taskId).status())) {
-      return;
-    }
     boolean finished = STATUS_COMPLETED.equals(finalStatus) || STATUS_FAILED.equals(finalStatus);
     taskMapper.updateTaskStatus(taskId, finalStatus, null, finished ? now() : null, now());
+  }
+
+  private ItemExecutionResult executeTaskItem(
+      TaskBase base,
+      TaskMapper.TaskItemRecord item,
+      List<TaskMapper.TaskEvaluatorBindingRecord> evaluators,
+      List<TaskMapper.TaskAppFieldMappingRecord> appMappings,
+      Map<String, EvaluationRuntimeConfig> evaluatorConfigs,
+      Map<String, List<TaskMapper.TaskEvaluatorParamMappingRecord>> mappingsByEvaluator,
+      Map<String, String> rowValues
+  ) {
+    Set<String> failedEvaluatorIds = new HashSet<>();
+    String itemStartedAt = now();
+    taskMapper.updateTaskItemStatus(item.id(), STATUS_RUNNING, itemStartedAt);
+
+    AgentInvocationResult agentResult;
+    try {
+      agentResult = invokeAgent(base, item, appMappings, rowValues);
+    } catch (Exception e) {
+      agentResult = failedAgentResult("Agent execution failed: " + safeErrorMessage(e));
+    }
+    taskMapper.updateTaskItemAppResult(
+        item.id(),
+        agentResult.content(),
+        agentResult.status(),
+        agentResult.errorMessage(),
+        now());
+
+    boolean hasFailedEvaluator = STATUS_FAILED.equals(agentResult.status());
+    if (hasFailedEvaluator) {
+      skipEvaluatorsAfterAgentFailure(item, evaluators, failedEvaluatorIds, agentResult, itemStartedAt);
+    } else {
+      for (TaskMapper.TaskEvaluatorBindingRecord evaluator : evaluators) {
+        EvaluationRuntimeConfig config = evaluatorConfigs.get(evaluator.id());
+        List<TaskMapper.TaskEvaluatorParamMappingRecord> mappings = mappingsByEvaluator.getOrDefault(evaluator.id(), List.of());
+        EvaluationSimulationResult result;
+        try {
+          result = evaluateWithIntegration(config, mappings, rowValues, agentResult.outputs());
+        } catch (Exception e) {
+          result = failedEvaluationResult("Evaluator execution failed: " + safeErrorMessage(e));
+        }
+        if (STATUS_FAILED.equals(result.status())) {
+          hasFailedEvaluator = true;
+          failedEvaluatorIds.add(evaluator.id());
+        }
+        updateEvaluatorResult(item.id(), evaluator.id(), result, itemStartedAt);
+      }
+    }
+
+    String itemFinishedAt = now();
+    String itemStatus = hasFailedEvaluator ? STATUS_FAILED : ITEM_ANNOTATION_PENDING;
+    if (taskMapper.countUnfinishedTagResultsByItem(item.id()) == 0 && !hasFailedEvaluator) {
+      itemStatus = STATUS_COMPLETED;
+    }
+    taskMapper.updateTaskItemRunResult(
+        item.id(),
+        itemStatus,
+        agentResult.content(),
+        agentResult.status(),
+        agentResult.errorMessage(),
+        itemStartedAt,
+        itemFinishedAt,
+        itemFinishedAt);
+    return new ItemExecutionResult(hasFailedEvaluator, failedEvaluatorIds);
+  }
+
+  private void skipEvaluatorsAfterAgentFailure(
+      TaskMapper.TaskItemRecord item,
+      List<TaskMapper.TaskEvaluatorBindingRecord> evaluators,
+      Set<String> failedEvaluatorIds,
+      AgentInvocationResult agentResult,
+      String itemStartedAt
+  ) {
+    for (TaskMapper.TaskEvaluatorBindingRecord evaluator : evaluators) {
+      failedEvaluatorIds.add(evaluator.id());
+      String finishedAt = now();
+      taskMapper.updateEvaluatorResult(
+          item.id(),
+          evaluator.id(),
+          RESULT_SKIPPED,
+          null,
+          "",
+          "",
+          "Agent execution failed, evaluator skipped: " + agentResult.errorMessage(),
+          itemStartedAt,
+          finishedAt,
+          finishedAt);
+    }
+  }
+
+  private void updateEvaluatorResult(
+      String taskItemId,
+      String taskEvaluatorId,
+      EvaluationSimulationResult result,
+      String startedAt
+  ) {
+    String finishedAt = now();
+    taskMapper.updateEvaluatorResult(
+        taskItemId,
+        taskEvaluatorId,
+        result.status(),
+        result.score(),
+        result.passResult(),
+        result.resultValue(),
+        result.errorMessage(),
+        startedAt,
+        finishedAt,
+        finishedAt);
   }
 
   private void markTaskExecutionFailed(String taskId, Exception error) {
@@ -308,7 +360,6 @@ public class TaskServiceImpl implements TaskService {
     for (TaskMapper.TaskEvaluatorBindingRecord evaluator : taskMapper.listTaskEvaluatorBindings(taskId)) {
       taskMapper.updateTaskEvaluatorStatus(evaluator.id(), STATUS_FAILED, now);
     }
-    taskMapper.updateUnfinishedTaskItemsStatus(taskId, STATUS_FAILED, now);
     taskMapper.updateTaskStatus(
         taskId,
         STATUS_FAILED,
@@ -318,19 +369,11 @@ public class TaskServiceImpl implements TaskService {
   }
 
   @Transactional
-  public TaskDetail terminateTask(String taskId) {
-    TaskBase base = findTask(taskId);
-    if (STATUS_COMPLETED.equals(base.status())) {
-      throw new IllegalArgumentException("评测完成的任务不能终止");
-    }
-    String now = now();
-    taskMapper.updateTaskStatus(taskId, STATUS_TERMINATED, null, now, now);
-    return getTask(taskId, 1, 10);
-  }
-
-  @Transactional
   public void deleteTask(String taskId) {
-    findTask(taskId);
+    TaskBase task = findTask(taskId);
+    if (!List.of(STATUS_PENDING, STATUS_COMPLETED).contains(task.status())) {
+      throw new IllegalArgumentException("Only pending or completed tasks can be deleted");
+    }
     taskMapper.softDeleteTask(taskId, now());
   }
 
@@ -746,6 +789,7 @@ public class TaskServiceImpl implements TaskService {
             valuesByDatasetItem.getOrDefault(item.datasetItemId(), Map.of()),
             item.appOutput(),
             item.appOutputStatus(),
+            item.appErrorMessage(),
             evaluatorResults.getOrDefault(item.id(), List.of()),
             tagResults.getOrDefault(item.id(), List.of()),
             item.createdAt(),
@@ -807,6 +851,20 @@ public class TaskServiceImpl implements TaskService {
       }
     }
     return configs;
+  }
+
+  private AgentInvocationResult failedAgentResult(String message) {
+    String error = StringUtils.hasText(message) ? message : "Agent execution failed";
+    return new AgentInvocationResult(error, STATUS_FAILED, error, Map.of("error", error, "rawText", error));
+  }
+
+  private EvaluationSimulationResult failedEvaluationResult(String message) {
+    return new EvaluationSimulationResult(
+        STATUS_FAILED,
+        null,
+        "",
+        "",
+        StringUtils.hasText(message) ? message : "Evaluator execution failed");
   }
 
   private AgentInvocationResult invokeAgent(
@@ -1276,7 +1334,7 @@ public class TaskServiceImpl implements TaskService {
       return null;
     }
     String normalized = status.trim();
-    if (!List.of(STATUS_PENDING, STATUS_RUNNING, STATUS_COMPLETED, STATUS_TERMINATED, STATUS_FAILED).contains(normalized)) {
+    if (!List.of(STATUS_PENDING, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED).contains(normalized)) {
       throw new IllegalArgumentException("评测状态不支持");
     }
     return normalized;
@@ -1314,6 +1372,13 @@ public class TaskServiceImpl implements TaskService {
       throw new IllegalArgumentException(message);
     }
     return value.trim();
+  }
+
+  private String safeErrorMessage(Exception error) {
+    if (error == null) {
+      return "";
+    }
+    return StringUtils.hasText(error.getMessage()) ? error.getMessage() : error.getClass().getSimpleName();
   }
 
   private String paramKey(String paramId, String paramName) {
@@ -1402,6 +1467,12 @@ public class TaskServiceImpl implements TaskService {
       String status,
       String errorMessage,
       Map<String, String> outputs
+  ) {
+  }
+
+  private record ItemExecutionResult(
+      boolean failed,
+      Set<String> failedEvaluatorIds
   ) {
   }
 

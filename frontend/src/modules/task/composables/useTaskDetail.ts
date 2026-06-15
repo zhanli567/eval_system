@@ -1,6 +1,6 @@
 import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { taskApi } from '../../../api/task'
 import type { TaskDetail, TaskItemDetail } from '../../../types'
 
@@ -87,14 +87,6 @@ export function useTaskDetail(taskId: Ref<string>) {
     pollTimer = undefined
   }
 
-  async function terminateTask() {
-    if (!taskId.value || !base.value) return
-    await ElMessageBox.confirm(`确定终止评测任务“${base.value.taskName}”吗？`, '终止评测任务', { type: 'warning' })
-    await taskApi.terminateTask(taskId.value)
-    ElMessage.success('评测任务已终止')
-    await loadDetail()
-  }
-
   function openAnnotation(row: TaskItemDetail) {
     router.push({ name: 'task-annotation', params: { taskId: taskId.value, taskItemId: row.id } })
   }
@@ -104,7 +96,6 @@ export function useTaskDetail(taskId: Ref<string>) {
       pending: '待执行',
       running: '进行中',
       completed: '评测完成',
-      terminated: '评测终止',
       failed: '评测失败',
       annotation_pending: '待标注',
       annotating: '标注中',
@@ -117,7 +108,6 @@ export function useTaskDetail(taskId: Ref<string>) {
     if (value === 'completed') return 'success'
     if (value === 'running' || value === 'annotation_pending') return 'primary'
     if (value === 'failed') return 'danger'
-    if (value === 'terminated') return 'warning'
     return 'info'
   }
 
@@ -163,7 +153,6 @@ export function useTaskDetail(taskId: Ref<string>) {
     loadDetail,
     backToList,
     startTask,
-    terminateTask,
     openAnnotation,
     statusLabel,
     statusTagType,

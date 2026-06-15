@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS eval_task (
   id VARCHAR(64) COMMENT '评测任务ID',
   task_name VARCHAR(50) COMMENT '任务名称',
-  status VARCHAR(32) COMMENT '评测状态：pending待执行，running进行中，completed评测完成，terminated评测终止，failed评测失败',
+  status VARCHAR(32) COMMENT '评测状态：pending待执行，running进行中，completed评测完成，failed评测失败',
   description VARCHAR(200) COMMENT '描述',
   dataset_id VARCHAR(64) COMMENT '评测集ID',
   dataset_version_id VARCHAR(64) COMMENT '评测集版本ID',

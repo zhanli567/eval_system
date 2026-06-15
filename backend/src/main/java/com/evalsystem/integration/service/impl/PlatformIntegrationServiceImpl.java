@@ -124,7 +124,8 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
   @Override
   public PlatformAgentChatResponse invokeAgent(String agentAlias, PlatformAgentChatRequest request) {
     requireText(properties.getSuperAgentChatUrl(), "请配置Super智能体接口 integration.platform.super-agent-chat-url");
-    String safeAgentAlias = firstNonBlank(properties.getXAgentAlias(), agentAlias, DEFAULT_AGENT_ALIAS);
+    String configuredAgentAlias = properties.getXAgentAlias();
+    String safeAgentAlias = firstNonBlank(configuredAgentAlias, agentAlias, DEFAULT_AGENT_ALIAS);
     long startedAt = System.currentTimeMillis();
     String conversationId = StringUtils.hasText(request == null ? null : request.conversationId())
         ? request.conversationId()
@@ -141,7 +142,9 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
         connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
         connection.setRequestProperty("Accept", "text/event-stream, application/json");
         connection.setRequestProperty("Cookie", ensureCookie());
-        connection.setRequestProperty("x-agent-alias", safeAgentAlias);
+        if (StringUtils.hasText(configuredAgentAlias)) {
+          connection.setRequestProperty("x-agent-alias", configuredAgentAlias);
+        }
         writeJson(connection, outboundRequest);
         int statusCode = connection.getResponseCode();
         if (isUnauthorized(statusCode) && attempt == 0) {

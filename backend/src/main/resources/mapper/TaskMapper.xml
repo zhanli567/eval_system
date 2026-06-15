@@ -69,6 +69,7 @@
       <arg column="status" javaType="java.lang.String"/>
       <arg column="appOutput" javaType="java.lang.String"/>
       <arg column="appOutputStatus" javaType="java.lang.String"/>
+      <arg column="appErrorMessage" javaType="java.lang.String"/>
       <arg column="createdAt" javaType="java.lang.String"/>
       <arg column="updatedAt" javaType="java.lang.String"/>
     </constructor>
@@ -276,6 +277,7 @@
            status AS status,
            app_output AS appOutput,
            app_output_status AS appOutputStatus,
+           app_error_message AS appErrorMessage,
            created_at AS createdAt,
            updated_at AS updatedAt
     FROM eval_task_item
@@ -293,6 +295,7 @@
            status AS status,
            app_output AS appOutput,
            app_output_status AS appOutputStatus,
+           app_error_message AS appErrorMessage,
            created_at AS createdAt,
            updated_at AS updatedAt
     FROM eval_task_item
@@ -309,6 +312,7 @@
            status AS status,
            app_output AS appOutput,
            app_output_status AS appOutputStatus,
+           app_error_message AS appErrorMessage,
            created_at AS createdAt,
            updated_at AS updatedAt
     FROM eval_task_item

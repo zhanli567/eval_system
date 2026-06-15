@@ -58,11 +58,6 @@ public class TaskController {
     return ApiResponse.ok(taskService.startTask(taskId));
   }
 
-  @PostMapping("/{taskId}/terminate")
-  public ApiResponse<TaskDetail> terminateTask(@PathVariable String taskId) {
-    return ApiResponse.ok(taskService.terminateTask(taskId));
-  }
-
   @DeleteMapping("/{taskId}")
   public ApiResponse<Void> deleteTask(@PathVariable String taskId) {
     taskService.deleteTask(taskId);

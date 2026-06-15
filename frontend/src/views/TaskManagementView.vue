@@ -19,8 +19,9 @@ const {
   openDetail,
   startTask,
   isStartingTask,
-  terminateTask,
   removeTask,
+  canStartTask,
+  canDeleteTask,
   toggleSort,
   statusLabel,
   statusTagType,
@@ -72,7 +73,7 @@ const {
       </div>
     </div>
 
-    <el-table v-loading="loading" :data="tasks" row-key="base.id" class="task-table" @row-click="openDetail">
+    <el-table v-loading="loading" :data="tasks" row-key="base.id" class="task-table">
       <el-table-column label="评测状态" width="130">
         <template #default="{ row }">
           <el-tag :type="statusTagType(row.base.status)" effect="plain">{{ statusLabel(row.base.status) }}</el-tag>
@@ -80,7 +81,7 @@ const {
       </el-table-column>
       <el-table-column label="任务名称" min-width="210">
         <template #default="{ row }">
-          <span class="linkish">{{ row.base.taskName }}</span>
+          <button class="table-link" type="button" @click="openDetail(row)">{{ row.base.taskName }}</button>
         </template>
       </el-table-column>
       <el-table-column label="评测集名称" min-width="180">
@@ -99,7 +100,10 @@ const {
           <div v-if="row.evaluators.length" class="dimension-cell">
             <div class="dimension-chip">
               <strong>{{ row.evaluators[0].evaluatorName }}</strong>
-              <span>{{ dimensionStatusLabel(row.evaluators[0].status) }} · 通过率 {{ formatRate(row.evaluators[0].passRate) }}</span>
+              <span>
+                {{ row.evaluators[0].versionName }} · {{ dimensionStatusLabel(row.evaluators[0].status) }} · 通过率
+                {{ formatRate(row.evaluators[0].passRate) }}
+              </span>
             </div>
             <el-tag v-if="row.evaluators.length > 1" size="small">+{{ row.evaluators.length - 1 }}</el-tag>
           </div>
@@ -133,7 +137,7 @@ const {
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDetail(row)">详情</el-button>
           <el-button
-            v-if="row.base.status !== 'completed' && row.base.status !== 'running'"
+            v-if="canStartTask(row)"
             link
             type="primary"
             :loading="isStartingTask(row.base.id)"
@@ -142,10 +146,7 @@ const {
           >
             开始
           </el-button>
-          <el-button v-if="row.base.status === 'running' || row.base.status === 'pending'" link type="warning" @click.stop="terminateTask(row)">
-            终止
-          </el-button>
-          <el-button link type="danger" @click.stop="removeTask(row)">删除</el-button>
+          <el-button v-if="canDeleteTask(row)" link type="danger" @click.stop="removeTask(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>

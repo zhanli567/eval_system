@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Back, Refresh, VideoPlay, Warning } from '@element-plus/icons-vue'
+import { Back, Refresh, VideoPlay } from '@element-plus/icons-vue'
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail'
 import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay'
 import type { TaskEvaluatorResult, TaskItemDetail } from '../types'
@@ -23,7 +23,6 @@ const {
   loadDetail,
   backToList,
   startTask,
-  terminateTask,
   openAnnotation,
   statusLabel,
   statusTagType,
@@ -63,7 +62,7 @@ function evaluatorResultLabel(result?: TaskEvaluatorResult) {
     <div class="top-actions">
       <el-button :icon="Refresh" @click="loadDetail">刷新</el-button>
       <el-button
-        v-if="base?.status !== 'completed' && base?.status !== 'running'"
+        v-if="base?.status === 'pending' || base?.status === 'failed'"
         type="primary"
         :icon="VideoPlay"
         :loading="starting"
@@ -71,9 +70,6 @@ function evaluatorResultLabel(result?: TaskEvaluatorResult) {
         @click="startTask"
       >
         开始
-      </el-button>
-      <el-button v-if="base?.status === 'running' || base?.status === 'pending'" type="warning" :icon="Warning" @click="terminateTask">
-        终止
       </el-button>
     </div>
   </header>
@@ -141,6 +137,9 @@ function evaluatorResultLabel(result?: TaskEvaluatorResult) {
         <el-table-column label="应用输出" min-width="260" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="app-output-preview">{{ compactText(formatAppOutput(row.appOutput)) || '-' }}</div>
+            <p v-if="row.appErrorMessage" class="task-error-preview">
+              {{ compactText(row.appErrorMessage, 120) }}
+            </p>
           </template>
         </el-table-column>
         <el-table-column v-for="tag in tags" :key="tag.taskTagId" :label="tag.tagName" min-width="190">
@@ -177,6 +176,9 @@ function evaluatorResultLabel(result?: TaskEvaluatorResult) {
             <el-tag v-else :type="statusTagType(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" effect="plain">
               {{ statusLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status) }}
             </el-tag>
+            <p v-if="findEvaluatorResult(row, evaluator.taskEvaluatorId)?.errorMessage" class="task-error-preview">
+              {{ compactText(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.errorMessage, 120) }}
+            </p>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">

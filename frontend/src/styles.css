@@ -1154,6 +1154,7 @@ h2 {
 
 .selected-tag-list {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 8px;
   min-height: 38px;
   margin-top: 12px;
@@ -1220,8 +1221,14 @@ h2 {
 }
 
 .selected-tag-card {
-  max-width: 560px;
   background: #fbfcff;
+}
+
+.task-error-preview {
+  margin: 6px 0 0;
+  color: #d03050;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .task-create-bottom-bar {

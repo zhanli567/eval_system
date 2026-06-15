@@ -166,7 +166,7 @@ export interface PresetEvaluatorDetail extends PresetEvaluatorSummary {
   params: EvaluatorParam[]
 }
 
-export type TaskStatus = 'pending' | 'running' | 'completed' | 'terminated' | 'failed'
+export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed'
 
 export type TaskItemStatus = 'pending' | 'running' | 'annotation_pending' | 'completed' | 'failed'
 
@@ -271,6 +271,7 @@ export interface TaskItemDetail {
   values: Record<string, string>
   appOutput: string
   appOutputStatus: string
+  appErrorMessage: string
   evaluatorResults: TaskEvaluatorResult[]
   tagResults: TaskTagResult[]
   createdAt: string

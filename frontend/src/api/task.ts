@@ -100,9 +100,6 @@ export const taskApi = {
   startTask(taskId: string) {
     return unwrap(http.post<ApiResponse<TaskDetail>>(`/tasks/${taskId}/start`))
   },
-  terminateTask(taskId: string) {
-    return unwrap(http.post<ApiResponse<TaskDetail>>(`/tasks/${taskId}/terminate`))
-  },
   deleteTask(taskId: string) {
     return unwrap(http.delete<ApiResponse<void>>(`/tasks/${taskId}`))
   },
