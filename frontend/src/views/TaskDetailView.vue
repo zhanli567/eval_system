@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { Back, Refresh, VideoPlay, Warning } from '@element-plus/icons-vue'
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail'
 import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay'
-import type { TaskItemDetail } from '../types'
+import type { TaskEvaluatorResult, TaskItemDetail } from '../types'
 
 const route = useRoute()
 const taskId = computed(() => String(route.params.taskId ?? ''))
@@ -38,6 +38,15 @@ function findTagResult(row: TaskItemDetail, taskTagId: string) {
 
 function findEvaluatorResult(row: TaskItemDetail, taskEvaluatorId: string) {
   return row.evaluatorResults.find((item) => item.taskEvaluatorId === taskEvaluatorId)
+}
+
+function isScoredEvaluatorResult(result?: TaskEvaluatorResult) {
+  return Boolean(result && (result.status === 'completed' || result.score != null || result.passResult))
+}
+
+function evaluatorResultLabel(result?: TaskEvaluatorResult) {
+  if (!result) return '-'
+  return result.passResult || (result.score != null ? '已评分' : '-')
 }
 </script>
 
@@ -154,9 +163,9 @@ function findEvaluatorResult(row: TaskItemDetail, taskEvaluatorId: string) {
         </el-table-column>
         <el-table-column v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" :label="evaluator.evaluatorName" min-width="190">
           <template #default="{ row }">
-            <template v-if="findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status === 'completed'">
+            <template v-if="isScoredEvaluatorResult(findEvaluatorResult(row, evaluator.taskEvaluatorId))">
               <el-tag :type="passTagType(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.passResult)" effect="plain">
-                {{ findEvaluatorResult(row, evaluator.taskEvaluatorId)?.passResult || '-' }}
+                {{ evaluatorResultLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)) }}
               </el-tag>
               <span class="result-value">
                 {{ findEvaluatorResult(row, evaluator.taskEvaluatorId)?.score ?? '-' }}

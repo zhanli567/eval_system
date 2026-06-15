@@ -936,21 +936,26 @@ public class TaskServiceImpl implements TaskService {
           "",
           "模型评估结果中的score为空");
     }
-    if (score.compareTo(config.scoreMin()) < 0 || score.compareTo(config.scoreMax()) > 0) {
-      return new EvaluationSimulationResult(
-          STATUS_FAILED,
-          score,
-          "",
-          parsed.reason(),
-          "模型评估结果中的score超出评分范围");
-    }
+    String resultValue = score.compareTo(config.scoreMin()) < 0 || score.compareTo(config.scoreMax()) > 0
+        ? appendEvaluationNotice(parsed.reason(), "模型评估结果中的score超出评分范围")
+        : parsed.reason();
     String passResult = score.compareTo(config.passThreshold()) >= 0 ? "pass" : "fail";
     return new EvaluationSimulationResult(
         STATUS_COMPLETED,
         score,
         passResult,
-        parsed.reason(),
+        resultValue,
         "");
+  }
+
+  private String appendEvaluationNotice(String reason, String notice) {
+    if (!StringUtils.hasText(notice)) {
+      return reason == null ? "" : reason;
+    }
+    if (!StringUtils.hasText(reason)) {
+      return notice;
+    }
+    return reason + "\n" + notice;
   }
 
   private PreparedEvaluationInput prepareEvaluationInput(
