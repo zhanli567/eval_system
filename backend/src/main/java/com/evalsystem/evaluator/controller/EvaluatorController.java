@@ -65,11 +65,6 @@ public class EvaluatorController {
     return ApiResponse.ok(evaluatorService.createEvaluator(request));
   }
 
-  @PostMapping("/{evaluatorId}/copy")
-  public ApiResponse<EvaluatorConfig> copyEvaluator(@PathVariable String evaluatorId) {
-    return ApiResponse.ok(evaluatorService.copyEvaluator(evaluatorId));
-  }
-
   @DeleteMapping("/{evaluatorId}")
   public ApiResponse<Void> deleteEvaluator(@PathVariable String evaluatorId) {
     evaluatorService.deleteEvaluator(evaluatorId);

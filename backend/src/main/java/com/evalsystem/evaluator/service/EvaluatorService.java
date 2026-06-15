@@ -21,8 +21,6 @@ public interface EvaluatorService {
 
   EvaluatorConfig createEvaluator(EvaluatorInput request);
 
-  EvaluatorConfig copyEvaluator(String evaluatorId);
-
   List<EvaluatorVersionDto> listVersions(String evaluatorId);
 
   EvaluatorConfig getVersion(String versionId);

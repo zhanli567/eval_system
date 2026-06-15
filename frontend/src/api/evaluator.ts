@@ -66,9 +66,6 @@ export const evaluatorApi = {
   createEvaluator(data: SaveEvaluatorPayload) {
     return unwrap(http.post<ApiResponse<EvaluatorConfig>>('/evaluators', data))
   },
-  copyEvaluator(evaluatorId: string) {
-    return unwrap(http.post<ApiResponse<EvaluatorConfig>>(`/evaluators/${evaluatorId}/copy`))
-  },
   deleteEvaluator(evaluatorId: string) {
     return unwrap(http.delete<ApiResponse<void>>(`/evaluators/${evaluatorId}`))
   },

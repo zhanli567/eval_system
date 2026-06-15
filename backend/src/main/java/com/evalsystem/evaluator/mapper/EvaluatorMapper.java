@@ -144,9 +144,6 @@ public interface EvaluatorMapper {
   @Select("SELECT evaluator_type FROM eval_evaluator WHERE id = #{evaluatorId} AND is_deleted = 0")
   String findEvaluatorType(@Param("evaluatorId") String evaluatorId);
 
-  @Select("SELECT latest_version_id FROM eval_evaluator WHERE id = #{evaluatorId} AND is_deleted = 0")
-  String findLatestVersionId(@Param("evaluatorId") String evaluatorId);
-
   @Insert("""
       INSERT INTO eval_evaluator_param
       (id, target_type, target_id, param_name, data_type, default_value, is_required, description, display_order, created_at, updated_at)

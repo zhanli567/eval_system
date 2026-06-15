@@ -50,6 +50,7 @@ export function useEvaluatorEditor() {
   const activeVersionId = ref('')
   const activeDetail = ref<EvaluatorConfig | null>(null)
   const models = ref<PlatformModelInfo[]>([])
+  const modelLoading = ref(false)
 
   const form = reactive({
     evaluatorName: '',
@@ -77,7 +78,6 @@ export function useEvaluatorEditor() {
   })))
 
   onMounted(async () => {
-    await loadModels()
     if (isEdit.value) {
       await loadVersions()
     } else if (presetId.value) {
@@ -87,20 +87,35 @@ export function useEvaluatorEditor() {
     }
   })
 
-  async function loadModels() {
+  async function loadModelOptions() {
+    if (models.value.length || modelLoading.value) {
+      return
+    }
+    modelLoading.value = true
     try {
       models.value = await integrationApi.listModels()
-      ensureModelSelected()
     } catch (error) {
       ElMessage.error(errorMessage(error, '获取模型列表失败'))
+    } finally {
+      modelLoading.value = false
     }
   }
 
-  function ensureModelSelected() {
-    if (form.evaluatorType !== 'llm' || form.modelId || !models.value.length) {
-      return
+  function clearModelOptions() {
+    models.value = []
+  }
+
+  async function handleModelVisibleChange(visible: boolean) {
+    if (visible) {
+      await loadModelOptions()
     }
-    form.modelId = models.value[0].modelId
+  }
+
+  async function refreshEditor() {
+    clearModelOptions()
+    if (isEdit.value) {
+      await loadVersions(activeVersionId.value)
+    }
   }
 
   watch(
@@ -157,7 +172,6 @@ export function useEvaluatorEditor() {
     form.passThreshold = Number(preset.passThreshold ?? 3)
     form.params = preset.params.map(cloneParam)
     if (form.evaluatorType === 'llm') {
-      ensureModelSelected()
       syncPromptParams()
     }
   }
@@ -174,7 +188,6 @@ export function useEvaluatorEditor() {
     form.passThreshold = Number(config.passThreshold ?? 3)
     form.params = config.params.map(cloneParam)
     if (form.evaluatorType === 'llm') {
-      ensureModelSelected()
       syncPromptParams()
     }
     if (!form.params.length && form.evaluatorType === 'code') {
@@ -297,6 +310,10 @@ export function useEvaluatorEditor() {
       ElMessage.warning('请输入评估器名称')
       return false
     }
+    if ([form.scoreMin, form.scoreMax, form.passThreshold].some((value) => value === null || value === undefined || Number.isNaN(Number(value)))) {
+      ElMessage.warning('请完善评分范围和通过阈值')
+      return false
+    }
     if (form.scoreMin >= form.scoreMax) {
       ElMessage.warning('评分范围最大值必须大于最小值')
       return false
@@ -313,9 +330,17 @@ export function useEvaluatorEditor() {
       ElMessage.warning('请选择模型')
       return false
     }
+    if (form.evaluatorType === 'llm' && !extractPromptParams(form.prompt).length) {
+      ElMessage.warning('Prompt至少需要包含一个${参数名}参数')
+      return false
+    }
     if (form.evaluatorType === 'code') {
       if (!form.executeCode.trim()) {
         ElMessage.warning('请输入执行函数')
+        return false
+      }
+      if (!form.params.length) {
+        ElMessage.warning('请至少添加一个变量')
         return false
       }
       if (form.params.some((param) => !param.paramName.trim())) {
@@ -340,7 +365,6 @@ export function useEvaluatorEditor() {
     if (type === 'code' && (previousType !== 'code' || !form.params.length)) {
       form.params = defaultParams()
     } else if (type === 'llm') {
-      ensureModelSelected()
       syncPromptParams()
     }
   }
@@ -399,7 +423,10 @@ export function useEvaluatorEditor() {
     activeVersion,
     promptParams,
     modelOptions,
-    loadModels,
+    modelLoading,
+    loadModelOptions,
+    handleModelVisibleChange,
+    refreshEditor,
     loadVersions,
     selectVersion,
     submit,

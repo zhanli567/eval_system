@@ -166,12 +166,6 @@ export function useEvaluatorManagement() {
     router.push({ name: 'evaluator-edit', params: { evaluatorId: row.id } })
   }
 
-  async function copyEvaluator(row: EvaluatorSummary) {
-    const copied = await evaluatorApi.copyEvaluator(row.id)
-    ElMessage.success('评估器已复制')
-    await router.push({ name: 'evaluator-edit', params: { evaluatorId: copied.evaluatorId } })
-  }
-
   async function removeEvaluator(row: EvaluatorSummary) {
     await ElMessageBox.confirm(`确定删除评估器“${row.evaluatorName}”吗？`, '删除评估器', { type: 'warning' })
     await evaluatorApi.deleteEvaluator(row.id)
@@ -232,7 +226,6 @@ export function useEvaluatorManagement() {
     createCustom,
     createFromPreset,
     editEvaluator,
-    copyEvaluator,
     removeEvaluator,
     typeLabel,
     formatTime

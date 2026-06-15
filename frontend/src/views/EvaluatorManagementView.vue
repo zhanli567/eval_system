@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CopyDocument, Delete, Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { Delete, Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { useEvaluatorManagement } from '../modules/evaluator/composables/useEvaluatorManagement'
 
 const {
@@ -43,7 +43,6 @@ const {
   createCustom,
   createFromPreset,
   editEvaluator,
-  copyEvaluator,
   removeEvaluator,
   typeLabel,
   formatTime
@@ -106,10 +105,9 @@ const {
         <el-table-column label="创建时间" width="190">
           <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="190" fixed="right">
+        <el-table-column label="操作" width="130" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" :icon="Edit" @click="editEvaluator(row)">编辑</el-button>
-            <el-button link type="primary" :icon="CopyDocument" @click="copyEvaluator(row)">复制</el-button>
             <el-button link type="danger" :icon="Delete" @click="removeEvaluator(row)">删除</el-button>
           </template>
         </el-table-column>

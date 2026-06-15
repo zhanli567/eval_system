@@ -40,6 +40,8 @@ public class EvaluatorServiceImpl implements EvaluatorService {
   private static final BigDecimal DEFAULT_SCORE_MIN = BigDecimal.ONE;
   private static final BigDecimal DEFAULT_SCORE_MAX = BigDecimal.valueOf(5);
   private static final BigDecimal DEFAULT_PASS_THRESHOLD = BigDecimal.valueOf(3);
+  private static final int MAX_PROMPT_LENGTH = 2000;
+  private static final int MAX_EXECUTE_CODE_LENGTH = 10000;
   private static final int MAX_PARAM_DESCRIPTION_LENGTH = 200;
   private static final Pattern PROMPT_PARAM_PATTERN = Pattern.compile("\\$\\{([a-zA-Z_][\\w]*)}");
 
@@ -118,35 +120,6 @@ public class EvaluatorServiceImpl implements EvaluatorService {
         now);
     saveParams(TARGET_VERSION, versionId, normalized.params(), now);
     return getVersion(versionId);
-  }
-
-  @Transactional
-  public EvaluatorConfig copyEvaluator(String evaluatorId) {
-    String latestVersionId = evaluatorMapper.findLatestVersionId(evaluatorId);
-    if (!StringUtils.hasText(latestVersionId)) {
-      throw new IllegalArgumentException("评估器不存在");
-    }
-    EvaluatorConfig source = getVersion(latestVersionId);
-    EvaluatorInput input = new EvaluatorInput(
-        truncate(source.evaluatorName() + " 副本", 50),
-        source.evaluatorType(),
-        source.description(),
-        source.modelId(),
-        source.prompt(),
-        source.executeCode(),
-        source.scoreMin(),
-        source.scoreMax(),
-        source.passThreshold(),
-        source.params().stream()
-            .map(param -> new EvaluatorParamInput(
-                null,
-                param.paramName(),
-                param.dataType(),
-                param.defaultValue(),
-                param.required(),
-                param.description()))
-            .toList());
-    return createEvaluator(input);
   }
 
   public List<EvaluatorVersionDto> listVersions(String evaluatorId) {
@@ -292,9 +265,11 @@ public class EvaluatorServiceImpl implements EvaluatorService {
     if (TYPE_LLM.equals(evaluatorType)) {
       modelId = request.modelId() == null ? "" : request.modelId().trim();
       prompt = requireText(request.prompt(), "Prompt不能为空");
+      validateMaxLength(prompt, MAX_PROMPT_LENGTH, "Prompt不能超过2000个字符");
       params = normalizePromptParams(prompt, request.params());
     } else {
       executeCode = requireText(request.executeCode(), "执行函数不能为空");
+      validateMaxLength(executeCode, MAX_EXECUTE_CODE_LENGTH, "执行函数不能超过10000个字符");
       params = normalizeCodeParams(request.params());
     }
 
@@ -344,7 +319,7 @@ public class EvaluatorServiceImpl implements EvaluatorService {
 
   private List<EvaluatorParamInput> normalizeCodeParams(List<EvaluatorParamInput> params) {
     if (params == null) {
-      return List.of();
+      throw new IllegalArgumentException("请至少配置一个变量");
     }
     List<EvaluatorParamInput> normalized = new ArrayList<>();
     Set<String> names = new HashSet<>();
@@ -367,13 +342,16 @@ public class EvaluatorServiceImpl implements EvaluatorService {
           normalizeRequired(param.required()),
           normalizeParamDescription(param.description())));
     }
+    if (normalized.isEmpty()) {
+      throw new IllegalArgumentException("请至少配置一个变量");
+    }
     return normalized;
   }
 
   private List<EvaluatorParamInput> normalizePromptParams(String prompt, List<EvaluatorParamInput> params) {
     List<String> paramNames = extractPromptParamNames(prompt);
     if (paramNames.isEmpty()) {
-      return List.of();
+      throw new IllegalArgumentException("Prompt至少需要包含一个${参数名}参数");
     }
     Map<String, EvaluatorParamInput> providedParams = mapParamsByName(params);
     List<EvaluatorParamInput> normalized = new ArrayList<>();
@@ -468,8 +446,10 @@ public class EvaluatorServiceImpl implements EvaluatorService {
     return value.trim();
   }
 
-  private String truncate(String value, int maxLength) {
-    return value.length() <= maxLength ? value : value.substring(0, maxLength);
+  private void validateMaxLength(String value, int maxLength, String message) {
+    if (value != null && value.length() > maxLength) {
+      throw new IllegalArgumentException(message);
+    }
   }
 
   private String id() {

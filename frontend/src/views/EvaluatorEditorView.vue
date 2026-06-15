@@ -15,7 +15,9 @@ const {
   activeVersion,
   promptParams,
   modelOptions,
-  loadVersions,
+  modelLoading,
+  handleModelVisibleChange,
+  refreshEditor,
   selectVersion,
   submit,
   publishDraft,
@@ -38,7 +40,7 @@ const {
       </span>
     </div>
     <div class="top-actions">
-      <el-button v-if="isEdit" :icon="Refresh" @click="loadVersions(activeVersionId)">刷新</el-button>
+      <el-button v-if="isEdit" :icon="Refresh" @click="refreshEditor">刷新</el-button>
       <el-button :loading="saving" type="primary" :disabled="isEdit && !canEdit" @click="submit">{{ isEdit ? '保存草稿' : '创建' }}</el-button>
       <el-button v-if="isEdit" type="success" :icon="Promotion" :loading="publishing" :disabled="!canEdit" @click="publishDraft">发布</el-button>
     </div>
@@ -67,7 +69,7 @@ const {
         <h2>配置</h2>
 
         <el-form label-position="top" class="evaluator-form">
-          <el-form-item label="评估器名称 *">
+          <el-form-item label="评估器名称" required>
             <el-input v-model="form.evaluatorName" maxlength="50" show-word-limit :disabled="!canEdit" placeholder="请输入" />
           </el-form-item>
 
@@ -82,13 +84,25 @@ const {
             />
           </el-form-item>
 
-          <el-form-item label="创建方式">
+          <el-form-item label="创建方式" required>
             <div class="method-grid">
-              <button type="button" class="method-card" :class="{ active: form.evaluatorType === 'llm' }" @click="switchType('llm')">
+              <button
+                type="button"
+                class="method-card"
+                :class="{ active: form.evaluatorType === 'llm', disabled: isEdit && form.evaluatorType !== 'llm' }"
+                :disabled="isEdit && form.evaluatorType !== 'llm'"
+                @click="switchType('llm')"
+              >
                 <strong>LLM</strong>
                 <span>通过 Prompt 设计规则，让大模型判断预期输出和实际输出的差异</span>
               </button>
-              <button type="button" class="method-card" :class="{ active: form.evaluatorType === 'code' }" @click="switchType('code')">
+              <button
+                type="button"
+                class="method-card"
+                :class="{ active: form.evaluatorType === 'code', disabled: isEdit && form.evaluatorType !== 'code' }"
+                :disabled="isEdit && form.evaluatorType !== 'code'"
+                @click="switchType('code')"
+              >
                 <strong>Code</strong>
                 <span>通过 Coding 设计规则，执行代码函数来对比预期输出和实际输出</span>
               </button>
@@ -96,18 +110,26 @@ const {
           </el-form-item>
 
           <template v-if="form.evaluatorType === 'llm'">
-            <el-form-item label="选择模型 *">
-              <el-select v-model="form.modelId" class="wide-control" :disabled="!canEdit" placeholder="请选择模型">
+            <el-form-item label="选择模型" required>
+              <el-select
+                v-model="form.modelId"
+                class="wide-control"
+                :disabled="!canEdit"
+                :loading="modelLoading"
+                filterable
+                placeholder="请选择模型"
+                @visible-change="handleModelVisibleChange"
+              >
                 <el-option v-for="model in modelOptions" :key="model.value" :label="model.label" :value="model.value" />
               </el-select>
             </el-form-item>
 
-            <el-form-item label="Prompt *">
+            <el-form-item label="Prompt" required>
               <el-input
                 v-model="form.prompt"
                 type="textarea"
                 :rows="16"
-                maxlength="20000"
+                maxlength="2000"
                 show-word-limit
                 :disabled="!canEdit"
               />
@@ -118,7 +140,7 @@ const {
               </div>
             </el-form-item>
 
-            <div class="dialog-subtitle">
+            <div class="dialog-subtitle required-title">
               <span>Prompt 参数配置</span>
             </div>
             <div class="param-editor-list">
@@ -137,7 +159,7 @@ const {
           </template>
 
           <template v-else>
-            <div class="dialog-subtitle">
+            <div class="dialog-subtitle required-title">
               <span>代码入参设置</span>
               <el-button link type="primary" :icon="Plus" :disabled="!canEdit" @click="addParam">添加变量</el-button>
             </div>
@@ -156,19 +178,19 @@ const {
               </div>
             </div>
 
-            <el-form-item label="执行函数 *">
+            <el-form-item label="执行函数" required>
               <el-input
                 v-model="form.executeCode"
                 type="textarea"
                 :rows="14"
-                maxlength="20000"
+                maxlength="10000"
                 show-word-limit
                 :disabled="!canEdit"
               />
             </el-form-item>
           </template>
 
-          <el-form-item label="评分范围">
+          <el-form-item label="评分范围" required>
             <div class="range-row">
               <el-input-number v-model="form.scoreMin" :disabled="!canEdit" />
               <span>-</span>
@@ -176,37 +198,12 @@ const {
             </div>
           </el-form-item>
 
-          <el-form-item label="通过阈值">
+          <el-form-item label="通过阈值" required>
             <el-input-number v-model="form.passThreshold" class="wide-control" :disabled="!canEdit" />
           </el-form-item>
         </el-form>
       </section>
     </main>
 
-    <aside class="run-panel">
-      <h2>试运行</h2>
-      <div class="run-empty">
-        <span class="run-cube"></span>
-        <p>点击运行按钮发起请求，可以在此区域获取运行结果</p>
-      </div>
-      <div class="run-inputs">
-        <template v-if="form.evaluatorType === 'llm'">
-          <el-form label-position="top">
-            <el-form-item v-for="param in promptParams" :key="param.paramName" :label="param.paramName">
-              <el-input :placeholder="param.defaultValue || '请输入'" maxlength="2000" show-word-limit />
-            </el-form-item>
-          </el-form>
-        </template>
-        <template v-else>
-          <el-form label-position="top">
-            <el-form-item v-for="(param, index) in form.params" :key="`${index}:${param.paramName}`" :label="param.paramName || '未命名变量'">
-              <el-input :placeholder="param.defaultValue || '请输入'" />
-            </el-form-item>
-          </el-form>
-        </template>
-      </div>
-      <el-button type="primary" class="run-button">开始运行</el-button>
-      <span class="meta">内容由 AI 生成，仅供参考</span>
-    </aside>
   </section>
 </template>
