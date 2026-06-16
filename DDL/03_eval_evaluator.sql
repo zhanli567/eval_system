@@ -1,28 +1,3 @@
-CREATE TABLE IF NOT EXISTS eval_preset_evaluator_category (
-  id VARCHAR(64) COMMENT '预置评估器分类ID',
-  category_name VARCHAR(50) COMMENT '分类名称：通用质量、智能体、文本匹配、文本相似度、格式校验',
-  display_order INT COMMENT '展示顺序',
-  created_at VARCHAR(32) COMMENT '创建时间',
-  updated_at VARCHAR(32) COMMENT '更新时间'
-) COMMENT='预置评估器分类表';
-
-CREATE TABLE IF NOT EXISTS eval_preset_evaluator (
-  id VARCHAR(64) COMMENT '预置评估器ID',
-  category_id VARCHAR(64) COMMENT '预置评估器分类ID',
-  evaluator_name VARCHAR(50) COMMENT '评估器名称',
-  evaluator_type VARCHAR(16) COMMENT '评估器类型：llm/code',
-  description VARCHAR(200) COMMENT '评估器描述',
-  model_id VARCHAR(64) COMMENT 'LLM评估使用的模型ID，后续可作为模型表外键',
-  prompt LONGTEXT COMMENT 'LLM评估Prompt',
-  execute_code LONGTEXT COMMENT 'Code评估Python执行函数',
-  score_min DECIMAL(10,4) COMMENT '评分范围最小值',
-  score_max DECIMAL(10,4) COMMENT '评分范围最大值',
-  pass_threshold DECIMAL(10,4) COMMENT '通过阈值：大于等于该阈值为Pass',
-  display_order INT COMMENT '展示顺序',
-  created_at VARCHAR(32) COMMENT '创建时间',
-  updated_at VARCHAR(32) COMMENT '更新时间'
-) COMMENT='预置评估器表';
-
 CREATE TABLE IF NOT EXISTS eval_evaluator (
   id VARCHAR(64) COMMENT '自定义评估器ID',
   evaluator_name VARCHAR(50) COMMENT '评估器名称',
@@ -51,8 +26,8 @@ CREATE TABLE IF NOT EXISTS eval_evaluator_version (
 
 CREATE TABLE IF NOT EXISTS eval_evaluator_param (
   id VARCHAR(64) COMMENT '评估器参数ID',
-  target_type VARCHAR(16) COMMENT '参数所属类型：preset预置评估器，version自定义评估器版本',
-  target_id VARCHAR(64) COMMENT '参数所属ID：预置评估器ID或自定义评估器版本ID',
+  target_type VARCHAR(16) COMMENT '参数所属类型：version自定义评估器版本',
+  target_id VARCHAR(64) COMMENT '参数所属ID：自定义评估器版本ID',
   param_name VARCHAR(64) COMMENT '变量名',
   data_type VARCHAR(32) COMMENT '数据类型：string/number/boolean',
   default_value LONGTEXT COMMENT '默认值',
