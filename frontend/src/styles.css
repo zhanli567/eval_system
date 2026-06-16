@@ -21,16 +21,24 @@
 
 body {
   margin: 0;
+  height: 100vh;
   min-width: 1180px;
+  overflow: hidden;
   background:
     radial-gradient(circle at top left, rgba(99, 91, 255, 0.08), transparent 32rem),
     var(--bg);
 }
 
+#app {
+  height: 100vh;
+}
+
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .side-nav {
@@ -109,8 +117,19 @@ body {
 }
 
 .workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
   min-width: 0;
+  overflow-y: auto;
   padding: 24px 28px 40px;
+}
+
+.workspace:has(.task-panel),
+.workspace:has(.task-detail-shell),
+.workspace:has(.annotation-shell) {
+  overflow: hidden;
 }
 
 .topbar,
@@ -126,6 +145,7 @@ body {
 }
 
 .topbar {
+  flex: 0 0 auto;
   justify-content: space-between;
   margin-bottom: 18px;
 }
@@ -189,6 +209,10 @@ h2 {
 .annotation-column,
 .annotation-output {
   padding: 18px;
+}
+
+.dataset-create-dialog .field-editor {
+  border-bottom: 0;
 }
 
 .evaluator-panel {
@@ -375,7 +399,12 @@ h2 {
 }
 
 .preset-detail {
-  min-height: 380px;
+  min-height: 0;
+}
+
+.preset-detail-dialog .el-dialog__body {
+  max-height: min(68vh, 640px);
+  overflow-y: auto;
 }
 
 .detail-header-line {
@@ -698,6 +727,8 @@ h2 {
 }
 
 .field-editor-list {
+  display: grid;
+  gap: 4px;
   max-height: 360px;
   overflow-y: auto;
   padding-right: 4px;
@@ -975,8 +1006,40 @@ h2 {
   gap: 16px;
 }
 
+.task-panel,
+.task-detail-shell,
+.annotation-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.task-panel,
+.task-data-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.task-panel .panel-toolbar,
+.task-data-panel .panel-toolbar,
+.task-panel .pager-row,
+.task-data-panel .pager-row {
+  flex: 0 0 auto;
+}
+
+.task-panel .el-table,
+.task-data-panel .el-table {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .task-create-shell {
   padding-bottom: 84px;
+}
+
+.task-detail-shell {
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .task-create-main {
@@ -1329,6 +1392,7 @@ h2 {
 
 .task-data-panel {
   min-width: 0;
+  min-height: 0;
 }
 
 .result-value {
@@ -1364,8 +1428,8 @@ h2 {
   display: grid;
   grid-template-columns: minmax(300px, 0.75fr) minmax(520px, 1.45fr) minmax(340px, 0.9fr);
   gap: 16px;
-  align-items: start;
-  overflow-x: auto;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 .annotation-load-error,
@@ -1375,18 +1439,27 @@ h2 {
 
 .annotation-column,
 .annotation-output {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-width: 0;
-  min-height: 680px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .annotation-field-list,
 .auto-result-list {
   display: grid;
+  align-content: start;
+  flex: 1 1 auto;
   gap: 12px;
   margin-top: 14px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .annotation-field {
+  min-width: 0;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -1404,14 +1477,15 @@ h2 {
 .app-output-box p {
   margin: 0;
   white-space: pre-wrap;
-  word-break: normal;
-  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   line-height: 1.7;
 }
 
 .app-output-box {
+  flex: 0 0 auto;
   min-height: 180px;
-  max-height: 360px;
+  max-height: 34%;
   margin: 14px 0 24px;
   padding: 16px;
   overflow: auto;
@@ -1463,6 +1537,12 @@ h2 {
   top: 18px;
 }
 
+.annotation-form-column .el-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .annotation-tag-editor {
   display: grid;
   gap: 10px;
@@ -1499,6 +1579,10 @@ h2 {
   --el-table-row-hover-bg-color: #f8f9ff;
 }
 
+.el-popper.is-light {
+  color: var(--ink);
+}
+
 @media (max-width: 900px) {
   .app-select-grid,
   .evaluator-config-grid,
@@ -1527,14 +1611,14 @@ h2 {
   .annotation-form-column {
     position: static;
     grid-column: 1 / -1;
-    min-height: 0;
+    min-height: 360px;
   }
 }
 
 @media (max-width: 900px) {
   .annotation-shell {
     grid-template-columns: 1fr;
-    overflow-x: visible;
+    overflow-y: auto;
   }
 
   .annotation-form-column {

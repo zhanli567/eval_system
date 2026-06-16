@@ -125,7 +125,7 @@ const {
         <el-button @click="loadDetail">筛选</el-button>
       </div>
 
-      <el-table :key="dataTableKey" :data="tableRows" row-key="id" border class="data-table">
+      <el-table :key="dataTableKey" :data="tableRows" row-key="id" border tooltip-effect="light" class="data-table">
         <el-table-column label="序号" width="90">
           <template #default="{ row }"># {{ row.rowNo }}</template>
         </el-table-column>

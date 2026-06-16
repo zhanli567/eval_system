@@ -68,8 +68,8 @@ const {
       <el-button @click="loadTags">搜索</el-button>
     </div>
 
-    <el-table v-loading="tagLoading" :data="tags" row-key="id" class="tag-table">
-      <el-table-column prop="tagName" label="标签名称" min-width="260">
+    <el-table v-loading="tagLoading" :data="tags" row-key="id" tooltip-effect="light" class="tag-table">
+      <el-table-column prop="tagName" label="标签名称" min-width="260" show-overflow-tooltip>
         <template #default="{ row }">
           <span
             class="linkish"
@@ -88,7 +88,7 @@ const {
           <el-tag effect="plain">{{ getTagTypeLabel(row.tagType) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="描述" min-width="300">
+      <el-table-column label="描述" min-width="300" show-overflow-tooltip>
         <template #default="{ row }">{{ row.description || '暂无描述' }}</template>
       </el-table-column>
       <el-table-column label="创建时间" width="210">

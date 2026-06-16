@@ -73,29 +73,29 @@ const {
       </div>
     </div>
 
-    <el-table v-loading="loading" :data="tasks" row-key="base.id" class="task-table">
+    <el-table v-loading="loading" :data="tasks" row-key="base.id" height="100%" tooltip-effect="light" class="task-table">
       <el-table-column label="评测状态" width="130">
         <template #default="{ row }">
           <el-tag :type="statusTagType(row.base.status)" effect="plain">{{ statusLabel(row.base.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="任务名称" min-width="210">
+      <el-table-column label="任务名称" min-width="210" show-overflow-tooltip>
         <template #default="{ row }">
           <button class="table-link" type="button" @click="openDetail(row)">{{ row.base.taskName }}</button>
         </template>
       </el-table-column>
-      <el-table-column label="评测集名称" min-width="180">
+      <el-table-column label="评测集名称" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">
           <span>{{ row.base.datasetName }}</span>
           <el-tag size="small" effect="plain">{{ row.base.datasetVersionName }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="应用" min-width="150">
+      <el-table-column label="应用" min-width="150" show-overflow-tooltip>
         <template #default="{ row }">
           {{ row.base.appType === 'agent' ? row.base.appId || '智能体应用' : '-' }}
         </template>
       </el-table-column>
-      <el-table-column label="评估器详情" min-width="240">
+      <el-table-column label="评估器详情" min-width="240" show-overflow-tooltip>
         <template #default="{ row }">
           <div v-if="row.evaluators.length" class="dimension-cell">
             <div class="dimension-chip">
@@ -110,7 +110,7 @@ const {
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column label="标签详情" min-width="220">
+      <el-table-column label="标签详情" min-width="220" show-overflow-tooltip>
         <template #default="{ row }">
           <div v-if="row.tags.length" class="dimension-cell">
             <div class="dimension-chip">
@@ -130,7 +130,7 @@ const {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="描述" min-width="220">
+      <el-table-column label="描述" min-width="220" show-overflow-tooltip>
         <template #default="{ row }">{{ row.base.description || '暂无描述' }}</template>
       </el-table-column>
       <el-table-column label="操作" width="220" fixed="right">

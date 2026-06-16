@@ -88,15 +88,15 @@ const {
         <el-button @click="searchCustom">搜索</el-button>
       </div>
 
-      <el-table v-loading="customLoading" :data="customEvaluators" row-key="id" class="evaluator-table">
-        <el-table-column prop="evaluatorName" label="名称" min-width="180" />
+      <el-table v-loading="customLoading" :data="customEvaluators" row-key="id" tooltip-effect="light" class="evaluator-table">
+        <el-table-column prop="evaluatorName" label="名称" min-width="180" show-overflow-tooltip />
         <el-table-column label="类型" width="110">
           <template #default="{ row }">
             <el-tag size="small" effect="plain">{{ typeLabel(row.evaluatorType) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="latestVersionName" label="最新版本" width="120" />
-        <el-table-column prop="description" label="描述" min-width="260">
+        <el-table-column prop="description" label="描述" min-width="260" show-overflow-tooltip>
           <template #default="{ row }">{{ row.description || '暂无描述' }}</template>
         </el-table-column>
         <el-table-column label="更新时间" width="190">
@@ -105,7 +105,7 @@ const {
         <el-table-column label="创建时间" width="190">
           <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="130" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" :icon="Edit" @click="editEvaluator(row)">编辑</el-button>
             <el-button link type="danger" :icon="Delete" @click="removeEvaluator(row)">删除</el-button>
@@ -247,7 +247,7 @@ const {
     </div>
   </el-dialog>
 
-  <el-dialog v-model="detailVisible" :title="selectedPreset?.evaluatorName || '预置评估器详情'" width="900px">
+  <el-dialog v-model="detailVisible" :title="selectedPreset?.evaluatorName || '预置评估器详情'" width="900px" class="preset-detail-dialog">
     <div v-loading="detailLoading" class="preset-detail">
       <template v-if="selectedPreset">
         <div class="detail-header-line">

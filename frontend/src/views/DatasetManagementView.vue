@@ -62,6 +62,7 @@ const {
       :data="datasets"
       row-key="id"
       highlight-current-row
+      tooltip-effect="light"
       class="dataset-table"
     >
       <el-table-column prop="name" label="评测集名称" min-width="220">
@@ -71,7 +72,7 @@ const {
       </el-table-column>
       <el-table-column prop="publishedVersionCount" label="版本数量" width="110" />
       <el-table-column prop="latestItemCount" label="数据量" width="110" />
-      <el-table-column prop="description" label="描述" min-width="260">
+      <el-table-column prop="description" label="描述" min-width="260" show-overflow-tooltip>
         <template #default="{ row }">{{ row.description || '暂无描述' }}</template>
       </el-table-column>
       <el-table-column label="创建时间" width="190">
@@ -99,7 +100,7 @@ const {
     </div>
   </section>
 
-  <el-dialog v-model="createVisible" title="创建评测集" width="760px">
+  <el-dialog v-model="createVisible" title="创建评测集" width="760px" class="dataset-create-dialog">
     <el-form label-position="top">
       <el-form-item label="评测集名称">
         <el-input v-model="createForm.name" maxlength="50" show-word-limit />

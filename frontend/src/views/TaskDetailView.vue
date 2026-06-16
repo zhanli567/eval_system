@@ -122,7 +122,7 @@ function evaluatorResultLabel(result?: TaskEvaluatorResult) {
         <span class="meta">数据明细</span>
       </div>
 
-      <el-table :data="rows" row-key="id" border class="task-detail-table">
+      <el-table :data="rows" row-key="id" border height="100%" tooltip-effect="light" class="task-detail-table">
         <el-table-column label="状态" width="120" fixed="left">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.status)" effect="plain">{{ statusLabel(row.status) }}</el-tag>
