@@ -10,4 +10,3 @@ frontend/vite.config.d.ts
 
 *.log
 *.tmp
-*.png
