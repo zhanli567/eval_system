@@ -4,9 +4,6 @@ import com.evalsystem.evaluator.dto.EvaluatorConfigBase;
 import com.evalsystem.evaluator.dto.EvaluatorParamDto;
 import com.evalsystem.evaluator.dto.EvaluatorSummary;
 import com.evalsystem.evaluator.dto.EvaluatorVersionDto;
-import com.evalsystem.evaluator.dto.PresetCategoryDto;
-import com.evalsystem.evaluator.dto.PresetEvaluatorConfig;
-import com.evalsystem.evaluator.dto.PresetEvaluatorSummary;
 import java.math.BigDecimal;
 import java.util.List;
 import org.apache.ibatis.annotations.Delete;
@@ -24,19 +21,6 @@ public interface EvaluatorMapper {
   );
 
   long countEvaluators(@Param("evaluatorType") String evaluatorType, @Param("like") String like);
-
-  List<PresetCategoryDto> listPresetCategories();
-
-  List<PresetEvaluatorSummary> listPresetEvaluators(
-      @Param("categoryId") String categoryId,
-      @Param("like") String like,
-      @Param("size") int size,
-      @Param("offset") int offset
-  );
-
-  long countPresetEvaluators(@Param("categoryId") String categoryId, @Param("like") String like);
-
-  PresetEvaluatorConfig findPresetConfig(@Param("presetId") String presetId);
 
   List<EvaluatorVersionDto> listVersions(@Param("evaluatorId") String evaluatorId);
 

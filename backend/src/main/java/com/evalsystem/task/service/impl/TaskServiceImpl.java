@@ -155,7 +155,7 @@ public class TaskServiceImpl implements TaskService {
     return new TaskDetail(
         base,
         fields,
-        taskMapper.listEvaluatorDimensions(taskId),
+        buildEvaluatorDimensions(taskId),
         taskMapper.listTagDimensions(taskId),
         new PageResponse<>(buildItems(itemRecords), total, safePage, safeSize));
   }
@@ -764,8 +764,39 @@ public class TaskServiceImpl implements TaskService {
   private TaskSummary toSummary(TaskBase base) {
     return new TaskSummary(
         base,
-        taskMapper.listEvaluatorDimensions(base.id()),
+        buildEvaluatorDimensions(base.id()),
         taskMapper.listTagDimensions(base.id()));
+  }
+
+  private List<TaskEvaluatorDimension> buildEvaluatorDimensions(String taskId) {
+    return taskMapper.listEvaluatorDimensions(taskId)
+        .stream()
+        .map(this::attachPresetEvaluatorDisplay)
+        .toList();
+  }
+
+  private TaskEvaluatorDimension attachPresetEvaluatorDisplay(TaskEvaluatorDimension dimension) {
+    if (!EVALUATOR_PRESET.equals(dimension.evaluatorSource())) {
+      return dimension;
+    }
+    PresetEvaluatorDetail preset = findPresetQuietly(dimension.evaluatorId());
+    if (preset == null) {
+      return dimension;
+    }
+    return new TaskEvaluatorDimension(
+        dimension.taskEvaluatorId(),
+        dimension.evaluatorSource(),
+        dimension.evaluatorId(),
+        dimension.evaluatorVersionId(),
+        preset.evaluatorName(),
+        preset.evaluatorType(),
+        "预置",
+        dimension.status(),
+        dimension.passCount(),
+        dimension.completedCount(),
+        dimension.totalCount(),
+        dimension.passRate(),
+        dimension.displayOrder());
   }
 
   private List<TaskItemDetail> buildItems(List<TaskMapper.TaskItemRecord> itemRecords) {
@@ -773,9 +804,13 @@ public class TaskServiceImpl implements TaskService {
       return List.of();
     }
     List<String> taskItemIds = itemRecords.stream().map(TaskMapper.TaskItemRecord::id).toList();
+    Map<String, TaskMapper.TaskEvaluatorBindingRecord> evaluatorBindings = taskMapper.listTaskEvaluatorBindings(itemRecords.getFirst().taskId())
+        .stream()
+        .collect(Collectors.toMap(TaskMapper.TaskEvaluatorBindingRecord::id, Function.identity()));
     Map<String, Map<String, String>> valuesByDatasetItem = loadDatasetValues(itemRecords);
     Map<String, List<TaskEvaluatorResultDto>> evaluatorResults = taskMapper.listEvaluatorResultsByTaskItemIds(taskItemIds)
         .stream()
+        .map(result -> attachPresetEvaluatorResultDisplay(result, evaluatorBindings))
         .collect(Collectors.groupingBy(TaskEvaluatorResultDto::taskItemId));
     Map<String, List<TaskTagResultDto>> tagResults = taskMapper.listTagResultsByTaskItemIds(taskItemIds)
         .stream()
@@ -795,6 +830,42 @@ public class TaskServiceImpl implements TaskService {
             item.createdAt(),
             item.updatedAt()))
         .toList();
+  }
+
+  private TaskEvaluatorResultDto attachPresetEvaluatorResultDisplay(
+      TaskEvaluatorResultDto result,
+      Map<String, TaskMapper.TaskEvaluatorBindingRecord> evaluatorBindings
+  ) {
+    TaskMapper.TaskEvaluatorBindingRecord binding = evaluatorBindings.get(result.taskEvaluatorId());
+    if (binding == null || !EVALUATOR_PRESET.equals(binding.evaluatorSource())) {
+      return result;
+    }
+    PresetEvaluatorDetail preset = findPresetQuietly(binding.evaluatorId());
+    if (preset == null) {
+      return result;
+    }
+    return new TaskEvaluatorResultDto(
+        result.id(),
+        result.taskItemId(),
+        result.taskEvaluatorId(),
+        preset.evaluatorName(),
+        preset.evaluatorType(),
+        "预置",
+        result.status(),
+        result.score(),
+        result.passResult(),
+        result.resultValue(),
+        result.errorMessage(),
+        result.startedAt(),
+        result.finishedAt());
+  }
+
+  private PresetEvaluatorDetail findPresetQuietly(String presetId) {
+    try {
+      return evaluatorService.getPresetEvaluator(presetId);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
   }
 
   private Map<String, Map<String, String>> loadDatasetValues(List<TaskMapper.TaskItemRecord> itemRecords) {

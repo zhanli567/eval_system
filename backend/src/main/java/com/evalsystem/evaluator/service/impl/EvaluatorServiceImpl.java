@@ -9,10 +9,10 @@ import com.evalsystem.evaluator.dto.EvaluatorParamInput;
 import com.evalsystem.evaluator.dto.EvaluatorSummary;
 import com.evalsystem.evaluator.dto.EvaluatorVersionDto;
 import com.evalsystem.evaluator.dto.PresetCategoryDto;
-import com.evalsystem.evaluator.dto.PresetEvaluatorConfig;
 import com.evalsystem.evaluator.dto.PresetEvaluatorDetail;
 import com.evalsystem.evaluator.dto.PresetEvaluatorSummary;
 import com.evalsystem.evaluator.mapper.EvaluatorMapper;
+import com.evalsystem.evaluator.preset.PresetEvaluatorStore;
 import com.evalsystem.evaluator.service.EvaluatorService;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -32,7 +32,6 @@ import org.springframework.util.StringUtils;
 public class EvaluatorServiceImpl implements EvaluatorService {
   private static final String TYPE_LLM = "llm";
   private static final String TYPE_CODE = "code";
-  private static final String TARGET_PRESET = "preset";
   private static final String TARGET_VERSION = "version";
   private static final String PARAM_TYPE_STRING = "string";
   private static final List<String> SUPPORTED_TYPES = List.of(TYPE_LLM, TYPE_CODE);
@@ -46,9 +45,11 @@ public class EvaluatorServiceImpl implements EvaluatorService {
   private static final Pattern PROMPT_PARAM_PATTERN = Pattern.compile("\\$\\{([a-zA-Z_][\\w]*)}");
 
   private final EvaluatorMapper evaluatorMapper;
+  private final PresetEvaluatorStore presetEvaluatorStore;
 
-  public EvaluatorServiceImpl(EvaluatorMapper evaluatorMapper) {
+  public EvaluatorServiceImpl(EvaluatorMapper evaluatorMapper, PresetEvaluatorStore presetEvaluatorStore) {
     this.evaluatorMapper = evaluatorMapper;
+    this.presetEvaluatorStore = presetEvaluatorStore;
   }
 
   public PageResponse<EvaluatorSummary> listEvaluators(int page, int size, String evaluatorType, String keyword) {
@@ -63,41 +64,15 @@ public class EvaluatorServiceImpl implements EvaluatorService {
   }
 
   public List<PresetCategoryDto> listPresetCategories() {
-    return evaluatorMapper.listPresetCategories();
+    return presetEvaluatorStore.listCategories();
   }
 
   public PageResponse<PresetEvaluatorSummary> listPresetEvaluators(int page, int size, String categoryId, String keyword) {
-    int safePage = Math.max(page, 1);
-    int safeSize = Math.min(Math.max(size, 1), 100);
-    int offset = (safePage - 1) * safeSize;
-    String safeCategoryId = StringUtils.hasText(categoryId) ? categoryId.trim() : null;
-    String like = "%" + (keyword == null ? "" : keyword.trim()) + "%";
-    List<PresetEvaluatorSummary> records = evaluatorMapper.listPresetEvaluators(safeCategoryId, like, safeSize, offset);
-    long total = evaluatorMapper.countPresetEvaluators(safeCategoryId, like);
-    return new PageResponse<>(records, total, safePage, safeSize);
+    return presetEvaluatorStore.listEvaluators(page, size, categoryId, keyword);
   }
 
   public PresetEvaluatorDetail getPresetEvaluator(String presetId) {
-    PresetEvaluatorConfig config = evaluatorMapper.findPresetConfig(presetId);
-    if (config == null) {
-      throw new IllegalArgumentException("预置评估器不存在");
-    }
-    return new PresetEvaluatorDetail(
-        config.id(),
-        config.categoryId(),
-        config.categoryName(),
-        config.evaluatorName(),
-        config.evaluatorType(),
-        config.description(),
-        config.modelId(),
-        config.prompt(),
-        config.executeCode(),
-        config.scoreMin(),
-        config.scoreMax(),
-        config.passThreshold(),
-        config.createdAt(),
-        config.updatedAt(),
-        listEvaluatorParams(TARGET_PRESET, config.id(), config.evaluatorType(), config.prompt()));
+    return presetEvaluatorStore.getPresetEvaluator(presetId);
   }
 
   @Transactional

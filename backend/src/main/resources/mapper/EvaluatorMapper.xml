@@ -18,44 +18,6 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="PresetCategoryMap" type="com.evalsystem.evaluator.dto.PresetCategoryDto">
-    <constructor>
-      <arg column="id" javaType="java.lang.String"/>
-      <arg column="categoryName" javaType="java.lang.String"/>
-      <arg column="displayOrder" javaType="java.lang.Integer"/>
-    </constructor>
-  </resultMap>
-
-  <resultMap id="PresetSummaryMap" type="com.evalsystem.evaluator.dto.PresetEvaluatorSummary">
-    <constructor>
-      <arg column="id" javaType="java.lang.String"/>
-      <arg column="categoryId" javaType="java.lang.String"/>
-      <arg column="categoryName" javaType="java.lang.String"/>
-      <arg column="evaluatorName" javaType="java.lang.String"/>
-      <arg column="evaluatorType" javaType="java.lang.String"/>
-      <arg column="description" javaType="java.lang.String"/>
-    </constructor>
-  </resultMap>
-
-  <resultMap id="PresetConfigMap" type="com.evalsystem.evaluator.dto.PresetEvaluatorConfig">
-    <constructor>
-      <arg column="id" javaType="java.lang.String"/>
-      <arg column="categoryId" javaType="java.lang.String"/>
-      <arg column="categoryName" javaType="java.lang.String"/>
-      <arg column="evaluatorName" javaType="java.lang.String"/>
-      <arg column="evaluatorType" javaType="java.lang.String"/>
-      <arg column="description" javaType="java.lang.String"/>
-      <arg column="modelId" javaType="java.lang.String"/>
-      <arg column="prompt" javaType="java.lang.String"/>
-      <arg column="executeCode" javaType="java.lang.String"/>
-      <arg column="scoreMin" javaType="java.math.BigDecimal"/>
-      <arg column="scoreMax" javaType="java.math.BigDecimal"/>
-      <arg column="passThreshold" javaType="java.math.BigDecimal"/>
-      <arg column="createdAt" javaType="java.lang.String"/>
-      <arg column="updatedAt" javaType="java.lang.String"/>
-    </constructor>
-  </resultMap>
-
   <resultMap id="VersionMap" type="com.evalsystem.evaluator.dto.EvaluatorVersionDto">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
@@ -114,56 +76,6 @@
     WHERE is_deleted = 0
       AND (#{evaluatorType} IS NULL OR evaluator_type = #{evaluatorType})
       AND (#{like} = '%%' OR evaluator_name LIKE #{like})
-  </select>
-
-  <select id="listPresetCategories" resultMap="PresetCategoryMap">
-    SELECT id AS id,
-           category_name AS categoryName,
-           display_order AS displayOrder
-    FROM eval_preset_evaluator_category
-    ORDER BY display_order ASC
-  </select>
-
-  <select id="listPresetEvaluators" resultMap="PresetSummaryMap">
-    SELECT p.id AS id,
-           p.category_id AS categoryId,
-           c.category_name AS categoryName,
-           p.evaluator_name AS evaluatorName,
-           p.evaluator_type AS evaluatorType,
-           p.description AS description
-    FROM eval_preset_evaluator p
-    LEFT JOIN eval_preset_evaluator_category c ON p.category_id = c.id
-    WHERE (#{categoryId} IS NULL OR p.category_id = #{categoryId})
-      AND (#{like} = '%%' OR p.evaluator_name LIKE #{like})
-    ORDER BY c.display_order ASC, p.display_order ASC
-    LIMIT #{size} OFFSET #{offset}
-  </select>
-
-  <select id="countPresetEvaluators" resultType="long">
-    SELECT COUNT(*)
-    FROM eval_preset_evaluator
-    WHERE (#{categoryId} IS NULL OR category_id = #{categoryId})
-      AND (#{like} = '%%' OR evaluator_name LIKE #{like})
-  </select>
-
-  <select id="findPresetConfig" resultMap="PresetConfigMap">
-    SELECT p.id AS id,
-           p.category_id AS categoryId,
-           c.category_name AS categoryName,
-           p.evaluator_name AS evaluatorName,
-           p.evaluator_type AS evaluatorType,
-           p.description AS description,
-           p.model_id AS modelId,
-           p.prompt AS prompt,
-           p.execute_code AS executeCode,
-           p.score_min AS scoreMin,
-           p.score_max AS scoreMax,
-           p.pass_threshold AS passThreshold,
-           p.created_at AS createdAt,
-           p.updated_at AS updatedAt
-    FROM eval_preset_evaluator p
-    LEFT JOIN eval_preset_evaluator_category c ON p.category_id = c.id
-    WHERE p.id = #{presetId}
   </select>
 
   <select id="listVersions" resultMap="VersionMap">

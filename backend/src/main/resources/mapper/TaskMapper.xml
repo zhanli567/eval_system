@@ -220,8 +220,8 @@
            te.evaluator_source AS evaluatorSource,
            te.evaluator_id AS evaluatorId,
            te.evaluator_version_id AS evaluatorVersionId,
-           CASE WHEN te.evaluator_source = 'preset' THEN p.evaluator_name ELSE e.evaluator_name END AS evaluatorName,
-           CASE WHEN te.evaluator_source = 'preset' THEN p.evaluator_type ELSE e.evaluator_type END AS evaluatorType,
+           CASE WHEN te.evaluator_source = 'preset' THEN '' ELSE e.evaluator_name END AS evaluatorName,
+           CASE WHEN te.evaluator_source = 'preset' THEN '' ELSE e.evaluator_type END AS evaluatorType,
            CASE WHEN te.evaluator_source = 'preset' THEN '预置'
                 WHEN ev.version_no = 0 THEN '草稿'
                 ELSE CONCAT('V', ev.version_no)
@@ -236,12 +236,11 @@
            END AS passRate,
            te.display_order AS displayOrder
     FROM eval_task_evaluator te
-    LEFT JOIN eval_preset_evaluator p ON te.evaluator_source = 'preset' AND te.evaluator_id = p.id
     LEFT JOIN eval_evaluator e ON te.evaluator_source = 'custom' AND te.evaluator_id = e.id
     LEFT JOIN eval_evaluator_version ev ON te.evaluator_version_id = ev.id
     LEFT JOIN eval_task_evaluator_result r ON r.task_evaluator_id = te.id
     WHERE te.task_id = #{taskId}
-    GROUP BY te.id, te.evaluator_source, te.evaluator_id, te.evaluator_version_id, p.evaluator_name, p.evaluator_type,
+    GROUP BY te.id, te.evaluator_source, te.evaluator_id, te.evaluator_version_id,
              e.evaluator_name, e.evaluator_type, ev.version_no, te.status, te.display_order
     ORDER BY te.display_order ASC
   </select>
@@ -337,8 +336,8 @@
     SELECT r.id AS id,
            r.task_item_id AS taskItemId,
            r.task_evaluator_id AS taskEvaluatorId,
-           CASE WHEN te.evaluator_source = 'preset' THEN p.evaluator_name ELSE e.evaluator_name END AS evaluatorName,
-           CASE WHEN te.evaluator_source = 'preset' THEN p.evaluator_type ELSE e.evaluator_type END AS evaluatorType,
+           CASE WHEN te.evaluator_source = 'preset' THEN '' ELSE e.evaluator_name END AS evaluatorName,
+           CASE WHEN te.evaluator_source = 'preset' THEN '' ELSE e.evaluator_type END AS evaluatorType,
            CASE WHEN te.evaluator_source = 'preset' THEN '预置'
                 WHEN ev.version_no = 0 THEN '草稿'
                 ELSE CONCAT('V', ev.version_no)
@@ -352,7 +351,6 @@
            r.finished_at AS finishedAt
     FROM eval_task_evaluator_result r
     JOIN eval_task_evaluator te ON r.task_evaluator_id = te.id
-    LEFT JOIN eval_preset_evaluator p ON te.evaluator_source = 'preset' AND te.evaluator_id = p.id
     LEFT JOIN eval_evaluator e ON te.evaluator_source = 'custom' AND te.evaluator_id = e.id
     LEFT JOIN eval_evaluator_version ev ON te.evaluator_version_id = ev.id
     WHERE r.task_item_id IN
