@@ -55,6 +55,8 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
   private static final String STATUS_COMPLETED = "completed";
   private static final String STATUS_FAILED = "failed";
   private static final String ROLE_ASSISTANT = "assistant";
+  private static final String IAM_AUTH_TYPE = "IAM";
+  private static final String THINK_END_TAG = "</think>";
   private static final String DEFAULT_AGENT_ALIAS = "router-agent";
   private static final String RESPONSE_OBJECT = "com.evalsystem.integration.dto.PlatformAgentChatResponse";
   private static final HostnameVerifier TRUST_ALL_HOSTNAME_VERIFIER = (hostname, session) -> true;
@@ -84,7 +86,13 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
         PlatformModelListResponse.class);
     ensureSuccess("模型列表接口", response.status(), response.success());
     PlatformListResult<PlatformModelInfo> result = response.resultObjVO();
-    return result == null || result.list() == null ? List.of() : result.list();
+    List<PlatformModelInfo> models = result == null || result.list() == null ? List.of() : result.list();
+    if (!properties.getIam().isEnabled()) {
+      return models;
+    }
+    return models.stream()
+        .filter(model -> IAM_AUTH_TYPE.equalsIgnoreCase(model.authType()))
+        .toList();
   }
 
   @Override
@@ -106,6 +114,9 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
 
   @Override
   public PlatformModelChatResult chatModel(String modelId, String message) {
+    if (properties.getIam().isEnabled()) {
+      return chatIamModel(modelId, message);
+    }
     requireText(modelId, "模型ID不能为空");
     requireText(properties.getModelChatUrl(), "请配置模型对话接口 integration.platform.model-chat-url");
     PlatformModelChatResponse response = exchangeJson(
@@ -119,6 +130,71 @@ public class PlatformIntegrationServiceImpl implements PlatformIntegrationServic
       throw new IllegalStateException("模型对话接口返回为空");
     }
     return response.resultObjVO();
+  }
+
+  private PlatformModelChatResult chatIamModel(String modelId, String message) {
+    requireText(modelId, "模型ID不能为空");
+    requireText(properties.getIam().getUrl(), "请配置IAM模型对话接口 integration.platform.iam.url");
+    requireText(properties.getIam().getAuthorization(), "请配置IAM模型Authorization integration.platform.iam.authorization");
+    PlatformModelInfo model = findIamModel(modelId);
+    String modelName = requireText(model.modelName(), "IAM模型缺少modelName：" + modelId);
+    HttpURLConnection connection = null;
+    try {
+      connection = openConnection(properties.getIam().getUrl(), "POST");
+      connection.setRequestProperty("Accept", "application/json");
+      connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+      connection.setRequestProperty("Authorization", properties.getIam().getAuthorization());
+      Map<String, Object> body = new LinkedHashMap<>();
+      body.put("model", modelName);
+      body.put("messages", List.of(Map.of(
+          "role", "user",
+          "content", message == null ? "" : message)));
+      body.put("stream", Boolean.FALSE);
+      writeJson(connection, body);
+      int statusCode = connection.getResponseCode();
+      String responseBody = readAll(statusCode >= 200 && statusCode < 300 ? connection.getInputStream() : connection.getErrorStream());
+      if (statusCode < 200 || statusCode >= 300) {
+        throw new IllegalStateException("IAM模型对话接口调用失败，HTTP " + statusCode + "：" + truncate(responseBody, 500));
+      }
+      String outputText = parseIamModelOutput(responseBody);
+      return new PlatformModelChatResult(modelId, outputText, String.valueOf(System.currentTimeMillis()));
+    } catch (IOException e) {
+      throw new IllegalStateException("IAM模型对话接口调用失败：" + e.getMessage(), e);
+    } finally {
+      if (connection != null) {
+        connection.disconnect();
+      }
+    }
+  }
+
+  private PlatformModelInfo findIamModel(String modelId) {
+    return listModels().stream()
+        .filter(model -> modelId.equals(model.modelId()))
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("IAM模型不存在或未启用：" + modelId));
+  }
+
+  private String parseIamModelOutput(String responseBody) throws IOException {
+    JsonNode root = objectMapper.readTree(responseBody);
+    JsonNode choicesNode = root.get("choices");
+    if (choicesNode == null || !choicesNode.isArray() || choicesNode.isEmpty()) {
+      throw new IllegalStateException("IAM模型对话接口返回缺少choices");
+    }
+    JsonNode messageNode = choicesNode.get(0).get("message");
+    String content = textValue(messageNode, "content");
+    if (!StringUtils.hasText(content)) {
+      throw new IllegalStateException("IAM模型对话接口返回缺少message.content");
+    }
+    return cleanThinkContent(content);
+  }
+
+  private String cleanThinkContent(String content) {
+    String safeContent = content == null ? "" : content;
+    int thinkEnd = safeContent.indexOf(THINK_END_TAG);
+    if (thinkEnd >= 0) {
+      return safeContent.substring(thinkEnd + THINK_END_TAG.length()).trim();
+    }
+    return safeContent.trim();
   }
 
   @Override

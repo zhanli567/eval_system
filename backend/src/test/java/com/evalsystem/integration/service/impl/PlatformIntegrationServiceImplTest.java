@@ -139,6 +139,134 @@ class PlatformIntegrationServiceImplTest {
     assertThat(response.outputs().get("text")).isEqualTo("Hello world");
   }
 
+  @Test
+  void listModelsFiltersIamModelsWhenIamRouteIsEnabled() throws Exception {
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/login", exchange -> {
+      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
+      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
+    });
+    server.createContext("/models", exchange -> writeJson(exchange, 200, """
+        {
+          "status": "200",
+          "url": "/models",
+          "success": true,
+          "resultObjVO": {
+            "list": [
+              {
+                "modelId": "iam-model",
+                "name": "IAM Model",
+                "modelName": "MES-Qwen-V35-35B-A3B",
+                "authType": "IAM",
+                "capabilities": ["chat"]
+              },
+              {
+                "modelId": "gateway-model",
+                "name": "Gateway Model",
+                "modelName": "Gateway-Qwen",
+                "authType": "COOKIE",
+                "capabilities": ["chat"]
+              }
+            ],
+            "total": 2,
+            "pageNum": 1,
+            "pageSize": 10,
+            "pages": 1
+          }
+        }
+        """));
+    server.start();
+
+    PlatformIntegrationProperties properties = properties();
+    properties.getIam().setEnabled(true);
+    PlatformIntegrationServiceImpl service = new PlatformIntegrationServiceImpl(properties, new ObjectMapper());
+
+    List<PlatformModelInfo> models = service.listModels();
+
+    assertThat(models).extracting(PlatformModelInfo::modelId).containsExactly("iam-model");
+  }
+
+  @Test
+  void chatModelUsesIamEndpointAndCleansThinkContentWhenIamRouteIsEnabled() throws Exception {
+    AtomicReference<String> authorization = new AtomicReference<>("");
+    AtomicReference<String> requestBody = new AtomicReference<>("");
+    ObjectMapper objectMapper = new ObjectMapper();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/login", exchange -> {
+      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
+      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
+    });
+    server.createContext("/models", exchange -> writeJson(exchange, 200, """
+        {
+          "status": "200",
+          "url": "/models",
+          "success": true,
+          "resultObjVO": {
+            "list": [
+              {
+                "modelId": "iam-model",
+                "name": "IAM Model",
+                "modelName": "MES-Qwen-V35-35B-A3B",
+                "authType": "IAM",
+                "capabilities": ["chat"]
+              }
+            ],
+            "total": 1,
+            "pageNum": 1,
+            "pageSize": 10,
+            "pages": 1
+          }
+        }
+        """));
+    server.createContext("/iam/chat", exchange -> {
+      authorization.set(firstHeader(exchange, "Authorization"));
+      requestBody.set(readBody(exchange));
+      writeJson(exchange, 200, """
+          {
+            "id": "chatcmpl-81f239c454",
+            "object": "chat.completion.chunk",
+            "created": 1781573919962,
+            "model": "Qwen-V3.5-35B-A3B-8K",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Thinking\\nprivate reasoning</think>\\n{\\"score\\":5,\\"reason\\":\\"ok\\"}"
+                },
+                "finish_reason": null,
+                "logprobs": null
+              }
+            ],
+            "usage": {
+              "prompt_token": 11,
+              "completion_tokens": 1022,
+              "total_tokens": 1033
+            },
+            "message": ""
+          }
+          """);
+    });
+    server.start();
+
+    PlatformIntegrationProperties properties = properties();
+    properties.getIam().setEnabled(true);
+    properties.getIam().setUrl("http://localhost:" + server.getAddress().getPort() + "/iam/chat");
+    properties.getIam().setAuthorization("eyJhbGci");
+    PlatformIntegrationServiceImpl service = new PlatformIntegrationServiceImpl(properties, objectMapper);
+
+    var result = service.chatModel("iam-model", "please score");
+
+    JsonNode root = objectMapper.readTree(requestBody.get());
+    assertThat(authorization).hasValue("eyJhbGci");
+    assertThat(root.get("model").asText()).isEqualTo("MES-Qwen-V35-35B-A3B");
+    assertThat(root.get("stream").asBoolean()).isFalse();
+    assertThat(root.get("messages").get(0).get("role").asText()).isEqualTo("user");
+    assertThat(root.get("messages").get(0).get("content").asText()).isEqualTo("please score");
+    assertThat(result.modelId()).isEqualTo("iam-model");
+    assertThat(result.outputText()).isEqualTo("{\"score\":5,\"reason\":\"ok\"}");
+  }
+
   private PlatformIntegrationProperties properties() {
     String baseUrl = "http://localhost:" + server.getAddress().getPort();
     PlatformIntegrationProperties properties = new PlatformIntegrationProperties();

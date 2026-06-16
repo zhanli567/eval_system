@@ -16,6 +16,7 @@ public class PlatformIntegrationProperties {
   private int connectTimeoutMs = 5000;
   private int readTimeoutMs = 60000;
   private Login login = new Login();
+  private Iam iam = new Iam();
 
   public String getXSpaceId() {
     return xSpaceId;
@@ -97,6 +98,14 @@ public class PlatformIntegrationProperties {
     this.login = login == null ? new Login() : login;
   }
 
+  public Iam getIam() {
+    return iam;
+  }
+
+  public void setIam(Iam iam) {
+    this.iam = iam == null ? new Iam() : iam;
+  }
+
   private String clean(String value) {
     return value == null ? "" : value.trim();
   }
@@ -173,6 +182,40 @@ public class PlatformIntegrationProperties {
 
     public void setEncryptedPasswordSwitch(String encryptedPasswordSwitch) {
       this.encryptedPasswordSwitch = clean(encryptedPasswordSwitch);
+    }
+
+    private String clean(String value) {
+      return value == null ? "" : value.trim();
+    }
+  }
+
+  public static class Iam {
+    private boolean enabled = false;
+    private String url = "";
+    private String authorization = "";
+
+    public boolean isEnabled() {
+      return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+      this.enabled = enabled;
+    }
+
+    public String getUrl() {
+      return url;
+    }
+
+    public void setUrl(String url) {
+      this.url = clean(url);
+    }
+
+    public String getAuthorization() {
+      return authorization;
+    }
+
+    public void setAuthorization(String authorization) {
+      this.authorization = clean(authorization);
     }
 
     private String clean(String value) {

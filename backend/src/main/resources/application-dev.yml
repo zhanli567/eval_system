@@ -10,6 +10,10 @@ integration:
     trust-all-ssl: true
     connect-timeout-ms: 5000
     read-timeout-ms: 60000
+    iam:
+      enabled: false
+      url:
+      authorization:
     login:
       url:
       login-account:
