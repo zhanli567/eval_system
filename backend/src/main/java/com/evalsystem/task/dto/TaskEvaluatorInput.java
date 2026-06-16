@@ -6,6 +6,7 @@ public record TaskEvaluatorInput(
     String evaluatorSource,
     String evaluatorId,
     String evaluatorVersionId,
+    String modelId,
     List<TaskEvaluatorParamMappingInput> paramMappings
 ) {
 }

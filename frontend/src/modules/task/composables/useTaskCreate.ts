@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { datasetApi } from '../../../api/dataset'
 import { evaluatorApi } from '../../../api/evaluator'
-import { integrationApi, type PlatformAgentDefinition, type PlatformAgentField } from '../../../api/integration'
+import { integrationApi, type PlatformAgentDefinition, type PlatformAgentField, type PlatformModelInfo } from '../../../api/integration'
 import { tagApi } from '../../../api/tag'
 import { taskApi, type AppFieldMappingPayload, type TaskEvaluatorPayload } from '../../../api/task'
 import type {
@@ -33,6 +33,7 @@ export interface EvaluatorBlockState {
   presetCategoryId: string
   evaluatorId: string
   evaluatorVersionId: string
+  modelId: string
   evaluatorName: string
   evaluatorType: string
   description: string
@@ -58,6 +59,7 @@ function createEvaluatorBlock(): EvaluatorBlockState {
     presetCategoryId: '',
     evaluatorId: '',
     evaluatorVersionId: '',
+    modelId: '',
     evaluatorName: '',
     evaluatorType: '',
     description: '',
@@ -90,12 +92,15 @@ export function useTaskCreate() {
   const presetCategories = ref<PresetCategory[]>([])
   const evaluatorBlocks = ref<EvaluatorBlockState[]>([])
   const agents = ref<PlatformAgentDefinition[]>([])
+  const models = ref<PlatformModelInfo[]>([])
   const appFieldMappings = reactive<Record<string, string>>({})
   const datasetsLoaded = ref(false)
   const tagsLoaded = ref(false)
   const customEvaluatorsLoaded = ref(false)
   const presetCategoriesLoaded = ref(false)
   const agentsLoaded = ref(false)
+  const modelsLoaded = ref(false)
+  const modelLoading = ref(false)
 
   const form = reactive({
     taskName: '',
@@ -217,6 +222,19 @@ export function useTaskCreate() {
     }, '获取智能体列表失败')
   }
 
+  async function ensureModelsLoaded() {
+    if (modelsLoaded.value || modelLoading.value) return
+    modelLoading.value = true
+    try {
+      models.value = await integrationApi.listModels()
+      modelsLoaded.value = true
+    } catch (error) {
+      ElMessage.error(errorMessage(error, '获取模型列表失败'))
+    } finally {
+      modelLoading.value = false
+    }
+  }
+
   async function ensurePresetOptionsLoaded(block: EvaluatorBlockState, force = false) {
     if (!force && block.presetOptionsLoaded) return
     block.loading = true
@@ -268,6 +286,12 @@ export function useTaskCreate() {
   function handlePresetEvaluatorVisible(block: EvaluatorBlockState, visible: boolean) {
     if (visible) {
       ensurePresetOptionsLoaded(block)
+    }
+  }
+
+  function handleModelVisible(visible: boolean) {
+    if (visible) {
+      ensureModelsLoaded()
     }
   }
 
@@ -341,6 +365,7 @@ export function useTaskCreate() {
   async function changeEvaluatorSource(block: EvaluatorBlockState) {
     block.evaluatorId = ''
     block.evaluatorVersionId = ''
+    block.modelId = ''
     clearEvaluatorDetail(block)
     if (block.evaluatorSource === 'preset') {
       block.presetOptions = []
@@ -392,6 +417,7 @@ export function useTaskCreate() {
     block.passThreshold = Number(detail.passThreshold)
     block.prompt = detail.prompt
     block.executeCode = detail.executeCode
+    block.modelId = detail.modelId || ''
     block.params = detail.params
     ensureParamMappings(block)
   }
@@ -406,6 +432,7 @@ export function useTaskCreate() {
     block.passThreshold = Number(detail.passThreshold)
     block.prompt = detail.prompt
     block.executeCode = detail.executeCode
+    block.modelId = ''
     block.params = detail.params
     ensureParamMappings(block)
   }
@@ -415,6 +442,7 @@ export function useTaskCreate() {
     block.evaluatorType = ''
     block.description = ''
     block.versionName = ''
+    block.modelId = ''
     block.prompt = ''
     block.executeCode = ''
     block.scoreMin = undefined
@@ -629,6 +657,7 @@ export function useTaskCreate() {
       evaluatorSource: block.evaluatorSource,
       evaluatorId: block.evaluatorId,
       evaluatorVersionId: block.evaluatorSource === 'custom' ? block.evaluatorVersionId : '',
+      modelId: block.evaluatorSource === 'preset' ? block.modelId : '',
       paramMappings: block.params
         .map((param) => {
           const mapping = block.paramMappings[paramKey(param)]
@@ -702,6 +731,10 @@ export function useTaskCreate() {
         ElMessage.warning('请选择评估器及版本')
         return false
       }
+      if (block.evaluatorSource === 'preset' && block.evaluatorType === 'llm' && !block.modelId) {
+        ElMessage.warning(`请选择预置评估器模型：${block.evaluatorName || block.evaluatorId}`)
+        return false
+      }
       for (const param of block.params) {
         if (!param.required) continue
         const mapping = block.paramMappings[paramKey(param)]
@@ -770,6 +803,8 @@ export function useTaskCreate() {
     categoryOptions,
     evaluatorBlocks,
     agents,
+    models,
+    modelLoading,
     selectedAgent,
     agentVersions,
     agentInputs,
@@ -788,6 +823,7 @@ export function useTaskCreate() {
     handleCustomEvaluatorVisible,
     handlePresetCategoryVisible,
     handlePresetEvaluatorVisible,
+    handleModelVisible,
     changePresetCategory,
     changeEvaluatorSource,
     selectEvaluator,

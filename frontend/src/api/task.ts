@@ -55,6 +55,7 @@ export interface TaskEvaluatorPayload {
   evaluatorSource: EvaluatorSource
   evaluatorId: string
   evaluatorVersionId?: string
+  modelId?: string
   paramMappings: TaskEvaluatorParamMappingPayload[]
 }
 

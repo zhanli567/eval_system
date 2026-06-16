@@ -54,8 +54,9 @@ class PresetEvaluatorStoreTest {
     assertThat(detail.params()).allSatisfy(param -> {
       assertThat(param.targetType()).isEqualTo("preset");
       assertThat(param.targetId()).isEqualTo("answer_consistency");
-      assertThat(param.required()).isTrue();
     });
+    assertThat(detail.params()).extracting("required")
+        .containsExactly(true, false, true, true);
   }
 
   @Test

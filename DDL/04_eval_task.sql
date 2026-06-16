@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS eval_task_evaluator (
   evaluator_source VARCHAR(16) COMMENT '评估器来源：preset预置评估器，custom自定义评估器',
   evaluator_id VARCHAR(64) COMMENT '评估器ID：预置评估器ID或自定义评估器ID',
   evaluator_version_id VARCHAR(64) COMMENT '自定义评估器版本ID，预置评估器为空',
+  model_id VARCHAR(64) COMMENT '预置LLM评估器在任务中绑定的模型ID',
   status VARCHAR(32) COMMENT '评估器执行状态：pending待执行，running进行中，completed完成，failed失败',
   display_order INT COMMENT '展示顺序',
   created_at VARCHAR(32) COMMENT '创建时间',

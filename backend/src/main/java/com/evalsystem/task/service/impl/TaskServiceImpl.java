@@ -171,6 +171,11 @@ public class TaskServiceImpl implements TaskService {
     }
 
     String startedAt = now();
+    String appOutputStatus = APP_AGENT.equals(base.appType()) ? STATUS_PENDING : RESULT_SKIPPED;
+    taskMapper.resetTaskItemsForRestart(taskId, appOutputStatus, startedAt);
+    taskMapper.resetEvaluatorResultsForRestart(taskId, startedAt);
+    taskMapper.resetTaskTagsForRestart(taskId, startedAt);
+    taskMapper.resetTagResultsForRestart(taskId, startedAt);
     taskMapper.updateTaskStatus(taskId, STATUS_RUNNING, startedAt, null, startedAt);
     for (TaskMapper.TaskEvaluatorBindingRecord evaluator : taskMapper.listTaskEvaluatorBindings(taskId)) {
       taskMapper.updateTaskEvaluatorStatus(evaluator.id(), STATUS_RUNNING, startedAt);
@@ -544,8 +549,12 @@ public class TaskServiceImpl implements TaskService {
       String evaluatorId = requireText(input.evaluatorId(), "请选择评估器");
       EvaluatorRuntimeDefinition definition;
       String evaluatorVersionId = "";
+      String modelId = "";
       if (EVALUATOR_PRESET.equals(source)) {
         PresetEvaluatorDetail preset = evaluatorService.getPresetEvaluator(evaluatorId);
+        if ("llm".equals(preset.evaluatorType())) {
+          modelId = requireText(input.modelId(), "\u8bf7\u9009\u62e9\u9884\u7f6e\u8bc4\u4f30\u5668\u6a21\u578b");
+        }
         definition = new EvaluatorRuntimeDefinition(
             preset.evaluatorName(),
             preset.evaluatorType(),
@@ -577,7 +586,7 @@ public class TaskServiceImpl implements TaskService {
           input.paramMappings(),
           fieldById,
           datasetVersionId);
-      normalized.add(new NormalizedEvaluator(source, evaluatorId, evaluatorVersionId, definition, paramMappings, order++));
+      normalized.add(new NormalizedEvaluator(source, evaluatorId, evaluatorVersionId, modelId, definition, paramMappings, order++));
     }
     if (normalized.isEmpty()) {
       throw new IllegalArgumentException("请至少添加一个评估器");
@@ -701,6 +710,7 @@ public class TaskServiceImpl implements TaskService {
           evaluator.source(),
           evaluator.evaluatorId(),
           evaluator.evaluatorVersionId(),
+          evaluator.modelId(),
           STATUS_PENDING,
           evaluator.displayOrder(),
           now);
@@ -900,7 +910,7 @@ public class TaskServiceImpl implements TaskService {
         configs.put(evaluator.id(), new EvaluationRuntimeConfig(
             preset.evaluatorName(),
             preset.evaluatorType(),
-            preset.modelId(),
+            evaluator.modelId(),
             preset.prompt(),
             preset.executeCode(),
             preset.scoreMin(),
@@ -1493,6 +1503,7 @@ public class TaskServiceImpl implements TaskService {
       String source,
       String evaluatorId,
       String evaluatorVersionId,
+      String modelId,
       EvaluatorRuntimeDefinition definition,
       List<NormalizedParamMapping> paramMappings,
       Integer displayOrder

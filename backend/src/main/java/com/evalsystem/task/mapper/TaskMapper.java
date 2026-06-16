@@ -85,9 +85,9 @@ public interface TaskMapper {
 
   @Insert("""
       INSERT INTO eval_task_evaluator
-      (id, task_id, evaluator_source, evaluator_id, evaluator_version_id, status, display_order, created_at, updated_at)
+      (id, task_id, evaluator_source, evaluator_id, evaluator_version_id, model_id, status, display_order, created_at, updated_at)
       VALUES
-      (#{id}, #{taskId}, #{evaluatorSource}, #{evaluatorId}, #{evaluatorVersionId}, #{status}, #{displayOrder}, #{now}, #{now})
+      (#{id}, #{taskId}, #{evaluatorSource}, #{evaluatorId}, #{evaluatorVersionId}, #{modelId}, #{status}, #{displayOrder}, #{now}, #{now})
       """)
   void insertTaskEvaluator(
       @Param("id") String id,
@@ -95,6 +95,7 @@ public interface TaskMapper {
       @Param("evaluatorSource") String evaluatorSource,
       @Param("evaluatorId") String evaluatorId,
       @Param("evaluatorVersionId") String evaluatorVersionId,
+      @Param("modelId") String modelId,
       @Param("status") String status,
       @Param("displayOrder") int displayOrder,
       @Param("now") String now
@@ -213,6 +214,55 @@ public interface TaskMapper {
 
   @Update("UPDATE eval_task_tag SET status = #{status}, updated_at = #{now} WHERE id = #{taskTagId}")
   void updateTaskTagStatus(@Param("taskTagId") String taskTagId, @Param("status") String status, @Param("now") String now);
+
+  @Update("""
+      UPDATE eval_task_item
+      SET status = 'pending',
+          app_output = '',
+          app_output_status = #{appOutputStatus},
+          app_error_message = '',
+          started_at = '',
+          finished_at = '',
+          updated_at = #{now}
+      WHERE task_id = #{taskId}
+      """)
+  void resetTaskItemsForRestart(
+      @Param("taskId") String taskId,
+      @Param("appOutputStatus") String appOutputStatus,
+      @Param("now") String now
+  );
+
+  @Update("""
+      UPDATE eval_task_evaluator_result
+      SET status = 'pending',
+          score = NULL,
+          pass_result = '',
+          result_value = '',
+          error_message = '',
+          started_at = '',
+          finished_at = '',
+          updated_at = #{now}
+      WHERE task_id = #{taskId}
+      """)
+  void resetEvaluatorResultsForRestart(@Param("taskId") String taskId, @Param("now") String now);
+
+  @Update("UPDATE eval_task_tag SET status = 'pending', updated_at = #{now} WHERE task_id = #{taskId}")
+  void resetTaskTagsForRestart(@Param("taskId") String taskId, @Param("now") String now);
+
+  @Update("""
+      UPDATE eval_task_tag_result
+      SET status = 'pending',
+          value_text = '',
+          value_number = NULL,
+          tag_option_id = '',
+          pass_result = '',
+          annotator_id = '',
+          annotator_name = '',
+          annotated_at = '',
+          updated_at = #{now}
+      WHERE task_id = #{taskId}
+      """)
+  void resetTagResultsForRestart(@Param("taskId") String taskId, @Param("now") String now);
 
   @Update("""
       UPDATE eval_task_item
@@ -407,6 +457,7 @@ public interface TaskMapper {
       String evaluatorSource,
       String evaluatorId,
       String evaluatorVersionId,
+      String modelId,
       String status,
       Integer displayOrder
   ) {

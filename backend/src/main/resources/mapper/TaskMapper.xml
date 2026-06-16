@@ -131,6 +131,7 @@
       <arg column="evaluatorSource" javaType="java.lang.String"/>
       <arg column="evaluatorId" javaType="java.lang.String"/>
       <arg column="evaluatorVersionId" javaType="java.lang.String"/>
+      <arg column="modelId" javaType="java.lang.String"/>
       <arg column="status" javaType="java.lang.String"/>
       <arg column="displayOrder" javaType="java.lang.Integer"/>
     </constructor>
@@ -391,6 +392,7 @@
            evaluator_source AS evaluatorSource,
            evaluator_id AS evaluatorId,
            evaluator_version_id AS evaluatorVersionId,
+           model_id AS modelId,
            status AS status,
            display_order AS displayOrder
     FROM eval_task_evaluator

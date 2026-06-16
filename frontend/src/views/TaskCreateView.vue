@@ -18,6 +18,8 @@ const {
   categoryOptions,
   evaluatorBlocks,
   agents,
+  models,
+  modelLoading,
   agentVersions,
   agentInputs,
   agentOutputs,
@@ -28,6 +30,7 @@ const {
   handleCustomEvaluatorVisible,
   handlePresetCategoryVisible,
   handlePresetEvaluatorVisible,
+  handleModelVisible,
   changePresetCategory,
   changeEvaluatorSource,
   selectEvaluator,
@@ -167,6 +170,23 @@ const {
                     @change="selectEvaluator(block)"
                   >
                     <el-option v-for="item in block.presetOptions" :key="item.id" :label="item.evaluatorName" :value="item.id" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item v-if="block.evaluatorType === 'llm'">
+                  <template #label>选择模型 <span class="required-mark">*</span></template>
+                  <el-select
+                    v-model="block.modelId"
+                    filterable
+                    :loading="modelLoading"
+                    placeholder="请选择评估模型"
+                    @visible-change="handleModelVisible"
+                  >
+                    <el-option
+                      v-for="model in models"
+                      :key="model.modelId"
+                      :label="model.name || model.modelName || model.modelId"
+                      :value="model.modelId"
+                    />
                   </el-select>
                 </el-form-item>
               </template>

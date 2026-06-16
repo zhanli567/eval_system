@@ -86,6 +86,12 @@ public final class PresetEvaluatorCatalog {
 
               请仅输出JSON对象，格式为：{"score": 1到5之间的数字, "reason": "评分理由"}。
               """)
+          .params(
+              param("query", "string", "", true, "用户查询"),
+              param("context", "string", "", false, "上下文"),
+              param("reference_response", "string", "", true, "参考回复"),
+              param("response", "string", "", true, "待评估回复")
+          )
           .score("1", "5", "3")
           .displayOrder(1)
           .build(),
