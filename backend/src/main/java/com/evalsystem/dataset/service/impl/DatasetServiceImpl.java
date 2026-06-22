@@ -11,7 +11,8 @@ import com.evalsystem.dataset.dto.ImportRowsResult;
 import com.evalsystem.dataset.dto.RowDto;
 import com.evalsystem.dataset.dto.RowInput;
 import com.evalsystem.dataset.dto.VersionDetail;
-import com.evalsystem.dataset.mapper.DatasetMapper;
+import com.evalsystem.dataset.repository.DatasetRepository;
+import com.evalsystem.dataset.repository.DatasetRowRecord;
 import com.evalsystem.dataset.service.DatasetService;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,17 +38,17 @@ import org.springframework.web.multipart.MultipartFile;
 public class DatasetServiceImpl implements DatasetService {
   private static final List<String> SUPPORTED_FIELD_TYPES = List.of("string", "number", "boolean");
 
-  private final DatasetMapper datasetMapper;
+  private final DatasetRepository datasetRepository;
 
-  public DatasetServiceImpl(DatasetMapper datasetMapper) {
-    this.datasetMapper = datasetMapper;
+  public DatasetServiceImpl(DatasetRepository datasetRepository) {
+    this.datasetRepository = datasetRepository;
   }
 
   public PageResponse<DatasetSummary> listDatasets(int page, int size, String keyword) {
     int offset = Math.max(page - 1, 0) * size;
     String like = "%" + (keyword == null ? "" : keyword.trim()) + "%";
-    List<DatasetSummary> records = datasetMapper.listDatasetSummaries(like, size, offset);
-    long total = datasetMapper.countDatasetSummaries(like);
+    List<DatasetSummary> records = datasetRepository.listDatasetSummaries(like, size, offset);
+    long total = datasetRepository.countDatasetSummaries(like);
     return new PageResponse<>(records, total, page, size);
   }
 
@@ -56,49 +57,49 @@ public class DatasetServiceImpl implements DatasetService {
     String datasetId = id();
     String draftVersionId = id();
     String now = now();
-    datasetMapper.insertDataset(datasetId, request.name(), request.description(), now);
-    datasetMapper.insertVersion(draftVersionId, datasetId, 0, 0, now);
+    datasetRepository.insertDataset(datasetId, request.name(), request.description(), now);
+    datasetRepository.insertVersion(draftVersionId, datasetId, 0, 0, now);
     replaceFields(draftVersionId, request.fields() == null ? List.of() : request.fields());
     return getDatasetSummary(datasetId);
   }
 
   public DatasetSummary getDatasetSummary(String datasetId) {
-    return datasetMapper.findDatasetSummary(datasetId);
+    return datasetRepository.findDatasetSummary(datasetId);
   }
 
   public void deleteDataset(String datasetId) {
-    datasetMapper.softDeleteDataset(datasetId, now());
+    datasetRepository.softDeleteDataset(datasetId, now());
   }
 
   public List<DatasetVersionDto> listVersions(String datasetId) {
-    return datasetMapper.listVersions(datasetId);
+    return datasetRepository.listVersions(datasetId);
   }
 
   public VersionDetail getVersionDetail(String versionId, int page, int size, String fieldId, String keyword) {
-    DatasetVersionDto version = datasetMapper.findVersion(versionId);
+    DatasetVersionDto version = datasetRepository.findVersion(versionId);
     List<FieldDto> fields = listFields(versionId);
     PageResponse<RowDto> rows = listRows(versionId, page, size, fieldId, keyword);
     return new VersionDetail(version, fields, rows);
   }
 
   public List<FieldDto> listFields(String versionId) {
-    return datasetMapper.listFields(versionId);
+    return datasetRepository.listFields(versionId);
   }
 
   public PageResponse<RowDto> listRows(String versionId, int page, int size, String fieldId, String keyword) {
     int offset = Math.max(page - 1, 0) * size;
     boolean searching = StringUtils.hasText(fieldId) && StringUtils.hasText(keyword);
-    List<DatasetMapper.RowRecord> rowRecords;
+    List<DatasetRowRecord> rowRecords;
     long total;
     if (searching) {
       String like = "%" + keyword.trim() + "%";
-      rowRecords = datasetMapper.searchRows(versionId, fieldId, like, size, offset);
-      total = datasetMapper.countSearchRows(versionId, fieldId, like);
+      rowRecords = datasetRepository.searchRows(versionId, fieldId, like, size, offset);
+      total = datasetRepository.countSearchRows(versionId, fieldId, like);
     } else {
-      rowRecords = datasetMapper.listRows(versionId, size, offset);
-      total = datasetMapper.countRows(versionId);
+      rowRecords = datasetRepository.listRows(versionId, size, offset);
+      total = datasetRepository.countRows(versionId);
     }
-    Map<String, Map<String, String>> values = datasetMapper.loadValues(rowRecords.stream().map(DatasetMapper.RowRecord::id).toList());
+    Map<String, Map<String, String>> values = datasetRepository.loadValues(rowRecords.stream().map(DatasetRowRecord::id).toList());
     List<RowDto> rows = rowRecords.stream()
         .map(row -> new RowDto(row.id(), row.rowNo(), values.getOrDefault(row.id(), Map.of()), row.createdAt(), row.updatedAt()))
         .toList();
@@ -109,7 +110,7 @@ public class DatasetServiceImpl implements DatasetService {
   public List<FieldDto> replaceFields(String versionId, List<FieldInput> fields) {
     ensureDraft(versionId);
     validateFields(fields);
-    List<String> existingIds = datasetMapper.listFieldIds(versionId);
+    List<String> existingIds = datasetRepository.listFieldIds(versionId);
     List<String> keptIds = new ArrayList<>();
     int order = 1;
     String now = now();
@@ -117,15 +118,15 @@ public class DatasetServiceImpl implements DatasetService {
       String fieldId = StringUtils.hasText(field.id()) && existingIds.contains(field.id()) ? field.id() : id();
       keptIds.add(fieldId);
       if (existingIds.contains(fieldId)) {
-        datasetMapper.updateField(fieldId, field.fieldName(), field.fieldType(), bool(field.required()), field.description(), order++, now);
+        datasetRepository.updateField(fieldId, field.fieldName(), field.fieldType(), bool(field.required()), field.description(), order++, now);
       } else {
-        datasetMapper.insertField(fieldId, versionId, field.fieldName(), field.fieldType(), bool(field.required()), field.description(), order++, now);
+        datasetRepository.insertField(fieldId, versionId, field.fieldName(), field.fieldType(), bool(field.required()), field.description(), order++, now);
         addBlankCellsForNewField(versionId, fieldId);
       }
     }
     List<String> removedIds = existingIds.stream().filter(existing -> !keptIds.contains(existing)).toList();
     if (!removedIds.isEmpty()) {
-      datasetMapper.deleteFields(versionId, removedIds);
+      datasetRepository.deleteFields(versionId, removedIds);
     }
     touchVersion(versionId);
     return listFields(versionId);
@@ -136,7 +137,7 @@ public class DatasetServiceImpl implements DatasetService {
     ensureDraft(versionId);
     String itemId = id();
     String now = now();
-    datasetMapper.insertItem(itemId, versionId, datasetMapper.nextRowNo(versionId), now);
+    datasetRepository.insertItem(itemId, versionId, datasetRepository.nextRowNo(versionId), now);
     insertCells(versionId, itemId, request.values());
     updateItemCount(versionId);
     touchVersion(versionId);
@@ -179,8 +180,8 @@ public class DatasetServiceImpl implements DatasetService {
     }
 
     List<Map<String, String>> rows = readExcelRows(file, fields);
-    datasetMapper.clearVersionCells(versionId);
-    datasetMapper.clearVersionItems(versionId);
+    datasetRepository.clearVersionCells(versionId);
+    datasetRepository.clearVersionItems(versionId);
     addRows(versionId, new BatchRowsRequest(rows));
     updateItemCount(versionId);
     touchVersion(versionId);
@@ -190,8 +191,8 @@ public class DatasetServiceImpl implements DatasetService {
   @Transactional
   public RowDto updateRow(String versionId, String itemId, RowInput request) {
     ensureDraft(versionId);
-    datasetMapper.updateItem(itemId, versionId, now());
-    datasetMapper.deleteCellsByItem(itemId);
+    datasetRepository.updateItem(itemId, versionId, now());
+    datasetRepository.deleteCellsByItem(itemId);
     insertCells(versionId, itemId, request.values());
     touchVersion(versionId);
     return getRow(itemId);
@@ -200,45 +201,45 @@ public class DatasetServiceImpl implements DatasetService {
   @Transactional
   public void deleteRow(String versionId, String itemId) {
     ensureDraft(versionId);
-    datasetMapper.deleteCellsByItem(itemId);
-    datasetMapper.deleteItem(itemId, versionId);
+    datasetRepository.deleteCellsByItem(itemId);
+    datasetRepository.deleteItem(itemId, versionId);
     updateItemCount(versionId);
     touchVersion(versionId);
   }
 
   @Transactional
   public DatasetVersionDto publish(String datasetId) {
-    String draftVersionId = datasetMapper.findDraftVersionId(datasetId);
-    int nextVersionNo = datasetMapper.nextVersionNo(datasetId);
+    String draftVersionId = datasetRepository.findDraftVersionId(datasetId);
+    int nextVersionNo = datasetRepository.nextVersionNo(datasetId);
     String newVersionId = id();
     String now = now();
-    datasetMapper.insertVersion(newVersionId, datasetId, nextVersionNo, datasetMapper.findVersionItemCount(draftVersionId), now);
+    datasetRepository.insertVersion(newVersionId, datasetId, nextVersionNo, datasetRepository.findVersionItemCount(draftVersionId), now);
     copyVersionContent(draftVersionId, newVersionId);
-    datasetMapper.refreshDatasetVersionStats(datasetId, now());
-    return datasetMapper.findVersion(newVersionId);
+    datasetRepository.refreshDatasetVersionStats(datasetId, now());
+    return datasetRepository.findVersion(newVersionId);
   }
 
   @Transactional
   public void deleteVersion(String versionId) {
-    DatasetVersionDto version = datasetMapper.findVersion(versionId);
+    DatasetVersionDto version = datasetRepository.findVersion(versionId);
     if (version.draft()) {
       throw new IllegalArgumentException("草稿版本不能删除");
     }
-    datasetMapper.softDeleteVersion(versionId, now());
-    datasetMapper.refreshDatasetVersionStats(version.datasetId(), now());
+    datasetRepository.softDeleteVersion(versionId, now());
+    datasetRepository.refreshDatasetVersionStats(version.datasetId(), now());
   }
 
   @Transactional
   public DatasetVersionDto coverDraft(String datasetId, String sourceVersionId) {
-    DatasetVersionDto source = datasetMapper.findVersion(sourceVersionId);
+    DatasetVersionDto source = datasetRepository.findVersion(sourceVersionId);
     if (source.draft()) {
       throw new IllegalArgumentException("不能用草稿覆盖草稿");
     }
-    String draftVersionId = datasetMapper.findDraftVersionId(datasetId);
+    String draftVersionId = datasetRepository.findDraftVersionId(datasetId);
     clearVersionContent(draftVersionId);
     copyVersionContent(sourceVersionId, draftVersionId);
     updateItemCount(draftVersionId);
-    return datasetMapper.findVersion(draftVersionId);
+    return datasetRepository.findVersion(draftVersionId);
   }
 
   private void insertCells(String versionId, String itemId, Map<String, String> values) {
@@ -246,7 +247,7 @@ public class DatasetServiceImpl implements DatasetService {
     String now = now();
     Map<String, String> safeValues = values == null ? Map.of() : values;
     for (FieldDto field : fields) {
-      datasetMapper.insertCell(id(), versionId, itemId, field.id(), safeValues.getOrDefault(field.id(), ""), now);
+      datasetRepository.insertCell(id(), versionId, itemId, field.id(), safeValues.getOrDefault(field.id(), ""), now);
     }
   }
 
@@ -424,8 +425,8 @@ public class DatasetServiceImpl implements DatasetService {
   }
 
   private RowDto getRow(String itemId) {
-    DatasetMapper.RowRecord row = datasetMapper.findRow(itemId);
-    Map<String, String> values = datasetMapper.loadValues(List.of(itemId)).getOrDefault(itemId, Map.of());
+    DatasetRowRecord row = datasetRepository.findRow(itemId);
+    Map<String, String> values = datasetRepository.loadValues(List.of(itemId)).getOrDefault(itemId, Map.of());
     return new RowDto(row.id(), row.rowNo(), values, row.createdAt(), row.updatedAt());
   }
 
@@ -435,7 +436,7 @@ public class DatasetServiceImpl implements DatasetService {
       String newFieldId = id();
       fieldIdMap.put(field.id(), newFieldId);
       String now = now();
-      datasetMapper.insertField(
+      datasetRepository.insertField(
           newFieldId,
           targetVersionId,
           field.fieldName(),
@@ -446,45 +447,45 @@ public class DatasetServiceImpl implements DatasetService {
           now);
     }
 
-    List<DatasetMapper.RowRecord> sourceRows = datasetMapper.listAllRows(sourceVersionId);
-    Map<String, Map<String, String>> sourceValues = datasetMapper.loadValues(sourceRows.stream().map(DatasetMapper.RowRecord::id).toList());
-    for (DatasetMapper.RowRecord sourceRow : sourceRows) {
+    List<DatasetRowRecord> sourceRows = datasetRepository.listAllRows(sourceVersionId);
+    Map<String, Map<String, String>> sourceValues = datasetRepository.loadValues(sourceRows.stream().map(DatasetRowRecord::id).toList());
+    for (DatasetRowRecord sourceRow : sourceRows) {
       String newItemId = id();
       String now = now();
-      datasetMapper.insertItem(newItemId, targetVersionId, sourceRow.rowNo(), now);
+      datasetRepository.insertItem(newItemId, targetVersionId, sourceRow.rowNo(), now);
       Map<String, String> rowValues = sourceValues.getOrDefault(sourceRow.id(), Map.of());
       for (Map.Entry<String, String> entry : rowValues.entrySet()) {
         String targetFieldId = fieldIdMap.get(entry.getKey());
         if (targetFieldId != null) {
-          datasetMapper.insertCell(id(), targetVersionId, newItemId, targetFieldId, entry.getValue(), now);
+          datasetRepository.insertCell(id(), targetVersionId, newItemId, targetFieldId, entry.getValue(), now);
         }
       }
     }
   }
 
   private void clearVersionContent(String versionId) {
-    datasetMapper.clearVersionContent(versionId);
+    datasetRepository.clearVersionContent(versionId);
   }
 
   private void addBlankCellsForNewField(String versionId, String fieldId) {
     String now = now();
-    for (String itemId : datasetMapper.listItemIds(versionId)) {
-      datasetMapper.insertCell(id(), versionId, itemId, fieldId, "", now);
+    for (String itemId : datasetRepository.listItemIds(versionId)) {
+      datasetRepository.insertCell(id(), versionId, itemId, fieldId, "", now);
     }
   }
 
   private void ensureDraft(String versionId) {
-    if (datasetMapper.findVersionNo(versionId) != 0) {
+    if (datasetRepository.findVersionNo(versionId) != 0) {
       throw new IllegalArgumentException("只有草稿版本允许修改");
     }
   }
 
   private void updateItemCount(String versionId) {
-    datasetMapper.updateVersionItemCount(versionId, (int) datasetMapper.countRows(versionId), now());
+    datasetRepository.updateVersionItemCount(versionId, (int) datasetRepository.countRows(versionId), now());
   }
 
   private void touchVersion(String versionId) {
-    datasetMapper.touchVersionAndDataset(versionId, now());
+    datasetRepository.touchVersionAndDataset(versionId, now());
   }
 
   private int bool(Boolean value) {

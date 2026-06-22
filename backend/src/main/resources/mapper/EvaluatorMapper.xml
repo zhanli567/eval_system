@@ -18,18 +18,6 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="VersionMap" type="com.evalsystem.evaluator.dto.EvaluatorVersionDto">
-    <constructor>
-      <arg column="id" javaType="java.lang.String"/>
-      <arg column="evaluatorId" javaType="java.lang.String"/>
-      <arg column="versionNo" javaType="java.lang.Integer"/>
-      <arg column="versionName" javaType="java.lang.String"/>
-      <arg column="draft" javaType="java.lang.Boolean"/>
-      <arg column="createdAt" javaType="java.lang.String"/>
-      <arg column="updatedAt" javaType="java.lang.String"/>
-    </constructor>
-  </resultMap>
-
   <resultMap id="VersionConfigMap" type="com.evalsystem.evaluator.dto.EvaluatorConfigBase">
     <constructor>
       <arg column="evaluatorId" javaType="java.lang.String"/>
@@ -57,38 +45,19 @@
            e.evaluator_type AS evaluatorType,
            e.latest_version_id AS latestVersionId,
            COALESCE(v.version_no, 0) AS latestVersionNo,
-           CASE WHEN COALESCE(v.version_no, 0) = 0 THEN '草稿' ELSE CONCAT('V', v.version_no) END AS latestVersionName,
+           CASE WHEN COALESCE(v.version_no, 0) = 0 THEN '&#x8349;&#x7A3F;' ELSE CONCAT('V', v.version_no) END AS latestVersionName,
            e.description AS description,
            e.created_at AS createdAt,
            e.updated_at AS updatedAt
     FROM eval_evaluator e
     LEFT JOIN eval_evaluator_version v ON e.latest_version_id = v.id
     WHERE e.is_deleted = 0
-      AND (#{evaluatorType} IS NULL OR e.evaluator_type = #{evaluatorType})
+      <if test="evaluatorType != null and evaluatorType != ''">
+        AND e.evaluator_type = #{evaluatorType}
+      </if>
       AND (#{like} = '%%' OR e.evaluator_name LIKE #{like})
     ORDER BY e.updated_at DESC
     LIMIT #{size} OFFSET #{offset}
-  </select>
-
-  <select id="countEvaluators" resultType="long">
-    SELECT COUNT(*)
-    FROM eval_evaluator
-    WHERE is_deleted = 0
-      AND (#{evaluatorType} IS NULL OR evaluator_type = #{evaluatorType})
-      AND (#{like} = '%%' OR evaluator_name LIKE #{like})
-  </select>
-
-  <select id="listVersions" resultMap="VersionMap">
-    SELECT id AS id,
-           evaluator_id AS evaluatorId,
-           version_no AS versionNo,
-           CASE WHEN version_no = 0 THEN '草稿' ELSE CONCAT('V', version_no) END AS versionName,
-           CASE WHEN version_no = 0 THEN TRUE ELSE FALSE END AS draft,
-           created_at AS createdAt,
-           updated_at AS updatedAt
-    FROM eval_evaluator_version
-    WHERE evaluator_id = #{evaluatorId} AND is_deleted = 0
-    ORDER BY version_no ASC
   </select>
 
   <select id="findVersionConfig" resultMap="VersionConfigMap">
@@ -98,7 +67,7 @@
            e.description AS description,
            v.id AS versionId,
            v.version_no AS versionNo,
-           CASE WHEN v.version_no = 0 THEN '草稿' ELSE CONCAT('V', v.version_no) END AS versionName,
+           CASE WHEN v.version_no = 0 THEN '&#x8349;&#x7A3F;' ELSE CONCAT('V', v.version_no) END AS versionName,
            CASE WHEN v.version_no = 0 THEN TRUE ELSE FALSE END AS draft,
            v.model_id AS modelId,
            v.prompt AS prompt,

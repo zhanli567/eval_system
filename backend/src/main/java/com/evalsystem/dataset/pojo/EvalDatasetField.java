@@ -1,13 +1,18 @@
 package com.evalsystem.dataset.pojo;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 @TableName("eval_dataset_field")
 public class EvalDatasetField {
+  @TableId(type = IdType.INPUT)
   private String id;
   private String versionId;
   private String fieldName;
   private String fieldType;
+  @TableField("is_required")
   private Integer isRequired;
   private String description;
   private Integer displayOrder;

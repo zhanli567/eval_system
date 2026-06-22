@@ -11,8 +11,8 @@ import com.evalsystem.evaluator.dto.EvaluatorVersionDto;
 import com.evalsystem.evaluator.dto.PresetCategoryDto;
 import com.evalsystem.evaluator.dto.PresetEvaluatorDetail;
 import com.evalsystem.evaluator.dto.PresetEvaluatorSummary;
-import com.evalsystem.evaluator.mapper.EvaluatorMapper;
 import com.evalsystem.evaluator.preset.PresetEvaluatorStore;
+import com.evalsystem.evaluator.repository.EvaluatorRepository;
 import com.evalsystem.evaluator.service.EvaluatorService;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -44,11 +44,11 @@ public class EvaluatorServiceImpl implements EvaluatorService {
   private static final int MAX_PARAM_DESCRIPTION_LENGTH = 200;
   private static final Pattern PROMPT_PARAM_PATTERN = Pattern.compile("\\$\\{([a-zA-Z_][\\w]*)}");
 
-  private final EvaluatorMapper evaluatorMapper;
+  private final EvaluatorRepository evaluatorRepository;
   private final PresetEvaluatorStore presetEvaluatorStore;
 
-  public EvaluatorServiceImpl(EvaluatorMapper evaluatorMapper, PresetEvaluatorStore presetEvaluatorStore) {
-    this.evaluatorMapper = evaluatorMapper;
+  public EvaluatorServiceImpl(EvaluatorRepository evaluatorRepository, PresetEvaluatorStore presetEvaluatorStore) {
+    this.evaluatorRepository = evaluatorRepository;
     this.presetEvaluatorStore = presetEvaluatorStore;
   }
 
@@ -58,8 +58,8 @@ public class EvaluatorServiceImpl implements EvaluatorService {
     int safeSize = Math.min(Math.max(size, 1), 100);
     int offset = (safePage - 1) * safeSize;
     String like = "%" + (keyword == null ? "" : keyword.trim()) + "%";
-    List<EvaluatorSummary> records = evaluatorMapper.listEvaluators(normalizedType, like, safeSize, offset);
-    long total = evaluatorMapper.countEvaluators(normalizedType, like);
+    List<EvaluatorSummary> records = evaluatorRepository.listEvaluators(normalizedType, like, safeSize, offset);
+    long total = evaluatorRepository.countEvaluators(normalizedType, like);
     return new PageResponse<>(records, total, safePage, safeSize);
   }
 
@@ -81,8 +81,8 @@ public class EvaluatorServiceImpl implements EvaluatorService {
     String evaluatorId = id();
     String versionId = id();
     String now = now();
-    evaluatorMapper.insertEvaluator(evaluatorId, normalized.evaluatorName(), normalized.evaluatorType(), normalized.description(), versionId, now);
-    evaluatorMapper.insertVersion(
+    evaluatorRepository.insertEvaluator(evaluatorId, normalized.evaluatorName(), normalized.evaluatorType(), normalized.description(), versionId, now);
+    evaluatorRepository.insertVersion(
         versionId,
         evaluatorId,
         0,
@@ -98,11 +98,11 @@ public class EvaluatorServiceImpl implements EvaluatorService {
   }
 
   public List<EvaluatorVersionDto> listVersions(String evaluatorId) {
-    return evaluatorMapper.listVersions(evaluatorId);
+    return evaluatorRepository.listVersions(evaluatorId);
   }
 
   public EvaluatorConfig getVersion(String versionId) {
-    EvaluatorConfigBase base = evaluatorMapper.findVersionConfig(versionId);
+    EvaluatorConfigBase base = evaluatorRepository.findVersionConfig(versionId);
     if (base == null) {
       throw new IllegalArgumentException("评估器版本不存在");
     }
@@ -116,9 +116,9 @@ public class EvaluatorServiceImpl implements EvaluatorService {
       throw new IllegalArgumentException("只有草稿版本允许修改");
     }
     NormalizedEvaluator normalized = normalizeEvaluatorInput(request, existing.evaluatorType());
-    evaluatorMapper.updateEvaluatorBase(existing.evaluatorId(), normalized.evaluatorName(), normalized.description(), now());
+    evaluatorRepository.updateEvaluatorBase(existing.evaluatorId(), normalized.evaluatorName(), normalized.description(), now());
     String now = now();
-    evaluatorMapper.updateDraftVersion(
+    evaluatorRepository.updateDraftVersion(
         versionId,
         normalized.modelId(),
         normalized.prompt(),
@@ -127,22 +127,22 @@ public class EvaluatorServiceImpl implements EvaluatorService {
         normalized.scoreMax(),
         normalized.passThreshold(),
         now);
-    evaluatorMapper.deleteParams(TARGET_VERSION, versionId);
+    evaluatorRepository.deleteParams(TARGET_VERSION, versionId);
     saveParams(TARGET_VERSION, versionId, normalized.params(), now);
     return getVersion(versionId);
   }
 
   @Transactional
   public EvaluatorConfig publish(String evaluatorId) {
-    String draftVersionId = evaluatorMapper.findDraftVersionId(evaluatorId);
+    String draftVersionId = evaluatorRepository.findDraftVersionId(evaluatorId);
     if (!StringUtils.hasText(draftVersionId)) {
       throw new IllegalArgumentException("草稿版本不存在");
     }
     EvaluatorConfig draft = getVersion(draftVersionId);
-    int nextVersionNo = evaluatorMapper.nextVersionNo(evaluatorId);
+    int nextVersionNo = evaluatorRepository.nextVersionNo(evaluatorId);
     String newVersionId = id();
     String now = now();
-    evaluatorMapper.insertVersion(
+    evaluatorRepository.insertVersion(
         newVersionId,
         evaluatorId,
         nextVersionNo,
@@ -162,15 +162,15 @@ public class EvaluatorServiceImpl implements EvaluatorService {
             param.required(),
             param.description()))
         .toList(), now);
-    evaluatorMapper.updateLatestVersion(evaluatorId, newVersionId, now);
+    evaluatorRepository.updateLatestVersion(evaluatorId, newVersionId, now);
     return getVersion(newVersionId);
   }
 
   @Transactional
   public void deleteEvaluator(String evaluatorId) {
     String now = now();
-    evaluatorMapper.softDeleteEvaluator(evaluatorId, now);
-    evaluatorMapper.softDeleteVersionsByEvaluator(evaluatorId, now);
+    evaluatorRepository.softDeleteEvaluator(evaluatorId, now);
+    evaluatorRepository.softDeleteVersionsByEvaluator(evaluatorId, now);
   }
 
   private EvaluatorConfig attachParams(EvaluatorConfigBase base) {
@@ -195,7 +195,7 @@ public class EvaluatorServiceImpl implements EvaluatorService {
   }
 
   private List<EvaluatorParamDto> listEvaluatorParams(String targetType, String targetId, String evaluatorType, String prompt) {
-    List<EvaluatorParamDto> params = evaluatorMapper.listParams(targetType, targetId);
+    List<EvaluatorParamDto> params = evaluatorRepository.listParams(targetType, targetId);
     if (!TYPE_LLM.equals(evaluatorType) || !params.isEmpty() || !StringUtils.hasText(prompt)) {
       return params;
     }
@@ -400,7 +400,7 @@ public class EvaluatorServiceImpl implements EvaluatorService {
   private void saveParams(String targetType, String targetId, List<EvaluatorParamInput> params, String now) {
     int order = 1;
     for (EvaluatorParamInput param : params) {
-      evaluatorMapper.insertParam(
+      evaluatorRepository.insertParam(
           id(),
           targetType,
           targetId,

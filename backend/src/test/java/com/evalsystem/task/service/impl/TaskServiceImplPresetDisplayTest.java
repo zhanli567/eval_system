@@ -12,18 +12,21 @@ import static org.mockito.Mockito.when;
 import com.evalsystem.dataset.dto.DatasetSummary;
 import com.evalsystem.dataset.dto.DatasetVersionDto;
 import com.evalsystem.dataset.dto.FieldDto;
-import com.evalsystem.dataset.mapper.DatasetMapper;
+import com.evalsystem.dataset.repository.DatasetRepository;
+import com.evalsystem.dataset.repository.DatasetRowRecord;
 import com.evalsystem.evaluator.preset.PresetEvaluatorStore;
 import com.evalsystem.evaluator.service.EvaluatorService;
 import com.evalsystem.integration.service.PlatformIntegrationService;
-import com.evalsystem.tag.mapper.TagMapper;
+import com.evalsystem.tag.repository.TagRepository;
 import com.evalsystem.task.dto.CreateTaskRequest;
 import com.evalsystem.task.dto.TaskBase;
 import com.evalsystem.task.dto.TaskEvaluatorDimension;
 import com.evalsystem.task.dto.TaskEvaluatorInput;
 import com.evalsystem.task.dto.TaskEvaluatorParamMappingInput;
 import com.evalsystem.task.dto.TaskEvaluatorResultDto;
-import com.evalsystem.task.mapper.TaskMapper;
+import com.evalsystem.task.repository.TaskEvaluatorBindingRecord;
+import com.evalsystem.task.repository.TaskItemRecord;
+import com.evalsystem.task.repository.TaskRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
@@ -34,20 +37,20 @@ class TaskServiceImplPresetDisplayTest {
   private static final String ANSWER_CONSISTENCY_NAME = "\u56de\u590d\u4e00\u81f4\u6027";
   private static final String PRESET_MODEL_REQUIRED_MESSAGE = "\u8bf7\u9009\u62e9\u9884\u7f6e\u8bc4\u4f30\u5668\u6a21\u578b";
 
-  private TaskMapper taskMapper;
-  private DatasetMapper datasetMapper;
+  private TaskRepository taskRepository;
+  private DatasetRepository datasetRepository;
   private EvaluatorService evaluatorService;
-  private TagMapper tagMapper;
+  private TagRepository tagRepository;
   private PlatformIntegrationService integrationService;
   private PresetEvaluatorStore presetStore;
   private TaskServiceImpl service;
 
   @BeforeEach
   void setUp() {
-    taskMapper = mock(TaskMapper.class);
-    datasetMapper = mock(DatasetMapper.class);
+    taskRepository = mock(TaskRepository.class);
+    datasetRepository = mock(DatasetRepository.class);
     evaluatorService = mock(EvaluatorService.class);
-    tagMapper = mock(TagMapper.class);
+    tagRepository = mock(TagRepository.class);
     integrationService = mock(PlatformIntegrationService.class);
     presetStore = new PresetEvaluatorStore();
     service = newTaskService(Runnable::run);
@@ -55,9 +58,9 @@ class TaskServiceImplPresetDisplayTest {
 
   @Test
   void getTaskFillsPresetEvaluatorDisplayFieldsWithoutPresetTableRows() {
-    when(taskMapper.findTaskBase("task-1")).thenReturn(taskBase("pending", "none"));
-    when(datasetMapper.listFields("version-1")).thenReturn(List.of());
-    when(taskMapper.listEvaluatorDimensions("task-1")).thenReturn(List.of(new TaskEvaluatorDimension(
+    when(taskRepository.findTaskBase("task-1")).thenReturn(taskBase("pending", "none"));
+    when(datasetRepository.listFields("version-1")).thenReturn(List.of());
+    when(taskRepository.listEvaluatorDimensions("task-1")).thenReturn(List.of(new TaskEvaluatorDimension(
         "task-evaluator-1",
         "preset",
         "answer_consistency",
@@ -71,8 +74,8 @@ class TaskServiceImplPresetDisplayTest {
         1,
         null,
         1)));
-    when(taskMapper.listTagDimensions("task-1")).thenReturn(List.of());
-    when(taskMapper.listTaskItems("task-1", 10, 0)).thenReturn(List.of(new TaskMapper.TaskItemRecord(
+    when(taskRepository.listTagDimensions("task-1")).thenReturn(List.of());
+    when(taskRepository.listTaskItems("task-1", 10, 0)).thenReturn(List.of(new TaskItemRecord(
         "task-item-1",
         "task-1",
         "version-1",
@@ -84,9 +87,9 @@ class TaskServiceImplPresetDisplayTest {
         "",
         "1",
         "1")));
-    when(taskMapper.countTaskItems("task-1")).thenReturn(1L);
-    when(datasetMapper.loadValues(List.of("dataset-item-1"))).thenReturn(Map.of("dataset-item-1", Map.of()));
-    when(taskMapper.listEvaluatorResultsByTaskItemIds(List.of("task-item-1"))).thenReturn(List.of(new TaskEvaluatorResultDto(
+    when(taskRepository.countTaskItems("task-1")).thenReturn(1L);
+    when(datasetRepository.loadValues(List.of("dataset-item-1"))).thenReturn(Map.of("dataset-item-1", Map.of()));
+    when(taskRepository.listEvaluatorResultsByTaskItemIds(List.of("task-item-1"))).thenReturn(List.of(new TaskEvaluatorResultDto(
         "result-1",
         "task-item-1",
         "task-evaluator-1",
@@ -100,8 +103,8 @@ class TaskServiceImplPresetDisplayTest {
         "",
         "",
         "")));
-    when(taskMapper.listTagResultsByTaskItemIds(List.of("task-item-1"))).thenReturn(List.of());
-    when(taskMapper.listTaskEvaluatorBindings("task-1")).thenReturn(List.of(new TaskMapper.TaskEvaluatorBindingRecord(
+    when(taskRepository.listTagResultsByTaskItemIds(List.of("task-item-1"))).thenReturn(List.of());
+    when(taskRepository.listTaskEvaluatorBindings("task-1")).thenReturn(List.of(new TaskEvaluatorBindingRecord(
         "task-evaluator-1",
         "task-1",
         "preset",
@@ -141,7 +144,7 @@ class TaskServiceImplPresetDisplayTest {
 
     service.createTask(createTaskRequest("model-1"));
 
-    verify(taskMapper).insertTaskEvaluator(
+    verify(taskRepository).insertTaskEvaluator(
         anyString(),
         anyString(),
         eq("preset"),
@@ -157,27 +160,27 @@ class TaskServiceImplPresetDisplayTest {
   void restartTaskClearsPreviousRunOutputsAndResults() {
     TaskServiceImpl noOpExecutorService = newTaskService(command -> {
     });
-    when(taskMapper.findTaskBase("task-1")).thenReturn(taskBase("failed", "agent"));
-    when(taskMapper.listTaskEvaluatorBindings("task-1")).thenReturn(List.of());
-    when(datasetMapper.listFields("version-1")).thenReturn(List.of());
-    when(taskMapper.listEvaluatorDimensions("task-1")).thenReturn(List.of());
-    when(taskMapper.listTagDimensions("task-1")).thenReturn(List.of());
-    when(taskMapper.listTaskItems("task-1", 10, 0)).thenReturn(List.of());
+    when(taskRepository.findTaskBase("task-1")).thenReturn(taskBase("failed", "agent"));
+    when(taskRepository.listTaskEvaluatorBindings("task-1")).thenReturn(List.of());
+    when(datasetRepository.listFields("version-1")).thenReturn(List.of());
+    when(taskRepository.listEvaluatorDimensions("task-1")).thenReturn(List.of());
+    when(taskRepository.listTagDimensions("task-1")).thenReturn(List.of());
+    when(taskRepository.listTaskItems("task-1", 10, 0)).thenReturn(List.of());
 
     noOpExecutorService.startTask("task-1");
 
-    verify(taskMapper).resetTaskItemsForRestart(eq("task-1"), eq("pending"), anyString());
-    verify(taskMapper).resetEvaluatorResultsForRestart(eq("task-1"), anyString());
-    verify(taskMapper).resetTaskTagsForRestart(eq("task-1"), anyString());
-    verify(taskMapper).resetTagResultsForRestart(eq("task-1"), anyString());
+    verify(taskRepository).resetTaskItemsForRestart(eq("task-1"), eq("pending"), anyString());
+    verify(taskRepository).resetEvaluatorResultsForRestart(eq("task-1"), anyString());
+    verify(taskRepository).resetTaskTagsForRestart(eq("task-1"), anyString());
+    verify(taskRepository).resetTagResultsForRestart(eq("task-1"), anyString());
   }
 
   private TaskServiceImpl newTaskService(org.springframework.core.task.TaskExecutor taskExecutor) {
     return new TaskServiceImpl(
-        taskMapper,
-        datasetMapper,
+        taskRepository,
+        datasetRepository,
         evaluatorService,
-        tagMapper,
+        tagRepository,
         integrationService,
         new ObjectMapper(),
         taskExecutor);
@@ -205,7 +208,7 @@ class TaskServiceImplPresetDisplayTest {
   }
 
   private void prepareCreateTaskDataset() {
-    when(datasetMapper.findVersion("version-1")).thenReturn(new DatasetVersionDto(
+    when(datasetRepository.findVersion("version-1")).thenReturn(new DatasetVersionDto(
         "version-1",
         "dataset-1",
         1,
@@ -214,7 +217,7 @@ class TaskServiceImplPresetDisplayTest {
         false,
         "1",
         "1"));
-    when(datasetMapper.findDatasetSummary("dataset-1")).thenReturn(new DatasetSummary(
+    when(datasetRepository.findDatasetSummary("dataset-1")).thenReturn(new DatasetSummary(
         "dataset-1",
         "dataset",
         "",
@@ -223,20 +226,20 @@ class TaskServiceImplPresetDisplayTest {
         1,
         "1",
         "1"));
-    when(datasetMapper.listFields("version-1")).thenReturn(List.of(
+    when(datasetRepository.listFields("version-1")).thenReturn(List.of(
         new FieldDto("field-query", "version-1", "query", "string", true, "", 1),
         new FieldDto("field-reference", "version-1", "reference_response", "string", true, "", 2),
         new FieldDto("field-response", "version-1", "response", "string", true, "", 3)));
-    when(datasetMapper.listAllRows("version-1")).thenReturn(List.of(
-        new DatasetMapper.RowRecord("row-1", 1, "1", "1")));
+    when(datasetRepository.listAllRows("version-1")).thenReturn(List.of(
+        new DatasetRowRecord("row-1", 1, "1", "1")));
   }
 
   private void prepareGetTaskAfterCreate() {
-    when(taskMapper.findTaskBase(anyString())).thenReturn(taskBase("pending", "none"));
-    when(taskMapper.listTaskItems(anyString(), anyInt(), anyInt())).thenReturn(List.of());
-    when(taskMapper.countTaskItems(anyString())).thenReturn(0L);
-    when(taskMapper.listEvaluatorDimensions(anyString())).thenReturn(List.of());
-    when(taskMapper.listTagDimensions(anyString())).thenReturn(List.of());
+    when(taskRepository.findTaskBase(anyString())).thenReturn(taskBase("pending", "none"));
+    when(taskRepository.listTaskItems(anyString(), anyInt(), anyInt())).thenReturn(List.of());
+    when(taskRepository.countTaskItems(anyString())).thenReturn(0L);
+    when(taskRepository.listEvaluatorDimensions(anyString())).thenReturn(List.of());
+    when(taskRepository.listTagDimensions(anyString())).thenReturn(List.of());
   }
 
   private CreateTaskRequest createTaskRequest(String modelId) {

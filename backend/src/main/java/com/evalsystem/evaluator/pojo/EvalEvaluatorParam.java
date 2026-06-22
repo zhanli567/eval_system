@@ -1,16 +1,21 @@
 package com.evalsystem.evaluator.pojo;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 @TableName("eval_evaluator_param")
 public class EvalEvaluatorParam {
+  @TableId(type = IdType.INPUT)
   private String id;
   private String targetType;
   private String targetId;
   private String paramName;
   private String dataType;
   private String defaultValue;
-  private Boolean required;
+  @TableField("is_required")
+  private Integer isRequired;
   private String description;
   private Integer displayOrder;
   private String createdAt;
@@ -64,12 +69,12 @@ public class EvalEvaluatorParam {
     this.defaultValue = defaultValue;
   }
 
-  public Boolean getRequired() {
-    return required;
+  public Integer getIsRequired() {
+    return isRequired;
   }
 
-  public void setRequired(Boolean required) {
-    this.required = required;
+  public void setIsRequired(Integer isRequired) {
+    this.isRequired = isRequired;
   }
 
   public String getDescription() {

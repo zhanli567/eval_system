@@ -1,13 +1,18 @@
 package com.evalsystem.dataset.pojo;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 @TableName("eval_dataset_version")
 public class EvalDatasetVersion {
+  @TableId(type = IdType.INPUT)
   private String id;
   private String datasetId;
   private Integer versionNo;
   private Integer itemCount;
+  @TableField("is_deleted")
   private Integer isDeleted;
   private String createdAt;
   private String updatedAt;

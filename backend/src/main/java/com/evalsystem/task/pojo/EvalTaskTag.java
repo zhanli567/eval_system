@@ -1,16 +1,16 @@
-package com.evalsystem.tag.pojo;
+package com.evalsystem.task.pojo;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
-@TableName("eval_tag_option")
-public class EvalTagOption {
+@TableName("eval_task_tag")
+public class EvalTaskTag {
   @TableId(type = IdType.INPUT)
   private String id;
+  private String taskId;
   private String tagId;
-  private String optionName;
-  private String optionGroup;
+  private String status;
   private Integer displayOrder;
   private String createdAt;
   private String updatedAt;
@@ -23,6 +23,14 @@ public class EvalTagOption {
     this.id = id;
   }
 
+  public String getTaskId() {
+    return taskId;
+  }
+
+  public void setTaskId(String taskId) {
+    this.taskId = taskId;
+  }
+
   public String getTagId() {
     return tagId;
   }
@@ -31,20 +39,12 @@ public class EvalTagOption {
     this.tagId = tagId;
   }
 
-  public String getOptionName() {
-    return optionName;
+  public String getStatus() {
+    return status;
   }
 
-  public void setOptionName(String optionName) {
-    this.optionName = optionName;
-  }
-
-  public String getOptionGroup() {
-    return optionGroup;
-  }
-
-  public void setOptionGroup(String optionGroup) {
-    this.optionGroup = optionGroup;
+  public void setStatus(String status) {
+    this.status = status;
   }
 
   public Integer getDisplayOrder() {

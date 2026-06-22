@@ -1,14 +1,19 @@
 package com.evalsystem.evaluator.pojo;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 @TableName("eval_evaluator")
 public class EvalEvaluator {
+  @TableId(type = IdType.INPUT)
   private String id;
   private String evaluatorName;
   private String evaluatorType;
   private String description;
   private String latestVersionId;
+  @TableField("is_deleted")
   private Integer isDeleted;
   private String createdAt;
   private String updatedAt;

@@ -7,7 +7,7 @@ import com.evalsystem.tag.dto.TagInput;
 import com.evalsystem.tag.dto.TagOptionDto;
 import com.evalsystem.tag.dto.TagOptionInput;
 import com.evalsystem.tag.dto.TagSummary;
-import com.evalsystem.tag.mapper.TagMapper;
+import com.evalsystem.tag.repository.TagRepository;
 import com.evalsystem.tag.service.TagService;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,10 +21,10 @@ public class TagServiceImpl implements TagService {
   private static final List<String> SUPPORTED_TAG_TYPES = List.of("category", "boolean", "number", "text");
   private static final List<String> SUPPORTED_OPTION_GROUPS = List.of("pass", "fail");
 
-  private final TagMapper tagMapper;
+  private final TagRepository tagRepository;
 
-  public TagServiceImpl(TagMapper tagMapper) {
-    this.tagMapper = tagMapper;
+  public TagServiceImpl(TagRepository tagRepository) {
+    this.tagRepository = tagRepository;
   }
 
   public PageResponse<TagSummary> listTags(int page, int size, String tagType, String keyword) {
@@ -33,8 +33,8 @@ public class TagServiceImpl implements TagService {
     int safeSize = Math.min(Math.max(size, 1), 100);
     int offset = (safePage - 1) * safeSize;
     String like = "%" + (keyword == null ? "" : keyword.trim()) + "%";
-    List<TagSummary> records = tagMapper.listTags(normalizedType, like, safeSize, offset);
-    long total = tagMapper.countTags(normalizedType, like);
+    List<TagSummary> records = tagRepository.listTags(normalizedType, like, safeSize, offset);
+    long total = tagRepository.countTags(normalizedType, like);
     return new PageResponse<>(records, total, safePage, safeSize);
   }
 
@@ -46,12 +46,12 @@ public class TagServiceImpl implements TagService {
   @Transactional
   public TagDetail createTag(TagInput request) {
     NormalizedTag normalized = normalizeTagInput(request, null);
-    if (tagMapper.countSameName(normalized.tagName()) > 0) {
+    if (tagRepository.countSameName(normalized.tagName()) > 0) {
       throw new IllegalArgumentException("标签名称不能重复");
     }
     String tagId = id();
     String now = now();
-    tagMapper.insertTag(
+    tagRepository.insertTag(
         tagId,
         normalized.tagName(),
         normalized.tagType(),
@@ -71,12 +71,12 @@ public class TagServiceImpl implements TagService {
     if (!existing.tagType().equals(normalized.tagType())) {
       throw new IllegalArgumentException("标签类型创建后不能修改");
     }
-    if (tagMapper.countSameNameExcept(normalized.tagName(), tagId) > 0) {
+    if (tagRepository.countSameNameExcept(normalized.tagName(), tagId) > 0) {
       throw new IllegalArgumentException("标签名称不能重复");
     }
 
     String now = now();
-    tagMapper.updateTag(
+    tagRepository.updateTag(
         tagId,
         normalized.tagName(),
         normalized.description(),
@@ -84,7 +84,7 @@ public class TagServiceImpl implements TagService {
         normalized.maxValue(),
         normalized.passThreshold(),
         now);
-    tagMapper.deleteOptions(tagId);
+    tagRepository.deleteOptions(tagId);
     saveOptions(tagId, normalized.tagType(), normalized.options(), now);
     return getTag(tagId);
   }
@@ -100,14 +100,14 @@ public class TagServiceImpl implements TagService {
         config.passThreshold(),
         config.createdAt(),
         config.updatedAt(),
-        tagMapper.listOptions(config.id()));
+        tagRepository.listOptions(config.id()));
   }
 
   private TagConfig findExistingTag(String tagId) {
     if (!StringUtils.hasText(tagId)) {
       throw new IllegalArgumentException("标签ID不能为空");
     }
-    TagConfig config = tagMapper.findTagConfig(tagId);
+    TagConfig config = tagRepository.findTagConfig(tagId);
     if (config == null) {
       throw new IllegalArgumentException("标签不存在");
     }
@@ -236,7 +236,7 @@ public class TagServiceImpl implements TagService {
     }
     int order = 1;
     for (TagOptionInput option : options) {
-      tagMapper.insertOption(id(), tagId, option.optionName(), option.optionGroup(), order++, now);
+      tagRepository.insertOption(id(), tagId, option.optionName(), option.optionGroup(), order++, now);
     }
   }
 

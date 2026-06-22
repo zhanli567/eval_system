@@ -17,33 +17,12 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="DatasetVersionMap" type="com.evalsystem.dataset.dto.DatasetVersionDto">
-    <constructor>
-      <arg column="id" javaType="java.lang.String"/>
-      <arg column="datasetId" javaType="java.lang.String"/>
-      <arg column="versionNo" javaType="java.lang.Integer"/>
-      <arg column="versionName" javaType="java.lang.String"/>
-      <arg column="itemCount" javaType="java.lang.Integer"/>
-      <arg column="draft" javaType="java.lang.Boolean"/>
-      <arg column="createdAt" javaType="java.lang.String"/>
-      <arg column="updatedAt" javaType="java.lang.String"/>
-    </constructor>
-  </resultMap>
-
-  <resultMap id="RowRecordMap" type="com.evalsystem.dataset.mapper.DatasetMapper$RowRecord">
+  <resultMap id="RowRecordMap" type="com.evalsystem.dataset.repository.DatasetRowRecord">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
       <arg column="rowNo" javaType="java.lang.Integer"/>
       <arg column="createdAt" javaType="java.lang.String"/>
       <arg column="updatedAt" javaType="java.lang.String"/>
-    </constructor>
-  </resultMap>
-
-  <resultMap id="CellValueRecordMap" type="com.evalsystem.dataset.mapper.DatasetMapper$CellValueRecord">
-    <constructor>
-      <arg column="itemId" javaType="java.lang.String"/>
-      <arg column="fieldId" javaType="java.lang.String"/>
-      <arg column="cellValue" javaType="java.lang.String"/>
     </constructor>
   </resultMap>
 
@@ -64,13 +43,6 @@
     LIMIT #{size} OFFSET #{offset}
   </select>
 
-  <select id="countDatasetSummaries" resultType="long">
-    SELECT COUNT(*)
-    FROM eval_dataset
-    WHERE is_deleted = 0
-      AND (#{like} = '%%' OR name LIKE #{like})
-  </select>
-
   <select id="findDatasetSummary" resultMap="DatasetSummaryMap">
     SELECT d.id AS id,
            d.name AS name,
@@ -84,51 +56,6 @@
     LEFT JOIN eval_dataset_version v ON d.latest_published_version_id = v.id
     WHERE d.id = #{datasetId} AND d.is_deleted = 0
   </select>
-
-  <select id="listVersions" resultMap="DatasetVersionMap">
-    SELECT id AS id,
-           dataset_id AS datasetId,
-           version_no AS versionNo,
-           CASE WHEN version_no = 0 THEN '草稿' ELSE CONCAT('V', version_no) END AS versionName,
-           item_count AS itemCount,
-           CASE WHEN version_no = 0 THEN TRUE ELSE FALSE END AS draft,
-           created_at AS createdAt,
-           updated_at AS updatedAt
-    FROM eval_dataset_version
-    WHERE dataset_id = #{datasetId} AND is_deleted = 0
-    ORDER BY version_no ASC
-  </select>
-
-  <select id="findVersion" resultMap="DatasetVersionMap">
-    SELECT id AS id,
-           dataset_id AS datasetId,
-           version_no AS versionNo,
-           CASE WHEN version_no = 0 THEN '草稿' ELSE CONCAT('V', version_no) END AS versionName,
-           item_count AS itemCount,
-           CASE WHEN version_no = 0 THEN TRUE ELSE FALSE END AS draft,
-           created_at AS createdAt,
-           updated_at AS updatedAt
-    FROM eval_dataset_version
-    WHERE id = #{versionId} AND is_deleted = 0
-  </select>
-
-  <delete id="deleteCellsByFieldIds">
-    DELETE FROM eval_dataset_item_cell
-    WHERE version_id = #{versionId}
-      AND field_id IN
-      <foreach collection="fieldIds" item="fieldId" open="(" separator="," close=")">
-        #{fieldId}
-      </foreach>
-  </delete>
-
-  <delete id="deleteFieldsByIds">
-    DELETE FROM eval_dataset_field
-    WHERE version_id = #{versionId}
-      AND id IN
-      <foreach collection="fieldIds" item="fieldId" open="(" separator="," close=")">
-        #{fieldId}
-      </foreach>
-  </delete>
 
   <select id="searchRows" resultMap="RowRecordMap">
     SELECT DISTINCT i.id AS id,
@@ -151,16 +78,5 @@
     WHERE i.version_id = #{versionId}
       AND c.field_id = #{fieldId}
       AND c.cell_value LIKE #{like}
-  </select>
-
-  <select id="listCellValues" resultMap="CellValueRecordMap">
-    SELECT item_id AS itemId,
-           field_id AS fieldId,
-           cell_value AS cellValue
-    FROM eval_dataset_item_cell
-    WHERE item_id IN
-    <foreach collection="itemIds" item="itemId" open="(" separator="," close=")">
-      #{itemId}
-    </foreach>
   </select>
 </mapper>

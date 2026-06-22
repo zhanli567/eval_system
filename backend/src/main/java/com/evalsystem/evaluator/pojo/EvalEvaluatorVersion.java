@@ -1,10 +1,14 @@
 package com.evalsystem.evaluator.pojo;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.math.BigDecimal;
 
 @TableName("eval_evaluator_version")
 public class EvalEvaluatorVersion {
+  @TableId(type = IdType.INPUT)
   private String id;
   private String evaluatorId;
   private Integer versionNo;
@@ -14,6 +18,7 @@ public class EvalEvaluatorVersion {
   private BigDecimal scoreMin;
   private BigDecimal scoreMax;
   private BigDecimal passThreshold;
+  @TableField("is_deleted")
   private Integer isDeleted;
   private String createdAt;
   private String updatedAt;

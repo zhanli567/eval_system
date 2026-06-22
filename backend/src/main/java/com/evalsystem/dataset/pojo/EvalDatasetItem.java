@@ -1,9 +1,12 @@
 package com.evalsystem.dataset.pojo;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 @TableName("eval_dataset_item")
 public class EvalDatasetItem {
+  @TableId(type = IdType.INPUT)
   private String id;
   private String versionId;
   private Integer rowNo;
