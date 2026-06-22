@@ -4,7 +4,7 @@
     "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.evalsystem.task.mapper.TaskMapper">
-  <resultMap id="TaskBaseMap" type="com.evalsystem.task.dto.TaskBase">
+  <resultMap id="TaskBaseMap" type="com.evalsystem.task.api.dto.response.TaskBase">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
       <arg column="taskName" javaType="java.lang.String"/>
@@ -26,7 +26,7 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="EvaluatorDimensionMap" type="com.evalsystem.task.dto.TaskEvaluatorDimension">
+  <resultMap id="EvaluatorDimensionMap" type="com.evalsystem.task.api.dto.response.TaskEvaluatorDimension">
     <constructor>
       <arg column="taskEvaluatorId" javaType="java.lang.String"/>
       <arg column="evaluatorSource" javaType="java.lang.String"/>
@@ -44,7 +44,7 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="TagDimensionMap" type="com.evalsystem.task.dto.TaskTagDimension">
+  <resultMap id="TagDimensionMap" type="com.evalsystem.task.api.dto.response.TaskTagDimension">
     <constructor>
       <arg column="taskTagId" javaType="java.lang.String"/>
       <arg column="tagId" javaType="java.lang.String"/>
@@ -59,7 +59,7 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="EvaluatorResultMap" type="com.evalsystem.task.dto.TaskEvaluatorResultDto">
+  <resultMap id="EvaluatorResultMap" type="com.evalsystem.task.api.dto.response.TaskEvaluatorResultDto">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
       <arg column="taskItemId" javaType="java.lang.String"/>
@@ -77,7 +77,7 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="TagResultMap" type="com.evalsystem.task.dto.TaskTagResultDto">
+  <resultMap id="TagResultMap" type="com.evalsystem.task.api.dto.response.TaskTagResultDto">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
       <arg column="taskItemId" javaType="java.lang.String"/>
@@ -133,9 +133,9 @@
 
   <select id="listTaskBases" resultMap="TaskBaseMap">
     SELECT <include refid="TaskBaseColumns"/>
-    FROM eval_task t
-    JOIN eval_dataset d ON t.dataset_id = d.id
-    JOIN eval_dataset_version v ON t.dataset_version_id = v.id
+    FROM t_eval_task t
+    JOIN t_eval_dataset d ON t.dataset_id = d.id
+    JOIN t_eval_dataset_version v ON t.dataset_version_id = v.id
     WHERE t.is_deleted = 0
       <if test="status != null and status != ''">
         AND t.status = #{status}
@@ -147,9 +147,9 @@
 
   <select id="findTaskBase" resultMap="TaskBaseMap">
     SELECT <include refid="TaskBaseColumns"/>
-    FROM eval_task t
-    JOIN eval_dataset d ON t.dataset_id = d.id
-    JOIN eval_dataset_version v ON t.dataset_version_id = v.id
+    FROM t_eval_task t
+    JOIN t_eval_dataset d ON t.dataset_id = d.id
+    JOIN t_eval_dataset_version v ON t.dataset_version_id = v.id
     WHERE t.id = #{taskId} AND t.is_deleted = 0
   </select>
 
@@ -173,10 +173,10 @@
                      / NULLIF(CAST(SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END) AS numeric), 0), 2)
            END AS passRate,
            te.display_order AS displayOrder
-    FROM eval_task_evaluator te
-    LEFT JOIN eval_evaluator e ON te.evaluator_source = 'custom' AND te.evaluator_id = e.id
-    LEFT JOIN eval_evaluator_version ev ON te.evaluator_version_id = ev.id
-    LEFT JOIN eval_task_evaluator_result r ON r.task_evaluator_id = te.id
+    FROM t_eval_task_evaluator te
+    LEFT JOIN t_eval_evaluator e ON te.evaluator_source = 'custom' AND te.evaluator_id = e.id
+    LEFT JOIN t_eval_evaluator_version ev ON te.evaluator_version_id = ev.id
+    LEFT JOIN t_eval_task_evaluator_result r ON r.task_evaluator_id = te.id
     WHERE te.task_id = #{taskId}
     GROUP BY te.id, te.evaluator_source, te.evaluator_id, te.evaluator_version_id,
              e.evaluator_name, e.evaluator_type, ev.version_no, te.status, te.display_order
@@ -197,9 +197,9 @@
                      / NULLIF(CAST(SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END) AS numeric), 0), 2)
            END AS passRate,
            tt.display_order AS displayOrder
-    FROM eval_task_tag tt
-    JOIN eval_tag tag ON tt.tag_id = tag.id
-    LEFT JOIN eval_task_tag_result r ON r.task_tag_id = tt.id
+    FROM t_eval_task_tag tt
+    JOIN t_eval_tag tag ON tt.tag_id = tag.id
+    LEFT JOIN t_eval_task_tag_result r ON r.task_tag_id = tt.id
     WHERE tt.task_id = #{taskId}
     GROUP BY tt.id, tt.tag_id, tag.tag_name, tag.tag_type, tt.status, tt.display_order
     ORDER BY tt.display_order ASC
@@ -222,10 +222,10 @@
            r.error_message AS errorMessage,
            r.started_at AS startedAt,
            r.finished_at AS finishedAt
-    FROM eval_task_evaluator_result r
-    JOIN eval_task_evaluator te ON r.task_evaluator_id = te.id
-    LEFT JOIN eval_evaluator e ON te.evaluator_source = 'custom' AND te.evaluator_id = e.id
-    LEFT JOIN eval_evaluator_version ev ON te.evaluator_version_id = ev.id
+    FROM t_eval_task_evaluator_result r
+    JOIN t_eval_task_evaluator te ON r.task_evaluator_id = te.id
+    LEFT JOIN t_eval_evaluator e ON te.evaluator_source = 'custom' AND te.evaluator_id = e.id
+    LEFT JOIN t_eval_evaluator_version ev ON te.evaluator_version_id = ev.id
     WHERE r.task_item_id IN
     <foreach collection="taskItemIds" item="taskItemId" open="(" separator="," close=")">
       #{taskItemId}
@@ -247,10 +247,10 @@
            opt.option_name AS optionName,
            r.pass_result AS passResult,
            r.annotated_at AS annotatedAt
-    FROM eval_task_tag_result r
-    JOIN eval_task_tag tt ON r.task_tag_id = tt.id
-    JOIN eval_tag tag ON tt.tag_id = tag.id
-    LEFT JOIN eval_tag_option opt ON r.tag_option_id = opt.id
+    FROM t_eval_task_tag_result r
+    JOIN t_eval_task_tag tt ON r.task_tag_id = tt.id
+    JOIN t_eval_tag tag ON tt.tag_id = tag.id
+    LEFT JOIN t_eval_tag_option opt ON r.tag_option_id = opt.id
     WHERE r.task_item_id IN
     <foreach collection="taskItemIds" item="taskItemId" open="(" separator="," close=")">
       #{taskItemId}
@@ -270,8 +270,8 @@
            tag.pass_threshold AS passThreshold,
            tt.status AS status,
            tt.display_order AS displayOrder
-    FROM eval_task_tag tt
-    JOIN eval_tag tag ON tt.tag_id = tag.id
+    FROM t_eval_task_tag tt
+    JOIN t_eval_tag tag ON tt.tag_id = tag.id
     WHERE tt.task_id = #{taskId}
     ORDER BY tt.display_order ASC
   </select>

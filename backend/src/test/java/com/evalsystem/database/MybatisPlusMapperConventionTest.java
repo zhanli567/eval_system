@@ -4,17 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.evalsystem.dataset.mapper.DatasetMapper;
-import com.evalsystem.dataset.pojo.EvalDataset;
+import com.evalsystem.dataset.entity.EvalDataset;
 import com.evalsystem.evaluator.mapper.EvaluatorMapper;
-import com.evalsystem.evaluator.pojo.EvalEvaluator;
-import com.evalsystem.evaluator.service.impl.EvaluatorServiceImpl;
+import com.evalsystem.evaluator.entity.EvalEvaluator;
+import com.evalsystem.evaluator.service.EvaluatorService;
 import com.evalsystem.tag.mapper.TagMapper;
-import com.evalsystem.tag.pojo.EvalTag;
-import com.evalsystem.tag.service.impl.TagServiceImpl;
-import com.evalsystem.dataset.service.impl.DatasetServiceImpl;
+import com.evalsystem.tag.entity.EvalTag;
+import com.evalsystem.tag.service.TagService;
+import com.evalsystem.dataset.service.DatasetService;
 import com.evalsystem.task.mapper.TaskMapper;
-import com.evalsystem.task.pojo.EvalTask;
-import com.evalsystem.task.service.impl.TaskServiceImpl;
+import com.evalsystem.task.entity.EvalTask;
+import com.evalsystem.task.service.TaskService;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.ParameterizedType;
@@ -45,20 +45,20 @@ class MybatisPlusMapperConventionTest {
 
   @Test
   void childTableMappersExposeBaseMapperCrudForSimpleSingleTableOperations() throws ClassNotFoundException {
-    assertBaseMapperEntity("com.evalsystem.dataset.mapper.DatasetVersionMapper", "com.evalsystem.dataset.pojo.EvalDatasetVersion");
-    assertBaseMapperEntity("com.evalsystem.dataset.mapper.DatasetFieldMapper", "com.evalsystem.dataset.pojo.EvalDatasetField");
-    assertBaseMapperEntity("com.evalsystem.dataset.mapper.DatasetItemMapper", "com.evalsystem.dataset.pojo.EvalDatasetItem");
-    assertBaseMapperEntity("com.evalsystem.dataset.mapper.DatasetItemCellMapper", "com.evalsystem.dataset.pojo.EvalDatasetItemCell");
-    assertBaseMapperEntity("com.evalsystem.tag.mapper.TagOptionMapper", "com.evalsystem.tag.pojo.EvalTagOption");
-    assertBaseMapperEntity("com.evalsystem.evaluator.mapper.EvaluatorVersionMapper", "com.evalsystem.evaluator.pojo.EvalEvaluatorVersion");
-    assertBaseMapperEntity("com.evalsystem.evaluator.mapper.EvaluatorParamMapper", "com.evalsystem.evaluator.pojo.EvalEvaluatorParam");
-    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskAppFieldMappingMapper", "com.evalsystem.task.pojo.EvalTaskAppFieldMapping");
-    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskEvaluatorMapper", "com.evalsystem.task.pojo.EvalTaskEvaluator");
-    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskEvaluatorParamMappingMapper", "com.evalsystem.task.pojo.EvalTaskEvaluatorParamMapping");
-    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskTagMapper", "com.evalsystem.task.pojo.EvalTaskTag");
-    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskItemMapper", "com.evalsystem.task.pojo.EvalTaskItem");
-    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskEvaluatorResultMapper", "com.evalsystem.task.pojo.EvalTaskEvaluatorResult");
-    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskTagResultMapper", "com.evalsystem.task.pojo.EvalTaskTagResult");
+    assertBaseMapperEntity("com.evalsystem.dataset.mapper.DatasetVersionMapper", "com.evalsystem.dataset.entity.EvalDatasetVersion");
+    assertBaseMapperEntity("com.evalsystem.dataset.mapper.DatasetFieldMapper", "com.evalsystem.dataset.entity.EvalDatasetField");
+    assertBaseMapperEntity("com.evalsystem.dataset.mapper.DatasetItemMapper", "com.evalsystem.dataset.entity.EvalDatasetItem");
+    assertBaseMapperEntity("com.evalsystem.dataset.mapper.DatasetItemCellMapper", "com.evalsystem.dataset.entity.EvalDatasetItemCell");
+    assertBaseMapperEntity("com.evalsystem.tag.mapper.TagOptionMapper", "com.evalsystem.tag.entity.EvalTagOption");
+    assertBaseMapperEntity("com.evalsystem.evaluator.mapper.EvaluatorVersionMapper", "com.evalsystem.evaluator.entity.EvalEvaluatorVersion");
+    assertBaseMapperEntity("com.evalsystem.evaluator.mapper.EvaluatorParamMapper", "com.evalsystem.evaluator.entity.EvalEvaluatorParam");
+    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskAppFieldMappingMapper", "com.evalsystem.task.entity.EvalTaskAppFieldMapping");
+    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskEvaluatorMapper", "com.evalsystem.task.entity.EvalTaskEvaluator");
+    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskEvaluatorParamMappingMapper", "com.evalsystem.task.entity.EvalTaskEvaluatorParamMapping");
+    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskTagMapper", "com.evalsystem.task.entity.EvalTaskTag");
+    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskItemMapper", "com.evalsystem.task.entity.EvalTaskItem");
+    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskEvaluatorResultMapper", "com.evalsystem.task.entity.EvalTaskEvaluatorResult");
+    assertBaseMapperEntity("com.evalsystem.task.mapper.TaskTagResultMapper", "com.evalsystem.task.entity.EvalTaskTagResult");
   }
 
   @Test
@@ -68,10 +68,10 @@ class MybatisPlusMapperConventionTest {
     assertRepository("com.evalsystem.evaluator.repository.EvaluatorRepository");
     assertRepository("com.evalsystem.task.repository.TaskRepository");
 
-    assertServiceDoesNotInjectMapper(DatasetServiceImpl.class);
-    assertServiceDoesNotInjectMapper(TagServiceImpl.class);
-    assertServiceDoesNotInjectMapper(EvaluatorServiceImpl.class);
-    assertServiceDoesNotInjectMapper(TaskServiceImpl.class);
+    assertServiceDoesNotInjectMapper(DatasetService.class);
+    assertServiceDoesNotInjectMapper(TagService.class);
+    assertServiceDoesNotInjectMapper(EvaluatorService.class);
+    assertServiceDoesNotInjectMapper(TaskService.class);
   }
 
   private static void assertBaseMapperEntity(Class<?> mapperType, Class<?> entityType) {

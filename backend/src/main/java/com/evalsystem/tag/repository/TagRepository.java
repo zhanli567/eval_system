@@ -2,13 +2,13 @@ package com.evalsystem.tag.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.evalsystem.tag.dto.TagConfig;
-import com.evalsystem.tag.dto.TagOptionDto;
-import com.evalsystem.tag.dto.TagSummary;
+import com.evalsystem.tag.api.dto.response.TagConfig;
+import com.evalsystem.tag.api.dto.response.TagOptionDto;
+import com.evalsystem.tag.api.dto.response.TagSummary;
 import com.evalsystem.tag.mapper.TagMapper;
 import com.evalsystem.tag.mapper.TagOptionMapper;
-import com.evalsystem.tag.pojo.EvalTag;
-import com.evalsystem.tag.pojo.EvalTagOption;
+import com.evalsystem.tag.entity.EvalTag;
+import com.evalsystem.tag.entity.EvalTagOption;
 import java.util.List;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;

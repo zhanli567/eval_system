@@ -1,9 +1,9 @@
 package com.evalsystem.evaluator.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.evalsystem.evaluator.dto.EvaluatorConfigBase;
-import com.evalsystem.evaluator.dto.EvaluatorSummary;
-import com.evalsystem.evaluator.pojo.EvalEvaluator;
+import com.evalsystem.evaluator.api.dto.response.EvaluatorConfigBase;
+import com.evalsystem.evaluator.api.dto.response.EvaluatorSummary;
+import com.evalsystem.evaluator.entity.EvalEvaluator;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
 

@@ -4,7 +4,7 @@
     "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.evalsystem.evaluator.mapper.EvaluatorMapper">
-  <resultMap id="EvaluatorSummaryMap" type="com.evalsystem.evaluator.dto.EvaluatorSummary">
+  <resultMap id="EvaluatorSummaryMap" type="com.evalsystem.evaluator.api.dto.response.EvaluatorSummary">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
       <arg column="evaluatorName" javaType="java.lang.String"/>
@@ -18,7 +18,7 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="VersionConfigMap" type="com.evalsystem.evaluator.dto.EvaluatorConfigBase">
+  <resultMap id="VersionConfigMap" type="com.evalsystem.evaluator.api.dto.response.EvaluatorConfigBase">
     <constructor>
       <arg column="evaluatorId" javaType="java.lang.String"/>
       <arg column="evaluatorName" javaType="java.lang.String"/>
@@ -49,8 +49,8 @@
            e.description AS description,
            e.created_at AS createdAt,
            e.updated_at AS updatedAt
-    FROM eval_evaluator e
-    LEFT JOIN eval_evaluator_version v ON e.latest_version_id = v.id
+    FROM t_eval_evaluator e
+    LEFT JOIN t_eval_evaluator_version v ON e.latest_version_id = v.id
     WHERE e.is_deleted = 0
       <if test="evaluatorType != null and evaluatorType != ''">
         AND e.evaluator_type = #{evaluatorType}
@@ -77,8 +77,8 @@
            v.pass_threshold AS passThreshold,
            v.created_at AS createdAt,
            v.updated_at AS updatedAt
-    FROM eval_evaluator_version v
-    JOIN eval_evaluator e ON v.evaluator_id = e.id
+    FROM t_eval_evaluator_version v
+    JOIN t_eval_evaluator e ON v.evaluator_id = e.id
     WHERE v.id = #{versionId}
       AND v.is_deleted = 0
       AND e.is_deleted = 0

@@ -1,12 +1,12 @@
 package com.evalsystem.task.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.evalsystem.task.dto.TaskBase;
-import com.evalsystem.task.dto.TaskEvaluatorDimension;
-import com.evalsystem.task.dto.TaskEvaluatorResultDto;
-import com.evalsystem.task.dto.TaskTagDimension;
-import com.evalsystem.task.dto.TaskTagResultDto;
-import com.evalsystem.task.pojo.EvalTask;
+import com.evalsystem.task.api.dto.response.TaskBase;
+import com.evalsystem.task.api.dto.response.TaskEvaluatorDimension;
+import com.evalsystem.task.api.dto.response.TaskEvaluatorResultDto;
+import com.evalsystem.task.api.dto.response.TaskTagDimension;
+import com.evalsystem.task.api.dto.response.TaskTagResultDto;
+import com.evalsystem.task.entity.EvalTask;
 import com.evalsystem.task.repository.TaskTagBindingRecord;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;

@@ -1,8 +1,8 @@
 package com.evalsystem.dataset.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.evalsystem.dataset.dto.DatasetSummary;
-import com.evalsystem.dataset.pojo.EvalDataset;
+import com.evalsystem.dataset.api.dto.response.DatasetSummary;
+import com.evalsystem.dataset.entity.EvalDataset;
 import com.evalsystem.dataset.repository.DatasetRowRecord;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;

@@ -1,10 +1,10 @@
 package com.evalsystem.evaluator.preset;
 
 import com.evalsystem.common.PageResponse;
-import com.evalsystem.evaluator.dto.EvaluatorParamDto;
-import com.evalsystem.evaluator.dto.PresetCategoryDto;
-import com.evalsystem.evaluator.dto.PresetEvaluatorDetail;
-import com.evalsystem.evaluator.dto.PresetEvaluatorSummary;
+import com.evalsystem.evaluator.api.dto.response.EvaluatorParamDto;
+import com.evalsystem.evaluator.api.dto.response.PresetCategoryDto;
+import com.evalsystem.evaluator.api.dto.response.PresetEvaluatorDetail;
+import com.evalsystem.evaluator.api.dto.response.PresetEvaluatorSummary;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
