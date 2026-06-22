@@ -10,6 +10,7 @@ public record CreateTaskRequest(
     String appType,
     String appId,
     String appVersionId,
+    String appAgentAlias,
     List<AppFieldMappingInput> appFieldMappings,
     List<TaskEvaluatorInput> evaluators,
     List<String> tagIds

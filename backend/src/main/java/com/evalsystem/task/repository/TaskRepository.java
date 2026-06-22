@@ -98,6 +98,7 @@ public class TaskRepository {
       String appType,
       String appId,
       String appVersionId,
+      String appAgentAlias,
       String now
   ) {
     EvalTask task = new EvalTask();
@@ -111,6 +112,7 @@ public class TaskRepository {
     task.setAppType(appType);
     task.setAppId(appId);
     task.setAppVersionId(appVersionId);
+    task.setAppAgentAlias(appAgentAlias);
     task.setStartedAt("");
     task.setFinishedAt("");
     task.setIsDeleted(0);

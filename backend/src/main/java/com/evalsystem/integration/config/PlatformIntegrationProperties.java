@@ -9,6 +9,7 @@ public class PlatformIntegrationProperties {
   private String xSpaceId = "";
   private String modelListUrl = "";
   private String agentListUrl = "";
+  private String agentDetailUrl = "";
   private String modelChatUrl = "";
   private String superAgentChatUrl = "";
   private String xAgentAlias = "";
@@ -40,6 +41,14 @@ public class PlatformIntegrationProperties {
 
   public void setAgentListUrl(String agentListUrl) {
     this.agentListUrl = clean(agentListUrl);
+  }
+
+  public String getAgentDetailUrl() {
+    return agentDetailUrl;
+  }
+
+  public void setAgentDetailUrl(String agentDetailUrl) {
+    this.agentDetailUrl = clean(agentDetailUrl);
   }
 
   public String getModelChatUrl() {

@@ -78,7 +78,6 @@ public class TaskService {
   private static final String EVALUATOR_CUSTOM = "custom";
   private static final String SOURCE_DATASET_FIELD = "dataset_field";
   private static final String SOURCE_APP_OUTPUT = "app_output";
-  private static final String DEFAULT_AGENT_ALIAS = "router-agent";
   private static final int MAX_DIMENSION_COUNT = 5;
   private static final Pattern PROMPT_PARAM_PATTERN = Pattern.compile("\\$\\{([a-zA-Z_][\\w]*)}");
 
@@ -140,6 +139,7 @@ public class TaskService {
         normalized.appType(),
         normalized.appId(),
         normalized.appVersionId(),
+        normalized.appAgentAlias(),
         now);
 
     saveAppMappings(taskId, normalized, now);
@@ -482,6 +482,9 @@ public class TaskService {
     String appType = normalizeAppType(request.appType());
     String appId = APP_AGENT.equals(appType) ? requireText(request.appId(), "请选择智能体应用") : "";
     String appVersionId = APP_AGENT.equals(appType) ? requireText(request.appVersionId(), "请选择智能体应用版本") : "";
+    String appAgentAlias = APP_AGENT.equals(appType) && StringUtils.hasText(request.appAgentAlias())
+        ? request.appAgentAlias().trim()
+        : "";
     List<AppFieldMappingInput> appMappings = normalizeAppMappings(appType, request.appFieldMappings(), fieldById);
     List<NormalizedEvaluator> evaluators = normalizeEvaluators(appType, request.evaluators(), fieldById, datasetVersionId);
     List<String> tagIds = normalizeTags(request.tagIds());
@@ -496,6 +499,7 @@ public class TaskService {
         appType,
         appId,
         appVersionId,
+        appAgentAlias,
         appMappings,
         evaluators,
         tagIds,
@@ -964,7 +968,8 @@ public class TaskService {
     }
     String content = buildAgentMessageContent(appMappings, values);
     PlatformAgentChatResponse response = integrationService.invokeAgent(
-        resolveAgentAlias(base),
+        base.appId(),
+        base.appAgentAlias(),
         new PlatformAgentChatRequest(
             base.id() + "-" + item.id(),
             List.of(new PlatformAgentMessage("user", content)),
@@ -992,10 +997,6 @@ public class TaskService {
         STATUS_COMPLETED,
         "",
         outputs);
-  }
-
-  private String resolveAgentAlias(TaskBase base) {
-    return StringUtils.hasText(base.appId()) ? base.appId() : DEFAULT_AGENT_ALIAS;
   }
 
   private String buildAgentMessageContent(
@@ -1497,6 +1498,7 @@ public class TaskService {
       String appType,
       String appId,
       String appVersionId,
+      String appAgentAlias,
       List<AppFieldMappingInput> appMappings,
       List<NormalizedEvaluator> evaluators,
       List<String> tagIds,

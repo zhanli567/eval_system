@@ -190,6 +190,7 @@ export interface TaskBase {
   appType: AppType
   appId: string
   appVersionId: string
+  appAgentAlias: string
   startedAt: string
   finishedAt: string
   createdAt: string

@@ -7,6 +7,7 @@ public record PlatformAgentDefinition(
     String agentName,
     String description,
     List<PlatformAgentVersion> versions,
+    List<PlatformAgentChild> childAgents,
     List<PlatformAgentField> inputs,
     List<PlatformAgentField> outputs
 ) {

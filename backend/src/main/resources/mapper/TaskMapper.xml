@@ -19,6 +19,7 @@
       <arg column="appType" javaType="java.lang.String"/>
       <arg column="appId" javaType="java.lang.String"/>
       <arg column="appVersionId" javaType="java.lang.String"/>
+      <arg column="appAgentAlias" javaType="java.lang.String"/>
       <arg column="startedAt" javaType="java.lang.String"/>
       <arg column="finishedAt" javaType="java.lang.String"/>
       <arg column="createdAt" javaType="java.lang.String"/>
@@ -125,6 +126,7 @@
     t.app_type AS appType,
     t.app_id AS appId,
     t.app_version_id AS appVersionId,
+    COALESCE(t.app_agent_alias, '') AS appAgentAlias,
     t.started_at AS startedAt,
     t.finished_at AS finishedAt,
     t.created_at AS createdAt,

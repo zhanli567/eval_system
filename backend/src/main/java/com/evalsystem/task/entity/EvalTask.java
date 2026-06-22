@@ -18,6 +18,7 @@ public class EvalTask {
   private String appType;
   private String appId;
   private String appVersionId;
+  private String appAgentAlias;
   private String startedAt;
   private String finishedAt;
   @TableField("is_deleted")
@@ -103,6 +104,14 @@ public class EvalTask {
 
   public void setAppVersionId(String appVersionId) {
     this.appVersionId = appVersionId;
+  }
+
+  public String getAppAgentAlias() {
+    return appAgentAlias;
+  }
+
+  public void setAppAgentAlias(String appAgentAlias) {
+    this.appAgentAlias = appAgentAlias;
   }
 
   public String getStartedAt() {

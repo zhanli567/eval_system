@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Plus, Refresh, Search, Sort } from '@element-plus/icons-vue'
 import { useTaskManagement } from '../modules/task/composables/useTaskManagement'
+import type { TaskBase } from '../types'
 
 const {
   loading,
@@ -29,6 +30,12 @@ const {
   formatRate,
   formatTime
 } = useTaskManagement()
+
+function formatAppBinding(base: TaskBase) {
+  if (base.appType !== 'agent') return '-'
+  const appId = base.appId || '智能体应用'
+  return base.appAgentAlias ? `${appId} / ${base.appAgentAlias}` : appId
+}
 </script>
 
 <template>
@@ -92,7 +99,7 @@ const {
       </el-table-column>
       <el-table-column label="应用" min-width="150" show-overflow-tooltip>
         <template #default="{ row }">
-          {{ row.base.appType === 'agent' ? row.base.appId || '智能体应用' : '-' }}
+          {{ formatAppBinding(row.base) }}
         </template>
       </el-table-column>
       <el-table-column label="评估器详情" min-width="240" show-overflow-tooltip>

@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { Back, Refresh, VideoPlay } from '@element-plus/icons-vue'
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail'
 import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay'
-import type { TaskEvaluatorResult, TaskItemDetail } from '../types'
+import type { TaskBase, TaskEvaluatorResult, TaskItemDetail } from '../types'
 
 const route = useRoute()
 const taskId = computed(() => String(route.params.taskId ?? ''))
@@ -37,6 +37,12 @@ function findTagResult(row: TaskItemDetail, taskTagId: string) {
 
 function findEvaluatorResult(row: TaskItemDetail, taskEvaluatorId: string) {
   return row.evaluatorResults.find((item) => item.taskEvaluatorId === taskEvaluatorId)
+}
+
+function formatAppBinding(task?: TaskBase | null) {
+  if (!task || task.appType !== 'agent') return '-'
+  const appId = task.appId || '智能体应用'
+  return task.appAgentAlias ? `${appId} / ${task.appAgentAlias}` : appId
 }
 
 function isScoredEvaluatorResult(result?: TaskEvaluatorResult) {
@@ -84,7 +90,7 @@ function evaluatorResultLabel(result?: TaskEvaluatorResult) {
         </div>
         <div>
           <span>评测应用</span>
-          <strong>{{ base?.appType === 'agent' ? base?.appId || '智能体应用' : '-' }}</strong>
+          <strong>{{ formatAppBinding(base) }}</strong>
         </div>
         <div>
           <span>创建时间</span>

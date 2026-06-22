@@ -53,11 +53,19 @@ export interface PlatformAgentVersion {
   versionName: string
 }
 
+export interface PlatformAgentChild {
+  agentAlias: string
+  agentName: string
+  version: string
+  routePattern: string
+}
+
 export interface PlatformAgentDefinition {
   id: string
   agentName: string
   description: string
   versions: PlatformAgentVersion[]
+  childAgents: PlatformAgentChild[]
   inputs: PlatformAgentField[]
   outputs: PlatformAgentField[]
 }
@@ -74,6 +82,9 @@ export const integrationApi = {
   },
   listAgents() {
     return unwrap(http.get<ApiResponse<PlatformAgentDefinition[]>>('/integration/agents'))
+  },
+  getAgentDetail(agentId: string) {
+    return unwrap(http.get<ApiResponse<PlatformAgentDefinition>>(`/integration/agents/${encodeURIComponent(agentId)}`))
   },
   chatModel(modelId: string, message: string) {
     return unwrap(http.post<ApiResponse<PlatformModelChatResult>>(`/integration/models/${encodeURIComponent(modelId)}/chat`, { message }))

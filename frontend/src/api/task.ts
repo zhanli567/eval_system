@@ -67,6 +67,7 @@ export interface CreateTaskPayload {
   appType: AppType
   appId: string
   appVersionId: string
+  appAgentAlias: string
   appFieldMappings: AppFieldMappingPayload[]
   evaluators: TaskEvaluatorPayload[]
   tagIds: string[]

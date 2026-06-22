@@ -18,6 +18,7 @@ import com.evalsystem.evaluator.preset.PresetEvaluatorStore;
 import com.evalsystem.evaluator.service.EvaluatorService;
 import com.evalsystem.integration.service.PlatformIntegrationService;
 import com.evalsystem.tag.repository.TagRepository;
+import com.evalsystem.task.api.dto.request.AppFieldMappingInput;
 import com.evalsystem.task.api.dto.request.CreateTaskRequest;
 import com.evalsystem.task.api.dto.response.TaskBase;
 import com.evalsystem.task.api.dto.response.TaskEvaluatorDimension;
@@ -157,6 +158,30 @@ class TaskServicePresetDisplayTest {
   }
 
   @Test
+  void createAgentTaskPersistsSelectedChildAgentAlias() {
+    prepareCreateTaskDataset();
+    prepareGetTaskAfterCreate();
+    when(evaluatorService.getPresetEvaluator("answer_consistency"))
+        .thenReturn(presetStore.getPresetEvaluator("answer_consistency"));
+
+    service.createTask(createAgentTaskRequest(" child-a "));
+
+    verify(taskRepository).insertTask(
+        anyString(),
+        eq("task"),
+        eq("pending"),
+        eq(""),
+        eq("dataset-1"),
+        eq("version-1"),
+        eq(1),
+        eq("agent"),
+        eq("agent-1"),
+        eq("bundle-main"),
+        eq("child-a"),
+        anyString());
+  }
+
+  @Test
   void restartTaskClearsPreviousRunOutputsAndResults() {
     TaskService noOpExecutorService = newTaskService(command -> {
     });
@@ -201,6 +226,7 @@ class TaskServicePresetDisplayTest {
         appType,
         "agent".equals(appType) ? "agent-1" : "",
         "agent".equals(appType) ? "agent-version-1" : "",
+        "agent".equals(appType) ? "child-a" : "",
         "",
         "",
         "1",
@@ -251,12 +277,36 @@ class TaskServicePresetDisplayTest {
         "none",
         "",
         "",
+        "",
         List.of(),
         List.of(new TaskEvaluatorInput(
             "preset",
             "answer_consistency",
             "",
             modelId,
+            List.of(
+                new TaskEvaluatorParamMappingInput("answer_consistency:query", "query", "dataset_field", "field-query", ""),
+                new TaskEvaluatorParamMappingInput("answer_consistency:reference_response", "reference_response", "dataset_field", "field-reference", ""),
+                new TaskEvaluatorParamMappingInput("answer_consistency:response", "response", "dataset_field", "field-response", "")))),
+        List.of());
+  }
+
+  private CreateTaskRequest createAgentTaskRequest(String appAgentAlias) {
+    return new CreateTaskRequest(
+        "task",
+        "",
+        "dataset-1",
+        "version-1",
+        "agent",
+        "agent-1",
+        "bundle-main",
+        appAgentAlias,
+        List.of(new AppFieldMappingInput("query", "query", "string", "field-query")),
+        List.of(new TaskEvaluatorInput(
+            "preset",
+            "answer_consistency",
+            "",
+            "model-1",
             List.of(
                 new TaskEvaluatorParamMappingInput("answer_consistency:query", "query", "dataset_field", "field-query", ""),
                 new TaskEvaluatorParamMappingInput("answer_consistency:reference_response", "reference_response", "dataset_field", "field-reference", ""),

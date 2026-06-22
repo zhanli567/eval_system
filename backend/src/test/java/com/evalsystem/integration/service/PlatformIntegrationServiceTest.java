@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.evalsystem.integration.config.PlatformIntegrationProperties;
 import com.evalsystem.integration.api.dto.request.PlatformAgentChatRequest;
 import com.evalsystem.integration.api.dto.request.PlatformAgentMessage;
+import com.evalsystem.integration.api.dto.response.PlatformAgentDefinition;
 import com.evalsystem.integration.api.dto.response.PlatformModelInfo;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -80,6 +81,61 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
+  void getAgentDetailSendsAuthHeadersAndNormalizesSnapshotsAndChildren() throws Exception {
+    AtomicReference<String> cookie = new AtomicReference<>("");
+    AtomicReference<String> spaceId = new AtomicReference<>("");
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/login", exchange -> {
+      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
+      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
+    });
+    server.createContext("/agents/agent-1", exchange -> {
+      cookie.set(firstHeader(exchange, "Cookie"));
+      spaceId.set(firstHeader(exchange, "x-space-id"));
+      writeJson(exchange, 200, """
+          {
+            "status": "200",
+            "url": "/agents/agent-1",
+            "success": true,
+            "resultObjVO": {
+              "superAgentId": "agent-1",
+              "name": "agent-one",
+              "displayName": "Agent One",
+              "description": "Demo agent",
+              "accessUrl": "http://localhost/dynamic",
+              "currentBundleId": "bundle-current-id",
+              "bundleVersion": "bundle-main",
+              "instances": [
+                {"instanceId": "i-1", "bundleVersion": "bundle-main"},
+                {"instanceId": "i-2", "bundleVersion": ""},
+                {"instanceId": "i-3", "bundleVersion": "bundle-old"},
+                {"instanceId": "i-4", "bundleVersion": "bundle-old"}
+              ],
+              "loadedAgents": [
+                {"agentAlias": "child-a", "metaAgentName": "Child A", "version": "1"},
+                {"agentAlias": "", "metaAgentName": "Blank"},
+                {"agentAlias": "child-a", "metaAgentName": "Child A Duplicate"},
+                {"agentAlias": "child-b", "metaAgentName": "Child B", "version": "2"}
+              ]
+            }
+          }
+          """);
+    });
+    server.start();
+
+    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
+
+    PlatformAgentDefinition detail = service.getAgentDetail("agent-1");
+
+    assertThat(cookie).hasValue("SESSION=valid");
+    assertThat(spaceId).hasValue("space-1");
+    assertThat(detail.id()).isEqualTo("agent-1");
+    assertThat(detail.agentName()).isEqualTo("Agent One");
+    assertThat(detail.versions()).extracting(version -> version.id()).containsExactly("bundle-main", "bundle-old");
+    assertThat(detail.childAgents()).extracting(child -> child.agentAlias()).containsExactly("child-a", "child-b");
+  }
+
+  @Test
   void invokeAgentSendsMessagesArrayField() throws Exception {
     AtomicReference<String> requestBody = new AtomicReference<>("");
     ObjectMapper objectMapper = new ObjectMapper();
@@ -88,7 +144,8 @@ class PlatformIntegrationServiceTest {
       exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
       writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
     });
-    server.createContext("/agent/chat", exchange -> {
+    createAgentDetailContext("router-agent", "/dynamic");
+    server.createContext("/dynamic/chat/completions", exchange -> {
       requestBody.set(readBody(exchange));
       writeJson(exchange, 200, """
           {"choices":[{"delta":{"content":[{"type":"text","text":"ok"}]}}]}
@@ -109,6 +166,88 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
+  void invokeAgentUsesDynamicAccessUrlAndOmitsBlankChildAlias() throws Exception {
+    AtomicReference<String> requestBody = new AtomicReference<>("");
+    AtomicReference<String> childAlias = new AtomicReference<>("missing");
+    ObjectMapper objectMapper = new ObjectMapper();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/login", exchange -> {
+      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
+      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
+    });
+    server.createContext("/agents/agent-1", exchange -> writeJson(exchange, 200, """
+        {
+          "status": "200",
+          "url": "/agents/agent-1",
+          "success": true,
+          "resultObjVO": {
+            "superAgentId": "agent-1",
+            "displayName": "Agent One",
+            "accessUrl": "http://localhost:%d/dynamic",
+            "bundleVersion": "bundle-main"
+          }
+        }
+        """.formatted(server.getAddress().getPort())));
+    server.createContext("/dynamic/chat/completions", exchange -> {
+      requestBody.set(readBody(exchange));
+      childAlias.set(firstHeader(exchange, "x-agent-alias"));
+      writeJson(exchange, 200, """
+          {"choices":[{"delta":{"content":[{"type":"text","text":"dynamic ok"}]}}]}
+          """);
+    });
+    server.start();
+
+    PlatformIntegrationService service = new PlatformIntegrationService(properties(), objectMapper);
+    var response = service.invokeAgent(
+        "agent-1",
+        "",
+        new PlatformAgentChatRequest("conversation-1", List.of(new PlatformAgentMessage("user", "hello")), true));
+
+    JsonNode root = objectMapper.readTree(requestBody.get());
+    assertThat(root.get("messages").get(0).get("content").asText()).isEqualTo("hello");
+    assertThat(childAlias).hasValue("");
+    assertThat(response.outputs().get("text")).isEqualTo("dynamic ok");
+  }
+
+  @Test
+  void invokeAgentSendsSelectedChildAliasHeader() throws Exception {
+    AtomicReference<String> childAlias = new AtomicReference<>("");
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/login", exchange -> {
+      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
+      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
+    });
+    server.createContext("/agents/agent-1", exchange -> writeJson(exchange, 200, """
+        {
+          "status": "200",
+          "url": "/agents/agent-1",
+          "success": true,
+          "resultObjVO": {
+            "superAgentId": "agent-1",
+            "displayName": "Agent One",
+            "accessUrl": "http://localhost:%d/dynamic",
+            "bundleVersion": "bundle-main"
+          }
+        }
+        """.formatted(server.getAddress().getPort())));
+    server.createContext("/dynamic/chat/completions", exchange -> {
+      childAlias.set(firstHeader(exchange, "x-agent-alias"));
+      writeJson(exchange, 200, """
+          {"choices":[{"delta":{"content":[{"type":"text","text":"child ok"}]}}]}
+          """);
+    });
+    server.start();
+
+    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
+    service.invokeAgent(
+        "agent-1",
+        "child-a",
+        new PlatformAgentChatRequest("conversation-1", List.of(new PlatformAgentMessage("user", "hello")), true));
+
+    assertThat(childAlias).hasValue("child-a");
+  }
+
+  @Test
   void invokeAgentConcatenatesStreamingTextChunks() throws Exception {
     ObjectMapper objectMapper = new ObjectMapper();
     server = HttpServer.create(new InetSocketAddress(0), 0);
@@ -116,7 +255,8 @@ class PlatformIntegrationServiceTest {
       exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
       writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
     });
-    server.createContext("/agent/chat", exchange -> {
+    createAgentDetailContext("router-agent", "/dynamic");
+    server.createContext("/dynamic/chat/completions", exchange -> {
       byte[] payload = """
           data: {"choices":[{"delta":{"content":[{"type":"text","text":"Hello"}]}}]}
           data: {"choices":[{"delta":{"content":[{"type":"text","text":" "}]}}]}
@@ -272,6 +412,7 @@ class PlatformIntegrationServiceTest {
     PlatformIntegrationProperties properties = new PlatformIntegrationProperties();
     properties.setModelListUrl(baseUrl + "/models");
     properties.setAgentListUrl(baseUrl + "/agents");
+    properties.setAgentDetailUrl(baseUrl + "/agents/{agentId}");
     properties.setModelChatUrl(baseUrl + "/chat/{modelId}");
     properties.setSuperAgentChatUrl(baseUrl + "/agent/chat");
     properties.setXSpaceId("space-1");
@@ -283,6 +424,23 @@ class PlatformIntegrationServiceTest {
     properties.getLogin().setAppId("app");
     properties.getLogin().setEncryptedPasswordSwitch("false");
     return properties;
+  }
+
+  private void createAgentDetailContext(String agentId, String accessPath) {
+    String baseUrl = "http://localhost:" + server.getAddress().getPort();
+    server.createContext("/agents/" + agentId, exchange -> writeJson(exchange, 200, """
+        {
+          "status": "200",
+          "url": "/agents/%s",
+          "success": true,
+          "resultObjVO": {
+            "superAgentId": "%s",
+            "displayName": "%s",
+            "accessUrl": "%s%s",
+            "bundleVersion": "bundle-main"
+          }
+        }
+        """.formatted(agentId, agentId, agentId, baseUrl, accessPath)));
   }
 
   private void writeJson(HttpExchange exchange, int status, String body) throws IOException {

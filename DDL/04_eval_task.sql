@@ -9,12 +9,15 @@ CREATE TABLE IF NOT EXISTS t_eval_task (
   app_type VARCHAR(16),
   app_id VARCHAR(64),
   app_version_id VARCHAR(64),
+  app_agent_alias VARCHAR(128),
   started_at VARCHAR(32),
   finished_at VARCHAR(32),
   is_deleted SMALLINT,
   created_at VARCHAR(32),
   updated_at VARCHAR(32)
 );
+
+ALTER TABLE t_eval_task ADD COLUMN IF NOT EXISTS app_agent_alias VARCHAR(128);
 
 COMMENT ON TABLE t_eval_task IS '评测任务主表';
 COMMENT ON COLUMN t_eval_task.id IS '评测任务ID';

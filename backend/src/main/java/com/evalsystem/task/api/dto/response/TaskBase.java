@@ -14,6 +14,7 @@ public record TaskBase(
     String appType,
     String appId,
     String appVersionId,
+    String appAgentAlias,
     String startedAt,
     String finishedAt,
     String createdAt,

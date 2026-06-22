@@ -33,6 +33,11 @@ public class PlatformIntegrationController {
     return ApiResponse.ok(integrationService.listAgents());
   }
 
+  @GetMapping("/agents/{agentId}")
+  public ApiResponse<PlatformAgentDefinition> getAgentDetail(@PathVariable String agentId) {
+    return ApiResponse.ok(integrationService.getAgentDetail(agentId));
+  }
+
   @PostMapping("/models/{modelId}/chat")
   public ApiResponse<PlatformModelChatResult> chatModel(
       @PathVariable String modelId,

@@ -2,15 +2,19 @@ package com.evalsystem.integration.service;
 
 import com.evalsystem.integration.config.PlatformIntegrationProperties;
 import com.evalsystem.integration.api.dto.request.PlatformAgentChatRequest;
+import com.evalsystem.integration.api.dto.response.PlatformAgentChild;
 import com.evalsystem.integration.api.dto.response.PlatformAgentChatResponse;
 import com.evalsystem.integration.api.dto.response.PlatformAgentChoice;
 import com.evalsystem.integration.api.dto.response.PlatformAgentContentBlock;
 import com.evalsystem.integration.api.dto.response.PlatformAgentDefinition;
+import com.evalsystem.integration.api.dto.response.PlatformAgentDetailResponse;
 import com.evalsystem.integration.api.dto.response.PlatformAgentDelta;
 import com.evalsystem.integration.api.dto.response.PlatformAgentField;
+import com.evalsystem.integration.api.dto.response.PlatformAgentInstance;
 import com.evalsystem.integration.api.dto.response.PlatformAgentListResponse;
 import com.evalsystem.integration.api.dto.request.PlatformAgentMessage;
 import com.evalsystem.integration.api.dto.response.PlatformAgentVersion;
+import com.evalsystem.integration.api.dto.response.PlatformLoadedAgent;
 import com.evalsystem.integration.api.dto.response.PlatformListResult;
 import com.evalsystem.integration.api.dto.request.PlatformLoginRequest;
 import com.evalsystem.integration.api.dto.response.PlatformLoginResponse;
@@ -19,6 +23,7 @@ import com.evalsystem.integration.api.dto.response.PlatformModelChatResponse;
 import com.evalsystem.integration.api.dto.response.PlatformModelChatResult;
 import com.evalsystem.integration.api.dto.response.PlatformModelInfo;
 import com.evalsystem.integration.api.dto.response.PlatformModelListResponse;
+import com.evalsystem.integration.api.dto.response.PlatformSuperAgentDetail;
 import com.evalsystem.integration.api.dto.response.PlatformSuperAgentInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -109,6 +114,26 @@ public class PlatformIntegrationService {
     return result.list().stream().map(this::toAgentDefinition).toList();
   }
 
+  public PlatformAgentDefinition getAgentDetail(String agentId) {
+    return toAgentDefinition(loadAgentDetail(agentId));
+  }
+
+  private PlatformSuperAgentDetail loadAgentDetail(String agentId) {
+    String safeAgentId = requireText(agentId, "Agent ID cannot be blank");
+    requireText(properties.getAgentDetailUrl(), "Please configure agent detail API integration.platform.agent-detail-url");
+    PlatformAgentDetailResponse response = exchangeJson(
+        "GET",
+        agentDetailUrl(safeAgentId),
+        null,
+        authHeaders(true),
+        PlatformAgentDetailResponse.class);
+    ensureSuccess("Agent detail API", response.status(), response.success());
+    if (response.resultObjVO() == null) {
+      throw new IllegalStateException("Agent detail API returned empty result");
+    }
+    return response.resultObjVO();
+  }
+
   public PlatformModelChatResult chatModel(String modelId, String message) {
     if (properties.getIam().isEnabled()) {
       return chatIamModel(modelId, message);
@@ -193,10 +218,13 @@ public class PlatformIntegrationService {
     return safeContent.trim();
   }
 
-  public PlatformAgentChatResponse invokeAgent(String agentAlias, PlatformAgentChatRequest request) {
-    requireText(properties.getSuperAgentChatUrl(), "请配置Super智能体接口 integration.platform.super-agent-chat-url");
-    String configuredAgentAlias = properties.getXAgentAlias();
-    String safeAgentAlias = firstNonBlank(configuredAgentAlias, agentAlias, DEFAULT_AGENT_ALIAS);
+  public PlatformAgentChatResponse invokeAgent(String agentId, PlatformAgentChatRequest request) {
+    return invokeAgent(agentId, "", request);
+  }
+
+  public PlatformAgentChatResponse invokeAgent(String agentId, String agentAlias, PlatformAgentChatRequest request) {
+    String safeAgentId = firstNonBlank(agentId, DEFAULT_AGENT_ALIAS);
+    String safeAgentAlias = firstNonBlank(agentAlias, safeAgentId);
     long startedAt = System.currentTimeMillis();
     String conversationId = StringUtils.hasText(request == null ? null : request.conversationId())
         ? request.conversationId()
@@ -205,16 +233,18 @@ public class PlatformIntegrationService {
         conversationId,
         request == null || request.messages() == null ? List.of() : request.messages(),
         Boolean.TRUE);
+    PlatformSuperAgentDetail agentDetail = loadAgentDetail(safeAgentId);
+    String chatUrl = agentChatUrl(agentDetail.accessUrl());
 
     for (int attempt = 0; attempt < 2; attempt++) {
       HttpURLConnection connection = null;
       try {
-        connection = openConnection(properties.getSuperAgentChatUrl(), "POST");
+        connection = openConnection(chatUrl, "POST");
         connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
         connection.setRequestProperty("Accept", "text/event-stream, application/json");
         connection.setRequestProperty("Cookie", ensureCookie());
-        if (StringUtils.hasText(configuredAgentAlias)) {
-          connection.setRequestProperty("x-agent-alias", configuredAgentAlias);
+        if (StringUtils.hasText(agentAlias)) {
+          connection.setRequestProperty("x-agent-alias", agentAlias.trim());
         }
         writeJson(connection, outboundRequest);
         int statusCode = connection.getResponseCode();
@@ -251,6 +281,7 @@ public class PlatformIntegrationService {
         firstNonBlank(agent.displayName(), agent.name(), id),
         agent.description() == null ? "" : agent.description(),
         List.of(new PlatformAgentVersion(versionId, versionName)),
+        List.of(),
         List.of(new PlatformAgentField("query", "query", "string", "用户输入或问题", 1)),
         List.of(
             new PlatformAgentField("text", "text", "string", "返回给用户的信息", 1),
@@ -258,6 +289,71 @@ public class PlatformIntegrationService {
             new PlatformAgentField("debug", "debug", "string", "智能体调试信息", 3),
             new PlatformAgentField("error", "error", "string", "智能体错误信息", 4),
             new PlatformAgentField("rawText", "rawText", "string", "消息合并后的原始文本", 5)));
+  }
+
+  private PlatformAgentDefinition toAgentDefinition(PlatformSuperAgentDetail agent) {
+    String id = firstNonBlank(agent.superAgentId(), agent.name());
+    return new PlatformAgentDefinition(
+        id,
+        firstNonBlank(agent.displayName(), agent.name(), id),
+        agent.description() == null ? "" : agent.description(),
+        normalizeAgentVersions(agent),
+        normalizeChildAgents(agent.loadedAgents()),
+        defaultAgentInputs(),
+        defaultAgentOutputs());
+  }
+
+  private List<PlatformAgentVersion> normalizeAgentVersions(PlatformSuperAgentDetail agent) {
+    Map<String, PlatformAgentVersion> versions = new LinkedHashMap<>();
+    addAgentVersion(versions, firstNonBlank(agent.bundleVersion(), agent.currentBundleId()));
+    if (agent.instances() != null) {
+      for (PlatformAgentInstance instance : agent.instances()) {
+        if (instance != null) {
+          addAgentVersion(versions, instance.bundleVersion());
+        }
+      }
+    }
+    return List.copyOf(versions.values());
+  }
+
+  private void addAgentVersion(Map<String, PlatformAgentVersion> versions, String version) {
+    String safeVersion = firstNonBlank(version);
+    if (!StringUtils.hasText(safeVersion) || versions.containsKey(safeVersion)) {
+      return;
+    }
+    versions.put(safeVersion, new PlatformAgentVersion(safeVersion, safeVersion));
+  }
+
+  private List<PlatformAgentChild> normalizeChildAgents(List<PlatformLoadedAgent> loadedAgents) {
+    if (loadedAgents == null || loadedAgents.isEmpty()) {
+      return List.of();
+    }
+    Map<String, PlatformAgentChild> children = new LinkedHashMap<>();
+    for (PlatformLoadedAgent loadedAgent : loadedAgents) {
+      if (loadedAgent == null || !StringUtils.hasText(loadedAgent.agentAlias())) {
+        continue;
+      }
+      String alias = loadedAgent.agentAlias().trim();
+      children.putIfAbsent(alias, new PlatformAgentChild(
+          alias,
+          firstNonBlank(loadedAgent.metaAgentName(), alias),
+          firstNonBlank(loadedAgent.version()),
+          firstNonBlank(loadedAgent.routePattern())));
+    }
+    return List.copyOf(children.values());
+  }
+
+  private List<PlatformAgentField> defaultAgentInputs() {
+    return List.of(new PlatformAgentField("query", "query", "string", "User input or question", 1));
+  }
+
+  private List<PlatformAgentField> defaultAgentOutputs() {
+    return List.of(
+        new PlatformAgentField("text", "text", "string", "Agent answer", 1),
+        new PlatformAgentField("reasoning", "reasoning", "string", "Agent reasoning", 2),
+        new PlatformAgentField("debug", "debug", "string", "Agent debug information", 3),
+        new PlatformAgentField("error", "error", "string", "Agent error information", 4),
+        new PlatformAgentField("rawText", "rawText", "string", "Merged raw response text", 5));
   }
 
   private Map<String, String> authHeaders(boolean includeSpaceId) {
@@ -443,6 +539,26 @@ public class PlatformIntegrationService {
       return replaced;
     }
     return template.endsWith("/") ? template + encodedModelId : template + "/" + encodedModelId;
+  }
+
+  private String agentDetailUrl(String agentId) {
+    String encodedAgentId = URLEncoder.encode(agentId, StandardCharsets.UTF_8);
+    String template = properties.getAgentDetailUrl();
+    String replaced = template
+        .replace("{agentId}", encodedAgentId)
+        .replace("{agentid}", encodedAgentId);
+    if (!replaced.equals(template)) {
+      return replaced;
+    }
+    return template.endsWith("/") ? template + encodedAgentId : template + "/" + encodedAgentId;
+  }
+
+  private String agentChatUrl(String accessUrl) {
+    String safeAccessUrl = requireText(accessUrl, "Agent detail response is missing accessUrl");
+    String normalized = safeAccessUrl.endsWith("/")
+        ? safeAccessUrl.substring(0, safeAccessUrl.length() - 1)
+        : safeAccessUrl;
+    return normalized + "/chat/completions";
   }
 
   private void ensureSuccess(String name, String status, Boolean success) {

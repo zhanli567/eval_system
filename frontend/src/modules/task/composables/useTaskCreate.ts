@@ -92,6 +92,7 @@ export function useTaskCreate() {
   const presetCategories = ref<PresetCategory[]>([])
   const evaluatorBlocks = ref<EvaluatorBlockState[]>([])
   const agents = ref<PlatformAgentDefinition[]>([])
+  const agentDetails = reactive<Record<string, PlatformAgentDefinition>>({})
   const models = ref<PlatformModelInfo[]>([])
   const appFieldMappings = reactive<Record<string, string>>({})
   const datasetsLoaded = ref(false)
@@ -99,6 +100,7 @@ export function useTaskCreate() {
   const customEvaluatorsLoaded = ref(false)
   const presetCategoriesLoaded = ref(false)
   const agentsLoaded = ref(false)
+  const agentDetailLoading = ref(false)
   const modelsLoaded = ref(false)
   const modelLoading = ref(false)
 
@@ -109,7 +111,8 @@ export function useTaskCreate() {
     datasetVersionId: '',
     appType: 'none' as 'none' | 'agent',
     appId: '',
-    appVersionId: ''
+    appVersionId: '',
+    appAgentAlias: ''
   })
 
   const selectedVersion = computed(() => versions.value.find((item) => item.id === form.datasetVersionId))
@@ -120,8 +123,9 @@ export function useTaskCreate() {
     && (evaluatorBlocks.value.length || selectedTagIds.value.length)
   ))
   const categoryOptions = computed(() => [{ id: '', categoryName: '全部分类', displayOrder: 0 }, ...presetCategories.value])
-  const selectedAgent = computed(() => agents.value.find((agent) => agent.id === form.appId))
+  const selectedAgent = computed(() => agentDetails[form.appId] || agents.value.find((agent) => agent.id === form.appId))
   const agentVersions = computed(() => selectedAgent.value?.versions || [])
+  const agentChildAgents = computed(() => selectedAgent.value?.childAgents || [])
   const agentInputs = computed(() => selectedAgent.value?.inputs || [])
   const agentOutputs = computed(() => selectedAgent.value?.outputs || defaultAgentOutputs())
   const tagTypeOptions = computed(() => [
@@ -167,6 +171,7 @@ export function useTaskCreate() {
       } else {
         form.appId = ''
         form.appVersionId = ''
+        form.appAgentAlias = ''
         clearAppFieldMappings()
       }
       normalizeParamOutputMappings()
@@ -175,7 +180,11 @@ export function useTaskCreate() {
 
   watch(
     () => form.appId,
-    () => {
+    async (agentId) => {
+      form.appAgentAlias = ''
+      if (agentId) {
+        await ensureAgentDetailLoaded(agentId)
+      }
       selectDefaultAgentVersion()
       ensureAppFieldMappings()
       normalizeParamOutputMappings()
@@ -220,6 +229,18 @@ export function useTaskCreate() {
       await loadAgents()
       agentsLoaded.value = true
     }, '获取智能体列表失败')
+  }
+
+  async function ensureAgentDetailLoaded(agentId: string) {
+    if (!agentId || agentDetails[agentId]) return
+    agentDetailLoading.value = true
+    try {
+      agentDetails[agentId] = await integrationApi.getAgentDetail(agentId)
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '获取智能体详情失败')
+    } finally {
+      agentDetailLoading.value = false
+    }
   }
 
   async function ensureModelsLoaded() {
@@ -474,11 +495,13 @@ export function useTaskCreate() {
     if (!agents.value.length) {
       form.appId = ''
       form.appVersionId = ''
+      form.appAgentAlias = ''
       return
     }
     const exists = agents.value.some((agent) => agent.id === form.appId)
     if (!exists) {
       form.appId = agents.value[0].id
+      form.appAgentAlias = ''
     }
     selectDefaultAgentVersion()
     ensureAppFieldMappings()
@@ -627,6 +650,7 @@ export function useTaskCreate() {
         appType: form.appType,
         appId: form.appType === 'agent' ? form.appId : '',
         appVersionId: form.appType === 'agent' ? form.appVersionId : '',
+        appAgentAlias: form.appType === 'agent' ? form.appAgentAlias : '',
         appFieldMappings: toAppFieldMappingPayload(),
         evaluators: evaluatorBlocks.value.map(toEvaluatorPayload),
         tagIds: selectedTagIds.value
@@ -804,9 +828,11 @@ export function useTaskCreate() {
     evaluatorBlocks,
     agents,
     models,
+    agentDetailLoading,
     modelLoading,
     selectedAgent,
     agentVersions,
+    agentChildAgents,
     agentInputs,
     agentOutputs,
     appFieldMappings,

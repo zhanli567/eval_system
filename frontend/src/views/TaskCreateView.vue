@@ -19,8 +19,10 @@ const {
   evaluatorBlocks,
   agents,
   models,
+  agentDetailLoading,
   modelLoading,
   agentVersions,
+  agentChildAgents,
   agentInputs,
   agentOutputs,
   appFieldMappings,
@@ -101,6 +103,15 @@ const {
                   </el-select>
                   <el-select v-model="form.appVersionId" placeholder="请选择智能体版本" :disabled="!form.appId">
                     <el-option v-for="version in agentVersions" :key="version.id" :label="version.versionName" :value="version.id" />
+                  </el-select>
+                  <el-select v-model="form.appAgentAlias" placeholder="选择子智能体（可选）" clearable :disabled="!form.appId" :loading="agentDetailLoading">
+                    <el-option label="超级智能体" value="" />
+                    <el-option
+                      v-for="child in agentChildAgents"
+                      :key="child.agentAlias"
+                      :label="child.agentName ? `${child.agentName} · ${child.agentAlias}` : child.agentAlias"
+                      :value="child.agentAlias"
+                    />
                   </el-select>
                 </div>
               </div>
