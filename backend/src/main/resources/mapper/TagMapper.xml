@@ -67,9 +67,9 @@
            tag_name AS tagName,
            tag_type AS tagType,
            description AS description,
-           min_value AS `minValue`,
-           max_value AS `maxValue`,
-           pass_threshold AS `passThreshold`,
+           min_value AS "minValue",
+           max_value AS "maxValue",
+           pass_threshold AS "passThreshold",
            created_at AS createdAt,
            updated_at AS updatedAt
     FROM eval_tag

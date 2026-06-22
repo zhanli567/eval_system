@@ -72,7 +72,7 @@ public interface DatasetMapper {
              version_id AS versionId,
              field_name AS fieldName,
              field_type AS fieldType,
-             is_required AS required,
+             CASE WHEN is_required = 0 THEN FALSE ELSE TRUE END AS required,
              description AS description,
              display_order AS displayOrder
       FROM eval_dataset_field

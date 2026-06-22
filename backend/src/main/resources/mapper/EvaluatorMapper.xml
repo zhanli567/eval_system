@@ -83,7 +83,7 @@
            evaluator_id AS evaluatorId,
            version_no AS versionNo,
            CASE WHEN version_no = 0 THEN '草稿' ELSE CONCAT('V', version_no) END AS versionName,
-           CASE WHEN version_no = 0 THEN 1 ELSE 0 END AS draft,
+           CASE WHEN version_no = 0 THEN TRUE ELSE FALSE END AS draft,
            created_at AS createdAt,
            updated_at AS updatedAt
     FROM eval_evaluator_version
@@ -99,7 +99,7 @@
            v.id AS versionId,
            v.version_no AS versionNo,
            CASE WHEN v.version_no = 0 THEN '草稿' ELSE CONCAT('V', v.version_no) END AS versionName,
-           CASE WHEN v.version_no = 0 THEN 1 ELSE 0 END AS draft,
+           CASE WHEN v.version_no = 0 THEN TRUE ELSE FALSE END AS draft,
            v.model_id AS modelId,
            v.prompt AS prompt,
            v.execute_code AS executeCode,

@@ -232,8 +232,8 @@
            COALESCE(SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END), 0) AS completedCount,
            COUNT(r.id) AS totalCount,
            CASE WHEN COALESCE(SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END), 0) = 0 THEN NULL
-                ELSE ROUND(COALESCE(SUM(CASE WHEN r.pass_result = 'pass' THEN 1 ELSE 0 END), 0) * 100
-                     / SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END), 2)
+                ELSE ROUND(CAST(COALESCE(SUM(CASE WHEN r.pass_result = 'pass' THEN 1 ELSE 0 END), 0) AS numeric) * 100
+                     / NULLIF(CAST(SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END) AS numeric), 0), 2)
            END AS passRate,
            te.display_order AS displayOrder
     FROM eval_task_evaluator te
@@ -256,8 +256,8 @@
            COALESCE(SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END), 0) AS completedCount,
            COUNT(r.id) AS totalCount,
            CASE WHEN COALESCE(SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END), 0) = 0 THEN NULL
-                ELSE ROUND(COALESCE(SUM(CASE WHEN r.pass_result = 'pass' THEN 1 ELSE 0 END), 0) * 100
-                     / SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END), 2)
+                ELSE ROUND(CAST(COALESCE(SUM(CASE WHEN r.pass_result = 'pass' THEN 1 ELSE 0 END), 0) AS numeric) * 100
+                     / NULLIF(CAST(SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END) AS numeric), 0), 2)
            END AS passRate,
            tt.display_order AS displayOrder
     FROM eval_task_tag tt
@@ -439,9 +439,9 @@
            tag.tag_name AS tagName,
            tag.tag_type AS tagType,
            tag.description AS description,
-           tag.min_value AS `minValue`,
-           tag.max_value AS `maxValue`,
-           tag.pass_threshold AS `passThreshold`,
+           tag.min_value AS "minValue",
+           tag.max_value AS "maxValue",
+           tag.pass_threshold AS "passThreshold",
            tt.status AS status,
            tt.display_order AS displayOrder
     FROM eval_task_tag tt

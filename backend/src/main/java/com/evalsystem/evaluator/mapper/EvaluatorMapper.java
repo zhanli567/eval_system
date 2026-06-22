@@ -131,7 +131,8 @@ public interface EvaluatorMapper {
   @Insert("""
       INSERT INTO eval_evaluator_param
       (id, target_type, target_id, param_name, data_type, default_value, is_required, description, display_order, created_at, updated_at)
-      VALUES (#{paramId}, #{targetType}, #{targetId}, #{paramName}, #{dataType}, #{defaultValue}, #{required}, #{description}, #{displayOrder}, #{now}, #{now})
+      VALUES (#{paramId}, #{targetType}, #{targetId}, #{paramName}, #{dataType}, #{defaultValue},
+       CASE WHEN #{required} THEN 1 ELSE 0 END, #{description}, #{displayOrder}, #{now}, #{now})
       """)
   void insertParam(
       @Param("paramId") String paramId,
@@ -156,7 +157,7 @@ public interface EvaluatorMapper {
              param_name AS paramName,
              data_type AS dataType,
              default_value AS defaultValue,
-             CASE WHEN is_required = 0 THEN 0 ELSE 1 END AS required,
+             CASE WHEN is_required = 0 THEN FALSE ELSE TRUE END AS required,
              description AS description,
              display_order AS displayOrder
       FROM eval_evaluator_param
