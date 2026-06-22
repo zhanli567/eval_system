@@ -7,7 +7,7 @@ import java.util.Map;
 public record PlatformAgentDelta(
     String role,
     List<PlatformAgentContentBlock> content,
-    @JsonProperty("tool_calls") List<Map<String, Object>> toolCalls,
+    @JsonProperty("tool_calls") List<PlatformAgentToolCallDelta> toolCalls,
     Map<String, Object> extra
 ) {
 }

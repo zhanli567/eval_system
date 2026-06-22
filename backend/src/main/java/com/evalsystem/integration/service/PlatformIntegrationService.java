@@ -12,7 +12,10 @@ import com.evalsystem.integration.api.dto.response.PlatformAgentDelta;
 import com.evalsystem.integration.api.dto.response.PlatformAgentField;
 import com.evalsystem.integration.api.dto.response.PlatformAgentInstance;
 import com.evalsystem.integration.api.dto.response.PlatformAgentListResponse;
+import com.evalsystem.integration.api.dto.response.PlatformAgentReferenceItem;
 import com.evalsystem.integration.api.dto.request.PlatformAgentMessage;
+import com.evalsystem.integration.api.dto.response.PlatformAgentToolCallDelta;
+import com.evalsystem.integration.api.dto.response.PlatformAgentUiCardDefinition;
 import com.evalsystem.integration.api.dto.response.PlatformAgentVersion;
 import com.evalsystem.integration.api.dto.response.PlatformLoadedAgent;
 import com.evalsystem.integration.api.dto.response.PlatformListResult;
@@ -64,7 +67,9 @@ public class PlatformIntegrationService {
   private static final String DEFAULT_AGENT_ALIAS = "router-agent";
   private static final String RESPONSE_OBJECT = "com.evalsystem.integration.api.dto.response.PlatformAgentChatResponse";
   private static final HostnameVerifier TRUST_ALL_HOSTNAME_VERIFIER = (hostname, session) -> true;
-  private static final TypeReference<List<Map<String, Object>>> TOOL_CALLS_TYPE = new TypeReference<>() {
+  private static final TypeReference<List<PlatformAgentToolCallDelta>> TOOL_CALLS_TYPE = new TypeReference<>() {
+  };
+  private static final TypeReference<List<PlatformAgentReferenceItem>> REFERENCES_TYPE = new TypeReference<>() {
   };
   private static final TypeReference<Map<String, Object>> EXTRA_TYPE = new TypeReference<>() {
   };
@@ -353,7 +358,12 @@ public class PlatformIntegrationService {
         new PlatformAgentField("reasoning", "reasoning", "string", "Agent reasoning", 2),
         new PlatformAgentField("debug", "debug", "string", "Agent debug information", 3),
         new PlatformAgentField("error", "error", "string", "Agent error information", 4),
-        new PlatformAgentField("rawText", "rawText", "string", "Merged raw response text", 5));
+        new PlatformAgentField("rawText", "rawText", "string", "Merged raw response text", 5),
+        new PlatformAgentField("skillTrigger", "skillTrigger", "string", "Triggered skill metadata", 6),
+        new PlatformAgentField("references", "references", "string", "Reference list", 7),
+        new PlatformAgentField("toolCall", "toolCall", "string", "Tool call messages", 8),
+        new PlatformAgentField("toolResponse", "toolResponse", "string", "Tool response messages", 9),
+        new PlatformAgentField("genUi", "genUi", "string", "Generated UI card definition", 10));
   }
 
   private Map<String, String> authHeaders(boolean includeSpaceId) {
@@ -666,7 +676,7 @@ public class PlatformIntegrationService {
     JsonNode deltaNode = choiceNode == null ? null : choiceNode.get("delta");
     String role = firstNonBlank(textValue(deltaNode, "role"), ROLE_ASSISTANT);
     List<PlatformAgentContentBlock> contents = parseDeltaContents(deltaNode == null ? null : deltaNode.get("content"));
-    List<Map<String, Object>> toolCalls = null;
+    List<PlatformAgentToolCallDelta> toolCalls = null;
     JsonNode toolCallsNode = deltaNode == null ? null : deltaNode.get("tool_calls");
     if (toolCallsNode != null && !toolCallsNode.isNull()) {
       toolCalls = objectMapper.convertValue(toolCallsNode, TOOL_CALLS_TYPE);
@@ -705,14 +715,68 @@ public class PlatformIntegrationService {
     String text = textValue(item, "text");
     String reasoning = textValue(item, "reasoning");
     String error = textValue(item, "error");
+    String skillName = textValue(item, "skillName");
+    String skillDesc = textValue(item, "skillDesc");
+    String toolCallId = textValue(item, "toolCallId");
+    String toolName = textValue(item, "toolName");
+    String arguments = textValue(item, "arguments");
+    String response = textValue(item, "response");
+    List<PlatformAgentReferenceItem> references = parseReferences(item.get("references"));
+    PlatformAgentUiCardDefinition uiCardDefinition = parseUiCardDefinition(item);
+    Map<String, Object> extra = objectMapper.convertValue(item, EXTRA_TYPE);
+    String normalizedType = type.trim();
     String fallbackValue = firstNonEmpty(text, reasoning, error, firstNonTypeFieldValue(item));
-    if ("reasoning".equals(type)) {
-      return new PlatformAgentContentBlock(type, null, fallbackValue, null);
+    if ("reasoning".equals(normalizedType)) {
+      return new PlatformAgentContentBlock(normalizedType, null, firstNonEmpty(reasoning, text, fallbackValue), null,
+          null, null, null, null, null, null, null, null, extra);
     }
-    if ("error".equals(type)) {
-      return new PlatformAgentContentBlock(type, null, null, fallbackValue);
+    if ("error".equals(normalizedType)) {
+      return new PlatformAgentContentBlock(normalizedType, null, null, firstNonEmpty(error, text, fallbackValue),
+          null, null, null, null, null, null, null, null, extra);
     }
-    return new PlatformAgentContentBlock(type, fallbackValue, null, null);
+    if ("skill_trigger".equals(normalizedType)) {
+      return new PlatformAgentContentBlock(normalizedType, null, null, null,
+          skillName, skillDesc, null, null, null, null, null, null, extra);
+    }
+    if ("references".equals(normalizedType)) {
+      return new PlatformAgentContentBlock(normalizedType, null, null, null,
+          null, null, references, null, null, null, null, null, extra);
+    }
+    if ("tool_call".equals(normalizedType)) {
+      return new PlatformAgentContentBlock(normalizedType, null, null, null,
+          null, null, null, toolCallId, toolName, arguments, null, null, extra);
+    }
+    if ("tool_response".equals(normalizedType)) {
+      return new PlatformAgentContentBlock(normalizedType, null, null, null,
+          null, null, null, toolCallId, toolName, null, response, null, extra);
+    }
+    if ("gen_ui".equals(normalizedType)) {
+      return new PlatformAgentContentBlock(normalizedType, null, null, null,
+          null, null, null, null, null, null, null, uiCardDefinition, extra);
+    }
+    return new PlatformAgentContentBlock(normalizedType, firstNonEmpty(text, fallbackValue), null, null,
+        null, null, null, null, null, null, null, null, extra);
+  }
+
+  private List<PlatformAgentReferenceItem> parseReferences(JsonNode referencesNode) {
+    if (referencesNode == null || referencesNode.isNull()) {
+      return List.of();
+    }
+    if (!referencesNode.isArray()) {
+      return List.of(objectMapper.convertValue(referencesNode, PlatformAgentReferenceItem.class));
+    }
+    return objectMapper.convertValue(referencesNode, REFERENCES_TYPE);
+  }
+
+  private PlatformAgentUiCardDefinition parseUiCardDefinition(JsonNode item) {
+    JsonNode uiCardNode = item == null ? null : item.get("uicardDefinition");
+    if (uiCardNode == null || uiCardNode.isNull()) {
+      uiCardNode = item == null ? null : item.get("uiCardDefinition");
+    }
+    if (uiCardNode == null || uiCardNode.isNull()) {
+      return null;
+    }
+    return objectMapper.convertValue(uiCardNode, PlatformAgentUiCardDefinition.class);
   }
 
   private Map<String, String> buildAgentOutputs(List<PlatformAgentChoice> choices) {
@@ -720,12 +784,27 @@ public class PlatformIntegrationService {
     List<String> reasoningParts = new ArrayList<>();
     List<String> textParts = new ArrayList<>();
     List<String> errorParts = new ArrayList<>();
+    List<String> skillTriggerParts = new ArrayList<>();
+    List<String> referenceParts = new ArrayList<>();
+    List<String> toolCallParts = new ArrayList<>();
+    List<String> toolResponseParts = new ArrayList<>();
+    List<String> genUiParts = new ArrayList<>();
     for (PlatformAgentChoice choice : choices) {
       if (choice == null || choice.delta() == null || choice.delta().content() == null) {
         continue;
       }
       for (PlatformAgentContentBlock content : choice.delta().content()) {
-        appendContentPart(debugParts, reasoningParts, textParts, errorParts, content);
+        appendContentPart(
+            debugParts,
+            reasoningParts,
+            textParts,
+            errorParts,
+            skillTriggerParts,
+            referenceParts,
+            toolCallParts,
+            toolResponseParts,
+            genUiParts,
+            content);
       }
     }
     Map<String, String> outputs = new LinkedHashMap<>();
@@ -733,9 +812,24 @@ public class PlatformIntegrationService {
     putIfText(outputs, "reasoning", joinStreamParts(reasoningParts));
     putIfText(outputs, "text", joinStreamParts(textParts));
     putIfText(outputs, "error", joinStreamParts(errorParts));
+    putIfText(outputs, "skillTrigger", joinNonBlank("\n", skillTriggerParts.toArray(String[]::new)));
+    putIfText(outputs, "references", joinNonBlank("\n", referenceParts.toArray(String[]::new)));
+    putIfText(outputs, "toolCall", joinNonBlank("\n", toolCallParts.toArray(String[]::new)));
+    putIfText(outputs, "toolResponse", joinNonBlank("\n", toolResponseParts.toArray(String[]::new)));
+    putIfText(outputs, "genUi", joinNonBlank("\n", genUiParts.toArray(String[]::new)));
     putIfText(outputs, "answer", firstNonBlank(outputs.get("text")));
     putIfText(outputs, "content", firstNonBlank(outputs.get("text")));
-    putIfText(outputs, "rawText", joinNonBlank("\n", outputs.get("debug"), outputs.get("reasoning"), outputs.get("text"), outputs.get("error")));
+    putIfText(outputs, "rawText", joinNonBlank(
+        "\n",
+        outputs.get("debug"),
+        outputs.get("reasoning"),
+        outputs.get("text"),
+        outputs.get("skillTrigger"),
+        outputs.get("references"),
+        outputs.get("toolCall"),
+        outputs.get("toolResponse"),
+        outputs.get("genUi"),
+        outputs.get("error")));
     return outputs;
   }
 
@@ -744,23 +838,78 @@ public class PlatformIntegrationService {
       List<String> reasoningParts,
       List<String> textParts,
       List<String> errorParts,
+      List<String> skillTriggerParts,
+      List<String> referenceParts,
+      List<String> toolCallParts,
+      List<String> toolResponseParts,
+      List<String> genUiParts,
       PlatformAgentContentBlock content
   ) {
     if (content == null || !StringUtils.hasText(content.type())) {
       return;
     }
-    String value = firstNonEmpty(content.text(), content.reasoning(), content.error());
+    String type = content.type().trim();
+    String value = contentDisplayValue(content);
     if (value.isEmpty()) {
       return;
     }
-    if ("debug".equals(content.type())) {
+    if ("debug".equals(type)) {
       debugParts.add(value);
-    } else if ("reasoning".equals(content.type())) {
+    } else if ("reasoning".equals(type)) {
       reasoningParts.add(value);
-    } else if ("text".equals(content.type())) {
+    } else if ("text".equals(type)) {
       textParts.add(value);
-    } else if ("error".equals(content.type())) {
+    } else if ("error".equals(type)) {
       errorParts.add(value);
+    } else if ("skill_trigger".equals(type)) {
+      skillTriggerParts.add(value);
+    } else if ("references".equals(type)) {
+      referenceParts.add(value);
+    } else if ("tool_call".equals(type)) {
+      toolCallParts.add(value);
+    } else if ("tool_response".equals(type)) {
+      toolResponseParts.add(value);
+    } else if ("gen_ui".equals(type)) {
+      genUiParts.add(value);
+    } else {
+      textParts.add(value);
+    }
+  }
+
+  private String contentDisplayValue(PlatformAgentContentBlock content) {
+    String type = content.type().trim();
+    if ("skill_trigger".equals(type)) {
+      return joinNonBlank(" - ", content.skillName(), content.skillDesc());
+    }
+    if ("references".equals(type)) {
+      return toJson(content.references());
+    }
+    if ("tool_call".equals(type)) {
+      return toJson(Map.of(
+          "toolCallId", firstNonBlank(content.toolCallId()),
+          "toolName", firstNonBlank(content.toolName()),
+          "arguments", firstNonBlank(content.arguments())));
+    }
+    if ("tool_response".equals(type)) {
+      return toJson(Map.of(
+          "toolCallId", firstNonBlank(content.toolCallId()),
+          "toolName", firstNonBlank(content.toolName()),
+          "response", firstNonBlank(content.response())));
+    }
+    if ("gen_ui".equals(type)) {
+      return toJson(content.uiCardDefinition());
+    }
+    return firstNonEmpty(content.text(), content.reasoning(), content.error(), toJson(content.extra()));
+  }
+
+  private String toJson(Object value) {
+    if (value == null) {
+      return "";
+    }
+    try {
+      return objectMapper.writeValueAsString(value);
+    } catch (Exception e) {
+      return String.valueOf(value);
     }
   }
 

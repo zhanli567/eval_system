@@ -580,7 +580,12 @@ export function useTaskCreate() {
       { id: 'reasoning', fieldName: 'reasoning', fieldType: 'string', description: '智能体思考过程', displayOrder: 2 },
       { id: 'debug', fieldName: 'debug', fieldType: 'string', description: '智能体调试信息', displayOrder: 3 },
       { id: 'error', fieldName: 'error', fieldType: 'string', description: '智能体错误信息', displayOrder: 4 },
-      { id: 'rawText', fieldName: 'rawText', fieldType: 'string', description: '消息合并后的原始文本', displayOrder: 5 }
+      { id: 'rawText', fieldName: 'rawText', fieldType: 'string', description: '消息合并后的原始文本', displayOrder: 5 },
+      { id: 'skillTrigger', fieldName: 'skillTrigger', fieldType: 'string', description: '触发技能信息', displayOrder: 6 },
+      { id: 'references', fieldName: 'references', fieldType: 'string', description: '引用来源列表', displayOrder: 7 },
+      { id: 'toolCall', fieldName: 'toolCall', fieldType: 'string', description: '工具调用信息', displayOrder: 8 },
+      { id: 'toolResponse', fieldName: 'toolResponse', fieldType: 'string', description: '工具响应信息', displayOrder: 9 },
+      { id: 'genUi', fieldName: 'genUi', fieldType: 'string', description: '生成式 UI 信息', displayOrder: 10 }
     ]
   }
 

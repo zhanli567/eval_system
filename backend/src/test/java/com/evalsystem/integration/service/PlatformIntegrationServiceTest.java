@@ -133,6 +133,17 @@ class PlatformIntegrationServiceTest {
     assertThat(detail.agentName()).isEqualTo("Agent One");
     assertThat(detail.versions()).extracting(version -> version.id()).containsExactly("bundle-main", "bundle-old");
     assertThat(detail.childAgents()).extracting(child -> child.agentAlias()).containsExactly("child-a", "child-b");
+    assertThat(detail.outputs()).extracting(output -> output.fieldName()).contains(
+        "text",
+        "reasoning",
+        "debug",
+        "error",
+        "rawText",
+        "skillTrigger",
+        "references",
+        "toolCall",
+        "toolResponse",
+        "genUi");
   }
 
   @Test
@@ -277,6 +288,60 @@ class PlatformIntegrationServiceTest {
         new PlatformAgentChatRequest("conversation-1", List.of(new PlatformAgentMessage("user", "hello")), true));
 
     assertThat(response.outputs().get("text")).isEqualTo("Hello world");
+  }
+
+  @Test
+  void invokeAgentParsesAllStructuredContentTypes() throws Exception {
+    ObjectMapper objectMapper = new ObjectMapper();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/login", exchange -> {
+      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
+      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
+    });
+    createAgentDetailContext("router-agent", "/dynamic");
+    server.createContext("/dynamic/chat/completions", exchange -> {
+      byte[] payload = """
+          data: {"id":"chunk-1","conversationId":"conversation-1","masterAgent":{"name":"master"},"metaAgent":{"name":"meta"},"userId":"user-1","object":"chat.completion.chunk","created":1781573919962,"model":"agent-model","choices":[{"index":0,"delta":{"role":"assistant","content":[{"type":"reasoning","reasoning":"thinking"},{"type":"skill_trigger","skillName":"search","skillDesc":"search docs"},{"type":"references","references":[{"id":"ref-1","title":"Doc title","url":"https://example.com/doc","sourceType":"web","sourceName":"Example","summary":"short summary","snippet":"matched snippet"}]},{"type":"debug","text":"debug line"},{"type":"text","text":"final answer"},{"type":"tool_call","toolCallId":"call-1","toolName":"lookup","arguments":"{\\"q\\":\\"abc\\"}"},{"type":"tool_response","toolCallId":"call-1","toolName":"lookup","response":"tool result"},{"type":"gen_ui","uicardDefinition":{"id":"card-1","type":"chart","version":"1","displayName":"Chart","location":"CHAT_UI","body":[{"id":"component-1","type":"text","componentKey":"Text","propsData":{"value":"hello"}}]}},{"type":"error","error":"minor error"}],"tool_calls":[{"index":0,"id":"call-2","type":"function","function":{"name":"fn","arguments":"{\\"x\\":1}"}}],"extra":{"traceId":"trace-1"}},"finish_reason":"stop"}]}
+          data: [DONE]
+          """.getBytes(StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().set("Content-Type", "text/event-stream;charset=UTF-8");
+      exchange.sendResponseHeaders(200, payload.length);
+      try (var output = exchange.getResponseBody()) {
+        output.write(payload);
+      }
+    });
+    server.start();
+
+    PlatformIntegrationService service = new PlatformIntegrationService(properties(), objectMapper);
+
+    var response = service.invokeAgent(
+        "router-agent",
+        new PlatformAgentChatRequest("conversation-1", List.of(new PlatformAgentMessage("user", "hello")), true));
+
+    var delta = response.choices().getFirst().delta();
+    assertThat(delta.toolCalls().getFirst().function().name()).isEqualTo("fn");
+    assertThat(delta.extra()).containsEntry("traceId", "trace-1");
+    assertThat(delta.content()).extracting(content -> content.type()).containsExactly(
+        "reasoning",
+        "skill_trigger",
+        "references",
+        "debug",
+        "text",
+        "tool_call",
+        "tool_response",
+        "gen_ui",
+        "error");
+    assertThat(delta.content().get(1).skillName()).isEqualTo("search");
+    assertThat(delta.content().get(2).references().getFirst().sourceType().value()).isEqualTo("web");
+    assertThat(delta.content().get(5).toolCallId()).isEqualTo("call-1");
+    assertThat(delta.content().get(7).uiCardDefinition().body().getFirst().componentKey()).isEqualTo("Text");
+    assertThat(response.outputs()).containsEntry("text", "final answer");
+    assertThat(response.outputs().get("skillTrigger")).contains("search").contains("search docs");
+    assertThat(response.outputs().get("references")).contains("Doc title").contains("https://example.com/doc");
+    assertThat(response.outputs().get("toolCall")).contains("lookup").contains("call-1");
+    assertThat(response.outputs().get("toolResponse")).contains("tool result");
+    assertThat(response.outputs().get("genUi")).contains("card-1").contains("Chart");
+    assertThat(response.outputs().get("rawText")).contains("thinking").contains("final answer").contains("minor error");
   }
 
   @Test
