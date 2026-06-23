@@ -18,7 +18,6 @@ public class EvalDatasetItem {
   private LocalDateTime lastUpdatedDate;
   private String versionId;
   private Integer rowNo;
-  private String createdAt;
 
   public String getId() {
     return id;
@@ -42,14 +41,6 @@ public class EvalDatasetItem {
 
   public void setRowNo(Integer rowNo) {
     this.rowNo = rowNo;
-  }
-
-  public String getCreatedAt() {
-    return createdAt;
-  }
-
-  public void setCreatedAt(String createdAt) {
-    this.createdAt = createdAt;
   }
 
   public String getSpaceId() {

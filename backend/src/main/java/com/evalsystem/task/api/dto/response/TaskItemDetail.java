@@ -14,7 +14,7 @@ public record TaskItemDetail(
     String appErrorMessage,
     List<TaskEvaluatorResultDto> evaluatorResults,
     List<TaskTagResultDto> tagResults,
-    String createdAt,
+    java.time.LocalDateTime createdDate,
     java.time.LocalDateTime lastUpdatedDate
 ) {
 }

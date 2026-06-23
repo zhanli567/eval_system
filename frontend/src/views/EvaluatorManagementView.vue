@@ -103,7 +103,7 @@ const {
           <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>
         </el-table-column>
         <el-table-column label="创建时间" width="190">
-          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+          <template #default="{ row }">{{ formatTime(row.createdDate) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">

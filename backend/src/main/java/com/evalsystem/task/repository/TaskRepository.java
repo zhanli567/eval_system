@@ -119,7 +119,6 @@ public class TaskRepository {
     task.setStartedAt("");
     task.setFinishedAt("");
     task.setIsDeleted(0);
-    task.setCreatedAt(now);
     task.setLastUpdatedDate(toLastUpdatedDate(now));
     taskMapper.insert(task);
   }
@@ -144,7 +143,6 @@ public class TaskRepository {
     mapping.setDatasetVersionId(datasetVersionId);
     mapping.setDatasetFieldId(datasetFieldId);
     mapping.setDisplayOrder(displayOrder);
-    mapping.setCreatedAt(now);
     mapping.setLastUpdatedDate(toLastUpdatedDate(now));
     appFieldMappingMapper.insert(mapping);
   }
@@ -169,7 +167,6 @@ public class TaskRepository {
     evaluator.setModelId(modelId);
     evaluator.setStatus(status);
     evaluator.setDisplayOrder(displayOrder);
-    evaluator.setCreatedAt(now);
     evaluator.setLastUpdatedDate(toLastUpdatedDate(now));
     taskEvaluatorMapper.insert(evaluator);
   }
@@ -198,7 +195,6 @@ public class TaskRepository {
     mapping.setDatasetFieldId(datasetFieldId);
     mapping.setAppOutputName(appOutputName);
     mapping.setDisplayOrder(displayOrder);
-    mapping.setCreatedAt(now);
     mapping.setLastUpdatedDate(toLastUpdatedDate(now));
     paramMappingMapper.insert(mapping);
   }
@@ -210,7 +206,6 @@ public class TaskRepository {
     tag.setTagId(tagId);
     tag.setStatus(status);
     tag.setDisplayOrder(displayOrder);
-    tag.setCreatedAt(now);
     tag.setLastUpdatedDate(toLastUpdatedDate(now));
     taskTagMapper.insert(tag);
   }
@@ -237,7 +232,6 @@ public class TaskRepository {
     item.setAppErrorMessage("");
     item.setStartedAt("");
     item.setFinishedAt("");
-    item.setCreatedAt(now);
     item.setLastUpdatedDate(toLastUpdatedDate(now));
     taskItemMapper.insert(item);
   }
@@ -255,7 +249,6 @@ public class TaskRepository {
     result.setErrorMessage("");
     result.setStartedAt("");
     result.setFinishedAt("");
-    result.setCreatedAt(now);
     result.setLastUpdatedDate(toLastUpdatedDate(now));
     evaluatorResultMapper.insert(result);
   }
@@ -274,7 +267,6 @@ public class TaskRepository {
     result.setAnnotatorId("");
     result.setAnnotatorName("");
     result.setAnnotatedAt("");
-    result.setCreatedAt(now);
     result.setLastUpdatedDate(toLastUpdatedDate(now));
     tagResultMapper.insert(result);
   }
@@ -603,7 +595,7 @@ public class TaskRepository {
         item.getAppOutput(),
         item.getAppOutputStatus(),
         item.getAppErrorMessage(),
-        item.getCreatedAt(),
+        item.getCreatedDate(),
         item.getLastUpdatedDate());
   }
 

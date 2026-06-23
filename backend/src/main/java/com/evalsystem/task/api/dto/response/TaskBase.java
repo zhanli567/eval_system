@@ -17,7 +17,7 @@ public record TaskBase(
     String appAgentAlias,
     String startedAt,
     String finishedAt,
-    String createdAt,
+    java.time.LocalDateTime createdDate,
     java.time.LocalDateTime lastUpdatedDate
 ) {
 }

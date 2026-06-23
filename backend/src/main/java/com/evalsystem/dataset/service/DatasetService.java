@@ -100,7 +100,7 @@ public class DatasetService {
     }
     Map<String, Map<String, String>> values = datasetRepository.loadValues(rowRecords.stream().map(DatasetRowRecord::id).toList());
     List<RowDto> rows = rowRecords.stream()
-        .map(row -> new RowDto(row.id(), row.rowNo(), values.getOrDefault(row.id(), Map.of()), row.createdAt(), row.lastUpdatedDate()))
+        .map(row -> new RowDto(row.id(), row.rowNo(), values.getOrDefault(row.id(), Map.of()), row.createdDate(), row.lastUpdatedDate()))
         .toList();
     return new PageResponse<>(rows, total, page, size);
   }
@@ -426,7 +426,7 @@ public class DatasetService {
   private RowDto getRow(String itemId) {
     DatasetRowRecord row = datasetRepository.findRow(itemId);
     Map<String, String> values = datasetRepository.loadValues(List.of(itemId)).getOrDefault(itemId, Map.of());
-    return new RowDto(row.id(), row.rowNo(), values, row.createdAt(), row.lastUpdatedDate());
+    return new RowDto(row.id(), row.rowNo(), values, row.createdDate(), row.lastUpdatedDate());
   }
 
   private void copyVersionContent(String sourceVersionId, String targetVersionId) {

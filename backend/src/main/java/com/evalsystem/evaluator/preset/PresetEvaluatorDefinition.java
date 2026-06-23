@@ -19,7 +19,7 @@ public record PresetEvaluatorDefinition(
     BigDecimal passThreshold,
     Integer displayOrder,
     List<PresetParamDefinition> params,
-    String createdAt,
+    String createdDate,
     String lastUpdatedDate
 ) {
   private static final String TYPE_LLM = "llm";

@@ -20,7 +20,6 @@ public class EvalTaskTag {
   private String tagId;
   private String status;
   private Integer displayOrder;
-  private String createdAt;
 
   public String getId() {
     return id;
@@ -60,14 +59,6 @@ public class EvalTaskTag {
 
   public void setDisplayOrder(Integer displayOrder) {
     this.displayOrder = displayOrder;
-  }
-
-  public String getCreatedAt() {
-    return createdAt;
-  }
-
-  public void setCreatedAt(String createdAt) {
-    this.createdAt = createdAt;
   }
 
   public String getSpaceId() {

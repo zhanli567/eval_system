@@ -88,7 +88,7 @@ export const taskApi = {
     size: number
     status?: TaskStatus | ''
     keyword?: string
-    sortBy?: 'createdAt' | 'lastUpdatedDate'
+    sortBy?: 'createdDate' | 'lastUpdatedDate'
     sortOrder?: 'asc' | 'desc'
   }) {
     return unwrap(http.get<ApiResponse<PageResponse<TaskSummary>>>('/tasks', { params }))

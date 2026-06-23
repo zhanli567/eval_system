@@ -28,7 +28,6 @@ public class EvalTaskTagResult {
   private String annotatorId;
   private String annotatorName;
   private String annotatedAt;
-  private String createdAt;
 
   public String getId() {
     return id;
@@ -124,14 +123,6 @@ public class EvalTaskTagResult {
 
   public void setAnnotatedAt(String annotatedAt) {
     this.annotatedAt = annotatedAt;
-  }
-
-  public String getCreatedAt() {
-    return createdAt;
-  }
-
-  public void setCreatedAt(String createdAt) {
-    this.createdAt = createdAt;
   }
 
   public String getSpaceId() {

@@ -74,8 +74,8 @@ function formatAppBinding(base: TaskBase) {
         <el-button :class="{ active: sortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleSort('lastUpdatedDate')">
           更新时间 {{ sortBy === 'lastUpdatedDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
         </el-button>
-        <el-button :class="{ active: sortBy === 'createdAt' }" :icon="Sort" @click="toggleSort('createdAt')">
-          创建时间 {{ sortBy === 'createdAt' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
+        <el-button :class="{ active: sortBy === 'createdDate' }" :icon="Sort" @click="toggleSort('createdDate')">
+          创建时间 {{ sortBy === 'createdDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
         </el-button>
       </div>
     </div>
@@ -132,7 +132,7 @@ function formatAppBinding(base: TaskBase) {
       <el-table-column label="评测时间" width="230">
         <template #default="{ row }">
           <div class="time-stack">
-            <span>创建 {{ formatTime(row.base.createdAt) }}</span>
+            <span>创建 {{ formatTime(row.base.createdDate) }}</span>
             <span>更新 {{ formatTime(row.base.lastUpdatedDate) }}</span>
           </div>
         </template>

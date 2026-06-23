@@ -7,7 +7,7 @@ public record DatasetSummary(
     Integer publishedVersionCount,
     String latestPublishedVersionId,
     Integer latestItemCount,
-    String createdAt,
+    java.time.LocalDateTime createdDate,
     java.time.LocalDateTime lastUpdatedDate
 ) {
 }

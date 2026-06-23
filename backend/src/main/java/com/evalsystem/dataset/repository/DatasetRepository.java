@@ -65,7 +65,6 @@ public class DatasetRepository {
     dataset.setPublishedVersionCount(0);
     dataset.setLatestPublishedVersionId(null);
     dataset.setIsDeleted(0);
-    dataset.setCreatedAt(now);
     dataset.setLastUpdatedDate(toLastUpdatedDate(now));
     datasetMapper.insert(dataset);
   }
@@ -77,7 +76,6 @@ public class DatasetRepository {
     version.setVersionNo(versionNo);
     version.setItemCount(itemCount);
     version.setIsDeleted(0);
-    version.setCreatedAt(now);
     version.setLastUpdatedDate(toLastUpdatedDate(now));
     versionMapper.insert(version);
   }
@@ -176,7 +174,6 @@ public class DatasetRepository {
     field.setIsRequired(required);
     field.setDescription(description);
     field.setDisplayOrder(displayOrder);
-    field.setCreatedAt(now);
     field.setLastUpdatedDate(toLastUpdatedDate(now));
     fieldMapper.insert(field);
   }
@@ -250,7 +247,6 @@ public class DatasetRepository {
     item.setId(itemId);
     item.setVersionId(versionId);
     item.setRowNo(rowNo);
-    item.setCreatedAt(now);
     item.setLastUpdatedDate(toLastUpdatedDate(now));
     itemMapper.insert(item);
   }
@@ -262,7 +258,6 @@ public class DatasetRepository {
     cell.setItemId(itemId);
     cell.setFieldId(fieldId);
     cell.setCellValue(cellValue);
-    cell.setCreatedAt(now);
     cell.setLastUpdatedDate(toLastUpdatedDate(now));
     cellMapper.insert(cell);
   }
@@ -416,7 +411,7 @@ public class DatasetRepository {
         versionNo == 0 ? "\u8349\u7a3f" : "V" + versionNo,
         version.getItemCount(),
         versionNo == 0,
-        version.getCreatedAt(),
+        version.getCreatedDate(),
         version.getLastUpdatedDate());
   }
 
@@ -432,7 +427,7 @@ public class DatasetRepository {
   }
 
   private DatasetRowRecord toRowRecord(EvalDatasetItem item) {
-    return new DatasetRowRecord(item.getId(), item.getRowNo(), item.getCreatedAt(), item.getLastUpdatedDate());
+    return new DatasetRowRecord(item.getId(), item.getRowNo(), item.getCreatedDate(), item.getLastUpdatedDate());
   }
 
   private LocalDateTime toLastUpdatedDate(String now) {

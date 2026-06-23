@@ -6,7 +6,7 @@ public record RowDto(
     String id,
     Integer rowNo,
     Map<String, String> values,
-    String createdAt,
+    java.time.LocalDateTime createdDate,
     java.time.LocalDateTime lastUpdatedDate
 ) {
 }

@@ -23,7 +23,6 @@ public class EvalDataset {
   private String latestPublishedVersionId;
   @TableField("is_deleted")
   private Integer isDeleted;
-  private String createdAt;
 
   public String getId() {
     return id;
@@ -71,14 +70,6 @@ public class EvalDataset {
 
   public void setIsDeleted(Integer isDeleted) {
     this.isDeleted = isDeleted;
-  }
-
-  public String getCreatedAt() {
-    return createdAt;
-  }
-
-  public void setCreatedAt(String createdAt) {
-    this.createdAt = createdAt;
   }
 
   public String getSpaceId() {

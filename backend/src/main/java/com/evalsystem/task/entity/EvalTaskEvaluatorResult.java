@@ -27,7 +27,6 @@ public class EvalTaskEvaluatorResult {
   private String errorMessage;
   private String startedAt;
   private String finishedAt;
-  private String createdAt;
 
   public String getId() {
     return id;
@@ -115,14 +114,6 @@ public class EvalTaskEvaluatorResult {
 
   public void setFinishedAt(String finishedAt) {
     this.finishedAt = finishedAt;
-  }
-
-  public String getCreatedAt() {
-    return createdAt;
-  }
-
-  public void setCreatedAt(String createdAt) {
-    this.createdAt = createdAt;
   }
 
   public String getSpaceId() {

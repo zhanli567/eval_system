@@ -22,7 +22,6 @@ public class EvalTag {
   private Integer minValue;
   private Integer maxValue;
   private Integer passThreshold;
-  private String createdAt;
 
   public String getId() {
     return id;
@@ -78,14 +77,6 @@ public class EvalTag {
 
   public void setPassThreshold(Integer passThreshold) {
     this.passThreshold = passThreshold;
-  }
-
-  public String getCreatedAt() {
-    return createdAt;
-  }
-
-  public void setCreatedAt(String createdAt) {
-    this.createdAt = createdAt;
   }
 
   public String getSpaceId() {

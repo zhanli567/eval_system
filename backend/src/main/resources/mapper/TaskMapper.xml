@@ -22,7 +22,7 @@
       <arg column="appAgentAlias" javaType="java.lang.String"/>
       <arg column="startedAt" javaType="java.lang.String"/>
       <arg column="finishedAt" javaType="java.lang.String"/>
-      <arg column="createdAt" javaType="java.lang.String"/>
+      <arg column="createdDate" javaType="java.time.LocalDateTime"/>
       <arg column="lastUpdatedDate" javaType="java.time.LocalDateTime"/>
     </constructor>
   </resultMap>
@@ -129,7 +129,7 @@
     COALESCE(t.app_agent_alias, '') AS appAgentAlias,
     t.started_at AS startedAt,
     t.finished_at AS finishedAt,
-    t.created_at AS createdAt,
+    t.created_date AS createdDate,
     t.last_updated_date AS lastUpdatedDate
   </sql>
 

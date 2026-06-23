@@ -96,7 +96,7 @@ public class PresetEvaluatorStore {
         evaluator.scoreMin(),
         evaluator.scoreMax(),
         evaluator.passThreshold(),
-        evaluator.createdAt(),
+        evaluator.createdDate(),
         evaluator.lastUpdatedDate(),
         toParamDtos(evaluator));
   }

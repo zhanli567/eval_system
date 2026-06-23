@@ -12,7 +12,7 @@
       <arg column="publishedVersionCount" javaType="java.lang.Integer"/>
       <arg column="latestPublishedVersionId" javaType="java.lang.String"/>
       <arg column="latestItemCount" javaType="java.lang.Integer"/>
-      <arg column="createdAt" javaType="java.lang.String"/>
+      <arg column="createdDate" javaType="java.time.LocalDateTime"/>
       <arg column="lastUpdatedDate" javaType="java.time.LocalDateTime"/>
     </constructor>
   </resultMap>
@@ -21,7 +21,7 @@
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
       <arg column="rowNo" javaType="java.lang.Integer"/>
-      <arg column="createdAt" javaType="java.lang.String"/>
+      <arg column="createdDate" javaType="java.time.LocalDateTime"/>
       <arg column="lastUpdatedDate" javaType="java.time.LocalDateTime"/>
     </constructor>
   </resultMap>
@@ -33,7 +33,7 @@
            d.published_version_count AS publishedVersionCount,
            d.latest_published_version_id AS latestPublishedVersionId,
            COALESCE(v.item_count, 0) AS latestItemCount,
-           d.created_at AS createdAt,
+           d.created_date AS createdDate,
            d.last_updated_date AS lastUpdatedDate
     FROM t_eval_dataset d
     LEFT JOIN t_eval_dataset_version v ON d.latest_published_version_id = v.id
@@ -50,7 +50,7 @@
            d.published_version_count AS publishedVersionCount,
            d.latest_published_version_id AS latestPublishedVersionId,
            COALESCE(v.item_count, 0) AS latestItemCount,
-           d.created_at AS createdAt,
+           d.created_date AS createdDate,
            d.last_updated_date AS lastUpdatedDate
     FROM t_eval_dataset d
     LEFT JOIN t_eval_dataset_version v ON d.latest_published_version_id = v.id
@@ -60,7 +60,7 @@
   <select id="searchRows" resultMap="RowRecordMap">
     SELECT DISTINCT i.id AS id,
            i.row_no AS rowNo,
-           i.created_at AS createdAt,
+           i.created_date AS createdDate,
            i.last_updated_date AS lastUpdatedDate
     FROM t_eval_dataset_item i
     JOIN t_eval_dataset_item_cell c ON c.item_id = i.id

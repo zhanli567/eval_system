@@ -24,7 +24,6 @@ public class EvalDatasetField {
   private Integer isRequired;
   private String description;
   private Integer displayOrder;
-  private String createdAt;
 
   public String getId() {
     return id;
@@ -80,14 +79,6 @@ public class EvalDatasetField {
 
   public void setDisplayOrder(Integer displayOrder) {
     this.displayOrder = displayOrder;
-  }
-
-  public String getCreatedAt() {
-    return createdAt;
-  }
-
-  public void setCreatedAt(String createdAt) {
-    this.createdAt = createdAt;
   }
 
   public String getSpaceId() {

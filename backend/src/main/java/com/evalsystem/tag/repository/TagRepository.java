@@ -28,7 +28,7 @@ public class TagRepository {
 
   public List<TagSummary> listTags(String tagType, String like, int size, int offset) {
     return tagMapper.selectList(tagQuery(tagType, like)
-            .orderByDesc(EvalTag::getCreatedAt)
+            .orderByDesc(EvalTag::getCreatedDate)
             .last("LIMIT " + size + " OFFSET " + offset))
         .stream()
         .map(this::toSummary)
@@ -90,7 +90,6 @@ public class TagRepository {
     tag.setMinValue(minValue);
     tag.setMaxValue(maxValue);
     tag.setPassThreshold(passThreshold);
-    tag.setCreatedAt(now);
     tag.setLastUpdatedDate(toLastUpdatedDate(now));
     tagMapper.insert(tag);
   }
@@ -126,7 +125,6 @@ public class TagRepository {
     option.setOptionName(optionName);
     option.setOptionGroup(optionGroup);
     option.setDisplayOrder(displayOrder);
-    option.setCreatedAt(now);
     option.setLastUpdatedDate(toLastUpdatedDate(now));
     optionMapper.insert(option);
   }
@@ -143,7 +141,7 @@ public class TagRepository {
         tag.getTagName(),
         tag.getTagType(),
         tag.getDescription(),
-        tag.getCreatedAt(),
+        tag.getCreatedDate(),
         tag.getLastUpdatedDate());
   }
 
@@ -156,7 +154,7 @@ public class TagRepository {
         tag.getMinValue(),
         tag.getMaxValue(),
         tag.getPassThreshold(),
-        tag.getCreatedAt(),
+        tag.getCreatedDate(),
         tag.getLastUpdatedDate());
   }
 
@@ -167,7 +165,7 @@ public class TagRepository {
         option.getOptionName(),
         option.getOptionGroup(),
         option.getDisplayOrder(),
-        option.getCreatedAt(),
+        option.getCreatedDate(),
         option.getLastUpdatedDate());
   }
 

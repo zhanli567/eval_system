@@ -17,7 +17,7 @@ public record EvaluatorConfigBase(
     BigDecimal scoreMin,
     BigDecimal scoreMax,
     BigDecimal passThreshold,
-    String createdAt,
+    java.time.LocalDateTime createdDate,
     java.time.LocalDateTime lastUpdatedDate
 ) {
 }

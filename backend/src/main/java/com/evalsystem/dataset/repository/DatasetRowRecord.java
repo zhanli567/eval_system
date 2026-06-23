@@ -1,4 +1,4 @@
 package com.evalsystem.dataset.repository;
 
-public record DatasetRowRecord(String id, Integer rowNo, String createdAt, java.time.LocalDateTime lastUpdatedDate) {
+public record DatasetRowRecord(String id, Integer rowNo, java.time.LocalDateTime createdDate, java.time.LocalDateTime lastUpdatedDate) {
 }

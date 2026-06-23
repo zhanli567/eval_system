@@ -92,7 +92,7 @@ const {
         <template #default="{ row }">{{ row.description || '暂无描述' }}</template>
       </el-table-column>
       <el-table-column label="创建时间" width="210">
-        <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+        <template #default="{ row }">{{ formatTime(row.createdDate) }}</template>
       </el-table-column>
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
@@ -216,7 +216,7 @@ const {
         <el-descriptions :column="2" border class="tag-detail-descriptions">
           <el-descriptions-item label="标签名称">{{ tagDetail.tagName }}</el-descriptions-item>
           <el-descriptions-item label="类型">{{ getTagTypeLabel(tagDetail.tagType) }}</el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ formatTime(tagDetail.createdAt) }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ formatTime(tagDetail.createdDate) }}</el-descriptions-item>
           <el-descriptions-item label="更新时间">{{ formatTime(tagDetail.lastUpdatedDate) }}</el-descriptions-item>
           <el-descriptions-item label="描述" :span="2">{{ tagDetail.description || '暂无描述' }}</el-descriptions-item>
         </el-descriptions>

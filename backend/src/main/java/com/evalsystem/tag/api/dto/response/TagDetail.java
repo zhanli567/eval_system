@@ -10,7 +10,7 @@ public record TagDetail(
     Integer minValue,
     Integer maxValue,
     Integer passThreshold,
-    String createdAt,
+    java.time.LocalDateTime createdDate,
     java.time.LocalDateTime lastUpdatedDate,
     List<TagOptionDto> options
 ) {

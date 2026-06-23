@@ -76,7 +76,7 @@ const {
         <template #default="{ row }">{{ row.description || '暂无描述' }}</template>
       </el-table-column>
       <el-table-column label="创建时间" width="190">
-        <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+        <template #default="{ row }">{{ formatTime(row.createdDate) }}</template>
       </el-table-column>
       <el-table-column label="更新时间" width="190">
         <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>

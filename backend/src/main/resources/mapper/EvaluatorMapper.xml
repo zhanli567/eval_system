@@ -13,7 +13,7 @@
       <arg column="latestVersionNo" javaType="java.lang.Integer"/>
       <arg column="latestVersionName" javaType="java.lang.String"/>
       <arg column="description" javaType="java.lang.String"/>
-      <arg column="createdAt" javaType="java.lang.String"/>
+      <arg column="createdDate" javaType="java.time.LocalDateTime"/>
       <arg column="lastUpdatedDate" javaType="java.time.LocalDateTime"/>
     </constructor>
   </resultMap>
@@ -34,7 +34,7 @@
       <arg column="scoreMin" javaType="java.math.BigDecimal"/>
       <arg column="scoreMax" javaType="java.math.BigDecimal"/>
       <arg column="passThreshold" javaType="java.math.BigDecimal"/>
-      <arg column="createdAt" javaType="java.lang.String"/>
+      <arg column="createdDate" javaType="java.time.LocalDateTime"/>
       <arg column="lastUpdatedDate" javaType="java.time.LocalDateTime"/>
     </constructor>
   </resultMap>
@@ -47,7 +47,7 @@
            COALESCE(v.version_no, 0) AS latestVersionNo,
            CASE WHEN COALESCE(v.version_no, 0) = 0 THEN '&#x8349;&#x7A3F;' ELSE CONCAT('V', v.version_no) END AS latestVersionName,
            e.description AS description,
-           e.created_at AS createdAt,
+           e.created_date AS createdDate,
            e.last_updated_date AS lastUpdatedDate
     FROM t_eval_evaluator e
     LEFT JOIN t_eval_evaluator_version v ON e.latest_version_id = v.id
@@ -75,7 +75,7 @@
            v.score_min AS scoreMin,
            v.score_max AS scoreMax,
            v.pass_threshold AS passThreshold,
-           v.created_at AS createdAt,
+           v.created_date AS createdDate,
            v.last_updated_date AS lastUpdatedDate
     FROM t_eval_evaluator_version v
     JOIN t_eval_evaluator e ON v.evaluator_id = e.id

@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS t_eval_evaluator (
   description VARCHAR(200),
   latest_version_id VARCHAR(64),
   is_deleted SMALLINT,
-  created_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -29,7 +28,6 @@ COMMENT ON COLUMN t_eval_evaluator.evaluator_type IS '评估器类型：llm/code
 COMMENT ON COLUMN t_eval_evaluator.description IS '评估器描述';
 COMMENT ON COLUMN t_eval_evaluator.latest_version_id IS '最新版本ID：有发布版本时指向最新发布版本，否则指向草稿版本';
 COMMENT ON COLUMN t_eval_evaluator.is_deleted IS '是否删除：0否，1是';
-COMMENT ON COLUMN t_eval_evaluator.created_at IS '创建时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_evaluator_version (
   id VARCHAR(36),
@@ -43,7 +41,6 @@ CREATE TABLE IF NOT EXISTS t_eval_evaluator_version (
   score_max DECIMAL(10,4),
   pass_threshold DECIMAL(10,4),
   is_deleted SMALLINT,
-  created_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -70,7 +67,6 @@ COMMENT ON COLUMN t_eval_evaluator_version.score_min IS '评分范围最小值';
 COMMENT ON COLUMN t_eval_evaluator_version.score_max IS '评分范围最大值';
 COMMENT ON COLUMN t_eval_evaluator_version.pass_threshold IS '通过阈值：大于等于该阈值为Pass';
 COMMENT ON COLUMN t_eval_evaluator_version.is_deleted IS '是否删除：0否，1是';
-COMMENT ON COLUMN t_eval_evaluator_version.created_at IS '创建时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_evaluator_param (
   id VARCHAR(36),
@@ -83,7 +79,6 @@ CREATE TABLE IF NOT EXISTS t_eval_evaluator_param (
   is_required SMALLINT,
   description VARCHAR(200),
   display_order INT,
-  created_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -109,4 +104,3 @@ COMMENT ON COLUMN t_eval_evaluator_param.default_value IS '默认值';
 COMMENT ON COLUMN t_eval_evaluator_param.is_required IS '是否必填：0否，1是';
 COMMENT ON COLUMN t_eval_evaluator_param.description IS '参数描述，用于评测任务绑定时理解参数含义';
 COMMENT ON COLUMN t_eval_evaluator_param.display_order IS '展示顺序';
-COMMENT ON COLUMN t_eval_evaluator_param.created_at IS '创建时间';

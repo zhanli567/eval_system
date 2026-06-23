@@ -7,7 +7,7 @@ public record DatasetVersionDto(
     String versionName,
     Integer itemCount,
     Boolean draft,
-    String createdAt,
+    java.time.LocalDateTime createdDate,
     java.time.LocalDateTime lastUpdatedDate
 ) {
 }

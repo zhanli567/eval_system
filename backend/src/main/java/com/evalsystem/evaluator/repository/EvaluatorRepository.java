@@ -63,7 +63,6 @@ public class EvaluatorRepository {
     evaluator.setDescription(description);
     evaluator.setLatestVersionId(latestVersionId);
     evaluator.setIsDeleted(0);
-    evaluator.setCreatedAt(now);
     evaluator.setLastUpdatedDate(toLastUpdatedDate(now));
     evaluatorMapper.insert(evaluator);
   }
@@ -122,7 +121,6 @@ public class EvaluatorRepository {
     version.setScoreMax(scoreMax);
     version.setPassThreshold(passThreshold);
     version.setIsDeleted(0);
-    version.setCreatedAt(now);
     version.setLastUpdatedDate(toLastUpdatedDate(now));
     versionMapper.insert(version);
   }
@@ -213,7 +211,6 @@ public class EvaluatorRepository {
     param.setIsRequired(Boolean.TRUE.equals(required) ? 1 : 0);
     param.setDescription(description);
     param.setDisplayOrder(displayOrder);
-    param.setCreatedAt(now);
     param.setLastUpdatedDate(toLastUpdatedDate(now));
     paramMapper.insert(param);
   }
@@ -242,7 +239,7 @@ public class EvaluatorRepository {
         versionNo,
         versionNo == 0 ? "\u8349\u7a3f" : "V" + versionNo,
         versionNo == 0,
-        version.getCreatedAt(),
+        version.getCreatedDate(),
         version.getLastUpdatedDate());
   }
 

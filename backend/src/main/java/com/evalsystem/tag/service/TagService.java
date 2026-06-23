@@ -97,7 +97,7 @@ public class TagService {
         config.minValue(),
         config.maxValue(),
         config.passThreshold(),
-        config.createdAt(),
+        config.createdDate(),
         config.lastUpdatedDate(),
         tagRepository.listOptions(config.id()));
   }

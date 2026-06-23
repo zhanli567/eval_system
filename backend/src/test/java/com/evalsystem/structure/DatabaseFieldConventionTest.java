@@ -59,20 +59,22 @@ class DatabaseFieldConventionTest {
   }
 
   @Test
-  void legacyUpdatedAtColumnAndEntityFieldAreRemoved() throws Exception {
+  void legacyTimestampColumnsAndEntityFieldsAreRemoved() throws Exception {
     for (Path file : Files.walk(projectRoot().resolve("DDL"))
         .filter(Files::isRegularFile)
         .filter(path -> path.toString().endsWith(".sql"))
         .toList()) {
       assertThat(Files.readString(file, StandardCharsets.UTF_8))
           .as(file.toString())
-          .doesNotContain("updated_at");
+          .doesNotContain("updated_at")
+          .doesNotContain("created_at");
     }
 
     for (String className : ENTITY_CLASSES) {
       assertThat(Class.forName(className).getDeclaredFields())
           .as(className)
-          .noneMatch(field -> "updatedAt".equals(field.getName()));
+          .noneMatch(field -> "updatedAt".equals(field.getName()))
+          .noneMatch(field -> "createdAt".equals(field.getName()));
     }
   }
 

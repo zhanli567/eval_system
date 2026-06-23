@@ -12,7 +12,7 @@ export interface DatasetSummary {
   publishedVersionCount: number
   latestPublishedVersionId?: string
   latestItemCount: number
-  createdAt: string
+  createdDate: string
   lastUpdatedDate: string
 }
 
@@ -23,7 +23,7 @@ export interface DatasetVersion {
   versionName: string
   itemCount: number
   draft: boolean
-  createdAt: string
+  createdDate: string
   lastUpdatedDate: string
 }
 
@@ -41,7 +41,7 @@ export interface DatasetRow {
   id: string
   rowNo: number
   values: Record<string, string>
-  createdAt: string
+  createdDate: string
   lastUpdatedDate: string
 }
 
@@ -60,7 +60,7 @@ export interface TagSummary {
   tagName: string
   tagType: TagType
   description: string
-  createdAt: string
+  createdDate: string
   lastUpdatedDate: string
 }
 
@@ -70,7 +70,7 @@ export interface TagOption {
   optionName: string
   optionGroup: TagOptionGroup
   displayOrder?: number
-  createdAt?: string
+  createdDate?: string
   lastUpdatedDate?: string
 }
 
@@ -105,7 +105,7 @@ export interface EvaluatorSummary {
   latestVersionNo: number
   latestVersionName: string
   description: string
-  createdAt: string
+  createdDate: string
   lastUpdatedDate: string
 }
 
@@ -115,7 +115,7 @@ export interface EvaluatorVersion {
   versionNo: number
   versionName: string
   draft: boolean
-  createdAt: string
+  createdDate: string
   lastUpdatedDate: string
 }
 
@@ -134,7 +134,7 @@ export interface EvaluatorConfig {
   scoreMin: number
   scoreMax: number
   passThreshold: number
-  createdAt: string
+  createdDate: string
   lastUpdatedDate: string
   params: EvaluatorParam[]
 }
@@ -161,7 +161,7 @@ export interface PresetEvaluatorDetail extends PresetEvaluatorSummary {
   scoreMin: number
   scoreMax: number
   passThreshold: number
-  createdAt: string
+  createdDate: string
   lastUpdatedDate: string
   params: EvaluatorParam[]
 }
@@ -193,7 +193,7 @@ export interface TaskBase {
   appAgentAlias: string
   startedAt: string
   finishedAt: string
-  createdAt: string
+  createdDate: string
   lastUpdatedDate: string
 }
 
@@ -275,7 +275,7 @@ export interface TaskItemDetail {
   appErrorMessage: string
   evaluatorResults: TaskEvaluatorResult[]
   tagResults: TaskTagResult[]
-  createdAt: string
+  createdDate: string
   lastUpdatedDate: string
 }
 
