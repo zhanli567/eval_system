@@ -10,19 +10,21 @@ import com.evalsystem.evaluator.api.dto.response.PresetCategoryDto;
 import com.evalsystem.evaluator.api.dto.response.PresetEvaluatorDetail;
 import com.evalsystem.evaluator.api.dto.response.PresetEvaluatorSummary;
 import com.evalsystem.evaluator.service.EvaluatorService;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import java.util.List;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.ResponseBody;
 
-@RestController
-@RequestMapping("/api/evaluators")
+@Component
+@ResponseBody
+@Path("/api/evaluators")
 public class EvaluatorController {
   private final EvaluatorService evaluatorService;
 
@@ -30,64 +32,74 @@ public class EvaluatorController {
     this.evaluatorService = evaluatorService;
   }
 
-  @GetMapping
+  @GET
+  @Path("")
   public ApiResponse<PageResponse<EvaluatorSummary>> listEvaluators(
-      @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "10") int size,
-      @RequestParam(required = false) String evaluatorType,
-      @RequestParam(required = false) String keyword
+      @QueryParam("page") @DefaultValue("1") int page,
+      @QueryParam("size") @DefaultValue("10") int size,
+      @QueryParam("evaluatorType") String evaluatorType,
+      @QueryParam("keyword") String keyword
   ) {
     return ApiResponse.ok(evaluatorService.listEvaluators(page, size, evaluatorType, keyword));
   }
 
-  @GetMapping("/presets/categories")
+  @GET
+  @Path("/presets/categories")
   public ApiResponse<List<PresetCategoryDto>> listPresetCategories() {
     return ApiResponse.ok(evaluatorService.listPresetCategories());
   }
 
-  @GetMapping("/presets")
+  @GET
+  @Path("/presets")
   public ApiResponse<PageResponse<PresetEvaluatorSummary>> listPresetEvaluators(
-      @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "12") int size,
-      @RequestParam(required = false) String categoryId,
-      @RequestParam(required = false) String keyword
+      @QueryParam("page") @DefaultValue("1") int page,
+      @QueryParam("size") @DefaultValue("12") int size,
+      @QueryParam("categoryId") String categoryId,
+      @QueryParam("keyword") String keyword
   ) {
     return ApiResponse.ok(evaluatorService.listPresetEvaluators(page, size, categoryId, keyword));
   }
 
-  @GetMapping("/presets/{presetId}")
-  public ApiResponse<PresetEvaluatorDetail> getPresetEvaluator(@PathVariable String presetId) {
+  @GET
+  @Path("/presets/{presetId}")
+  public ApiResponse<PresetEvaluatorDetail> getPresetEvaluator(@PathParam("presetId") String presetId) {
     return ApiResponse.ok(evaluatorService.getPresetEvaluator(presetId));
   }
 
-  @PostMapping
-  public ApiResponse<EvaluatorConfig> createEvaluator(@RequestBody EvaluatorInput request) {
+  @POST
+  @Path("")
+  public ApiResponse<EvaluatorConfig> createEvaluator(EvaluatorInput request) {
     return ApiResponse.ok(evaluatorService.createEvaluator(request));
   }
 
-  @DeleteMapping("/{evaluatorId}")
-  public ApiResponse<Void> deleteEvaluator(@PathVariable String evaluatorId) {
+  @DELETE
+  @Path("/{evaluatorId}")
+  public ApiResponse<Void> deleteEvaluator(@PathParam("evaluatorId") String evaluatorId) {
     evaluatorService.deleteEvaluator(evaluatorId);
     return ApiResponse.ok(null);
   }
 
-  @GetMapping("/{evaluatorId}/versions")
-  public ApiResponse<List<EvaluatorVersionDto>> listVersions(@PathVariable String evaluatorId) {
+  @GET
+  @Path("/{evaluatorId}/versions")
+  public ApiResponse<List<EvaluatorVersionDto>> listVersions(@PathParam("evaluatorId") String evaluatorId) {
     return ApiResponse.ok(evaluatorService.listVersions(evaluatorId));
   }
 
-  @PostMapping("/{evaluatorId}/publish")
-  public ApiResponse<EvaluatorConfig> publish(@PathVariable String evaluatorId) {
+  @POST
+  @Path("/{evaluatorId}/publish")
+  public ApiResponse<EvaluatorConfig> publish(@PathParam("evaluatorId") String evaluatorId) {
     return ApiResponse.ok(evaluatorService.publish(evaluatorId));
   }
 
-  @GetMapping("/versions/{versionId}")
-  public ApiResponse<EvaluatorConfig> getVersion(@PathVariable String versionId) {
+  @GET
+  @Path("/versions/{versionId}")
+  public ApiResponse<EvaluatorConfig> getVersion(@PathParam("versionId") String versionId) {
     return ApiResponse.ok(evaluatorService.getVersion(versionId));
   }
 
-  @PutMapping("/versions/{versionId}")
-  public ApiResponse<EvaluatorConfig> updateDraft(@PathVariable String versionId, @RequestBody EvaluatorInput request) {
+  @PUT
+  @Path("/versions/{versionId}")
+  public ApiResponse<EvaluatorConfig> updateDraft(@PathParam("versionId") String versionId, EvaluatorInput request) {
     return ApiResponse.ok(evaluatorService.updateDraft(versionId, request));
   }
 }

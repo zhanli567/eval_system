@@ -8,18 +8,20 @@ import com.evalsystem.task.api.dto.request.SaveAnnotationRequest;
 import com.evalsystem.task.api.dto.response.TaskDetail;
 import com.evalsystem.task.api.dto.response.TaskSummary;
 import com.evalsystem.task.service.TaskService;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.ResponseBody;
 
-@RestController
-@RequestMapping("/api/tasks")
+@Component
+@ResponseBody
+@Path("/api/tasks")
 public class TaskController {
   private final TaskService taskService;
 
@@ -27,53 +29,60 @@ public class TaskController {
     this.taskService = taskService;
   }
 
-  @GetMapping
+  @GET
+  @Path("")
   public ApiResponse<PageResponse<TaskSummary>> listTasks(
-      @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "10") int size,
-      @RequestParam(required = false) String status,
-      @RequestParam(required = false) String keyword,
-      @RequestParam(defaultValue = "lastUpdatedDate") String sortBy,
-      @RequestParam(defaultValue = "desc") String sortOrder
+      @QueryParam("page") @DefaultValue("1") int page,
+      @QueryParam("size") @DefaultValue("10") int size,
+      @QueryParam("status") String status,
+      @QueryParam("keyword") String keyword,
+      @QueryParam("sortBy") @DefaultValue("lastUpdatedDate") String sortBy,
+      @QueryParam("sortOrder") @DefaultValue("desc") String sortOrder
   ) {
     return ApiResponse.ok(taskService.listTasks(page, size, status, keyword, sortBy, sortOrder));
   }
 
-  @PostMapping
-  public ApiResponse<TaskDetail> createTask(@RequestBody CreateTaskRequest request) {
+  @POST
+  @Path("")
+  public ApiResponse<TaskDetail> createTask(CreateTaskRequest request) {
     return ApiResponse.ok(taskService.createTask(request));
   }
 
-  @GetMapping("/{taskId}")
+  @GET
+  @Path("/{taskId}")
   public ApiResponse<TaskDetail> getTask(
-      @PathVariable String taskId,
-      @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "10") int size
+      @PathParam("taskId") String taskId,
+      @QueryParam("page") @DefaultValue("1") int page,
+      @QueryParam("size") @DefaultValue("10") int size
   ) {
     return ApiResponse.ok(taskService.getTask(taskId, page, size));
   }
 
-  @PostMapping("/{taskId}/start")
-  public ApiResponse<TaskDetail> startTask(@PathVariable String taskId) {
+  @POST
+  @Path("/{taskId}/start")
+  public ApiResponse<TaskDetail> startTask(@PathParam("taskId") String taskId) {
     return ApiResponse.ok(taskService.startTask(taskId));
   }
 
-  @DeleteMapping("/{taskId}")
-  public ApiResponse<Void> deleteTask(@PathVariable String taskId) {
+  @DELETE
+  @Path("/{taskId}")
+  public ApiResponse<Void> deleteTask(@PathParam("taskId") String taskId) {
     taskService.deleteTask(taskId);
     return ApiResponse.ok(null);
   }
 
-  @GetMapping("/{taskId}/items/{taskItemId}/annotation")
-  public ApiResponse<AnnotationDetail> getAnnotation(@PathVariable String taskId, @PathVariable String taskItemId) {
+  @GET
+  @Path("/{taskId}/items/{taskItemId}/annotation")
+  public ApiResponse<AnnotationDetail> getAnnotation(@PathParam("taskId") String taskId, @PathParam("taskItemId") String taskItemId) {
     return ApiResponse.ok(taskService.getAnnotation(taskId, taskItemId));
   }
 
-  @PutMapping("/{taskId}/items/{taskItemId}/annotation")
+  @PUT
+  @Path("/{taskId}/items/{taskItemId}/annotation")
   public ApiResponse<AnnotationDetail> saveAnnotation(
-      @PathVariable String taskId,
-      @PathVariable String taskItemId,
-      @RequestBody SaveAnnotationRequest request
+      @PathParam("taskId") String taskId,
+      @PathParam("taskItemId") String taskItemId,
+      SaveAnnotationRequest request
   ) {
     return ApiResponse.ok(taskService.saveAnnotation(taskId, taskItemId, request));
   }

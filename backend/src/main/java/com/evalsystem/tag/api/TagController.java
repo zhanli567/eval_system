@@ -6,17 +6,19 @@ import com.evalsystem.tag.api.dto.response.TagDetail;
 import com.evalsystem.tag.api.dto.request.TagInput;
 import com.evalsystem.tag.api.dto.response.TagSummary;
 import com.evalsystem.tag.service.TagService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.ResponseBody;
 
-@RestController
-@RequestMapping("/api/tags")
+@Component
+@ResponseBody
+@Path("/api/tags")
 public class TagController {
   private final TagService tagService;
 
@@ -24,28 +26,32 @@ public class TagController {
     this.tagService = tagService;
   }
 
-  @GetMapping
+  @GET
+  @Path("")
   public ApiResponse<PageResponse<TagSummary>> listTags(
-      @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "10") int size,
-      @RequestParam(required = false) String tagType,
-      @RequestParam(required = false) String keyword
+      @QueryParam("page") @DefaultValue("1") int page,
+      @QueryParam("size") @DefaultValue("10") int size,
+      @QueryParam("tagType") String tagType,
+      @QueryParam("keyword") String keyword
   ) {
     return ApiResponse.ok(tagService.listTags(page, size, tagType, keyword));
   }
 
-  @GetMapping("/{tagId}")
-  public ApiResponse<TagDetail> getTag(@PathVariable String tagId) {
+  @GET
+  @Path("/{tagId}")
+  public ApiResponse<TagDetail> getTag(@PathParam("tagId") String tagId) {
     return ApiResponse.ok(tagService.getTag(tagId));
   }
 
-  @PostMapping
-  public ApiResponse<TagDetail> createTag(@RequestBody TagInput request) {
+  @POST
+  @Path("")
+  public ApiResponse<TagDetail> createTag(TagInput request) {
     return ApiResponse.ok(tagService.createTag(request));
   }
 
-  @PutMapping("/{tagId}")
-  public ApiResponse<TagDetail> updateTag(@PathVariable String tagId, @RequestBody TagInput request) {
+  @PUT
+  @Path("/{tagId}")
+  public ApiResponse<TagDetail> updateTag(@PathParam("tagId") String tagId, TagInput request) {
     return ApiResponse.ok(tagService.updateTag(tagId, request));
   }
 }
