@@ -1,6 +1,5 @@
 package com.evalsystem.common.context;
 
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class CurrentUserHolder {
@@ -30,8 +29,5 @@ public final class CurrentUserHolder {
 
   public static int activeBindings() {
     return ACTIVE_BINGINGS.get();
-  }
-
-  public record CurrentUser(String userId, String displayName, Set<String> memberSpaceId) {
   }
 }

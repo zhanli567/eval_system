@@ -2,7 +2,6 @@ package com.evalsystem.common.context;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.evalsystem.common.context.CurrentUserHolder.CurrentUser;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
