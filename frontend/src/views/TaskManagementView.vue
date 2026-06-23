@@ -71,8 +71,8 @@ function formatAppBinding(base: TaskBase) {
       </el-input>
       <el-button @click="searchTasks">搜索</el-button>
       <div class="task-sort-actions">
-        <el-button :class="{ active: sortBy === 'updatedAt' }" :icon="Sort" @click="toggleSort('updatedAt')">
-          更新时间 {{ sortBy === 'updatedAt' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
+        <el-button :class="{ active: sortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleSort('lastUpdatedDate')">
+          更新时间 {{ sortBy === 'lastUpdatedDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
         </el-button>
         <el-button :class="{ active: sortBy === 'createdAt' }" :icon="Sort" @click="toggleSort('createdAt')">
           创建时间 {{ sortBy === 'createdAt' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
@@ -133,7 +133,7 @@ function formatAppBinding(base: TaskBase) {
         <template #default="{ row }">
           <div class="time-stack">
             <span>创建 {{ formatTime(row.base.createdAt) }}</span>
-            <span>更新 {{ formatTime(row.base.updatedAt) }}</span>
+            <span>更新 {{ formatTime(row.base.lastUpdatedDate) }}</span>
           </div>
         </template>
       </el-table-column>

@@ -14,7 +14,7 @@ export function useTaskManagement() {
   const size = ref(8)
   const keyword = ref('')
   const status = ref<TaskStatus | ''>('')
-  const sortBy = ref<'createdAt' | 'updatedAt'>('updatedAt')
+  const sortBy = ref<'createdAt' | 'lastUpdatedDate'>('lastUpdatedDate')
   const sortOrder = ref<'asc' | 'desc'>('desc')
   let pollTimer: number | undefined
 
@@ -119,7 +119,7 @@ export function useTaskManagement() {
     await loadTasks()
   }
 
-  function toggleSort(field: 'createdAt' | 'updatedAt') {
+  function toggleSort(field: 'createdAt' | 'lastUpdatedDate') {
     if (sortBy.value === field) {
       sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
     } else {

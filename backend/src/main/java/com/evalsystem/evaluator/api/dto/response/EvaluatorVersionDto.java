@@ -7,6 +7,6 @@ public record EvaluatorVersionDto(
     String versionName,
     Boolean draft,
     String createdAt,
-    String updatedAt
+    java.time.LocalDateTime lastUpdatedDate
 ) {
 }

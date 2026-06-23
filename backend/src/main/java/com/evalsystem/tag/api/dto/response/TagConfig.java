@@ -9,6 +9,6 @@ public record TagConfig(
     Integer maxValue,
     Integer passThreshold,
     String createdAt,
-    String updatedAt
+    java.time.LocalDateTime lastUpdatedDate
 ) {
 }

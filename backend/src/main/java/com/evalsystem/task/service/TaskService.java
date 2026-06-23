@@ -113,7 +113,7 @@ public class TaskService {
     int offset = (safePage - 1) * safeSize;
     String normalizedStatus = normalizeOptionalStatus(status);
     String like = "%" + (keyword == null ? "" : keyword.trim()) + "%";
-    String orderColumn = "createdAt".equals(sortBy) ? "t.created_at" : "t.updated_at";
+    String orderColumn = "createdAt".equals(sortBy) ? "t.created_at" : "t.last_updated_date";
     String orderDirection = "asc".equalsIgnoreCase(sortOrder) ? "ASC" : "DESC";
     List<TaskSummary> records = taskRepository.listTaskBases(normalizedStatus, like, orderColumn, orderDirection, safeSize, offset)
         .stream()
@@ -847,7 +847,7 @@ public class TaskService {
             evaluatorResults.getOrDefault(item.id(), List.of()),
             tagResults.getOrDefault(item.id(), List.of()),
             item.createdAt(),
-            item.updatedAt()))
+            item.lastUpdatedDate()))
         .toList();
   }
 

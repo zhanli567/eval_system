@@ -9,6 +9,6 @@ public record EvaluatorSummary(
     String latestVersionName,
     String description,
     String createdAt,
-    String updatedAt
+    java.time.LocalDateTime lastUpdatedDate
 ) {
 }

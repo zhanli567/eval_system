@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS t_eval_task (
   finished_at VARCHAR(32),
   is_deleted SMALLINT,
   created_at VARCHAR(32),
-  updated_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -48,7 +47,6 @@ COMMENT ON COLUMN t_eval_task.started_at IS '开始执行时间';
 COMMENT ON COLUMN t_eval_task.finished_at IS '结束执行时间';
 COMMENT ON COLUMN t_eval_task.is_deleted IS '是否删除：0否，1是';
 COMMENT ON COLUMN t_eval_task.created_at IS '创建时间';
-COMMENT ON COLUMN t_eval_task.updated_at IS '更新时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_app_field_mapping (
   id VARCHAR(36),
@@ -61,7 +59,6 @@ CREATE TABLE IF NOT EXISTS t_eval_task_app_field_mapping (
   dataset_field_id VARCHAR(64),
   display_order INT,
   created_at VARCHAR(32),
-  updated_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -87,7 +84,6 @@ COMMENT ON COLUMN t_eval_task_app_field_mapping.dataset_version_id IS '评测集
 COMMENT ON COLUMN t_eval_task_app_field_mapping.dataset_field_id IS '映射的评测集字段ID';
 COMMENT ON COLUMN t_eval_task_app_field_mapping.display_order IS '展示顺序';
 COMMENT ON COLUMN t_eval_task_app_field_mapping.created_at IS '创建时间';
-COMMENT ON COLUMN t_eval_task_app_field_mapping.updated_at IS '更新时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_evaluator (
   id VARCHAR(36),
@@ -100,7 +96,6 @@ CREATE TABLE IF NOT EXISTS t_eval_task_evaluator (
   status VARCHAR(32),
   display_order INT,
   created_at VARCHAR(32),
-  updated_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -126,7 +121,6 @@ COMMENT ON COLUMN t_eval_task_evaluator.model_id IS '预置LLM评估器在任务
 COMMENT ON COLUMN t_eval_task_evaluator.status IS '评估器执行状态：pending待执行，running进行中，completed完成，failed失败';
 COMMENT ON COLUMN t_eval_task_evaluator.display_order IS '展示顺序';
 COMMENT ON COLUMN t_eval_task_evaluator.created_at IS '创建时间';
-COMMENT ON COLUMN t_eval_task_evaluator.updated_at IS '更新时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_evaluator_param_mapping (
   id VARCHAR(36),
@@ -141,7 +135,6 @@ CREATE TABLE IF NOT EXISTS t_eval_task_evaluator_param_mapping (
   app_output_name VARCHAR(64),
   display_order INT,
   created_at VARCHAR(32),
-  updated_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -169,7 +162,6 @@ COMMENT ON COLUMN t_eval_task_evaluator_param_mapping.dataset_field_id IS '评�
 COMMENT ON COLUMN t_eval_task_evaluator_param_mapping.app_output_name IS '应用输出字段名，source_type为app_output时使用，单一输出可为空';
 COMMENT ON COLUMN t_eval_task_evaluator_param_mapping.display_order IS '展示顺序';
 COMMENT ON COLUMN t_eval_task_evaluator_param_mapping.created_at IS '创建时间';
-COMMENT ON COLUMN t_eval_task_evaluator_param_mapping.updated_at IS '更新时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_tag (
   id VARCHAR(36),
@@ -179,7 +171,6 @@ CREATE TABLE IF NOT EXISTS t_eval_task_tag (
   status VARCHAR(32),
   display_order INT,
   created_at VARCHAR(32),
-  updated_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -202,7 +193,6 @@ COMMENT ON COLUMN t_eval_task_tag.tag_id IS '标签ID';
 COMMENT ON COLUMN t_eval_task_tag.status IS '人工标注状态：pending待标注，annotating标注中，completed标注完成';
 COMMENT ON COLUMN t_eval_task_tag.display_order IS '展示顺序';
 COMMENT ON COLUMN t_eval_task_tag.created_at IS '创建时间';
-COMMENT ON COLUMN t_eval_task_tag.updated_at IS '更新时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_item (
   id VARCHAR(36),
@@ -218,7 +208,6 @@ CREATE TABLE IF NOT EXISTS t_eval_task_item (
   started_at VARCHAR(32),
   finished_at VARCHAR(32),
   created_at VARCHAR(32),
-  updated_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -247,7 +236,6 @@ COMMENT ON COLUMN t_eval_task_item.app_error_message IS '应用调用错误信�
 COMMENT ON COLUMN t_eval_task_item.started_at IS '单行评测开始时间';
 COMMENT ON COLUMN t_eval_task_item.finished_at IS '单行评测结束时间';
 COMMENT ON COLUMN t_eval_task_item.created_at IS '创建时间';
-COMMENT ON COLUMN t_eval_task_item.updated_at IS '更新时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_evaluator_result (
   id VARCHAR(36),
@@ -263,7 +251,6 @@ CREATE TABLE IF NOT EXISTS t_eval_task_evaluator_result (
   started_at VARCHAR(32),
   finished_at VARCHAR(32),
   created_at VARCHAR(32),
-  updated_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -292,7 +279,6 @@ COMMENT ON COLUMN t_eval_task_evaluator_result.error_message IS '评估失败错
 COMMENT ON COLUMN t_eval_task_evaluator_result.started_at IS '评估开始时间';
 COMMENT ON COLUMN t_eval_task_evaluator_result.finished_at IS '评估结束时间';
 COMMENT ON COLUMN t_eval_task_evaluator_result.created_at IS '创建时间';
-COMMENT ON COLUMN t_eval_task_evaluator_result.updated_at IS '更新时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_tag_result (
   id VARCHAR(36),
@@ -309,7 +295,6 @@ CREATE TABLE IF NOT EXISTS t_eval_task_tag_result (
   annotator_name VARCHAR(50),
   annotated_at VARCHAR(32),
   created_at VARCHAR(32),
-  updated_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -339,4 +324,3 @@ COMMENT ON COLUMN t_eval_task_tag_result.annotator_id IS '标注人ID，暂未�
 COMMENT ON COLUMN t_eval_task_tag_result.annotator_name IS '标注人名称，暂未接入用户体系时为空';
 COMMENT ON COLUMN t_eval_task_tag_result.annotated_at IS '标注完成时间';
 COMMENT ON COLUMN t_eval_task_tag_result.created_at IS '创建时间';
-COMMENT ON COLUMN t_eval_task_tag_result.updated_at IS '更新时间';

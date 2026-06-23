@@ -59,6 +59,24 @@ class DatabaseFieldConventionTest {
   }
 
   @Test
+  void legacyUpdatedAtColumnAndEntityFieldAreRemoved() throws Exception {
+    for (Path file : Files.walk(projectRoot().resolve("DDL"))
+        .filter(Files::isRegularFile)
+        .filter(path -> path.toString().endsWith(".sql"))
+        .toList()) {
+      assertThat(Files.readString(file, StandardCharsets.UTF_8))
+          .as(file.toString())
+          .doesNotContain("updated_at");
+    }
+
+    for (String className : ENTITY_CLASSES) {
+      assertThat(Class.forName(className).getDeclaredFields())
+          .as(className)
+          .noneMatch(field -> "updatedAt".equals(field.getName()));
+    }
+  }
+
+  @Test
   void entitiesExposeUnifiedResourceFields() throws Exception {
     for (String className : ENTITY_CLASSES) {
       Class<?> entityClass = Class.forName(className);

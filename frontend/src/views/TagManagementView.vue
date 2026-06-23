@@ -217,7 +217,7 @@ const {
           <el-descriptions-item label="标签名称">{{ tagDetail.tagName }}</el-descriptions-item>
           <el-descriptions-item label="类型">{{ getTagTypeLabel(tagDetail.tagType) }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatTime(tagDetail.createdAt) }}</el-descriptions-item>
-          <el-descriptions-item label="更新时间">{{ formatTime(tagDetail.updatedAt) }}</el-descriptions-item>
+          <el-descriptions-item label="更新时间">{{ formatTime(tagDetail.lastUpdatedDate) }}</el-descriptions-item>
           <el-descriptions-item label="描述" :span="2">{{ tagDetail.description || '暂无描述' }}</el-descriptions-item>
         </el-descriptions>
 

@@ -8,6 +8,6 @@ public record DatasetSummary(
     String latestPublishedVersionId,
     Integer latestItemCount,
     String createdAt,
-    String updatedAt
+    java.time.LocalDateTime lastUpdatedDate
 ) {
 }

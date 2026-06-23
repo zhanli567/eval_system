@@ -13,7 +13,7 @@
       <arg column="latestPublishedVersionId" javaType="java.lang.String"/>
       <arg column="latestItemCount" javaType="java.lang.Integer"/>
       <arg column="createdAt" javaType="java.lang.String"/>
-      <arg column="updatedAt" javaType="java.lang.String"/>
+      <arg column="lastUpdatedDate" javaType="java.time.LocalDateTime"/>
     </constructor>
   </resultMap>
 
@@ -22,7 +22,7 @@
       <arg column="id" javaType="java.lang.String"/>
       <arg column="rowNo" javaType="java.lang.Integer"/>
       <arg column="createdAt" javaType="java.lang.String"/>
-      <arg column="updatedAt" javaType="java.lang.String"/>
+      <arg column="lastUpdatedDate" javaType="java.time.LocalDateTime"/>
     </constructor>
   </resultMap>
 
@@ -34,12 +34,12 @@
            d.latest_published_version_id AS latestPublishedVersionId,
            COALESCE(v.item_count, 0) AS latestItemCount,
            d.created_at AS createdAt,
-           d.updated_at AS updatedAt
+           d.last_updated_date AS lastUpdatedDate
     FROM t_eval_dataset d
     LEFT JOIN t_eval_dataset_version v ON d.latest_published_version_id = v.id
     WHERE d.is_deleted = 0
       AND (#{like} = '%%' OR d.name LIKE #{like})
-    ORDER BY d.updated_at DESC
+    ORDER BY d.last_updated_date DESC
     LIMIT #{size} OFFSET #{offset}
   </select>
 
@@ -51,7 +51,7 @@
            d.latest_published_version_id AS latestPublishedVersionId,
            COALESCE(v.item_count, 0) AS latestItemCount,
            d.created_at AS createdAt,
-           d.updated_at AS updatedAt
+           d.last_updated_date AS lastUpdatedDate
     FROM t_eval_dataset d
     LEFT JOIN t_eval_dataset_version v ON d.latest_published_version_id = v.id
     WHERE d.id = #{datasetId} AND d.is_deleted = 0
@@ -61,7 +61,7 @@
     SELECT DISTINCT i.id AS id,
            i.row_no AS rowNo,
            i.created_at AS createdAt,
-           i.updated_at AS updatedAt
+           i.last_updated_date AS lastUpdatedDate
     FROM t_eval_dataset_item i
     JOIN t_eval_dataset_item_cell c ON c.item_id = i.id
     WHERE i.version_id = #{versionId}

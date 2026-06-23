@@ -9,6 +9,9 @@ import com.evalsystem.tag.mapper.TagMapper;
 import com.evalsystem.tag.mapper.TagOptionMapper;
 import com.evalsystem.tag.entity.EvalTag;
 import com.evalsystem.tag.entity.EvalTagOption;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
@@ -88,7 +91,7 @@ public class TagRepository {
     tag.setMaxValue(maxValue);
     tag.setPassThreshold(passThreshold);
     tag.setCreatedAt(now);
-    tag.setUpdatedAt(now);
+    tag.setLastUpdatedDate(toLastUpdatedDate(now));
     tagMapper.insert(tag);
   }
 
@@ -108,7 +111,7 @@ public class TagRepository {
         .set(EvalTag::getMinValue, minValue)
         .set(EvalTag::getMaxValue, maxValue)
         .set(EvalTag::getPassThreshold, passThreshold)
-        .set(EvalTag::getUpdatedAt, now));
+        .set(EvalTag::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void deleteOptions(String tagId) {
@@ -124,7 +127,7 @@ public class TagRepository {
     option.setOptionGroup(optionGroup);
     option.setDisplayOrder(displayOrder);
     option.setCreatedAt(now);
-    option.setUpdatedAt(now);
+    option.setLastUpdatedDate(toLastUpdatedDate(now));
     optionMapper.insert(option);
   }
 
@@ -141,7 +144,7 @@ public class TagRepository {
         tag.getTagType(),
         tag.getDescription(),
         tag.getCreatedAt(),
-        tag.getUpdatedAt());
+        tag.getLastUpdatedDate());
   }
 
   private TagConfig toConfig(EvalTag tag) {
@@ -154,7 +157,7 @@ public class TagRepository {
         tag.getMaxValue(),
         tag.getPassThreshold(),
         tag.getCreatedAt(),
-        tag.getUpdatedAt());
+        tag.getLastUpdatedDate());
   }
 
   private TagOptionDto toOption(EvalTagOption option) {
@@ -165,7 +168,11 @@ public class TagRepository {
         option.getOptionGroup(),
         option.getDisplayOrder(),
         option.getCreatedAt(),
-        option.getUpdatedAt());
+        option.getLastUpdatedDate());
+  }
+
+  private LocalDateTime toLastUpdatedDate(String now) {
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(now)), ZoneId.systemDefault());
   }
 
   private boolean hasLikeText(String like) {

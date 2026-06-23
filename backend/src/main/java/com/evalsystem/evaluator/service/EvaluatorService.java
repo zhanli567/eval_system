@@ -189,7 +189,7 @@ public class EvaluatorService {
         base.scoreMax(),
         base.passThreshold(),
         base.createdAt(),
-        base.updatedAt(),
+        base.lastUpdatedDate(),
         listEvaluatorParams(TARGET_VERSION, base.versionId(), base.evaluatorType(), base.prompt()));
   }
 

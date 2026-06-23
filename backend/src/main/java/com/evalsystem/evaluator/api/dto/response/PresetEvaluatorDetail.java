@@ -17,7 +17,7 @@ public record PresetEvaluatorDetail(
     BigDecimal scoreMax,
     BigDecimal passThreshold,
     String createdAt,
-    String updatedAt,
+    String lastUpdatedDate,
     List<EvaluatorParamDto> params
 ) {
 }

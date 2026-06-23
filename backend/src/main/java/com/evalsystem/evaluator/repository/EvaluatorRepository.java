@@ -14,6 +14,9 @@ import com.evalsystem.evaluator.entity.EvalEvaluator;
 import com.evalsystem.evaluator.entity.EvalEvaluatorParam;
 import com.evalsystem.evaluator.entity.EvalEvaluatorVersion;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
@@ -61,7 +64,7 @@ public class EvaluatorRepository {
     evaluator.setLatestVersionId(latestVersionId);
     evaluator.setIsDeleted(0);
     evaluator.setCreatedAt(now);
-    evaluator.setUpdatedAt(now);
+    evaluator.setLastUpdatedDate(toLastUpdatedDate(now));
     evaluatorMapper.insert(evaluator);
   }
 
@@ -71,7 +74,7 @@ public class EvaluatorRepository {
         .eq(EvalEvaluator::getIsDeleted, 0)
         .set(EvalEvaluator::getEvaluatorName, evaluatorName)
         .set(EvalEvaluator::getDescription, description)
-        .set(EvalEvaluator::getUpdatedAt, now));
+        .set(EvalEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateLatestVersion(String evaluatorId, String versionId, String now) {
@@ -79,21 +82,21 @@ public class EvaluatorRepository {
         .eq(EvalEvaluator::getId, evaluatorId)
         .eq(EvalEvaluator::getIsDeleted, 0)
         .set(EvalEvaluator::getLatestVersionId, versionId)
-        .set(EvalEvaluator::getUpdatedAt, now));
+        .set(EvalEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void softDeleteEvaluator(String evaluatorId, String now) {
     evaluatorMapper.update(null, new LambdaUpdateWrapper<EvalEvaluator>()
         .eq(EvalEvaluator::getId, evaluatorId)
         .set(EvalEvaluator::getIsDeleted, 1)
-        .set(EvalEvaluator::getUpdatedAt, now));
+        .set(EvalEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void softDeleteVersionsByEvaluator(String evaluatorId, String now) {
     versionMapper.update(null, new LambdaUpdateWrapper<EvalEvaluatorVersion>()
         .eq(EvalEvaluatorVersion::getEvaluatorId, evaluatorId)
         .set(EvalEvaluatorVersion::getIsDeleted, 1)
-        .set(EvalEvaluatorVersion::getUpdatedAt, now));
+        .set(EvalEvaluatorVersion::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void insertVersion(
@@ -120,7 +123,7 @@ public class EvaluatorRepository {
     version.setPassThreshold(passThreshold);
     version.setIsDeleted(0);
     version.setCreatedAt(now);
-    version.setUpdatedAt(now);
+    version.setLastUpdatedDate(toLastUpdatedDate(now));
     versionMapper.insert(version);
   }
 
@@ -144,7 +147,7 @@ public class EvaluatorRepository {
         .set(EvalEvaluatorVersion::getScoreMin, scoreMin)
         .set(EvalEvaluatorVersion::getScoreMax, scoreMax)
         .set(EvalEvaluatorVersion::getPassThreshold, passThreshold)
-        .set(EvalEvaluatorVersion::getUpdatedAt, now));
+        .set(EvalEvaluatorVersion::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public String findDraftVersionId(String evaluatorId) {
@@ -211,7 +214,7 @@ public class EvaluatorRepository {
     param.setDescription(description);
     param.setDisplayOrder(displayOrder);
     param.setCreatedAt(now);
-    param.setUpdatedAt(now);
+    param.setLastUpdatedDate(toLastUpdatedDate(now));
     paramMapper.insert(param);
   }
 
@@ -240,7 +243,7 @@ public class EvaluatorRepository {
         versionNo == 0 ? "\u8349\u7a3f" : "V" + versionNo,
         versionNo == 0,
         version.getCreatedAt(),
-        version.getUpdatedAt());
+        version.getLastUpdatedDate());
   }
 
   private EvaluatorParamDto toParamDto(EvalEvaluatorParam param) {
@@ -254,6 +257,10 @@ public class EvaluatorRepository {
         param.getIsRequired() != null && param.getIsRequired() != 0,
         param.getDescription(),
         param.getDisplayOrder());
+  }
+
+  private LocalDateTime toLastUpdatedDate(String now) {
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(now)), ZoneId.systemDefault());
   }
 
   private boolean hasLikeText(String like) {

@@ -14,7 +14,7 @@
       <arg column="latestVersionName" javaType="java.lang.String"/>
       <arg column="description" javaType="java.lang.String"/>
       <arg column="createdAt" javaType="java.lang.String"/>
-      <arg column="updatedAt" javaType="java.lang.String"/>
+      <arg column="lastUpdatedDate" javaType="java.time.LocalDateTime"/>
     </constructor>
   </resultMap>
 
@@ -35,7 +35,7 @@
       <arg column="scoreMax" javaType="java.math.BigDecimal"/>
       <arg column="passThreshold" javaType="java.math.BigDecimal"/>
       <arg column="createdAt" javaType="java.lang.String"/>
-      <arg column="updatedAt" javaType="java.lang.String"/>
+      <arg column="lastUpdatedDate" javaType="java.time.LocalDateTime"/>
     </constructor>
   </resultMap>
 
@@ -48,7 +48,7 @@
            CASE WHEN COALESCE(v.version_no, 0) = 0 THEN '&#x8349;&#x7A3F;' ELSE CONCAT('V', v.version_no) END AS latestVersionName,
            e.description AS description,
            e.created_at AS createdAt,
-           e.updated_at AS updatedAt
+           e.last_updated_date AS lastUpdatedDate
     FROM t_eval_evaluator e
     LEFT JOIN t_eval_evaluator_version v ON e.latest_version_id = v.id
     WHERE e.is_deleted = 0
@@ -56,7 +56,7 @@
         AND e.evaluator_type = #{evaluatorType}
       </if>
       AND (#{like} = '%%' OR e.evaluator_name LIKE #{like})
-    ORDER BY e.updated_at DESC
+    ORDER BY e.last_updated_date DESC
     LIMIT #{size} OFFSET #{offset}
   </select>
 
@@ -76,7 +76,7 @@
            v.score_max AS scoreMax,
            v.pass_threshold AS passThreshold,
            v.created_at AS createdAt,
-           v.updated_at AS updatedAt
+           v.last_updated_date AS lastUpdatedDate
     FROM t_eval_evaluator_version v
     JOIN t_eval_evaluator e ON v.evaluator_id = e.id
     WHERE v.id = #{versionId}

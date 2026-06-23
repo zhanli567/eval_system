@@ -33,7 +33,7 @@ public class TaskController {
       @RequestParam(defaultValue = "10") int size,
       @RequestParam(required = false) String status,
       @RequestParam(required = false) String keyword,
-      @RequestParam(defaultValue = "updatedAt") String sortBy,
+      @RequestParam(defaultValue = "lastUpdatedDate") String sortBy,
       @RequestParam(defaultValue = "desc") String sortOrder
   ) {
     return ApiResponse.ok(taskService.listTasks(page, size, status, keyword, sortBy, sortOrder));

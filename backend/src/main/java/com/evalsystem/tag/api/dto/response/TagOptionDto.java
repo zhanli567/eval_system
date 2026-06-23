@@ -7,6 +7,6 @@ public record TagOptionDto(
     String optionGroup,
     Integer displayOrder,
     String createdAt,
-    String updatedAt
+    java.time.LocalDateTime lastUpdatedDate
 ) {
 }

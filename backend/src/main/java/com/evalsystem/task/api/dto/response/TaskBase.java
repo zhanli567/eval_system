@@ -18,6 +18,6 @@ public record TaskBase(
     String startedAt,
     String finishedAt,
     String createdAt,
-    String updatedAt
+    java.time.LocalDateTime lastUpdatedDate
 ) {
 }

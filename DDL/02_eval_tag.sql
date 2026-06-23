@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS t_eval_tag (
   max_value INT,
   pass_threshold INT,
   created_at VARCHAR(32),
-  updated_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -33,7 +32,6 @@ COMMENT ON COLUMN t_eval_tag.min_value IS '数字类型评分范围最小值';
 COMMENT ON COLUMN t_eval_tag.max_value IS '数字类型评分范围最大值';
 COMMENT ON COLUMN t_eval_tag.pass_threshold IS '数字类型通过阈值：大于等于该值为通过';
 COMMENT ON COLUMN t_eval_tag.created_at IS '创建时间';
-COMMENT ON COLUMN t_eval_tag.updated_at IS '更新时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_tag_option (
   id VARCHAR(36),
@@ -43,7 +41,6 @@ CREATE TABLE IF NOT EXISTS t_eval_tag_option (
   option_group VARCHAR(16),
   display_order INT,
   created_at VARCHAR(32),
-  updated_at VARCHAR(32),
   created_by_name VARCHAR(100),
   created_by VARCHAR(36),
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -66,4 +63,3 @@ COMMENT ON COLUMN t_eval_tag_option.option_name IS '选项名称：分类选项�
 COMMENT ON COLUMN t_eval_tag_option.option_group IS '选项分组：pass通过，fail失败';
 COMMENT ON COLUMN t_eval_tag_option.display_order IS '展示顺序';
 COMMENT ON COLUMN t_eval_tag_option.created_at IS '创建时间';
-COMMENT ON COLUMN t_eval_tag_option.updated_at IS '更新时间';

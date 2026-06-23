@@ -20,7 +20,7 @@ public record PresetEvaluatorDefinition(
     Integer displayOrder,
     List<PresetParamDefinition> params,
     String createdAt,
-    String updatedAt
+    String lastUpdatedDate
 ) {
   private static final String TYPE_LLM = "llm";
   private static final String TYPE_CODE = "code";

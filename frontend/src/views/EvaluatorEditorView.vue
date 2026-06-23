@@ -60,7 +60,7 @@ const {
         @click="selectVersion(version.id)"
       >
         <span>{{ version.versionName }}</span>
-        <small>{{ formatTime(version.updatedAt) }}</small>
+        <small>{{ formatTime(version.lastUpdatedDate) }}</small>
       </button>
     </aside>
 

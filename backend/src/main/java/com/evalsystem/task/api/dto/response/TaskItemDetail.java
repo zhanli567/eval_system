@@ -15,6 +15,6 @@ public record TaskItemDetail(
     List<TaskEvaluatorResultDto> evaluatorResults,
     List<TaskTagResultDto> tagResults,
     String createdAt,
-    String updatedAt
+    java.time.LocalDateTime lastUpdatedDate
 ) {
 }

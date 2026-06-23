@@ -25,6 +25,9 @@ import com.evalsystem.task.entity.EvalTaskItem;
 import com.evalsystem.task.entity.EvalTaskTag;
 import com.evalsystem.task.entity.EvalTaskTagResult;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
@@ -117,7 +120,7 @@ public class TaskRepository {
     task.setFinishedAt("");
     task.setIsDeleted(0);
     task.setCreatedAt(now);
-    task.setUpdatedAt(now);
+    task.setLastUpdatedDate(toLastUpdatedDate(now));
     taskMapper.insert(task);
   }
 
@@ -142,7 +145,7 @@ public class TaskRepository {
     mapping.setDatasetFieldId(datasetFieldId);
     mapping.setDisplayOrder(displayOrder);
     mapping.setCreatedAt(now);
-    mapping.setUpdatedAt(now);
+    mapping.setLastUpdatedDate(toLastUpdatedDate(now));
     appFieldMappingMapper.insert(mapping);
   }
 
@@ -167,7 +170,7 @@ public class TaskRepository {
     evaluator.setStatus(status);
     evaluator.setDisplayOrder(displayOrder);
     evaluator.setCreatedAt(now);
-    evaluator.setUpdatedAt(now);
+    evaluator.setLastUpdatedDate(toLastUpdatedDate(now));
     taskEvaluatorMapper.insert(evaluator);
   }
 
@@ -196,7 +199,7 @@ public class TaskRepository {
     mapping.setAppOutputName(appOutputName);
     mapping.setDisplayOrder(displayOrder);
     mapping.setCreatedAt(now);
-    mapping.setUpdatedAt(now);
+    mapping.setLastUpdatedDate(toLastUpdatedDate(now));
     paramMappingMapper.insert(mapping);
   }
 
@@ -208,7 +211,7 @@ public class TaskRepository {
     tag.setStatus(status);
     tag.setDisplayOrder(displayOrder);
     tag.setCreatedAt(now);
-    tag.setUpdatedAt(now);
+    tag.setLastUpdatedDate(toLastUpdatedDate(now));
     taskTagMapper.insert(tag);
   }
 
@@ -235,7 +238,7 @@ public class TaskRepository {
     item.setStartedAt("");
     item.setFinishedAt("");
     item.setCreatedAt(now);
-    item.setUpdatedAt(now);
+    item.setLastUpdatedDate(toLastUpdatedDate(now));
     taskItemMapper.insert(item);
   }
 
@@ -253,7 +256,7 @@ public class TaskRepository {
     result.setStartedAt("");
     result.setFinishedAt("");
     result.setCreatedAt(now);
-    result.setUpdatedAt(now);
+    result.setLastUpdatedDate(toLastUpdatedDate(now));
     evaluatorResultMapper.insert(result);
   }
 
@@ -272,7 +275,7 @@ public class TaskRepository {
     result.setAnnotatorName("");
     result.setAnnotatedAt("");
     result.setCreatedAt(now);
-    result.setUpdatedAt(now);
+    result.setLastUpdatedDate(toLastUpdatedDate(now));
     tagResultMapper.insert(result);
   }
 
@@ -280,7 +283,7 @@ public class TaskRepository {
     taskMapper.update(null, new LambdaUpdateWrapper<EvalTask>()
         .eq(EvalTask::getId, taskId)
         .set(EvalTask::getIsDeleted, 1)
-        .set(EvalTask::getUpdatedAt, now));
+        .set(EvalTask::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTaskStatus(String taskId, String status, String startedAt, String finishedAt, String now) {
@@ -290,21 +293,21 @@ public class TaskRepository {
         .set(EvalTask::getStatus, status)
         .set(startedAt != null, EvalTask::getStartedAt, startedAt)
         .set(finishedAt != null, EvalTask::getFinishedAt, finishedAt)
-        .set(EvalTask::getUpdatedAt, now));
+        .set(EvalTask::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTaskEvaluatorStatus(String taskEvaluatorId, String status, String now) {
     taskEvaluatorMapper.update(null, new LambdaUpdateWrapper<EvalTaskEvaluator>()
         .eq(EvalTaskEvaluator::getId, taskEvaluatorId)
         .set(EvalTaskEvaluator::getStatus, status)
-        .set(EvalTaskEvaluator::getUpdatedAt, now));
+        .set(EvalTaskEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTaskTagStatus(String taskTagId, String status, String now) {
     taskTagMapper.update(null, new LambdaUpdateWrapper<EvalTaskTag>()
         .eq(EvalTaskTag::getId, taskTagId)
         .set(EvalTaskTag::getStatus, status)
-        .set(EvalTaskTag::getUpdatedAt, now));
+        .set(EvalTaskTag::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void resetTaskItemsForRestart(String taskId, String appOutputStatus, String now) {
@@ -316,7 +319,7 @@ public class TaskRepository {
         .set(EvalTaskItem::getAppErrorMessage, "")
         .set(EvalTaskItem::getStartedAt, "")
         .set(EvalTaskItem::getFinishedAt, "")
-        .set(EvalTaskItem::getUpdatedAt, now));
+        .set(EvalTaskItem::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void resetEvaluatorResultsForRestart(String taskId, String now) {
@@ -329,14 +332,14 @@ public class TaskRepository {
         .set(EvalTaskEvaluatorResult::getErrorMessage, "")
         .set(EvalTaskEvaluatorResult::getStartedAt, "")
         .set(EvalTaskEvaluatorResult::getFinishedAt, "")
-        .set(EvalTaskEvaluatorResult::getUpdatedAt, now));
+        .set(EvalTaskEvaluatorResult::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void resetTaskTagsForRestart(String taskId, String now) {
     taskTagMapper.update(null, new LambdaUpdateWrapper<EvalTaskTag>()
         .eq(EvalTaskTag::getTaskId, taskId)
         .set(EvalTaskTag::getStatus, "pending")
-        .set(EvalTaskTag::getUpdatedAt, now));
+        .set(EvalTaskTag::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void resetTagResultsForRestart(String taskId, String now) {
@@ -350,7 +353,7 @@ public class TaskRepository {
         .set(EvalTaskTagResult::getAnnotatorId, "")
         .set(EvalTaskTagResult::getAnnotatorName, "")
         .set(EvalTaskTagResult::getAnnotatedAt, "")
-        .set(EvalTaskTagResult::getUpdatedAt, now));
+        .set(EvalTaskTagResult::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTaskItemRunResult(
@@ -371,7 +374,7 @@ public class TaskRepository {
         .set(EvalTaskItem::getAppErrorMessage, appErrorMessage)
         .set(EvalTaskItem::getStartedAt, startedAt)
         .set(EvalTaskItem::getFinishedAt, finishedAt)
-        .set(EvalTaskItem::getUpdatedAt, now));
+        .set(EvalTaskItem::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTaskItemAppResult(String taskItemId, String appOutput, String appOutputStatus, String appErrorMessage, String now) {
@@ -380,14 +383,14 @@ public class TaskRepository {
         .set(EvalTaskItem::getAppOutput, appOutput)
         .set(EvalTaskItem::getAppOutputStatus, appOutputStatus)
         .set(EvalTaskItem::getAppErrorMessage, appErrorMessage)
-        .set(EvalTaskItem::getUpdatedAt, now));
+        .set(EvalTaskItem::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTaskItemStatus(String taskItemId, String status, String now) {
     taskItemMapper.update(null, new LambdaUpdateWrapper<EvalTaskItem>()
         .eq(EvalTaskItem::getId, taskItemId)
         .set(EvalTaskItem::getStatus, status)
-        .set(EvalTaskItem::getUpdatedAt, now));
+        .set(EvalTaskItem::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateEvaluatorResult(
@@ -412,7 +415,7 @@ public class TaskRepository {
         .set(EvalTaskEvaluatorResult::getErrorMessage, errorMessage)
         .set(EvalTaskEvaluatorResult::getStartedAt, startedAt)
         .set(EvalTaskEvaluatorResult::getFinishedAt, finishedAt)
-        .set(EvalTaskEvaluatorResult::getUpdatedAt, now));
+        .set(EvalTaskEvaluatorResult::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTagResult(
@@ -439,7 +442,7 @@ public class TaskRepository {
         .set(EvalTaskTagResult::getAnnotatorId, annotatorId)
         .set(EvalTaskTagResult::getAnnotatorName, annotatorName)
         .set(EvalTaskTagResult::getAnnotatedAt, annotatedAt)
-        .set(EvalTaskTagResult::getUpdatedAt, now));
+        .set(EvalTaskTagResult::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public List<TaskItemRecord> listTaskItems(String taskId, int size, int offset) {
@@ -601,7 +604,7 @@ public class TaskRepository {
         item.getAppOutputStatus(),
         item.getAppErrorMessage(),
         item.getCreatedAt(),
-        item.getUpdatedAt());
+        item.getLastUpdatedDate());
   }
 
   private TaskAppFieldMappingRecord toAppFieldMappingRecord(EvalTaskAppFieldMapping mapping) {
@@ -648,5 +651,9 @@ public class TaskRepository {
 
   private String likeText(String like) {
     return hasLikeText(like) && like.length() > 1 ? like.substring(1, like.length() - 1) : "";
+  }
+
+  private LocalDateTime toLastUpdatedDate(String now) {
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(now)), ZoneId.systemDefault());
   }
 }

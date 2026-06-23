@@ -228,7 +228,7 @@ export function useEvaluatorEditor() {
           versionName: created.versionName,
           draft: created.draft,
           createdAt: created.createdAt,
-          updatedAt: created.updatedAt
+          lastUpdatedDate: created.lastUpdatedDate
         }]
         activeVersionId.value = created.versionId
         activeDetail.value = created

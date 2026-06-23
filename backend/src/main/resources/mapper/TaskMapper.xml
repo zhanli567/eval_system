@@ -23,7 +23,7 @@
       <arg column="startedAt" javaType="java.lang.String"/>
       <arg column="finishedAt" javaType="java.lang.String"/>
       <arg column="createdAt" javaType="java.lang.String"/>
-      <arg column="updatedAt" javaType="java.lang.String"/>
+      <arg column="lastUpdatedDate" javaType="java.time.LocalDateTime"/>
     </constructor>
   </resultMap>
 
@@ -130,7 +130,7 @@
     t.started_at AS startedAt,
     t.finished_at AS finishedAt,
     t.created_at AS createdAt,
-    t.updated_at AS updatedAt
+    t.last_updated_date AS lastUpdatedDate
   </sql>
 
   <select id="listTaskBases" resultMap="TaskBaseMap">

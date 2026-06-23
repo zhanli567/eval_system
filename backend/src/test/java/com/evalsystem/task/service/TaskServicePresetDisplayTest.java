@@ -29,6 +29,7 @@ import com.evalsystem.task.repository.TaskEvaluatorBindingRecord;
 import com.evalsystem.task.repository.TaskItemRecord;
 import com.evalsystem.task.repository.TaskRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.Test;
 class TaskServicePresetDisplayTest {
   private static final String ANSWER_CONSISTENCY_NAME = "\u56de\u590d\u4e00\u81f4\u6027";
   private static final String PRESET_MODEL_REQUIRED_MESSAGE = "\u8bf7\u9009\u62e9\u9884\u7f6e\u8bc4\u4f30\u5668\u6a21\u578b";
+  private static final LocalDateTime LAST_UPDATED_DATE = LocalDateTime.of(2026, 1, 1, 0, 0);
 
   private TaskRepository taskRepository;
   private DatasetRepository datasetRepository;
@@ -87,7 +89,7 @@ class TaskServicePresetDisplayTest {
         "skipped",
         "",
         "1",
-        "1")));
+        LAST_UPDATED_DATE)));
     when(taskRepository.countTaskItems("task-1")).thenReturn(1L);
     when(datasetRepository.loadValues(List.of("dataset-item-1"))).thenReturn(Map.of("dataset-item-1", Map.of()));
     when(taskRepository.listEvaluatorResultsByTaskItemIds(List.of("task-item-1"))).thenReturn(List.of(new TaskEvaluatorResultDto(
@@ -230,7 +232,7 @@ class TaskServicePresetDisplayTest {
         "",
         "",
         "1",
-        "1");
+        LAST_UPDATED_DATE);
   }
 
   private void prepareCreateTaskDataset() {
@@ -242,7 +244,7 @@ class TaskServicePresetDisplayTest {
         1,
         false,
         "1",
-        "1"));
+        LAST_UPDATED_DATE));
     when(datasetRepository.findDatasetSummary("dataset-1")).thenReturn(new DatasetSummary(
         "dataset-1",
         "dataset",
@@ -251,13 +253,13 @@ class TaskServicePresetDisplayTest {
         "version-1",
         1,
         "1",
-        "1"));
+        LAST_UPDATED_DATE));
     when(datasetRepository.listFields("version-1")).thenReturn(List.of(
         new FieldDto("field-query", "version-1", "query", "string", true, "", 1),
         new FieldDto("field-reference", "version-1", "reference_response", "string", true, "", 2),
         new FieldDto("field-response", "version-1", "response", "string", true, "", 3)));
     when(datasetRepository.listAllRows("version-1")).thenReturn(List.of(
-        new DatasetRowRecord("row-1", 1, "1", "1")));
+        new DatasetRowRecord("row-1", 1, "1", LAST_UPDATED_DATE)));
   }
 
   private void prepareGetTaskAfterCreate() {

@@ -13,7 +13,7 @@ export interface DatasetSummary {
   latestPublishedVersionId?: string
   latestItemCount: number
   createdAt: string
-  updatedAt: string
+  lastUpdatedDate: string
 }
 
 export interface DatasetVersion {
@@ -24,7 +24,7 @@ export interface DatasetVersion {
   itemCount: number
   draft: boolean
   createdAt: string
-  updatedAt: string
+  lastUpdatedDate: string
 }
 
 export interface DatasetField {
@@ -42,7 +42,7 @@ export interface DatasetRow {
   rowNo: number
   values: Record<string, string>
   createdAt: string
-  updatedAt: string
+  lastUpdatedDate: string
 }
 
 export interface VersionDetail {
@@ -61,7 +61,7 @@ export interface TagSummary {
   tagType: TagType
   description: string
   createdAt: string
-  updatedAt: string
+  lastUpdatedDate: string
 }
 
 export interface TagOption {
@@ -71,7 +71,7 @@ export interface TagOption {
   optionGroup: TagOptionGroup
   displayOrder?: number
   createdAt?: string
-  updatedAt?: string
+  lastUpdatedDate?: string
 }
 
 export interface TagDetail extends TagSummary {
@@ -106,7 +106,7 @@ export interface EvaluatorSummary {
   latestVersionName: string
   description: string
   createdAt: string
-  updatedAt: string
+  lastUpdatedDate: string
 }
 
 export interface EvaluatorVersion {
@@ -116,7 +116,7 @@ export interface EvaluatorVersion {
   versionName: string
   draft: boolean
   createdAt: string
-  updatedAt: string
+  lastUpdatedDate: string
 }
 
 export interface EvaluatorConfig {
@@ -135,7 +135,7 @@ export interface EvaluatorConfig {
   scoreMax: number
   passThreshold: number
   createdAt: string
-  updatedAt: string
+  lastUpdatedDate: string
   params: EvaluatorParam[]
 }
 
@@ -162,7 +162,7 @@ export interface PresetEvaluatorDetail extends PresetEvaluatorSummary {
   scoreMax: number
   passThreshold: number
   createdAt: string
-  updatedAt: string
+  lastUpdatedDate: string
   params: EvaluatorParam[]
 }
 
@@ -194,7 +194,7 @@ export interface TaskBase {
   startedAt: string
   finishedAt: string
   createdAt: string
-  updatedAt: string
+  lastUpdatedDate: string
 }
 
 export interface TaskEvaluatorDimension {
@@ -276,7 +276,7 @@ export interface TaskItemDetail {
   evaluatorResults: TaskEvaluatorResult[]
   tagResults: TaskTagResult[]
   createdAt: string
-  updatedAt: string
+  lastUpdatedDate: string
 }
 
 export interface TaskDetail {

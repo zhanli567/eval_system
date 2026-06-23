@@ -19,7 +19,6 @@ public class EvalDatasetItem {
   private String versionId;
   private Integer rowNo;
   private String createdAt;
-  private String updatedAt;
 
   public String getId() {
     return id;
@@ -51,14 +50,6 @@ public class EvalDatasetItem {
 
   public void setCreatedAt(String createdAt) {
     this.createdAt = createdAt;
-  }
-
-  public String getUpdatedAt() {
-    return updatedAt;
-  }
-
-  public void setUpdatedAt(String updatedAt) {
-    this.updatedAt = updatedAt;
   }
 
   public String getSpaceId() {

@@ -16,6 +16,9 @@ import com.evalsystem.dataset.entity.EvalDatasetField;
 import com.evalsystem.dataset.entity.EvalDatasetItem;
 import com.evalsystem.dataset.entity.EvalDatasetItemCell;
 import com.evalsystem.dataset.entity.EvalDatasetVersion;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,7 +66,7 @@ public class DatasetRepository {
     dataset.setLatestPublishedVersionId(null);
     dataset.setIsDeleted(0);
     dataset.setCreatedAt(now);
-    dataset.setUpdatedAt(now);
+    dataset.setLastUpdatedDate(toLastUpdatedDate(now));
     datasetMapper.insert(dataset);
   }
 
@@ -75,7 +78,7 @@ public class DatasetRepository {
     version.setItemCount(itemCount);
     version.setIsDeleted(0);
     version.setCreatedAt(now);
-    version.setUpdatedAt(now);
+    version.setLastUpdatedDate(toLastUpdatedDate(now));
     versionMapper.insert(version);
   }
 
@@ -87,7 +90,7 @@ public class DatasetRepository {
     datasetMapper.update(null, new LambdaUpdateWrapper<EvalDataset>()
         .eq(EvalDataset::getId, datasetId)
         .set(EvalDataset::getIsDeleted, 1)
-        .set(EvalDataset::getUpdatedAt, now));
+        .set(EvalDataset::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public List<DatasetVersionDto> listVersions(String datasetId) {
@@ -152,7 +155,7 @@ public class DatasetRepository {
         .set(EvalDatasetField::getIsRequired, required)
         .set(EvalDatasetField::getDescription, description)
         .set(EvalDatasetField::getDisplayOrder, displayOrder)
-        .set(EvalDatasetField::getUpdatedAt, now));
+        .set(EvalDatasetField::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void insertField(
@@ -174,7 +177,7 @@ public class DatasetRepository {
     field.setDescription(description);
     field.setDisplayOrder(displayOrder);
     field.setCreatedAt(now);
-    field.setUpdatedAt(now);
+    field.setLastUpdatedDate(toLastUpdatedDate(now));
     fieldMapper.insert(field);
   }
 
@@ -248,7 +251,7 @@ public class DatasetRepository {
     item.setVersionId(versionId);
     item.setRowNo(rowNo);
     item.setCreatedAt(now);
-    item.setUpdatedAt(now);
+    item.setLastUpdatedDate(toLastUpdatedDate(now));
     itemMapper.insert(item);
   }
 
@@ -260,7 +263,7 @@ public class DatasetRepository {
     cell.setFieldId(fieldId);
     cell.setCellValue(cellValue);
     cell.setCreatedAt(now);
-    cell.setUpdatedAt(now);
+    cell.setLastUpdatedDate(toLastUpdatedDate(now));
     cellMapper.insert(cell);
   }
 
@@ -268,7 +271,7 @@ public class DatasetRepository {
     itemMapper.update(null, new LambdaUpdateWrapper<EvalDatasetItem>()
         .eq(EvalDatasetItem::getId, itemId)
         .eq(EvalDatasetItem::getVersionId, versionId)
-        .set(EvalDatasetItem::getUpdatedAt, now));
+        .set(EvalDatasetItem::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void deleteCellsByItem(String itemId) {
@@ -309,7 +312,7 @@ public class DatasetRepository {
     versionMapper.update(null, new LambdaUpdateWrapper<EvalDatasetVersion>()
         .eq(EvalDatasetVersion::getId, versionId)
         .set(EvalDatasetVersion::getIsDeleted, 1)
-        .set(EvalDatasetVersion::getUpdatedAt, now));
+        .set(EvalDatasetVersion::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void clearVersionCells(String versionId) {
@@ -355,18 +358,18 @@ public class DatasetRepository {
     versionMapper.update(null, new LambdaUpdateWrapper<EvalDatasetVersion>()
         .eq(EvalDatasetVersion::getId, versionId)
         .set(EvalDatasetVersion::getItemCount, itemCount)
-        .set(EvalDatasetVersion::getUpdatedAt, now));
+        .set(EvalDatasetVersion::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void touchVersionAndDataset(String versionId, String now) {
     versionMapper.update(null, new LambdaUpdateWrapper<EvalDatasetVersion>()
         .eq(EvalDatasetVersion::getId, versionId)
-        .set(EvalDatasetVersion::getUpdatedAt, now));
+        .set(EvalDatasetVersion::getLastUpdatedDate, toLastUpdatedDate(now)));
     String datasetId = findDatasetIdByVersionId(versionId);
     if (StringUtils.hasText(datasetId)) {
       datasetMapper.update(null, new LambdaUpdateWrapper<EvalDataset>()
           .eq(EvalDataset::getId, datasetId)
-          .set(EvalDataset::getUpdatedAt, now));
+          .set(EvalDataset::getLastUpdatedDate, toLastUpdatedDate(now)));
     }
   }
 
@@ -375,7 +378,7 @@ public class DatasetRepository {
         .eq(EvalDataset::getId, datasetId)
         .set(EvalDataset::getPublishedVersionCount, countPublishedVersions(datasetId))
         .set(EvalDataset::getLatestPublishedVersionId, findLatestPublishedVersionId(datasetId))
-        .set(EvalDataset::getUpdatedAt, now));
+        .set(EvalDataset::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   private int countPublishedVersions(String datasetId) {
@@ -414,7 +417,7 @@ public class DatasetRepository {
         version.getItemCount(),
         versionNo == 0,
         version.getCreatedAt(),
-        version.getUpdatedAt());
+        version.getLastUpdatedDate());
   }
 
   private FieldDto toFieldDto(EvalDatasetField field) {
@@ -429,7 +432,11 @@ public class DatasetRepository {
   }
 
   private DatasetRowRecord toRowRecord(EvalDatasetItem item) {
-    return new DatasetRowRecord(item.getId(), item.getRowNo(), item.getCreatedAt(), item.getUpdatedAt());
+    return new DatasetRowRecord(item.getId(), item.getRowNo(), item.getCreatedAt(), item.getLastUpdatedDate());
+  }
+
+  private LocalDateTime toLastUpdatedDate(String now) {
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(now)), ZoneId.systemDefault());
   }
 
   private boolean hasLikeText(String like) {

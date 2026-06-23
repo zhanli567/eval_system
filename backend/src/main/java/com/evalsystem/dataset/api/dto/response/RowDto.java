@@ -7,6 +7,6 @@ public record RowDto(
     Integer rowNo,
     Map<String, String> values,
     String createdAt,
-    String updatedAt
+    java.time.LocalDateTime lastUpdatedDate
 ) {
 }

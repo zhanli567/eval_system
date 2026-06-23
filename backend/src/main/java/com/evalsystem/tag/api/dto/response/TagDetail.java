@@ -11,7 +11,7 @@ public record TagDetail(
     Integer maxValue,
     Integer passThreshold,
     String createdAt,
-    String updatedAt,
+    java.time.LocalDateTime lastUpdatedDate,
     List<TagOptionDto> options
 ) {
 }

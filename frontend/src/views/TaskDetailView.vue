@@ -98,7 +98,7 @@ function evaluatorResultLabel(result?: TaskEvaluatorResult) {
         </div>
         <div>
           <span>更新时间</span>
-          <strong>{{ formatTime(base?.updatedAt) }}</strong>
+          <strong>{{ formatTime(base?.lastUpdatedDate) }}</strong>
         </div>
         <div>
           <span>描述</span>

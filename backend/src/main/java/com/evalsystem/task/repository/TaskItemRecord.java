@@ -11,6 +11,6 @@ public record TaskItemRecord(
     String appOutputStatus,
     String appErrorMessage,
     String createdAt,
-    String updatedAt
+    java.time.LocalDateTime lastUpdatedDate
 ) {
 }
