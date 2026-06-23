@@ -1,16 +1,30 @@
 CREATE TABLE IF NOT EXISTS t_eval_evaluator (
-  id VARCHAR(64),
+  id VARCHAR(36),
+  space_id VARCHAR(36),
   evaluator_name VARCHAR(50),
   evaluator_type VARCHAR(16),
   description VARCHAR(200),
   latest_version_id VARCHAR(64),
   is_deleted SMALLINT,
   created_at VARCHAR(32),
-  updated_at VARCHAR(32)
+  updated_at VARCHAR(32),
+  created_by_name VARCHAR(100),
+  created_by VARCHAR(36),
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_updated_by VARCHAR(36),
+  last_updated_by_name VARCHAR(100),
+  last_updated_date TIMESTAMP
 );
 
 COMMENT ON TABLE t_eval_evaluator IS '自定义评估器主表';
 COMMENT ON COLUMN t_eval_evaluator.id IS '自定义评估器ID';
+COMMENT ON COLUMN t_eval_evaluator.space_id IS '空间ID';
+COMMENT ON COLUMN t_eval_evaluator.created_by_name IS '创建人名称';
+COMMENT ON COLUMN t_eval_evaluator.created_by IS '创建人ID';
+COMMENT ON COLUMN t_eval_evaluator.created_date IS '创建时间';
+COMMENT ON COLUMN t_eval_evaluator.last_updated_by IS '最后更新人ID';
+COMMENT ON COLUMN t_eval_evaluator.last_updated_by_name IS '最后更新人名称';
+COMMENT ON COLUMN t_eval_evaluator.last_updated_date IS '最后更新时间';
 COMMENT ON COLUMN t_eval_evaluator.evaluator_name IS '评估器名称';
 COMMENT ON COLUMN t_eval_evaluator.evaluator_type IS '评估器类型：llm/code';
 COMMENT ON COLUMN t_eval_evaluator.description IS '评估器描述';
@@ -20,7 +34,8 @@ COMMENT ON COLUMN t_eval_evaluator.created_at IS '创建时间';
 COMMENT ON COLUMN t_eval_evaluator.updated_at IS '更新时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_evaluator_version (
-  id VARCHAR(64),
+  id VARCHAR(36),
+  space_id VARCHAR(36),
   evaluator_id VARCHAR(64),
   version_no INT,
   model_id VARCHAR(64),
@@ -31,11 +46,24 @@ CREATE TABLE IF NOT EXISTS t_eval_evaluator_version (
   pass_threshold DECIMAL(10,4),
   is_deleted SMALLINT,
   created_at VARCHAR(32),
-  updated_at VARCHAR(32)
+  updated_at VARCHAR(32),
+  created_by_name VARCHAR(100),
+  created_by VARCHAR(36),
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_updated_by VARCHAR(36),
+  last_updated_by_name VARCHAR(100),
+  last_updated_date TIMESTAMP
 );
 
 COMMENT ON TABLE t_eval_evaluator_version IS '自定义评估器版本表';
 COMMENT ON COLUMN t_eval_evaluator_version.id IS '评估器版本ID';
+COMMENT ON COLUMN t_eval_evaluator_version.space_id IS '空间ID';
+COMMENT ON COLUMN t_eval_evaluator_version.created_by_name IS '创建人名称';
+COMMENT ON COLUMN t_eval_evaluator_version.created_by IS '创建人ID';
+COMMENT ON COLUMN t_eval_evaluator_version.created_date IS '创建时间';
+COMMENT ON COLUMN t_eval_evaluator_version.last_updated_by IS '最后更新人ID';
+COMMENT ON COLUMN t_eval_evaluator_version.last_updated_by_name IS '最后更新人名称';
+COMMENT ON COLUMN t_eval_evaluator_version.last_updated_date IS '最后更新时间';
 COMMENT ON COLUMN t_eval_evaluator_version.evaluator_id IS '自定义评估器ID';
 COMMENT ON COLUMN t_eval_evaluator_version.version_no IS '版本号：0草稿，>0发布版本';
 COMMENT ON COLUMN t_eval_evaluator_version.model_id IS 'LLM评估使用的模型ID，后续可作为模型表外键';
@@ -49,7 +77,8 @@ COMMENT ON COLUMN t_eval_evaluator_version.created_at IS '创建时间';
 COMMENT ON COLUMN t_eval_evaluator_version.updated_at IS '更新时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_evaluator_param (
-  id VARCHAR(64),
+  id VARCHAR(36),
+  space_id VARCHAR(36),
   target_type VARCHAR(16),
   target_id VARCHAR(64),
   param_name VARCHAR(64),
@@ -59,11 +88,24 @@ CREATE TABLE IF NOT EXISTS t_eval_evaluator_param (
   description VARCHAR(200),
   display_order INT,
   created_at VARCHAR(32),
-  updated_at VARCHAR(32)
+  updated_at VARCHAR(32),
+  created_by_name VARCHAR(100),
+  created_by VARCHAR(36),
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_updated_by VARCHAR(36),
+  last_updated_by_name VARCHAR(100),
+  last_updated_date TIMESTAMP
 );
 
 COMMENT ON TABLE t_eval_evaluator_param IS '评估器参数配置表';
 COMMENT ON COLUMN t_eval_evaluator_param.id IS '评估器参数ID';
+COMMENT ON COLUMN t_eval_evaluator_param.space_id IS '空间ID';
+COMMENT ON COLUMN t_eval_evaluator_param.created_by_name IS '创建人名称';
+COMMENT ON COLUMN t_eval_evaluator_param.created_by IS '创建人ID';
+COMMENT ON COLUMN t_eval_evaluator_param.created_date IS '创建时间';
+COMMENT ON COLUMN t_eval_evaluator_param.last_updated_by IS '最后更新人ID';
+COMMENT ON COLUMN t_eval_evaluator_param.last_updated_by_name IS '最后更新人名称';
+COMMENT ON COLUMN t_eval_evaluator_param.last_updated_date IS '最后更新时间';
 COMMENT ON COLUMN t_eval_evaluator_param.target_type IS '参数所属类型：version自定义评估器版本';
 COMMENT ON COLUMN t_eval_evaluator_param.target_id IS '参数所属ID：自定义评估器版本ID';
 COMMENT ON COLUMN t_eval_evaluator_param.param_name IS '变量名';
