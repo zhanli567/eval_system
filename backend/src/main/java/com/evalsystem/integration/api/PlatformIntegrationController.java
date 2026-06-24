@@ -2,6 +2,7 @@ package com.evalsystem.integration.api;
 
 import com.evalsystem.common.ApiResponse;
 import com.evalsystem.integration.api.dto.response.PlatformAgentDefinition;
+import com.evalsystem.integration.api.dto.response.PlatformAgentVersion;
 import com.evalsystem.integration.api.dto.request.PlatformModelChatRequest;
 import com.evalsystem.integration.api.dto.response.PlatformModelChatResult;
 import com.evalsystem.integration.api.dto.response.PlatformModelInfo;
@@ -40,6 +41,12 @@ public class PlatformIntegrationController {
   @Path("/agents/{agentId}")
   public ApiResponse<PlatformAgentDefinition> getAgentDetail(@PathParam("agentId") String agentId) {
     return ApiResponse.ok(integrationService.getAgentDetail(agentId));
+  }
+
+  @GET
+  @Path("/agents/{agentId}/bundles")
+  public ApiResponse<List<PlatformAgentVersion>> listAgentBundles(@PathParam("agentId") String agentId) {
+    return ApiResponse.ok(integrationService.listAgentBundles(agentId));
   }
 
   @POST

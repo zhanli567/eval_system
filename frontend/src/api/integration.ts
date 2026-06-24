@@ -86,6 +86,9 @@ export const integrationApi = {
   getAgentDetail(agentId: string) {
     return unwrap(http.get<ApiResponse<PlatformAgentDefinition>>(`/integration/agents/${encodeURIComponent(agentId)}`))
   },
+  listAgentBundles(agentId: string) {
+    return unwrap(http.get<ApiResponse<PlatformAgentVersion[]>>(`/integration/agents/${encodeURIComponent(agentId)}/bundles`))
+  },
   chatModel(modelId: string, message: string) {
     return unwrap(http.post<ApiResponse<PlatformModelChatResult>>(`/integration/models/${encodeURIComponent(modelId)}/chat`, { message }))
   }

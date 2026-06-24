@@ -20,6 +20,7 @@ const {
   agents,
   models,
   agentDetailLoading,
+  agentVersionLoading,
   modelLoading,
   agentVersions,
   agentChildAgents,
@@ -101,7 +102,7 @@ const {
                   <el-select v-model="form.appId" placeholder="请选择智能体" filterable @visible-change="handleAgentVisible">
                     <el-option v-for="agent in agents" :key="agent.id" :label="agent.agentName" :value="agent.id" />
                   </el-select>
-                  <el-select v-model="form.appVersionId" placeholder="请选择智能体版本" :disabled="!form.appId">
+                  <el-select v-model="form.appVersionId" placeholder="请选择智能体版本" :disabled="!form.appId" :loading="agentVersionLoading">
                     <el-option v-for="version in agentVersions" :key="version.id" :label="version.versionName" :value="version.id" />
                   </el-select>
                   <el-select v-model="form.appAgentAlias" placeholder="选择子智能体（可选）" clearable :disabled="!form.appId" :loading="agentDetailLoading">

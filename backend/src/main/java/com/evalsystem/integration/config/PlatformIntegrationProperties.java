@@ -10,9 +10,9 @@ public class PlatformIntegrationProperties {
   private String modelListUrl = "";
   private String agentListUrl = "";
   private String agentDetailUrl = "";
+  private String agentBundleListUrl = "";
   private String modelChatUrl = "";
-  private String superAgentChatUrl = "";
-  private String xAgentAlias = "";
+  private String agentChatUrl = "";
   private boolean trustAllSsl = true;
   private int connectTimeoutMs = 5000;
   private int readTimeoutMs = 60000;
@@ -51,6 +51,14 @@ public class PlatformIntegrationProperties {
     this.agentDetailUrl = clean(agentDetailUrl);
   }
 
+  public String getAgentBundleListUrl() {
+    return agentBundleListUrl;
+  }
+
+  public void setAgentBundleListUrl(String agentBundleListUrl) {
+    this.agentBundleListUrl = clean(agentBundleListUrl);
+  }
+
   public String getModelChatUrl() {
     return modelChatUrl;
   }
@@ -59,20 +67,12 @@ public class PlatformIntegrationProperties {
     this.modelChatUrl = clean(modelChatUrl);
   }
 
-  public String getSuperAgentChatUrl() {
-    return superAgentChatUrl;
+  public String getAgentChatUrl() {
+    return agentChatUrl;
   }
 
-  public void setSuperAgentChatUrl(String superAgentChatUrl) {
-    this.superAgentChatUrl = clean(superAgentChatUrl);
-  }
-
-  public String getXAgentAlias() {
-    return xAgentAlias;
-  }
-
-  public void setXAgentAlias(String xAgentAlias) {
-    this.xAgentAlias = clean(xAgentAlias);
+  public void setAgentChatUrl(String agentChatUrl) {
+    this.agentChatUrl = clean(agentChatUrl);
   }
 
   public boolean isTrustAllSsl() {

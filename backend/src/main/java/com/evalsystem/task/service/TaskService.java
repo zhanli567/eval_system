@@ -969,6 +969,7 @@ public class TaskService {
     String content = buildAgentMessageContent(appMappings, values);
     PlatformAgentChatResponse response = integrationService.invokeAgent(
         base.appId(),
+        base.appVersionId(),
         base.appAgentAlias(),
         new PlatformAgentChatRequest(
             base.id() + "-" + item.id(),

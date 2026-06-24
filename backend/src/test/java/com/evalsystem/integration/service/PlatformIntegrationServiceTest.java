@@ -6,6 +6,7 @@ import com.evalsystem.integration.config.PlatformIntegrationProperties;
 import com.evalsystem.integration.api.dto.request.PlatformAgentChatRequest;
 import com.evalsystem.integration.api.dto.request.PlatformAgentMessage;
 import com.evalsystem.integration.api.dto.response.PlatformAgentDefinition;
+import com.evalsystem.integration.api.dto.response.PlatformAgentVersion;
 import com.evalsystem.integration.api.dto.response.PlatformModelInfo;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -81,7 +82,7 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
-  void getAgentDetailSendsAuthHeadersAndNormalizesSnapshotsAndChildren() throws Exception {
+  void getAgentDetailSendsAuthHeadersAndNormalizesChildren() throws Exception {
     AtomicReference<String> cookie = new AtomicReference<>("");
     AtomicReference<String> spaceId = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
@@ -131,7 +132,7 @@ class PlatformIntegrationServiceTest {
     assertThat(spaceId).hasValue("space-1");
     assertThat(detail.id()).isEqualTo("agent-1");
     assertThat(detail.agentName()).isEqualTo("Agent One");
-    assertThat(detail.versions()).extracting(version -> version.id()).containsExactly("bundle-main", "bundle-old");
+    assertThat(detail.versions()).isEmpty();
     assertThat(detail.childAgents()).extracting(child -> child.agentAlias()).containsExactly("child-a", "child-b");
     assertThat(detail.outputs()).extracting(output -> output.fieldName()).contains(
         "text",
@@ -147,6 +148,48 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
+  void listAgentBundlesSendsAuthHeadersAndNormalizesItems() throws Exception {
+    AtomicReference<String> cookie = new AtomicReference<>("");
+    AtomicReference<String> spaceId = new AtomicReference<>("");
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/login", exchange -> {
+      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
+      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
+    });
+    server.createContext("/agents/agent-1/bundles", exchange -> {
+      cookie.set(firstHeader(exchange, "Cookie"));
+      spaceId.set(firstHeader(exchange, "x-space-id"));
+      writeJson(exchange, 200, """
+          {
+            "status": "200",
+            "url": "/agents/agent-1/bundles",
+            "resultObjVO": {
+              "superAgentId": "agent-1",
+              "currentBundleId": "bundle-current",
+              "items": [
+                {"bundleId": "bundle-current", "status": "online", "bundleVersion": "v1"},
+                {"bundleId": "", "status": "online", "bundleVersion": "empty-id"},
+                {"bundleId": "bundle-old", "status": "offline", "bundleVersion": ""},
+                {"bundleId": "bundle-old", "status": "offline", "bundleVersion": "duplicate"}
+              ]
+            },
+            "success": true
+          }
+          """);
+    });
+    server.start();
+
+    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
+
+    List<PlatformAgentVersion> bundles = service.listAgentBundles("agent-1");
+
+    assertThat(cookie).hasValue("SESSION=valid");
+    assertThat(spaceId).hasValue("space-1");
+    assertThat(bundles).extracting(PlatformAgentVersion::id).containsExactly("bundle-current", "bundle-old");
+    assertThat(bundles).extracting(PlatformAgentVersion::versionName).containsExactly("v1", "bundle-old");
+  }
+
+  @Test
   void invokeAgentSendsMessagesArrayField() throws Exception {
     AtomicReference<String> requestBody = new AtomicReference<>("");
     ObjectMapper objectMapper = new ObjectMapper();
@@ -155,8 +198,7 @@ class PlatformIntegrationServiceTest {
       exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
       writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
     });
-    createAgentDetailContext("router-agent", "/dynamic");
-    server.createContext("/dynamic/chat/completions", exchange -> {
+    server.createContext("/agent/chat", exchange -> {
       requestBody.set(readBody(exchange));
       writeJson(exchange, 200, """
           {"choices":[{"delta":{"content":[{"type":"text","text":"ok"}]}}]}
@@ -167,6 +209,8 @@ class PlatformIntegrationServiceTest {
     PlatformIntegrationService service = new PlatformIntegrationService(properties(), objectMapper);
     service.invokeAgent(
         "router-agent",
+        "bundle-1",
+        "",
         new PlatformAgentChatRequest("conversation-1", List.of(new PlatformAgentMessage("user", "hello")), true));
 
     JsonNode root = objectMapper.readTree(requestBody.get());
@@ -177,31 +221,22 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
-  void invokeAgentUsesDynamicAccessUrlAndOmitsBlankChildAlias() throws Exception {
+  void invokeAgentUsesUnifiedChatUrlAndSendsAgentAndBundleHeaders() throws Exception {
     AtomicReference<String> requestBody = new AtomicReference<>("");
     AtomicReference<String> childAlias = new AtomicReference<>("missing");
+    AtomicReference<String> superAgentId = new AtomicReference<>("");
+    AtomicReference<String> bundleId = new AtomicReference<>("");
     ObjectMapper objectMapper = new ObjectMapper();
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/login", exchange -> {
       exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
       writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
     });
-    server.createContext("/agents/agent-1", exchange -> writeJson(exchange, 200, """
-        {
-          "status": "200",
-          "url": "/agents/agent-1",
-          "success": true,
-          "resultObjVO": {
-            "superAgentId": "agent-1",
-            "displayName": "Agent One",
-            "accessUrl": "http://localhost:%d/dynamic",
-            "bundleVersion": "bundle-main"
-          }
-        }
-        """.formatted(server.getAddress().getPort())));
-    server.createContext("/dynamic/chat/completions", exchange -> {
+    server.createContext("/agent/chat", exchange -> {
       requestBody.set(readBody(exchange));
       childAlias.set(firstHeader(exchange, "x-agent-alias"));
+      superAgentId.set(firstHeader(exchange, "x-super-agent-id"));
+      bundleId.set(firstHeader(exchange, "x-bundle-id"));
       writeJson(exchange, 200, """
           {"choices":[{"delta":{"content":[{"type":"text","text":"dynamic ok"}]}}]}
           """);
@@ -211,12 +246,15 @@ class PlatformIntegrationServiceTest {
     PlatformIntegrationService service = new PlatformIntegrationService(properties(), objectMapper);
     var response = service.invokeAgent(
         "agent-1",
+        "bundle-1",
         "",
         new PlatformAgentChatRequest("conversation-1", List.of(new PlatformAgentMessage("user", "hello")), true));
 
     JsonNode root = objectMapper.readTree(requestBody.get());
     assertThat(root.get("messages").get(0).get("content").asText()).isEqualTo("hello");
     assertThat(childAlias).hasValue("");
+    assertThat(superAgentId).hasValue("agent-1");
+    assertThat(bundleId).hasValue("bundle-1");
     assertThat(response.outputs().get("text")).isEqualTo("dynamic ok");
   }
 
@@ -228,20 +266,7 @@ class PlatformIntegrationServiceTest {
       exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
       writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
     });
-    server.createContext("/agents/agent-1", exchange -> writeJson(exchange, 200, """
-        {
-          "status": "200",
-          "url": "/agents/agent-1",
-          "success": true,
-          "resultObjVO": {
-            "superAgentId": "agent-1",
-            "displayName": "Agent One",
-            "accessUrl": "http://localhost:%d/dynamic",
-            "bundleVersion": "bundle-main"
-          }
-        }
-        """.formatted(server.getAddress().getPort())));
-    server.createContext("/dynamic/chat/completions", exchange -> {
+    server.createContext("/agent/chat", exchange -> {
       childAlias.set(firstHeader(exchange, "x-agent-alias"));
       writeJson(exchange, 200, """
           {"choices":[{"delta":{"content":[{"type":"text","text":"child ok"}]}}]}
@@ -252,6 +277,7 @@ class PlatformIntegrationServiceTest {
     PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
     service.invokeAgent(
         "agent-1",
+        "bundle-1",
         "child-a",
         new PlatformAgentChatRequest("conversation-1", List.of(new PlatformAgentMessage("user", "hello")), true));
 
@@ -266,8 +292,7 @@ class PlatformIntegrationServiceTest {
       exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
       writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
     });
-    createAgentDetailContext("router-agent", "/dynamic");
-    server.createContext("/dynamic/chat/completions", exchange -> {
+    server.createContext("/agent/chat", exchange -> {
       byte[] payload = """
           data: {"choices":[{"delta":{"content":[{"type":"text","text":"Hello"}]}}]}
           data: {"choices":[{"delta":{"content":[{"type":"text","text":" "}]}}]}
@@ -285,6 +310,8 @@ class PlatformIntegrationServiceTest {
     PlatformIntegrationService service = new PlatformIntegrationService(properties(), objectMapper);
     var response = service.invokeAgent(
         "router-agent",
+        "bundle-1",
+        "",
         new PlatformAgentChatRequest("conversation-1", List.of(new PlatformAgentMessage("user", "hello")), true));
 
     assertThat(response.outputs().get("text")).isEqualTo("Hello world");
@@ -298,8 +325,7 @@ class PlatformIntegrationServiceTest {
       exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
       writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
     });
-    createAgentDetailContext("router-agent", "/dynamic");
-    server.createContext("/dynamic/chat/completions", exchange -> {
+    server.createContext("/agent/chat", exchange -> {
       byte[] payload = """
           data: {"id":"chunk-1","conversationId":"conversation-1","masterAgent":{"name":"master"},"metaAgent":{"name":"meta"},"userId":"user-1","object":"chat.completion.chunk","created":1781573919962,"model":"agent-model","choices":[{"index":0,"delta":{"role":"assistant","content":[{"type":"reasoning","reasoning":"thinking"},{"type":"skill_trigger","skillName":"search","skillDesc":"search docs"},{"type":"references","references":[{"id":"ref-1","title":"Doc title","url":"https://example.com/doc","sourceType":"web","sourceName":"Example","summary":"short summary","snippet":"matched snippet"}]},{"type":"debug","text":"debug line"},{"type":"text","text":"final answer"},{"type":"tool_call","toolCallId":"call-1","toolName":"lookup","arguments":"{\\"q\\":\\"abc\\"}"},{"type":"tool_response","toolCallId":"call-1","toolName":"lookup","response":"tool result"},{"type":"gen_ui","uicardDefinition":{"id":"card-1","type":"chart","version":"1","displayName":"Chart","location":"CHAT_UI","body":[{"id":"component-1","type":"text","componentKey":"Text","propsData":{"value":"hello"}}]}},{"type":"error","error":"minor error"}],"tool_calls":[{"index":0,"id":"call-2","type":"function","function":{"name":"fn","arguments":"{\\"x\\":1}"}}],"extra":{"traceId":"trace-1"}},"finish_reason":"stop"}]}
           data: [DONE]
@@ -316,6 +342,8 @@ class PlatformIntegrationServiceTest {
 
     var response = service.invokeAgent(
         "router-agent",
+        "bundle-1",
+        "",
         new PlatformAgentChatRequest("conversation-1", List.of(new PlatformAgentMessage("user", "hello")), true));
 
     var delta = response.choices().getFirst().delta();
@@ -478,8 +506,9 @@ class PlatformIntegrationServiceTest {
     properties.setModelListUrl(baseUrl + "/models");
     properties.setAgentListUrl(baseUrl + "/agents");
     properties.setAgentDetailUrl(baseUrl + "/agents/{agentId}");
+    properties.setAgentBundleListUrl(baseUrl + "/agents/{superAgentId}/bundles");
     properties.setModelChatUrl(baseUrl + "/chat/{modelId}");
-    properties.setSuperAgentChatUrl(baseUrl + "/agent/chat");
+    properties.setAgentChatUrl(baseUrl + "/agent/chat");
     properties.setXSpaceId("space-1");
     properties.getLogin().setUrl(baseUrl + "/login");
     properties.getLogin().setLoginAccount("account");
@@ -489,23 +518,6 @@ class PlatformIntegrationServiceTest {
     properties.getLogin().setAppId("app");
     properties.getLogin().setEncryptedPasswordSwitch("false");
     return properties;
-  }
-
-  private void createAgentDetailContext(String agentId, String accessPath) {
-    String baseUrl = "http://localhost:" + server.getAddress().getPort();
-    server.createContext("/agents/" + agentId, exchange -> writeJson(exchange, 200, """
-        {
-          "status": "200",
-          "url": "/agents/%s",
-          "success": true,
-          "resultObjVO": {
-            "superAgentId": "%s",
-            "displayName": "%s",
-            "accessUrl": "%s%s",
-            "bundleVersion": "bundle-main"
-          }
-        }
-        """.formatted(agentId, agentId, agentId, baseUrl, accessPath)));
   }
 
   private void writeJson(HttpExchange exchange, int status, String body) throws IOException {

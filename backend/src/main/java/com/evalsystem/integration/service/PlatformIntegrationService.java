@@ -3,6 +3,9 @@ package com.evalsystem.integration.service;
 import com.evalsystem.integration.config.PlatformIntegrationProperties;
 import com.evalsystem.integration.api.dto.request.PlatformAgentChatRequest;
 import com.evalsystem.integration.api.dto.response.PlatformAgentChild;
+import com.evalsystem.integration.api.dto.response.PlatformAgentBundleItem;
+import com.evalsystem.integration.api.dto.response.PlatformAgentBundleListResponse;
+import com.evalsystem.integration.api.dto.response.PlatformAgentBundleListResult;
 import com.evalsystem.integration.api.dto.response.PlatformAgentChatResponse;
 import com.evalsystem.integration.api.dto.response.PlatformAgentChoice;
 import com.evalsystem.integration.api.dto.response.PlatformAgentContentBlock;
@@ -10,7 +13,6 @@ import com.evalsystem.integration.api.dto.response.PlatformAgentDefinition;
 import com.evalsystem.integration.api.dto.response.PlatformAgentDetailResponse;
 import com.evalsystem.integration.api.dto.response.PlatformAgentDelta;
 import com.evalsystem.integration.api.dto.response.PlatformAgentField;
-import com.evalsystem.integration.api.dto.response.PlatformAgentInstance;
 import com.evalsystem.integration.api.dto.response.PlatformAgentListResponse;
 import com.evalsystem.integration.api.dto.response.PlatformAgentReferenceItem;
 import com.evalsystem.integration.api.dto.request.PlatformAgentMessage;
@@ -123,6 +125,19 @@ public class PlatformIntegrationService {
     return toAgentDefinition(loadAgentDetail(agentId));
   }
 
+  public List<PlatformAgentVersion> listAgentBundles(String agentId) {
+    String safeAgentId = requireText(agentId, "Agent ID cannot be blank");
+    requireText(properties.getAgentBundleListUrl(), "Please configure agent bundle list API integration.platform.agent-bundle-list-url");
+    PlatformAgentBundleListResponse response = exchangeJson(
+        "GET",
+        agentBundleListUrl(safeAgentId),
+        null,
+        authHeaders(true),
+        PlatformAgentBundleListResponse.class);
+    ensureSuccess("Agent bundle list API", response.status(), response.success());
+    return normalizeAgentBundles(response.resultObjVO());
+  }
+
   private PlatformSuperAgentDetail loadAgentDetail(String agentId) {
     String safeAgentId = requireText(agentId, "Agent ID cannot be blank");
     requireText(properties.getAgentDetailUrl(), "Please configure agent detail API integration.platform.agent-detail-url");
@@ -223,12 +238,14 @@ public class PlatformIntegrationService {
     return safeContent.trim();
   }
 
-  public PlatformAgentChatResponse invokeAgent(String agentId, PlatformAgentChatRequest request) {
-    return invokeAgent(agentId, "", request);
-  }
-
-  public PlatformAgentChatResponse invokeAgent(String agentId, String agentAlias, PlatformAgentChatRequest request) {
+  public PlatformAgentChatResponse invokeAgent(
+      String agentId,
+      String bundleId,
+      String agentAlias,
+      PlatformAgentChatRequest request
+  ) {
     String safeAgentId = firstNonBlank(agentId, DEFAULT_AGENT_ALIAS);
+    String safeBundleId = requireText(bundleId, "Agent bundle ID cannot be blank");
     String safeAgentAlias = firstNonBlank(agentAlias, safeAgentId);
     long startedAt = System.currentTimeMillis();
     String conversationId = StringUtils.hasText(request == null ? null : request.conversationId())
@@ -238,8 +255,7 @@ public class PlatformIntegrationService {
         conversationId,
         request == null || request.messages() == null ? List.of() : request.messages(),
         Boolean.TRUE);
-    PlatformSuperAgentDetail agentDetail = loadAgentDetail(safeAgentId);
-    String chatUrl = agentChatUrl(agentDetail.accessUrl());
+    String chatUrl = requireText(properties.getAgentChatUrl(), "Please configure agent chat API integration.platform.agent-chat-url");
 
     for (int attempt = 0; attempt < 2; attempt++) {
       HttpURLConnection connection = null;
@@ -248,6 +264,8 @@ public class PlatformIntegrationService {
         connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
         connection.setRequestProperty("Accept", "text/event-stream, application/json");
         connection.setRequestProperty("Cookie", ensureCookie());
+        connection.setRequestProperty("x-super-agent-id", safeAgentId);
+        connection.setRequestProperty("x-bundle-id", safeBundleId);
         if (StringUtils.hasText(agentAlias)) {
           connection.setRequestProperty("x-agent-alias", agentAlias.trim());
         }
@@ -302,31 +320,28 @@ public class PlatformIntegrationService {
         id,
         firstNonBlank(agent.displayName(), agent.name(), id),
         agent.description() == null ? "" : agent.description(),
-        normalizeAgentVersions(agent),
+        List.of(),
         normalizeChildAgents(agent.loadedAgents()),
         defaultAgentInputs(),
         defaultAgentOutputs());
   }
 
-  private List<PlatformAgentVersion> normalizeAgentVersions(PlatformSuperAgentDetail agent) {
+  private List<PlatformAgentVersion> normalizeAgentBundles(PlatformAgentBundleListResult result) {
     Map<String, PlatformAgentVersion> versions = new LinkedHashMap<>();
-    addAgentVersion(versions, firstNonBlank(agent.bundleVersion(), agent.currentBundleId()));
-    if (agent.instances() != null) {
-      for (PlatformAgentInstance instance : agent.instances()) {
-        if (instance != null) {
-          addAgentVersion(versions, instance.bundleVersion());
-        }
+    if (result != null && result.items() != null) {
+      for (PlatformAgentBundleItem item : result.items()) {
+        addAgentBundle(versions, item);
       }
     }
     return List.copyOf(versions.values());
   }
 
-  private void addAgentVersion(Map<String, PlatformAgentVersion> versions, String version) {
-    String safeVersion = firstNonBlank(version);
-    if (!StringUtils.hasText(safeVersion) || versions.containsKey(safeVersion)) {
+  private void addAgentBundle(Map<String, PlatformAgentVersion> versions, PlatformAgentBundleItem item) {
+    String bundleId = firstNonBlank(item == null ? null : item.bundleId());
+    if (!StringUtils.hasText(bundleId) || versions.containsKey(bundleId)) {
       return;
     }
-    versions.put(safeVersion, new PlatformAgentVersion(safeVersion, safeVersion));
+    versions.put(bundleId, new PlatformAgentVersion(bundleId, firstNonBlank(item.bundleVersion(), bundleId)));
   }
 
   private List<PlatformAgentChild> normalizeChildAgents(List<PlatformLoadedAgent> loadedAgents) {
@@ -563,12 +578,18 @@ public class PlatformIntegrationService {
     return template.endsWith("/") ? template + encodedAgentId : template + "/" + encodedAgentId;
   }
 
-  private String agentChatUrl(String accessUrl) {
-    String safeAccessUrl = requireText(accessUrl, "Agent detail response is missing accessUrl");
-    String normalized = safeAccessUrl.endsWith("/")
-        ? safeAccessUrl.substring(0, safeAccessUrl.length() - 1)
-        : safeAccessUrl;
-    return normalized + "/chat/completions";
+  private String agentBundleListUrl(String agentId) {
+    String encodedAgentId = URLEncoder.encode(agentId, StandardCharsets.UTF_8);
+    String template = properties.getAgentBundleListUrl();
+    String replaced = template
+        .replace("{superAgentId}", encodedAgentId)
+        .replace("{superagentid}", encodedAgentId)
+        .replace("{agentId}", encodedAgentId)
+        .replace("{agentid}", encodedAgentId);
+    if (!replaced.equals(template)) {
+      return replaced;
+    }
+    return template.endsWith("/") ? template + encodedAgentId : template + "/" + encodedAgentId;
   }
 
   private void ensureSuccess(String name, String status, Boolean success) {

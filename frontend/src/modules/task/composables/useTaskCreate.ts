@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { datasetApi } from '../../../api/dataset'
 import { evaluatorApi } from '../../../api/evaluator'
-import { integrationApi, type PlatformAgentDefinition, type PlatformAgentField, type PlatformModelInfo } from '../../../api/integration'
+import { integrationApi, type PlatformAgentDefinition, type PlatformAgentField, type PlatformAgentVersion, type PlatformModelInfo } from '../../../api/integration'
 import { tagApi } from '../../../api/tag'
 import { taskApi, type AppFieldMappingPayload, type TaskEvaluatorPayload } from '../../../api/task'
 import type {
@@ -93,6 +93,7 @@ export function useTaskCreate() {
   const evaluatorBlocks = ref<EvaluatorBlockState[]>([])
   const agents = ref<PlatformAgentDefinition[]>([])
   const agentDetails = reactive<Record<string, PlatformAgentDefinition>>({})
+  const agentBundleVersions = reactive<Record<string, PlatformAgentVersion[]>>({})
   const models = ref<PlatformModelInfo[]>([])
   const appFieldMappings = reactive<Record<string, string>>({})
   const datasetsLoaded = ref(false)
@@ -101,6 +102,7 @@ export function useTaskCreate() {
   const presetCategoriesLoaded = ref(false)
   const agentsLoaded = ref(false)
   const agentDetailLoading = ref(false)
+  const agentVersionLoading = ref(false)
   const modelsLoaded = ref(false)
   const modelLoading = ref(false)
 
@@ -124,7 +126,7 @@ export function useTaskCreate() {
   ))
   const categoryOptions = computed(() => [{ id: '', categoryName: '全部分类', displayOrder: 0 }, ...presetCategories.value])
   const selectedAgent = computed(() => agentDetails[form.appId] || agents.value.find((agent) => agent.id === form.appId))
-  const agentVersions = computed(() => selectedAgent.value?.versions || [])
+  const agentVersions = computed(() => form.appId ? agentBundleVersions[form.appId] || [] : [])
   const agentChildAgents = computed(() => selectedAgent.value?.childAgents || [])
   const agentInputs = computed(() => selectedAgent.value?.inputs || [])
   const agentOutputs = computed(() => selectedAgent.value?.outputs || defaultAgentOutputs())
@@ -182,8 +184,12 @@ export function useTaskCreate() {
     () => form.appId,
     async (agentId) => {
       form.appAgentAlias = ''
+      form.appVersionId = ''
       if (agentId) {
-        await ensureAgentDetailLoaded(agentId)
+        await Promise.all([
+          ensureAgentDetailLoaded(agentId),
+          ensureAgentBundlesLoaded(agentId)
+        ])
       }
       selectDefaultAgentVersion()
       ensureAppFieldMappings()
@@ -240,6 +246,18 @@ export function useTaskCreate() {
       ElMessage.error(error instanceof Error ? error.message : '获取智能体详情失败')
     } finally {
       agentDetailLoading.value = false
+    }
+  }
+
+  async function ensureAgentBundlesLoaded(agentId: string) {
+    if (!agentId || agentBundleVersions[agentId]) return
+    agentVersionLoading.value = true
+    try {
+      agentBundleVersions[agentId] = await integrationApi.listAgentBundles(agentId)
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '获取智能体快照失败')
+    } finally {
+      agentVersionLoading.value = false
     }
   }
 
@@ -834,6 +852,7 @@ export function useTaskCreate() {
     agents,
     models,
     agentDetailLoading,
+    agentVersionLoading,
     modelLoading,
     selectedAgent,
     agentVersions,
