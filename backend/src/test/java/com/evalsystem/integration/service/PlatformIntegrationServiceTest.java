@@ -43,7 +43,7 @@ class PlatformIntegrationServiceTest {
     });
     server.createContext("/models", exchange -> {
       modelCalls.incrementAndGet();
-      String cookie = firstHeader(exchange, "Cookie");
+      String cookie = firstHeader(exchange, "cookie");
       if (!cookie.contains("SESSION=new")) {
         writeJson(exchange, 403, "{\"message\":\"forbidden\"}");
         return;
@@ -91,7 +91,7 @@ class PlatformIntegrationServiceTest {
       writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
     });
     server.createContext("/agents/agent-1", exchange -> {
-      cookie.set(firstHeader(exchange, "Cookie"));
+      cookie.set(firstHeader(exchange, "cookie"));
       spaceId.set(firstHeader(exchange, "x-space-id"));
       writeJson(exchange, 200, """
           {
@@ -157,7 +157,7 @@ class PlatformIntegrationServiceTest {
       writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
     });
     server.createContext("/agents/agent-1/bundles", exchange -> {
-      cookie.set(firstHeader(exchange, "Cookie"));
+      cookie.set(firstHeader(exchange, "cookie"));
       spaceId.set(firstHeader(exchange, "x-space-id"));
       writeJson(exchange, 200, """
           {
@@ -452,7 +452,7 @@ class PlatformIntegrationServiceTest {
         }
         """));
     server.createContext("/iam/chat", exchange -> {
-      authorization.set(firstHeader(exchange, "Authorization"));
+      authorization.set(firstHeader(exchange, "authorization"));
       requestBody.set(readBody(exchange));
       writeJson(exchange, 200, """
           {

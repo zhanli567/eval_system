@@ -182,9 +182,9 @@ public class PlatformIntegrationService {
     HttpURLConnection connection = null;
     try {
       connection = openConnection(properties.getIam().getUrl(), "POST");
-      connection.setRequestProperty("Accept", "application/json");
-      connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
-      connection.setRequestProperty("Authorization", properties.getIam().getAuthorization());
+      connection.setRequestProperty("accept", "application/json");
+      connection.setRequestProperty("content-type", "application/json;charset=UTF-8");
+      connection.setRequestProperty("authorization", properties.getIam().getAuthorization());
       Map<String, Object> body = new LinkedHashMap<>();
       body.put("model", modelName);
       body.put("messages", List.of(Map.of(
@@ -261,9 +261,9 @@ public class PlatformIntegrationService {
       HttpURLConnection connection = null;
       try {
         connection = openConnection(chatUrl, "POST");
-        connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
-        connection.setRequestProperty("Accept", "text/event-stream, application/json");
-        connection.setRequestProperty("Cookie", ensureCookie());
+        connection.setRequestProperty("content-type", "application/json;charset=UTF-8");
+        connection.setRequestProperty("accept", "text/event-stream, application/json");
+        connection.setRequestProperty("cookie", ensureCookie());
         connection.setRequestProperty("x-super-agent-id", safeAgentId);
         connection.setRequestProperty("x-bundle-id", safeBundleId);
         if (StringUtils.hasText(agentAlias)) {
@@ -383,7 +383,7 @@ public class PlatformIntegrationService {
 
   private Map<String, String> authHeaders(boolean includeSpaceId) {
     Map<String, String> headers = new LinkedHashMap<>();
-    headers.put("Cookie", ensureCookie());
+    headers.put("cookie", ensureCookie());
     if (includeSpaceId && StringUtils.hasText(properties.getXSpaceId())) {
       headers.put("x-space-id", properties.getXSpaceId());
     }
@@ -398,8 +398,8 @@ public class PlatformIntegrationService {
     HttpURLConnection connection = null;
     try {
       connection = openConnection(properties.getLogin().getUrl(), "POST");
-      connection.setRequestProperty("Content-Type", "application/json");
-      connection.setRequestProperty("Accept-Charset", "UTF-8");
+      connection.setRequestProperty("content-type", "application/json");
+      connection.setRequestProperty("accept-charset", "UTF-8");
       writeJson(connection, new PlatformLoginRequest(
           properties.getLogin().getLoginAccount(),
           properties.getLogin().getUid(),
@@ -456,18 +456,18 @@ public class PlatformIntegrationService {
       HttpURLConnection connection = null;
       try {
         connection = openConnection(url, method);
-        connection.setRequestProperty("Accept", "application/json");
+        connection.setRequestProperty("accept", "application/json");
         if (!requestHeaders.isEmpty()) {
           requestHeaders.forEach(connection::setRequestProperty);
         }
         if (body != null) {
-          connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+          connection.setRequestProperty("content-type", "application/json;charset=UTF-8");
           writeJson(connection, body);
         }
         int statusCode = connection.getResponseCode();
         String responseBody = readAll(statusCode >= 200 && statusCode < 300 ? connection.getInputStream() : connection.getErrorStream());
-        if (isUnauthorized(statusCode) && requestHeaders.containsKey("Cookie") && attempt == 0) {
-          requestHeaders.put("Cookie", refreshCookie());
+        if (isUnauthorized(statusCode) && requestHeaders.containsKey("cookie") && attempt == 0) {
+          requestHeaders.put("cookie", refreshCookie());
           continue;
         }
         if (statusCode < 200 || statusCode >= 300) {
