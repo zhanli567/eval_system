@@ -381,8 +381,8 @@ public class TaskService {
   @Transactional
   public void deleteTask(String taskId) {
     TaskBase task = findTask(taskId);
-    if (!List.of(STATUS_PENDING, STATUS_COMPLETED).contains(task.status())) {
-      throw new IllegalArgumentException("Only pending or completed tasks can be deleted");
+    if (!List.of(STATUS_PENDING, STATUS_COMPLETED, STATUS_FAILED).contains(task.status())) {
+      throw new IllegalArgumentException("Only pending, completed or failed tasks can be deleted");
     }
     taskRepository.softDeleteTask(taskId, now());
   }

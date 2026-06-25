@@ -203,6 +203,15 @@ class TaskServicePresetDisplayTest {
     verify(taskRepository).resetTagResultsForRestart(eq("task-1"), anyString());
   }
 
+  @Test
+  void deleteTaskAllowsFailedTask() {
+    when(taskRepository.findTaskBase("task-1")).thenReturn(taskBase("failed", "none"));
+
+    service.deleteTask("task-1");
+
+    verify(taskRepository).softDeleteTask(eq("task-1"), anyString());
+  }
+
   private TaskService newTaskService(org.springframework.core.task.TaskExecutor taskExecutor) {
     return new TaskService(
         taskRepository,

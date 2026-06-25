@@ -110,7 +110,7 @@ export function useTaskManagement() {
 
   async function removeTask(row: TaskSummary) {
     if (!canDeleteTask(row)) {
-      ElMessage.warning('仅待执行和评测完成的任务可删除')
+      ElMessage.warning('仅待执行、评测完成和评测失败的任务可删除')
       return
     }
     await ElMessageBox.confirm(`确定删除评测任务“${row.base.taskName}”吗？`, '删除评测任务', { type: 'warning' })
@@ -145,7 +145,7 @@ export function useTaskManagement() {
   }
 
   function canDeleteTask(row: TaskSummary) {
-    return row.base.status === 'pending' || row.base.status === 'completed'
+    return row.base.status === 'pending' || row.base.status === 'completed' || row.base.status === 'failed'
   }
 
   function dimensionStatusLabel(value?: string) {
