@@ -22,9 +22,6 @@ CREATE TABLE IF NOT EXISTS t_eval_task (
   last_updated_date TIMESTAMP
 );
 
-ALTER TABLE t_eval_task ADD COLUMN IF NOT EXISTS app_version_id VARCHAR(64);
-ALTER TABLE t_eval_task ADD COLUMN IF NOT EXISTS app_agent_alias VARCHAR(128);
-
 COMMENT ON TABLE t_eval_task IS '评测任务主表';
 COMMENT ON COLUMN t_eval_task.id IS '评测任务ID';
 COMMENT ON COLUMN t_eval_task.space_id IS '空间ID';
