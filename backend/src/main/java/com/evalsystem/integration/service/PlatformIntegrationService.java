@@ -559,46 +559,33 @@ public class PlatformIntegrationService {
   }
 
   private String pagedListUrl(String url) {
-    String base = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
-    return base + "/" + DEFAULT_PAGE_SIZE + "/" + DEFAULT_CUR_PAGE;
+    return pathParamUrl(url, Map.of(
+        "pageSize", String.valueOf(DEFAULT_PAGE_SIZE),
+        "curPage", String.valueOf(DEFAULT_CUR_PAGE)));
   }
 
   private String modelChatUrl(String modelId) {
-    String encodedModelId = URLEncoder.encode(modelId, StandardCharsets.UTF_8);
-    String template = properties.getModelChatUrl();
-    String replaced = template
-        .replace("{modelId}", encodedModelId)
-        .replace("{modelid}", encodedModelId);
-    if (!replaced.equals(template)) {
-      return replaced;
-    }
-    return template.endsWith("/") ? template + encodedModelId : template + "/" + encodedModelId;
+    return pathParamUrl(properties.getModelChatUrl(), Map.of("modelId", modelId));
   }
 
   private String agentDetailUrl(String agentId) {
-    String encodedAgentId = URLEncoder.encode(agentId, StandardCharsets.UTF_8);
-    String template = properties.getAgentDetailUrl();
-    String replaced = template
-        .replace("{agentId}", encodedAgentId)
-        .replace("{agentid}", encodedAgentId);
-    if (!replaced.equals(template)) {
-      return replaced;
-    }
-    return template.endsWith("/") ? template + encodedAgentId : template + "/" + encodedAgentId;
+    return pathParamUrl(properties.getAgentDetailUrl(), Map.of("superAgentId", agentId));
   }
 
   private String agentBundleListUrl(String agentId) {
-    String encodedAgentId = URLEncoder.encode(agentId, StandardCharsets.UTF_8);
-    String template = properties.getAgentBundleListUrl();
-    String replaced = template
-        .replace("{superAgentId}", encodedAgentId)
-        .replace("{superagentid}", encodedAgentId)
-        .replace("{agentId}", encodedAgentId)
-        .replace("{agentid}", encodedAgentId);
-    if (!replaced.equals(template)) {
-      return replaced;
+    return pathParamUrl(properties.getAgentBundleListUrl(), Map.of("superAgentId", agentId));
+  }
+
+  private String pathParamUrl(String template, Map<String, String> values) {
+    String result = template;
+    for (Map.Entry<String, String> entry : values.entrySet()) {
+      String placeholder = "{" + entry.getKey() + "}";
+      if (!result.contains(placeholder)) {
+        throw new IllegalStateException("URL template missing path parameter " + placeholder);
+      }
+      result = result.replace(placeholder, URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
     }
-    return template.endsWith("/") ? template + encodedAgentId : template + "/" + encodedAgentId;
+    return result;
   }
 
   private void ensureSuccess(String name, String status, Boolean success) {

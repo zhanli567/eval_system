@@ -32,7 +32,7 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
-  void listModelsReloginsAndRetriesWhenCookieIsRejected() throws Exception {
+  void listModelsReplacesDefaultPagePlaceholdersAndReloginsWhenCookieIsRejected() throws Exception {
     AtomicInteger loginCalls = new AtomicInteger();
     AtomicInteger modelCalls = new AtomicInteger();
     AtomicReference<String> modelPath = new AtomicReference<>("");
@@ -90,7 +90,7 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
-  void listAgentsAppendsDefaultPagePathAndMapsIconUrl() throws Exception {
+  void listAgentsReplacesDefaultPagePlaceholdersAndMapsIconUrl() throws Exception {
     AtomicReference<String> agentPath = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/login", exchange -> {
@@ -246,6 +246,42 @@ class PlatformIntegrationServiceTest {
     assertThat(spaceId).hasValue("space-1");
     assertThat(bundles).extracting(PlatformAgentVersion::id).containsExactly("bundle-current", "bundle-old");
     assertThat(bundles).extracting(PlatformAgentVersion::versionName).containsExactly("v1", "bundle-old");
+  }
+
+  @Test
+  void chatModelReplacesModelIdPlaceholderInTestUrl() throws Exception {
+    AtomicReference<String> requestPath = new AtomicReference<>("");
+    AtomicReference<String> requestBody = new AtomicReference<>("");
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/login", exchange -> {
+      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
+      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
+    });
+    server.createContext("/chat/model-1/test", exchange -> {
+      requestPath.set(exchange.getRequestURI().getPath());
+      requestBody.set(readBody(exchange));
+      writeJson(exchange, 200, """
+          {
+            "status": "200",
+            "url": "/chat/model-1/test",
+            "success": true,
+            "resultObjVO": {
+              "modelId": "model-1",
+              "outputText": "ok",
+              "checkedAt": "1"
+            }
+          }
+          """);
+    });
+    server.start();
+
+    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
+
+    var result = service.chatModel("model-1", "hello");
+
+    assertThat(requestPath).hasValue("/chat/model-1/test");
+    assertThat(requestBody).hasValue("{\"message\":\"hello\"}");
+    assertThat(result.outputText()).isEqualTo("ok");
   }
 
   @Test
@@ -572,11 +608,11 @@ class PlatformIntegrationServiceTest {
   private PlatformIntegrationProperties properties() {
     String baseUrl = "http://localhost:" + server.getAddress().getPort();
     PlatformIntegrationProperties properties = new PlatformIntegrationProperties();
-    properties.setModelListUrl(baseUrl + "/models");
-    properties.setAgentListUrl(baseUrl + "/agents");
-    properties.setAgentDetailUrl(baseUrl + "/agents/{agentId}");
+    properties.setModelListUrl(baseUrl + "/models/{pageSize}/{curPage}");
+    properties.setAgentListUrl(baseUrl + "/agents/{pageSize}/{curPage}");
+    properties.setAgentDetailUrl(baseUrl + "/agents/{superAgentId}");
     properties.setAgentBundleListUrl(baseUrl + "/agents/{superAgentId}/bundles");
-    properties.setModelChatUrl(baseUrl + "/chat/{modelId}");
+    properties.setModelChatUrl(baseUrl + "/chat/{modelId}/test");
     properties.setAgentChatUrl(baseUrl + "/agent/chat");
     properties.setXSpaceId("space-1");
     properties.getLogin().setUrl(baseUrl + "/login");
