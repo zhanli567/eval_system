@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task (
   last_updated_date TIMESTAMP
 );
 
+ALTER TABLE t_eval_task ADD COLUMN IF NOT EXISTS app_version_id VARCHAR(64);
 ALTER TABLE t_eval_task ADD COLUMN IF NOT EXISTS app_agent_alias VARCHAR(128);
 
 COMMENT ON TABLE t_eval_task IS '评测任务主表';
@@ -42,6 +43,7 @@ COMMENT ON COLUMN t_eval_task.item_count IS '评测数据总行数';
 COMMENT ON COLUMN t_eval_task.app_type IS '应用类型：none不关联应用，agent智能体';
 COMMENT ON COLUMN t_eval_task.app_id IS '智能体应用ID，未关联应用时为空';
 COMMENT ON COLUMN t_eval_task.app_version_id IS '智能体应用版本ID，未关联应用时为空';
+COMMENT ON COLUMN t_eval_task.app_agent_alias IS '子智能体ID/alias，未指定子智能体时为空';
 COMMENT ON COLUMN t_eval_task.started_at IS '开始执行时间';
 COMMENT ON COLUMN t_eval_task.finished_at IS '结束执行时间';
 COMMENT ON COLUMN t_eval_task.is_deleted IS '是否删除：0否，1是';

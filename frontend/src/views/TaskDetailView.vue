@@ -41,8 +41,10 @@ function findEvaluatorResult(row: TaskItemDetail, taskEvaluatorId: string) {
 
 function formatAppBinding(task?: TaskBase | null) {
   if (!task || task.appType !== 'agent') return '-'
-  const appId = task.appId || '智能体应用'
-  return task.appAgentAlias ? `${appId} / ${task.appAgentAlias}` : appId
+  const parts = [task.appId || '智能体应用']
+  if (task.appVersionId) parts.push(`快照 ${task.appVersionId}`)
+  if (task.appAgentAlias) parts.push(`子智能体 ${task.appAgentAlias}`)
+  return parts.join(' / ')
 }
 
 function isScoredEvaluatorResult(result?: TaskEvaluatorResult) {

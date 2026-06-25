@@ -33,8 +33,10 @@ const {
 
 function formatAppBinding(base: TaskBase) {
   if (base.appType !== 'agent') return '-'
-  const appId = base.appId || '智能体应用'
-  return base.appAgentAlias ? `${appId} / ${base.appAgentAlias}` : appId
+  const parts = [base.appId || '智能体应用']
+  if (base.appVersionId) parts.push(`快照 ${base.appVersionId}`)
+  if (base.appAgentAlias) parts.push(`子智能体 ${base.appAgentAlias}`)
+  return parts.join(' / ')
 }
 </script>
 
