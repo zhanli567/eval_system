@@ -35,6 +35,7 @@ class PlatformIntegrationServiceTest {
   void listModelsReloginsAndRetriesWhenCookieIsRejected() throws Exception {
     AtomicInteger loginCalls = new AtomicInteger();
     AtomicInteger modelCalls = new AtomicInteger();
+    AtomicReference<String> modelPath = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/login", exchange -> {
       int call = loginCalls.incrementAndGet();
@@ -43,6 +44,7 @@ class PlatformIntegrationServiceTest {
     });
     server.createContext("/models", exchange -> {
       modelCalls.incrementAndGet();
+      modelPath.set(exchange.getRequestURI().getPath());
       String cookie = firstHeader(exchange, "cookie");
       if (!cookie.contains("SESSION=new")) {
         writeJson(exchange, 403, "{\"message\":\"forbidden\"}");
@@ -54,18 +56,23 @@ class PlatformIntegrationServiceTest {
             "url": "/models",
             "success": true,
             "resultObjVO": {
-              "list": [
+              "pageVO": {
+                "totalRows": 1,
+                "curPage": 1,
+                "pageSize": 10,
+                "resultMode": 0,
+                "startIndex": 0,
+                "endIndex": 1,
+                "totalPages": 1
+              },
+              "result": [
                 {
                   "modelId": "model-1",
                   "name": "模型一",
                   "timeoutPolicy": "default",
                   "capabilities": ["chat"]
                 }
-              ],
-              "total": 1,
-              "pageNum": 1,
-              "pageSize": 10,
-              "pages": 1
+              ]
             }
           }
           """);
@@ -77,8 +84,60 @@ class PlatformIntegrationServiceTest {
     List<PlatformModelInfo> models = service.listModels();
 
     assertThat(models).extracting(PlatformModelInfo::modelId).containsExactly("model-1");
+    assertThat(modelPath).hasValue("/models/10/1");
     assertThat(loginCalls).hasValue(2);
     assertThat(modelCalls).hasValue(2);
+  }
+
+  @Test
+  void listAgentsAppendsDefaultPagePathAndMapsIconUrl() throws Exception {
+    AtomicReference<String> agentPath = new AtomicReference<>("");
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/login", exchange -> {
+      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
+      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
+    });
+    server.createContext("/agents", exchange -> {
+      agentPath.set(exchange.getRequestURI().getPath());
+      writeJson(exchange, 200, """
+          {
+            "status": "200",
+            "url": "/agents",
+            "success": true,
+            "resultObjVO": {
+              "pageVO": {
+                "totalRows": 1,
+                "curPage": 1,
+                "pageSize": 10,
+                "resultMode": 0,
+                "startIndex": 0,
+                "endIndex": 1,
+                "totalPages": 1
+              },
+              "result": [
+                {
+                  "superAgentId": "agent-1",
+                  "name": "agent-one",
+                  "displayName": "Agent One",
+                  "description": "Demo agent",
+                  "currentBundleId": "bundle-current-id",
+                  "bundleVersion": "bundle-main",
+                  "iconUrl": "https://example.com/agent.png"
+                }
+              ]
+            }
+          }
+          """);
+    });
+    server.start();
+
+    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
+
+    List<PlatformAgentDefinition> agents = service.listAgents();
+
+    assertThat(agentPath).hasValue("/agents/10/1");
+    assertThat(agents).extracting(PlatformAgentDefinition::id).containsExactly("agent-1");
+    assertThat(agents.getFirst().iconUrl()).isEqualTo("https://example.com/agent.png");
   }
 
   @Test
@@ -385,7 +444,16 @@ class PlatformIntegrationServiceTest {
           "url": "/models",
           "success": true,
           "resultObjVO": {
-            "list": [
+            "pageVO": {
+              "totalRows": 2,
+              "curPage": 1,
+              "pageSize": 10,
+              "resultMode": 0,
+              "startIndex": 0,
+              "endIndex": 2,
+              "totalPages": 1
+            },
+            "result": [
               {
                 "modelId": "iam-model",
                 "name": "IAM Model",
@@ -400,11 +468,7 @@ class PlatformIntegrationServiceTest {
                 "authType": "COOKIE",
                 "capabilities": ["chat"]
               }
-            ],
-            "total": 2,
-            "pageNum": 1,
-            "pageSize": 10,
-            "pages": 1
+            ]
           }
         }
         """));
@@ -435,7 +499,16 @@ class PlatformIntegrationServiceTest {
           "url": "/models",
           "success": true,
           "resultObjVO": {
-            "list": [
+            "pageVO": {
+              "totalRows": 1,
+              "curPage": 1,
+              "pageSize": 10,
+              "resultMode": 0,
+              "startIndex": 0,
+              "endIndex": 1,
+              "totalPages": 1
+            },
+            "result": [
               {
                 "modelId": "iam-model",
                 "name": "IAM Model",
@@ -443,11 +516,7 @@ class PlatformIntegrationServiceTest {
                 "authType": "IAM",
                 "capabilities": ["chat"]
               }
-            ],
-            "total": 1,
-            "pageNum": 1,
-            "pageSize": 10,
-            "pages": 1
+            ]
           }
         }
         """));
@@ -536,4 +605,5 @@ class PlatformIntegrationServiceTest {
   private String readBody(HttpExchange exchange) throws IOException {
     return new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
   }
+
 }

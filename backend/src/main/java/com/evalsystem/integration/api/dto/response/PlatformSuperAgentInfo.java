@@ -16,6 +16,7 @@ public record PlatformSuperAgentInfo(
     Integer loadedAgentCount,
     String spaceId,
     String currentBundleId,
-    String description
+    String description,
+    String iconUrl
 ) {
 }

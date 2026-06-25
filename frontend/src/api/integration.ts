@@ -64,6 +64,7 @@ export interface PlatformAgentDefinition {
   id: string
   agentName: string
   description: string
+  iconUrl: string
   versions: PlatformAgentVersion[]
   childAgents: PlatformAgentChild[]
   inputs: PlatformAgentField[]

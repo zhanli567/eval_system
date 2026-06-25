@@ -67,6 +67,8 @@ public class PlatformIntegrationService {
   private static final String IAM_AUTH_TYPE = "IAM";
   private static final String THINK_END_TAG = "</think>";
   private static final String DEFAULT_AGENT_ALIAS = "router-agent";
+  private static final int DEFAULT_PAGE_SIZE = 10;
+  private static final int DEFAULT_CUR_PAGE = 1;
   private static final String RESPONSE_OBJECT = "com.evalsystem.integration.api.dto.response.PlatformAgentChatResponse";
   private static final HostnameVerifier TRUST_ALL_HOSTNAME_VERIFIER = (hostname, session) -> true;
   private static final TypeReference<List<PlatformAgentToolCallDelta>> TOOL_CALLS_TYPE = new TypeReference<>() {
@@ -90,13 +92,13 @@ public class PlatformIntegrationService {
     requireText(properties.getModelListUrl(), "请配置模型列表接口 integration.platform.model-list-url");
     PlatformModelListResponse response = exchangeJson(
         "GET",
-        properties.getModelListUrl(),
+        pagedListUrl(properties.getModelListUrl()),
         null,
         authHeaders(true),
         PlatformModelListResponse.class);
     ensureSuccess("模型列表接口", response.status(), response.success());
     PlatformListResult<PlatformModelInfo> result = response.resultObjVO();
-    List<PlatformModelInfo> models = result == null || result.list() == null ? List.of() : result.list();
+    List<PlatformModelInfo> models = result == null || result.result() == null ? List.of() : result.result();
     if (!properties.getIam().isEnabled()) {
       return models;
     }
@@ -109,16 +111,16 @@ public class PlatformIntegrationService {
     requireText(properties.getAgentListUrl(), "请配置智能体列表接口 integration.platform.agent-list-url");
     PlatformAgentListResponse response = exchangeJson(
         "GET",
-        properties.getAgentListUrl(),
+        pagedListUrl(properties.getAgentListUrl()),
         null,
         authHeaders(true),
         PlatformAgentListResponse.class);
     ensureSuccess("智能体列表接口", response.status(), response.success());
     PlatformListResult<PlatformSuperAgentInfo> result = response.resultObjVO();
-    if (result == null || result.list() == null) {
+    if (result == null || result.result() == null) {
       return List.of();
     }
-    return result.list().stream().map(this::toAgentDefinition).toList();
+    return result.result().stream().map(this::toAgentDefinition).toList();
   }
 
   public PlatformAgentDefinition getAgentDetail(String agentId) {
@@ -303,6 +305,7 @@ public class PlatformIntegrationService {
         id,
         firstNonBlank(agent.displayName(), agent.name(), id),
         agent.description() == null ? "" : agent.description(),
+        firstNonBlank(agent.iconUrl()),
         List.of(new PlatformAgentVersion(versionId, versionName)),
         List.of(),
         List.of(new PlatformAgentField("query", "query", "string", "用户输入或问题", 1)),
@@ -320,6 +323,7 @@ public class PlatformIntegrationService {
         id,
         firstNonBlank(agent.displayName(), agent.name(), id),
         agent.description() == null ? "" : agent.description(),
+        "",
         List.of(),
         normalizeChildAgents(agent.loadedAgents()),
         defaultAgentInputs(),
@@ -552,6 +556,11 @@ public class PlatformIntegrationService {
     try (var outputStream = connection.getOutputStream()) {
       outputStream.write(payload);
     }
+  }
+
+  private String pagedListUrl(String url) {
+    String base = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    return base + "/" + DEFAULT_PAGE_SIZE + "/" + DEFAULT_CUR_PAGE;
   }
 
   private String modelChatUrl(String modelId) {

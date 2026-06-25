@@ -3,10 +3,18 @@ package com.evalsystem.integration.api.dto.response;
 import java.util.List;
 
 public record PlatformListResult<T>(
-    List<T> list,
-    Integer total,
-    Integer pageNum,
+    PlatformPageVO pageVO,
+    List<T> result
+) {
+}
+
+record PlatformPageVO(
+    Integer totalRows,
+    Integer curPage,
     Integer pageSize,
-    Integer pages
+    Integer resultMode,
+    Integer startIndex,
+    Integer endIndex,
+    Integer totalPages
 ) {
 }
