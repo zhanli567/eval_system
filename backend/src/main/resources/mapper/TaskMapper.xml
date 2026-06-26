@@ -3,8 +3,8 @@
     PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.evalsystem.task.mapper.TaskMapper">
-  <resultMap id="TaskBaseMap" type="com.evalsystem.task.api.dto.response.TaskBase">
+<mapper namespace="com.agentnexus.backend.task.mapper.TaskMapper">
+  <resultMap id="TaskBaseMap" type="com.agentnexus.backend.task.api.dto.response.TaskBase">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
       <arg column="taskName" javaType="java.lang.String"/>
@@ -27,7 +27,7 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="EvaluatorDimensionMap" type="com.evalsystem.task.api.dto.response.TaskEvaluatorDimension">
+  <resultMap id="EvaluatorDimensionMap" type="com.agentnexus.backend.task.api.dto.response.TaskEvaluatorDimension">
     <constructor>
       <arg column="taskEvaluatorId" javaType="java.lang.String"/>
       <arg column="evaluatorSource" javaType="java.lang.String"/>
@@ -45,7 +45,7 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="TagDimensionMap" type="com.evalsystem.task.api.dto.response.TaskTagDimension">
+  <resultMap id="TagDimensionMap" type="com.agentnexus.backend.task.api.dto.response.TaskTagDimension">
     <constructor>
       <arg column="taskTagId" javaType="java.lang.String"/>
       <arg column="tagId" javaType="java.lang.String"/>
@@ -60,7 +60,7 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="EvaluatorResultMap" type="com.evalsystem.task.api.dto.response.TaskEvaluatorResultDto">
+  <resultMap id="EvaluatorResultMap" type="com.agentnexus.backend.task.api.dto.response.TaskEvaluatorResultDto">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
       <arg column="taskItemId" javaType="java.lang.String"/>
@@ -78,7 +78,7 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="TagResultMap" type="com.evalsystem.task.api.dto.response.TaskTagResultDto">
+  <resultMap id="TagResultMap" type="com.agentnexus.backend.task.api.dto.response.TaskTagResultDto">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
       <arg column="taskItemId" javaType="java.lang.String"/>
@@ -96,7 +96,7 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="TagBindingMap" type="com.evalsystem.task.repository.TaskTagBindingRecord">
+  <resultMap id="TagBindingMap" type="com.agentnexus.backend.task.repository.TaskTagBindingRecord">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
       <arg column="taskId" javaType="java.lang.String"/>

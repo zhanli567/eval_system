@@ -10,7 +10,7 @@
     <relativePath/>
   </parent>
 
-  <groupId>com.evalsystem</groupId>
+  <groupId>com.agentnexus.backend</groupId>
   <artifactId>eval-system-backend</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <name>eval-system-backend</name>

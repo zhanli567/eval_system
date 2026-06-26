@@ -3,8 +3,8 @@
     PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.evalsystem.dataset.mapper.DatasetMapper">
-  <resultMap id="DatasetSummaryMap" type="com.evalsystem.dataset.api.dto.response.DatasetSummary">
+<mapper namespace="com.agentnexus.backend.dataset.mapper.DatasetMapper">
+  <resultMap id="DatasetSummaryMap" type="com.agentnexus.backend.dataset.api.dto.response.DatasetSummary">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
       <arg column="name" javaType="java.lang.String"/>
@@ -17,7 +17,7 @@
     </constructor>
   </resultMap>
 
-  <resultMap id="RowRecordMap" type="com.evalsystem.dataset.repository.DatasetRowRecord">
+  <resultMap id="RowRecordMap" type="com.agentnexus.backend.dataset.repository.DatasetRowRecord">
     <constructor>
       <arg column="id" javaType="java.lang.String"/>
       <arg column="rowNo" javaType="java.lang.Integer"/>

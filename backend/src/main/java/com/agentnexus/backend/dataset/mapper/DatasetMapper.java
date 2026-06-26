@@ -1,0 +1,24 @@
+package com.agentnexus.backend.dataset.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.agentnexus.backend.dataset.api.dto.response.DatasetSummary;
+import com.agentnexus.backend.dataset.entity.EvalDataset;
+import com.agentnexus.backend.dataset.repository.DatasetRowRecord;
+import java.util.List;
+import org.apache.ibatis.annotations.Param;
+
+public interface DatasetMapper extends BaseMapper<EvalDataset> {
+  List<DatasetSummary> listDatasetSummaries(@Param("like") String like, @Param("size") int size, @Param("offset") int offset);
+
+  DatasetSummary findDatasetSummary(@Param("datasetId") String datasetId);
+
+  List<DatasetRowRecord> searchRows(
+      @Param("versionId") String versionId,
+      @Param("fieldId") String fieldId,
+      @Param("like") String like,
+      @Param("size") int size,
+      @Param("offset") int offset
+  );
+
+  long countSearchRows(@Param("versionId") String versionId, @Param("fieldId") String fieldId, @Param("like") String like);
+}
