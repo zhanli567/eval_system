@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 @Component
 @ResponseBody
-@Path("/api/tasks")
+@Path("/tasks")
 public class TaskController {
   private final TaskService taskService;
 

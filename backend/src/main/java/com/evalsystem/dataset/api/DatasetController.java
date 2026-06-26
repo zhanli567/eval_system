@@ -29,7 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Component
 @ResponseBody
-@Path("/api/datasets")
+@Path("/datasets")
 public class DatasetController {
   private final DatasetService datasetService;
 

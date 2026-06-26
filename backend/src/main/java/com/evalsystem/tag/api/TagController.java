@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 @Component
 @ResponseBody
-@Path("/api/tags")
+@Path("/tags")
 public class TagController {
   private final TagService tagService;
 

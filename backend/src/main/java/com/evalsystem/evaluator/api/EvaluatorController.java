@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 @Component
 @ResponseBody
-@Path("/api/evaluators")
+@Path("/evaluators")
 public class EvaluatorController {
   private final EvaluatorService evaluatorService;
 

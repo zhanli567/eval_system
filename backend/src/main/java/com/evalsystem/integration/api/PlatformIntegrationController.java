@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 @Component
 @ResponseBody
-@Path("/api/integration")
+@Path("/integration")
 public class PlatformIntegrationController {
   private final PlatformIntegrationService integrationService;
 
