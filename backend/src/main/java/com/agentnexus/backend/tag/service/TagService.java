@@ -9,7 +9,9 @@ import com.agentnexus.backend.tag.api.dto.request.TagOptionInput;
 import com.agentnexus.backend.tag.api.dto.response.TagSummary;
 import com.agentnexus.backend.tag.repository.TagRepository;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -182,6 +184,7 @@ public class TagService {
       throw new IllegalArgumentException("分类标签请至少配置一个Pass选项和一个Fail选项");
     }
     List<TagOptionInput> normalized = new ArrayList<>();
+    Set<String> optionNames = new HashSet<>();
     boolean hasPass = false;
     boolean hasFail = false;
     for (TagOptionInput option : options) {
@@ -191,6 +194,9 @@ public class TagService {
       String optionName = option.optionName().trim();
       if (optionName.length() > 50) {
         throw new IllegalArgumentException("标签选项不能超过50个字符");
+      }
+      if (!optionNames.add(optionName)) {
+        throw new IllegalArgumentException("标签选项不能重复");
       }
       String optionGroup = normalizeOptionGroup(option.optionGroup());
       hasPass = hasPass || "pass".equals(optionGroup);

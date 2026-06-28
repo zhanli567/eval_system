@@ -53,10 +53,15 @@ public class DatasetService {
 
   @Transactional
   public DatasetSummary createDataset(CreateDatasetRequest request) {
+    if (request == null) {
+      throw new IllegalArgumentException("评测集参数不能为空");
+    }
+    String name = normalizeDatasetName(request.name());
+    String description = normalizeDescription(request.description());
     String datasetId = id();
     String draftVersionId = id();
     String now = now();
-    datasetRepository.insertDataset(datasetId, request.name(), request.description(), now);
+    datasetRepository.insertDataset(datasetId, name, description, now);
     datasetRepository.insertVersion(draftVersionId, datasetId, 0, 0, now);
     replaceFields(draftVersionId, request.fields() == null ? List.of() : request.fields());
     return getDatasetSummary(datasetId);
@@ -254,14 +259,37 @@ public class DatasetService {
     if (fields == null || fields.isEmpty()) {
       throw new IllegalArgumentException("请维护表头");
     }
+    Set<String> names = new HashSet<>();
     for (FieldInput field : fields) {
       if (!StringUtils.hasText(field.fieldName())) {
         throw new IllegalArgumentException("列名不能为空");
+      }
+      if (!names.add(field.fieldName().trim())) {
+        throw new IllegalArgumentException("列名不能重复");
       }
       if (!SUPPORTED_FIELD_TYPES.contains(field.fieldType())) {
         throw new IllegalArgumentException("字段类型仅支持string、number、boolean");
       }
     }
+  }
+
+  private String normalizeDatasetName(String name) {
+    if (!StringUtils.hasText(name)) {
+      throw new IllegalArgumentException("评测集名称不能为空");
+    }
+    String normalized = name.trim();
+    if (normalized.length() > 50) {
+      throw new IllegalArgumentException("评测集名称不能超过50个字符");
+    }
+    return normalized;
+  }
+
+  private String normalizeDescription(String description) {
+    String normalized = description == null ? "" : description.trim();
+    if (normalized.length() > 200) {
+      throw new IllegalArgumentException("描述不能超过200个字符");
+    }
+    return normalized;
   }
 
   private void validateExcelFile(MultipartFile file) {

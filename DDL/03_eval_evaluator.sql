@@ -1,17 +1,19 @@
 CREATE TABLE IF NOT EXISTS t_eval_evaluator (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  evaluator_name VARCHAR(50),
-  evaluator_type VARCHAR(16),
-  description VARCHAR(200),
-  latest_version_id VARCHAR(64),
-  is_deleted SMALLINT,
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  evaluator_name VARCHAR(50) NOT NULL,
+  evaluator_type VARCHAR(16) NOT NULL,
+  description VARCHAR(200) NOT NULL DEFAULT '',
+  latest_version_id VARCHAR(64) NOT NULL,
+  is_deleted SMALLINT NOT NULL DEFAULT 0,
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT ck_t_eval_evaluator_type CHECK (evaluator_type IN ('llm', 'code')),
+  CONSTRAINT ck_t_eval_evaluator_is_deleted CHECK (is_deleted IN (0, 1))
 );
 
 COMMENT ON TABLE t_eval_evaluator IS '自定义评估器主表';
@@ -30,23 +32,30 @@ COMMENT ON COLUMN t_eval_evaluator.latest_version_id IS '最新版本ID：有发
 COMMENT ON COLUMN t_eval_evaluator.is_deleted IS '是否删除：0否，1是';
 
 CREATE TABLE IF NOT EXISTS t_eval_evaluator_version (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  evaluator_id VARCHAR(64),
-  version_no INT,
-  model_id VARCHAR(64),
-  prompt TEXT,
-  execute_code TEXT,
-  score_min DECIMAL(10,4),
-  score_max DECIMAL(10,4),
-  pass_threshold DECIMAL(10,4),
-  is_deleted SMALLINT,
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  evaluator_id VARCHAR(64) NOT NULL,
+  version_no INT NOT NULL DEFAULT 0,
+  model_id VARCHAR(64) NOT NULL DEFAULT '',
+  prompt TEXT NOT NULL DEFAULT '',
+  execute_code TEXT NOT NULL DEFAULT '',
+  score_min DECIMAL(10,4) NOT NULL,
+  score_max DECIMAL(10,4) NOT NULL,
+  pass_threshold DECIMAL(10,4) NOT NULL,
+  is_deleted SMALLINT NOT NULL DEFAULT 0,
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_t_eval_evaluator_version_no UNIQUE (evaluator_id, version_no),
+  CONSTRAINT ck_t_eval_evaluator_version_no CHECK (version_no >= 0),
+  CONSTRAINT ck_t_eval_evaluator_version_score CHECK (
+    score_min < score_max
+    AND pass_threshold BETWEEN score_min AND score_max
+  ),
+  CONSTRAINT ck_t_eval_evaluator_version_is_deleted CHECK (is_deleted IN (0, 1))
 );
 
 COMMENT ON TABLE t_eval_evaluator_version IS '自定义评估器版本表';
@@ -69,22 +78,28 @@ COMMENT ON COLUMN t_eval_evaluator_version.pass_threshold IS '通过阈值：大
 COMMENT ON COLUMN t_eval_evaluator_version.is_deleted IS '是否删除：0否，1是';
 
 CREATE TABLE IF NOT EXISTS t_eval_evaluator_param (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  target_type VARCHAR(16),
-  target_id VARCHAR(64),
-  param_name VARCHAR(64),
-  data_type VARCHAR(32),
-  default_value TEXT,
-  is_required SMALLINT,
-  description VARCHAR(200),
-  display_order INT,
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  target_type VARCHAR(16) NOT NULL,
+  target_id VARCHAR(64) NOT NULL,
+  param_name VARCHAR(64) NOT NULL,
+  data_type VARCHAR(32) NOT NULL,
+  default_value TEXT NOT NULL DEFAULT '',
+  is_required SMALLINT NOT NULL DEFAULT 0,
+  description VARCHAR(200) NOT NULL DEFAULT '',
+  display_order INT NOT NULL,
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_t_eval_evaluator_param_name UNIQUE (target_type, target_id, param_name),
+  CONSTRAINT uq_t_eval_evaluator_param_order UNIQUE (target_type, target_id, display_order),
+  CONSTRAINT ck_t_eval_evaluator_param_target CHECK (target_type = 'version'),
+  CONSTRAINT ck_t_eval_evaluator_param_data_type CHECK (data_type IN ('string', 'number', 'boolean')),
+  CONSTRAINT ck_t_eval_evaluator_param_required CHECK (is_required IN (0, 1)),
+  CONSTRAINT ck_t_eval_evaluator_param_order CHECK (display_order > 0)
 );
 
 COMMENT ON TABLE t_eval_evaluator_param IS '评估器参数配置表';

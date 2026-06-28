@@ -161,8 +161,7 @@ public class EvaluatorRepository {
   public int nextVersionNo(String evaluatorId) {
     EvalEvaluatorVersion version = versionMapper.selectOne(new QueryWrapper<EvalEvaluatorVersion>()
         .select("COALESCE(MAX(version_no), 0) + 1 AS version_no")
-        .eq("evaluator_id", evaluatorId)
-        .eq("is_deleted", 0));
+        .eq("evaluator_id", evaluatorId));
     return version == null || version.getVersionNo() == null ? 1 : version.getVersionNo();
   }
 

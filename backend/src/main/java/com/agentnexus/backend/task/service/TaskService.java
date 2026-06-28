@@ -78,6 +78,7 @@ public class TaskService {
   private static final String EVALUATOR_CUSTOM = "custom";
   private static final String SOURCE_DATASET_FIELD = "dataset_field";
   private static final String SOURCE_APP_OUTPUT = "app_output";
+  private static final List<String> SUPPORTED_FIELD_TYPES = List.of("string", "number", "boolean");
   private static final int MAX_DIMENSION_COUNT = 5;
   private static final Pattern PROMPT_PARAM_PATTERN = Pattern.compile("\\$\\{([a-zA-Z_][\\w]*)}");
 
@@ -518,9 +519,18 @@ public class TaskService {
       return List.of();
     }
     List<AppFieldMappingInput> normalized = new ArrayList<>();
+    Set<String> appInputNames = new HashSet<>();
     for (AppFieldMappingInput mapping : mappings) {
       if (mapping == null || !StringUtils.hasText(mapping.appInputName())) {
         continue;
+      }
+      String appInputName = mapping.appInputName().trim();
+      if (!appInputNames.add(appInputName)) {
+        throw new IllegalArgumentException("应用入参不能重复映射");
+      }
+      String appInputType = StringUtils.hasText(mapping.appInputType()) ? mapping.appInputType().trim() : "string";
+      if (!SUPPORTED_FIELD_TYPES.contains(appInputType)) {
+        throw new IllegalArgumentException("应用入参类型仅支持string/number/boolean");
       }
       String fieldId = requireText(mapping.datasetFieldId(), "请选择应用入参映射的评测集字段");
       if (!fieldById.containsKey(fieldId)) {
@@ -528,8 +538,8 @@ public class TaskService {
       }
       normalized.add(new AppFieldMappingInput(
           mapping.appInputId() == null ? "" : mapping.appInputId().trim(),
-          mapping.appInputName().trim(),
-          StringUtils.hasText(mapping.appInputType()) ? mapping.appInputType().trim() : "string",
+          appInputName,
+          appInputType,
           fieldId));
     }
     return normalized;

@@ -290,8 +290,7 @@ public class DatasetRepository {
   public int nextVersionNo(String datasetId) {
     EvalDatasetVersion version = versionMapper.selectOne(new QueryWrapper<EvalDatasetVersion>()
         .select("COALESCE(MAX(version_no), 0) + 1 AS version_no")
-        .eq("dataset_id", datasetId)
-        .eq("is_deleted", 0));
+        .eq("dataset_id", datasetId));
     return version == null || version.getVersionNo() == null ? 1 : version.getVersionNo();
   }
 

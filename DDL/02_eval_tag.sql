@@ -1,18 +1,31 @@
 CREATE TABLE IF NOT EXISTS t_eval_tag (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  tag_name VARCHAR(50),
-  tag_type VARCHAR(32),
-  description VARCHAR(200),
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  tag_name VARCHAR(50) NOT NULL,
+  tag_type VARCHAR(32) NOT NULL,
+  description VARCHAR(200) NOT NULL DEFAULT '',
   min_value INT,
   max_value INT,
   pass_threshold INT,
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_t_eval_tag_name UNIQUE (tag_name),
+  CONSTRAINT ck_t_eval_tag_type CHECK (tag_type IN ('category', 'boolean', 'number', 'text')),
+  CONSTRAINT ck_t_eval_tag_number_config CHECK (
+    tag_type <> 'number'
+    OR (
+      min_value IS NOT NULL
+      AND max_value IS NOT NULL
+      AND pass_threshold IS NOT NULL
+      AND min_value > 0
+      AND max_value > min_value
+      AND pass_threshold BETWEEN min_value AND max_value
+    )
+  )
 );
 
 COMMENT ON TABLE t_eval_tag IS '评测标签表';
@@ -32,18 +45,22 @@ COMMENT ON COLUMN t_eval_tag.max_value IS '数字类型评分范围最大值';
 COMMENT ON COLUMN t_eval_tag.pass_threshold IS '数字类型通过阈值：大于等于该值为通过';
 
 CREATE TABLE IF NOT EXISTS t_eval_tag_option (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  tag_id VARCHAR(64),
-  option_name VARCHAR(50),
-  option_group VARCHAR(16),
-  display_order INT,
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  tag_id VARCHAR(64) NOT NULL,
+  option_name VARCHAR(50) NOT NULL,
+  option_group VARCHAR(16) NOT NULL,
+  display_order INT NOT NULL,
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_t_eval_tag_option_name UNIQUE (tag_id, option_name),
+  CONSTRAINT uq_t_eval_tag_option_order UNIQUE (tag_id, display_order),
+  CONSTRAINT ck_t_eval_tag_option_group CHECK (option_group IN ('pass', 'fail')),
+  CONSTRAINT ck_t_eval_tag_option_order CHECK (display_order > 0)
 );
 
 COMMENT ON TABLE t_eval_tag_option IS '评测标签选项表';

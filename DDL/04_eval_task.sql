@@ -1,25 +1,29 @@
 CREATE TABLE IF NOT EXISTS t_eval_task (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  task_name VARCHAR(50),
-  status VARCHAR(32),
-  description VARCHAR(200),
-  dataset_id VARCHAR(64),
-  dataset_version_id VARCHAR(64),
-  item_count INT,
-  app_type VARCHAR(16),
-  app_id VARCHAR(64),
-  app_version_id VARCHAR(64),
-  app_agent_alias VARCHAR(128),
-  started_at VARCHAR(32),
-  finished_at VARCHAR(32),
-  is_deleted SMALLINT,
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  task_name VARCHAR(50) NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  description VARCHAR(200) NOT NULL DEFAULT '',
+  dataset_id VARCHAR(64) NOT NULL,
+  dataset_version_id VARCHAR(64) NOT NULL,
+  item_count INT NOT NULL DEFAULT 0,
+  app_type VARCHAR(16) NOT NULL DEFAULT 'none',
+  app_id VARCHAR(64) NOT NULL DEFAULT '',
+  app_version_id VARCHAR(64) NOT NULL DEFAULT '',
+  app_agent_alias VARCHAR(128) NOT NULL DEFAULT '',
+  started_at VARCHAR(32) NOT NULL DEFAULT '',
+  finished_at VARCHAR(32) NOT NULL DEFAULT '',
+  is_deleted SMALLINT NOT NULL DEFAULT 0,
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT ck_t_eval_task_status CHECK (status IN ('pending', 'running', 'completed', 'failed')),
+  CONSTRAINT ck_t_eval_task_app_type CHECK (app_type IN ('none', 'agent')),
+  CONSTRAINT ck_t_eval_task_item_count CHECK (item_count >= 0),
+  CONSTRAINT ck_t_eval_task_is_deleted CHECK (is_deleted IN (0, 1))
 );
 
 COMMENT ON TABLE t_eval_task IS '评测任务主表';
@@ -46,21 +50,25 @@ COMMENT ON COLUMN t_eval_task.finished_at IS '结束执行时间';
 COMMENT ON COLUMN t_eval_task.is_deleted IS '是否删除：0否，1是';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_app_field_mapping (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  task_id VARCHAR(64),
-  app_input_id VARCHAR(64),
-  app_input_name VARCHAR(64),
-  app_input_type VARCHAR(32),
-  dataset_version_id VARCHAR(64),
-  dataset_field_id VARCHAR(64),
-  display_order INT,
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  task_id VARCHAR(64) NOT NULL,
+  app_input_id VARCHAR(64) NOT NULL DEFAULT '',
+  app_input_name VARCHAR(64) NOT NULL,
+  app_input_type VARCHAR(32) NOT NULL DEFAULT 'string',
+  dataset_version_id VARCHAR(64) NOT NULL,
+  dataset_field_id VARCHAR(64) NOT NULL,
+  display_order INT NOT NULL,
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_t_eval_task_app_field_input UNIQUE (task_id, app_input_name),
+  CONSTRAINT uq_t_eval_task_app_field_order UNIQUE (task_id, display_order),
+  CONSTRAINT ck_t_eval_task_app_field_type CHECK (app_input_type IN ('string', 'number', 'boolean')),
+  CONSTRAINT ck_t_eval_task_app_field_order CHECK (display_order > 0)
 );
 
 COMMENT ON TABLE t_eval_task_app_field_mapping IS '评测任务应用入参字段映射表';
@@ -81,21 +89,26 @@ COMMENT ON COLUMN t_eval_task_app_field_mapping.dataset_field_id IS '映射的�
 COMMENT ON COLUMN t_eval_task_app_field_mapping.display_order IS '展示顺序';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_evaluator (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  task_id VARCHAR(64),
-  evaluator_source VARCHAR(16),
-  evaluator_id VARCHAR(64),
-  evaluator_version_id VARCHAR(64),
-  model_id VARCHAR(64),
-  status VARCHAR(32),
-  display_order INT,
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  task_id VARCHAR(64) NOT NULL,
+  evaluator_source VARCHAR(16) NOT NULL,
+  evaluator_id VARCHAR(64) NOT NULL,
+  evaluator_version_id VARCHAR(64) NOT NULL DEFAULT '',
+  model_id VARCHAR(64) NOT NULL DEFAULT '',
+  status VARCHAR(32) NOT NULL,
+  display_order INT NOT NULL,
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_t_eval_task_evaluator_binding UNIQUE (task_id, evaluator_source, evaluator_id, evaluator_version_id),
+  CONSTRAINT uq_t_eval_task_evaluator_order UNIQUE (task_id, display_order),
+  CONSTRAINT ck_t_eval_task_evaluator_source CHECK (evaluator_source IN ('preset', 'custom')),
+  CONSTRAINT ck_t_eval_task_evaluator_status CHECK (status IN ('pending', 'running', 'completed', 'failed')),
+  CONSTRAINT ck_t_eval_task_evaluator_order CHECK (display_order > 0)
 );
 
 COMMENT ON TABLE t_eval_task_evaluator IS '评测任务评估器绑定表';
@@ -116,23 +129,27 @@ COMMENT ON COLUMN t_eval_task_evaluator.status IS '评估器执行状态：pendi
 COMMENT ON COLUMN t_eval_task_evaluator.display_order IS '展示顺序';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_evaluator_param_mapping (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  task_id VARCHAR(64),
-  task_evaluator_id VARCHAR(64),
-  param_id VARCHAR(64),
-  param_name VARCHAR(64),
-  source_type VARCHAR(32),
-  dataset_version_id VARCHAR(64),
-  dataset_field_id VARCHAR(64),
-  app_output_name VARCHAR(64),
-  display_order INT,
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  task_id VARCHAR(64) NOT NULL,
+  task_evaluator_id VARCHAR(64) NOT NULL,
+  param_id VARCHAR(64) NOT NULL DEFAULT '',
+  param_name VARCHAR(64) NOT NULL,
+  source_type VARCHAR(32) NOT NULL,
+  dataset_version_id VARCHAR(64) NOT NULL,
+  dataset_field_id VARCHAR(64) NOT NULL DEFAULT '',
+  app_output_name VARCHAR(64) NOT NULL DEFAULT '',
+  display_order INT NOT NULL,
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_t_eval_task_evaluator_param_name UNIQUE (task_evaluator_id, param_name),
+  CONSTRAINT uq_t_eval_task_evaluator_param_order UNIQUE (task_evaluator_id, display_order),
+  CONSTRAINT ck_t_eval_task_evaluator_param_source CHECK (source_type IN ('dataset_field', 'app_output')),
+  CONSTRAINT ck_t_eval_task_evaluator_param_order CHECK (display_order > 0)
 );
 
 COMMENT ON TABLE t_eval_task_evaluator_param_mapping IS '评测任务评估器参数映射表';
@@ -155,18 +172,22 @@ COMMENT ON COLUMN t_eval_task_evaluator_param_mapping.app_output_name IS '应用
 COMMENT ON COLUMN t_eval_task_evaluator_param_mapping.display_order IS '展示顺序';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_tag (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  task_id VARCHAR(64),
-  tag_id VARCHAR(64),
-  status VARCHAR(32),
-  display_order INT,
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  task_id VARCHAR(64) NOT NULL,
+  tag_id VARCHAR(64) NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  display_order INT NOT NULL,
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_t_eval_task_tag_binding UNIQUE (task_id, tag_id),
+  CONSTRAINT uq_t_eval_task_tag_order UNIQUE (task_id, display_order),
+  CONSTRAINT ck_t_eval_task_tag_status CHECK (status IN ('pending', 'annotating', 'completed')),
+  CONSTRAINT ck_t_eval_task_tag_order CHECK (display_order > 0)
 );
 
 COMMENT ON TABLE t_eval_task_tag IS '评测任务标签绑定表';
@@ -184,24 +205,29 @@ COMMENT ON COLUMN t_eval_task_tag.status IS '人工标注状态：pending待标�
 COMMENT ON COLUMN t_eval_task_tag.display_order IS '展示顺序';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_item (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  task_id VARCHAR(64),
-  dataset_version_id VARCHAR(64),
-  dataset_item_id VARCHAR(64),
-  row_no INT,
-  status VARCHAR(32),
-  app_output TEXT,
-  app_output_status VARCHAR(32),
-  app_error_message TEXT,
-  started_at VARCHAR(32),
-  finished_at VARCHAR(32),
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  task_id VARCHAR(64) NOT NULL,
+  dataset_version_id VARCHAR(64) NOT NULL,
+  dataset_item_id VARCHAR(64) NOT NULL,
+  row_no INT NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  app_output TEXT NOT NULL DEFAULT '',
+  app_output_status VARCHAR(32) NOT NULL,
+  app_error_message TEXT NOT NULL DEFAULT '',
+  started_at VARCHAR(32) NOT NULL DEFAULT '',
+  finished_at VARCHAR(32) NOT NULL DEFAULT '',
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_t_eval_task_item_dataset_item UNIQUE (task_id, dataset_item_id),
+  CONSTRAINT uq_t_eval_task_item_row UNIQUE (task_id, row_no),
+  CONSTRAINT ck_t_eval_task_item_row_no CHECK (row_no > 0),
+  CONSTRAINT ck_t_eval_task_item_status CHECK (status IN ('pending', 'running', 'annotation_pending', 'completed', 'failed')),
+  CONSTRAINT ck_t_eval_task_item_app_status CHECK (app_output_status IN ('pending', 'running', 'completed', 'failed', 'skipped'))
 );
 
 COMMENT ON TABLE t_eval_task_item IS '评测任务数据行结果表';
@@ -225,24 +251,27 @@ COMMENT ON COLUMN t_eval_task_item.started_at IS '单行评测开始时间';
 COMMENT ON COLUMN t_eval_task_item.finished_at IS '单行评测结束时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_evaluator_result (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  task_id VARCHAR(64),
-  task_item_id VARCHAR(64),
-  task_evaluator_id VARCHAR(64),
-  status VARCHAR(32),
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  task_id VARCHAR(64) NOT NULL,
+  task_item_id VARCHAR(64) NOT NULL,
+  task_evaluator_id VARCHAR(64) NOT NULL,
+  status VARCHAR(32) NOT NULL,
   score DECIMAL(10,4),
-  pass_result VARCHAR(16),
-  result_value TEXT,
-  error_message TEXT,
-  started_at VARCHAR(32),
-  finished_at VARCHAR(32),
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  pass_result VARCHAR(16) NOT NULL DEFAULT '',
+  result_value TEXT NOT NULL DEFAULT '',
+  error_message TEXT NOT NULL DEFAULT '',
+  started_at VARCHAR(32) NOT NULL DEFAULT '',
+  finished_at VARCHAR(32) NOT NULL DEFAULT '',
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_t_eval_task_evaluator_result_item UNIQUE (task_item_id, task_evaluator_id),
+  CONSTRAINT ck_t_eval_task_evaluator_result_status CHECK (status IN ('pending', 'running', 'completed', 'failed', 'skipped')),
+  CONSTRAINT ck_t_eval_task_evaluator_result_pass CHECK (pass_result IN ('', 'pass', 'fail'))
 );
 
 COMMENT ON TABLE t_eval_task_evaluator_result IS '评测任务评估器结果表';
@@ -266,25 +295,28 @@ COMMENT ON COLUMN t_eval_task_evaluator_result.started_at IS '评估开始时间
 COMMENT ON COLUMN t_eval_task_evaluator_result.finished_at IS '评估结束时间';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_tag_result (
-  id VARCHAR(36),
-  space_id VARCHAR(36),
-  task_id VARCHAR(64),
-  task_item_id VARCHAR(64),
-  task_tag_id VARCHAR(64),
-  status VARCHAR(32),
-  value_text TEXT,
+  id VARCHAR(36) PRIMARY KEY,
+  space_id VARCHAR(36) NOT NULL DEFAULT '',
+  task_id VARCHAR(64) NOT NULL,
+  task_item_id VARCHAR(64) NOT NULL,
+  task_tag_id VARCHAR(64) NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  value_text TEXT NOT NULL DEFAULT '',
   value_number DECIMAL(10,4),
-  tag_option_id VARCHAR(64),
-  pass_result VARCHAR(16),
-  annotator_id VARCHAR(64),
-  annotator_name VARCHAR(50),
-  annotated_at VARCHAR(32),
-  created_by_name VARCHAR(100),
-  created_by VARCHAR(36),
-  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated_by VARCHAR(36),
-  last_updated_by_name VARCHAR(100),
-  last_updated_date TIMESTAMP
+  tag_option_id VARCHAR(64) NOT NULL DEFAULT '',
+  pass_result VARCHAR(16) NOT NULL DEFAULT '',
+  annotator_id VARCHAR(64) NOT NULL DEFAULT '',
+  annotator_name VARCHAR(50) NOT NULL DEFAULT '',
+  annotated_at VARCHAR(32) NOT NULL DEFAULT '',
+  created_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  created_by VARCHAR(36) NOT NULL DEFAULT '',
+  created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
+  last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_t_eval_task_tag_result_item UNIQUE (task_item_id, task_tag_id),
+  CONSTRAINT ck_t_eval_task_tag_result_status CHECK (status IN ('pending', 'completed')),
+  CONSTRAINT ck_t_eval_task_tag_result_pass CHECK (pass_result IN ('', 'pass', 'fail'))
 );
 
 COMMENT ON TABLE t_eval_task_tag_result IS '评测任务人工标签结果表';
