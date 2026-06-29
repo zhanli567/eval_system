@@ -1,8 +1,9 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { ArrowLeft, ArrowRight, Back } from '@element-plus/icons-vue';
 import { useTaskAnnotation } from '../modules/task/composables/useTaskAnnotation';
-import { formatAppOutput } from '../utils/taskDisplay';
+import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
 const taskItemId = computed(() => String(route.params.taskItemId ?? ''));

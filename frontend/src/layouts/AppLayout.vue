@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { RouterLink, RouterView, useRoute } from 'vue-router';
+import { appModules } from '../config/appModules';
 const route = useRoute();
 const activeModuleKey = computed(() => String(route.meta.moduleKey ?? 'datasets'));
 </script>

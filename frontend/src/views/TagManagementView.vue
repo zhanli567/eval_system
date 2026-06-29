@@ -1,4 +1,5 @@
 <script setup>
+import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useTagManagement } from '../modules/tag/composables/useTagManagement';
 const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, dialogVisible, detailDialogVisible, detailLoading, tagDetail, detailPassOptions, detailFailOptions, editing, dialogTitle, tagForm, tagTypeOptions, booleanOptions, loadTags, openCreateDialog, openDetailDialog, openEditDialog, submitTag, addCategoryOption, removeCategoryOption, getTagTypeLabel, formatTime } = useTagManagement();
 </script>

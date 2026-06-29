@@ -1,4 +1,5 @@
 <script setup>
+import { Delete, Edit, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useEvaluatorManagement } from '../modules/evaluator/composables/useEvaluatorManagement';
 const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, loadCustomEvaluators, searchCustom, loadPresetEvaluators, searchPreset, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, typeLabel, formatTime } = useEvaluatorManagement();
 </script>

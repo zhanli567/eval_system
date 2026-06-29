@@ -1,7 +1,9 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { Back, Refresh, VideoPlay } from '@element-plus/icons-vue';
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
+import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
 const { loading, starting, page, size, base, fields, evaluators, tags, rows, total, loadDetail, backToList, startTask, openAnnotation, statusLabel, statusTagType, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);

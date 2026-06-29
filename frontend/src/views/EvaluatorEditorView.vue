@@ -1,4 +1,5 @@
 <script setup>
+import { Back, Plus, Promotion, Refresh, Delete } from '@element-plus/icons-vue';
 import { useEvaluatorEditor } from '../modules/evaluator/composables/useEvaluatorEditor';
 const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, switchType, addParam, removeParam, backToList, formatTime } = useEvaluatorEditor();
 </script>
