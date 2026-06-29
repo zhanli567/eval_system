@@ -1,8 +1,8 @@
 import { computed, reactive, ref, watch, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { AxiosError } from 'axios'
 import { datasetApi } from '../../../api/dataset'
+import { errorMessage } from '../../../api/http'
 import type { DatasetField, DatasetRow, DatasetSummary, DatasetVersion, VersionDetail } from '../../../types'
 
 export function useDatasetDetail(datasetId: Ref<string>) {
@@ -244,7 +244,7 @@ export function useDatasetDetail(datasetId: Ref<string>) {
       await loadDetail()
       await loadDatasetSummary()
     } catch (error) {
-      ElMessage.error(getErrorMessage(error, '导入失败，请确认Excel包含所有必填列'))
+      ElMessage.error(errorMessage(error, '导入失败，请确认Excel包含所有必填列'))
     } finally {
       input.value = ''
     }
@@ -262,7 +262,7 @@ export function useDatasetDetail(datasetId: Ref<string>) {
       await loadDetail()
       await loadDatasetSummary()
     } catch (error) {
-      ElMessage.error(getErrorMessage(error, '覆盖失败，请确认Excel包含所有必填列'))
+      ElMessage.error(errorMessage(error, '覆盖失败，请确认Excel包含所有必填列'))
     } finally {
       input.value = ''
     }
@@ -296,14 +296,6 @@ export function useDatasetDetail(datasetId: Ref<string>) {
     const numberValue = Number(value)
     if (Number.isNaN(numberValue)) return value
     return new Date(numberValue).toLocaleString()
-  }
-
-  function getErrorMessage(error: unknown, fallback: string) {
-    const axiosError = error as AxiosError<{ msg?: string; message?: string }>
-    if (axiosError.response?.data?.msg || axiosError.response?.data?.message) {
-      return axiosError.response.data.msg || axiosError.response.data.message || fallback
-    }
-    return error instanceof Error ? error.message : fallback
   }
 
   return {

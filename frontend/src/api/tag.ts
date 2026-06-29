@@ -1,26 +1,5 @@
-import axios from 'axios'
-import type { AxiosResponse } from 'axios'
+import { http, unwrap, type ApiResponse } from './http'
 import type { PageResponse, TagDetail, TagOption, TagSummary, TagType } from '../types'
-
-const http = axios.create({
-  baseURL: '/api',
-  timeout: 10000
-})
-
-interface ApiResponse<T> {
-  code: number
-  msg: string
-  data: T
-}
-
-function unwrap<T>(request: Promise<AxiosResponse<ApiResponse<T>>>) {
-  return request.then((res) => {
-    if (res.data.code !== 0) {
-      throw new Error(res.data.msg)
-    }
-    return res.data.data
-  })
-}
 
 export interface SaveTagPayload {
   tagName: string

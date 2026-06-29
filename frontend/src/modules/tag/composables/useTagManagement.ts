@@ -1,6 +1,6 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { AxiosError } from 'axios'
+import { errorMessage } from '../../../api/http'
 import { tagApi } from '../../../api/tag'
 import type { TagDetail, TagOption, TagOptionGroup, TagSummary, TagType } from '../../../types'
 
@@ -88,7 +88,7 @@ export function useTagManagement() {
       tagDetail.value = await tagApi.getTag(row.id)
     } catch (error) {
       detailDialogVisible.value = false
-      ElMessage.error(getErrorMessage(error, '加载标签详情失败'))
+      ElMessage.error(errorMessage(error, '加载标签详情失败'))
     } finally {
       detailLoading.value = false
     }
@@ -109,7 +109,7 @@ export function useTagManagement() {
       dialogVisible.value = false
       await loadTags()
     } catch (error) {
-      ElMessage.error(getErrorMessage(error, '保存失败'))
+      ElMessage.error(errorMessage(error, '保存失败'))
     } finally {
       saving.value = false
     }
@@ -216,14 +216,6 @@ export function useTagManagement() {
     const numberValue = Number(value)
     if (Number.isNaN(numberValue)) return value
     return new Date(numberValue).toLocaleString()
-  }
-
-  function getErrorMessage(error: unknown, fallback: string) {
-    if (error instanceof Error) {
-      return error.message || fallback
-    }
-    const axiosError = error as AxiosError<{ msg?: string; message?: string }>
-    return axiosError.response?.data?.msg || axiosError.response?.data?.message || fallback
   }
 
   return {
