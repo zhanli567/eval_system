@@ -1,59 +1,33 @@
-<script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { Back, Refresh, VideoPlay } from '@element-plus/icons-vue'
-import { useTaskDetail } from '../modules/task/composables/useTaskDetail'
-import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay'
-import type { TaskBase, TaskEvaluatorResult, TaskItemDetail } from '../types'
-
-const route = useRoute()
-const taskId = computed(() => String(route.params.taskId ?? ''))
-
-const {
-  loading,
-  starting,
-  page,
-  size,
-  base,
-  fields,
-  evaluators,
-  tags,
-  rows,
-  total,
-  loadDetail,
-  backToList,
-  startTask,
-  openAnnotation,
-  statusLabel,
-  statusTagType,
-  passTagType,
-  tagTypeLabel,
-  formatTime
-} = useTaskDetail(taskId)
-
-function findTagResult(row: TaskItemDetail, taskTagId: string) {
-  return row.tagResults.find((item) => item.taskTagId === taskTagId)
+<script setup>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
+const route = useRoute();
+const taskId = computed(() => String(route.params.taskId ?? ''));
+const { loading, starting, page, size, base, fields, evaluators, tags, rows, total, loadDetail, backToList, startTask, openAnnotation, statusLabel, statusTagType, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
+function findTagResult(row, taskTagId) {
+    return row.tagResults.find((item) => item.taskTagId === taskTagId);
 }
-
-function findEvaluatorResult(row: TaskItemDetail, taskEvaluatorId: string) {
-  return row.evaluatorResults.find((item) => item.taskEvaluatorId === taskEvaluatorId)
+function findEvaluatorResult(row, taskEvaluatorId) {
+    return row.evaluatorResults.find((item) => item.taskEvaluatorId === taskEvaluatorId);
 }
-
-function formatAppBinding(task?: TaskBase | null) {
-  if (!task || task.appType !== 'agent') return '-'
-  const parts = [task.appId || '智能体应用']
-  if (task.appVersionId) parts.push(`快照 ${task.appVersionId}`)
-  if (task.appAgentAlias) parts.push(`子智能体 ${task.appAgentAlias}`)
-  return parts.join(' / ')
+function formatAppBinding(task) {
+    if (!task || task.appType !== 'agent')
+        return '-';
+    const parts = [task.appId || '智能体应用'];
+    if (task.appVersionId)
+        parts.push(`快照 ${task.appVersionId}`);
+    if (task.appAgentAlias)
+        parts.push(`子智能体 ${task.appAgentAlias}`);
+    return parts.join(' / ');
 }
-
-function isScoredEvaluatorResult(result?: TaskEvaluatorResult) {
-  return Boolean(result && (result.status === 'completed' || result.score != null || result.passResult))
+function isScoredEvaluatorResult(result) {
+    return Boolean(result && (result.status === 'completed' || result.score != null || result.passResult));
 }
-
-function evaluatorResultLabel(result?: TaskEvaluatorResult) {
-  if (!result) return '-'
-  return result.passResult || (result.score != null ? '已评分' : '-')
+function evaluatorResultLabel(result) {
+    if (!result)
+        return '-';
+    return result.passResult || (result.score != null ? '已评分' : '-');
 }
 </script>
 

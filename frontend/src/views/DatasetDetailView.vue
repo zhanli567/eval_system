@@ -1,58 +1,10 @@
-<script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { ArrowDown, Back, Delete, Plus, Refresh } from '@element-plus/icons-vue'
-import { useDatasetDetail } from '../modules/dataset/composables/useDatasetDetail'
-
-const route = useRoute()
-const datasetId = computed(() => String(route.params.datasetId ?? ''))
-
-const {
-  detailLoading,
-  datasetHeading,
-  versions,
-  activeVersionId,
-  tablePage,
-  tableSize,
-  searchFieldId,
-  searchKeyword,
-  fieldVisible,
-  rowVisible,
-  rowEditingId,
-  excelInput,
-  coverExcelInput,
-  draggedFieldIndex,
-  dragOverFieldIndex,
-  fieldForm,
-  rowForm,
-  activeVersion,
-  isDraft,
-  tableRows,
-  tableTotal,
-  fields,
-  dataTableKey,
-  loadDataset,
-  selectVersion,
-  loadDetail,
-  backToList,
-  addField,
-  removeField,
-  startFieldDrag,
-  enterFieldDrag,
-  dropField,
-  endFieldDrag,
-  openFieldDialog,
-  submitFields,
-  openRowDialog,
-  submitRow,
-  removeRow,
-  handleAddDataCommand,
-  importExcel,
-  coverExcel,
-  publishDraft,
-  removeVersion,
-  coverDraft
-} = useDatasetDetail(datasetId)
+<script setup>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import { useDatasetDetail } from '../modules/dataset/composables/useDatasetDetail';
+const route = useRoute();
+const datasetId = computed(() => String(route.params.datasetId ?? ''));
+const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tableSize, searchFieldId, searchKeyword, fieldVisible, rowVisible, rowEditingId, excelInput, coverExcelInput, draggedFieldIndex, dragOverFieldIndex, fieldForm, rowForm, activeVersion, isDraft, tableRows, tableTotal, fields, dataTableKey, loadDataset, selectVersion, loadDetail, backToList, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, openFieldDialog, submitFields, openRowDialog, submitRow, removeRow, handleAddDataCommand, importExcel, coverExcel, publishDraft, removeVersion, coverDraft } = useDatasetDetail(datasetId);
 </script>
 
 <template>

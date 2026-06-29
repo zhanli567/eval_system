@@ -1,42 +1,15 @@
-<script setup lang="ts">
-import { Plus, Refresh, Search, Sort } from '@element-plus/icons-vue'
-import { useTaskManagement } from '../modules/task/composables/useTaskManagement'
-import type { TaskBase } from '../types'
-
-const {
-  loading,
-  tasks,
-  total,
-  page,
-  size,
-  keyword,
-  status,
-  sortBy,
-  sortOrder,
-  statusOptions,
-  loadTasks,
-  searchTasks,
-  openCreate,
-  openDetail,
-  startTask,
-  isStartingTask,
-  removeTask,
-  canStartTask,
-  canDeleteTask,
-  toggleSort,
-  statusLabel,
-  statusTagType,
-  dimensionStatusLabel,
-  formatRate,
-  formatTime
-} = useTaskManagement()
-
-function formatAppBinding(base: TaskBase) {
-  if (base.appType !== 'agent') return '-'
-  const parts = [base.appId || '智能体应用']
-  if (base.appVersionId) parts.push(`快照 ${base.appVersionId}`)
-  if (base.appAgentAlias) parts.push(`子智能体 ${base.appAgentAlias}`)
-  return parts.join(' / ')
+<script setup>
+import { useTaskManagement } from '../modules/task/composables/useTaskManagement';
+const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, statusOptions, loadTasks, searchTasks, openCreate, openDetail, startTask, isStartingTask, removeTask, canStartTask, canDeleteTask, toggleSort, statusLabel, statusTagType, dimensionStatusLabel, formatRate, formatTime } = useTaskManagement();
+function formatAppBinding(base) {
+    if (base.appType !== 'agent')
+        return '-';
+    const parts = [base.appId || '智能体应用'];
+    if (base.appVersionId)
+        parts.push(`快照 ${base.appVersionId}`);
+    if (base.appAgentAlias)
+        parts.push(`子智能体 ${base.appAgentAlias}`);
+    return parts.join(' / ');
 }
 </script>
 

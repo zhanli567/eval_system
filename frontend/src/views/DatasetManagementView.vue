@@ -1,31 +1,6 @@
-<script setup lang="ts">
-import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue'
-import { useDatasetList } from '../modules/dataset/composables/useDatasetList'
-
-const {
-  datasetLoading,
-  datasets,
-  datasetTotal,
-  datasetPage,
-  datasetSize,
-  datasetKeyword,
-  createVisible,
-  draggedFieldIndex,
-  dragOverFieldIndex,
-  createForm,
-  loadDatasets,
-  openDataset,
-  openCreateDialog,
-  submitCreate,
-  removeDataset,
-  addField,
-  removeField,
-  startFieldDrag,
-  enterFieldDrag,
-  dropField,
-  endFieldDrag,
-  formatTime
-} = useDatasetList()
+<script setup>
+import { useDatasetList } from '../modules/dataset/composables/useDatasetList';
+const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datasetKeyword, createVisible, draggedFieldIndex, dragOverFieldIndex, createForm, loadDatasets, openDataset, openCreateDialog, submitCreate, removeDataset, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, formatTime } = useDatasetList();
 </script>
 
 <template>

@@ -1,36 +1,13 @@
-<script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { ArrowLeft, ArrowRight, Back } from '@element-plus/icons-vue'
-import { useTaskAnnotation } from '../modules/task/composables/useTaskAnnotation'
-import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay'
-
-const route = useRoute()
-const taskId = computed(() => String(route.params.taskId ?? ''))
-const taskItemId = computed(() => String(route.params.taskItemId ?? ''))
-
-const {
-  loading,
-  saving,
-  loadError,
-  form,
-  task,
-  item,
-  fields,
-  tags,
-  evaluators,
-  previousItemId,
-  nextItemId,
-  saveAnnotation,
-  backToDetail,
-  goItem,
-  passTagType,
-  tagTypeLabel,
-  optionLabel,
-  appOutputEmptyDescription
-} = useTaskAnnotation(taskId, taskItemId)
-
-const formattedAppOutput = computed(() => formatAppOutput(item.value?.appOutput || ''))
+<script setup>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import { useTaskAnnotation } from '../modules/task/composables/useTaskAnnotation';
+import { formatAppOutput } from '../utils/taskDisplay';
+const route = useRoute();
+const taskId = computed(() => String(route.params.taskId ?? ''));
+const taskItemId = computed(() => String(route.params.taskItemId ?? ''));
+const { loading, saving, loadError, form, task, item, fields, tags, evaluators, previousItemId, nextItemId, saveAnnotation, backToDetail, goItem, passTagType, tagTypeLabel, optionLabel, appOutputEmptyDescription } = useTaskAnnotation(taskId, taskItemId);
+const formattedAppOutput = computed(() => formatAppOutput(item.value?.appOutput || ''));
 </script>
 
 <template>

@@ -1,10 +1,8 @@
-<script setup lang="ts">
-import { computed } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
-import { appModules } from '../config/appModules'
-
-const route = useRoute()
-const activeModuleKey = computed(() => String(route.meta.moduleKey ?? 'datasets'))
+<script setup>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+const route = useRoute();
+const activeModuleKey = computed(() => String(route.meta.moduleKey ?? 'datasets'));
 </script>
 
 <template>

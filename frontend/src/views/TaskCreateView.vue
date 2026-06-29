@@ -1,55 +1,6 @@
-<script setup lang="ts">
-import { Back, Delete, Plus } from '@element-plus/icons-vue'
-import { useTaskCreate } from '../modules/task/composables/useTaskCreate'
-
-const {
-  loading,
-  saving,
-  tagDrawerVisible,
-  tagKeyword,
-  tagTypeFilter,
-  datasets,
-  publishedVersions,
-  fields,
-  selectedTags,
-  filteredTags,
-  tagTypeOptions,
-  customEvaluators,
-  categoryOptions,
-  evaluatorBlocks,
-  agents,
-  models,
-  agentDetailLoading,
-  agentVersionLoading,
-  modelLoading,
-  agentVersions,
-  agentChildAgents,
-  agentInputs,
-  agentOutputs,
-  appFieldMappings,
-  form,
-  handleDatasetVisible,
-  handleAgentVisible,
-  handleCustomEvaluatorVisible,
-  handlePresetCategoryVisible,
-  handlePresetEvaluatorVisible,
-  handleModelVisible,
-  changePresetCategory,
-  changeEvaluatorSource,
-  selectEvaluator,
-  selectCustomVersion,
-  addEvaluator,
-  removeEvaluator,
-  openTagDrawer,
-  addTag,
-  removeTag,
-  isTagSelected,
-  submit,
-  paramKey,
-  fieldTypeLabel,
-  tagTypeLabel,
-  backToList
-} = useTaskCreate()
+<script setup>
+import { useTaskCreate } from '../modules/task/composables/useTaskCreate';
+const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, publishedVersions, fields, selectedTags, filteredTags, tagTypeOptions, customEvaluators, categoryOptions, evaluatorBlocks, agents, models, agentDetailLoading, agentVersionLoading, modelLoading, agentVersions, agentChildAgents, agentInputs, agentOutputs, appFieldMappings, form, handleDatasetVisible, handleAgentVisible, handleCustomEvaluatorVisible, handlePresetCategoryVisible, handlePresetEvaluatorVisible, handleModelVisible, changePresetCategory, changeEvaluatorSource, selectEvaluator, selectCustomVersion, addEvaluator, removeEvaluator, openTagDrawer, addTag, removeTag, isTagSelected, submit, paramKey, fieldTypeLabel, tagTypeLabel, backToList } = useTaskCreate();
 </script>
 
 <template>
