@@ -5,14 +5,11 @@ integration:
     agent-list-url:
     agent-detail-url:
     agent-bundle-list-url:
-    # 模型对话接口，支持使用 {modelId} 作为路径占位符。
-    model-chat-url:
     agent-chat-url:
     trust-all-ssl: true
     connect-timeout-ms: 5000
     read-timeout-ms: 60000
     iam:
-      enabled: false
       url:
       authorization:
     login:

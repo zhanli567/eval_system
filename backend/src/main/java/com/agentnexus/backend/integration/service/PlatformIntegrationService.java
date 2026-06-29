@@ -23,8 +23,6 @@ import com.agentnexus.backend.integration.api.dto.response.PlatformLoadedAgent;
 import com.agentnexus.backend.integration.api.dto.response.PlatformListResult;
 import com.agentnexus.backend.integration.api.dto.request.PlatformLoginRequest;
 import com.agentnexus.backend.integration.api.dto.response.PlatformLoginResponse;
-import com.agentnexus.backend.integration.api.dto.request.PlatformModelChatRequest;
-import com.agentnexus.backend.integration.api.dto.response.PlatformModelChatResponse;
 import com.agentnexus.backend.integration.api.dto.response.PlatformModelChatResult;
 import com.agentnexus.backend.integration.api.dto.response.PlatformModelInfo;
 import com.agentnexus.backend.integration.api.dto.response.PlatformModelListResponse;
@@ -99,9 +97,6 @@ public class PlatformIntegrationService {
     ensureSuccess("模型列表接口", response.status(), response.success());
     PlatformListResult<PlatformModelInfo> result = response.resultObjVO();
     List<PlatformModelInfo> models = result == null || result.result() == null ? List.of() : result.result();
-    if (!properties.getIam().isEnabled()) {
-      return models;
-    }
     return models.stream()
         .filter(model -> IAM_AUTH_TYPE.equalsIgnoreCase(model.authType()))
         .toList();
@@ -157,22 +152,7 @@ public class PlatformIntegrationService {
   }
 
   public PlatformModelChatResult chatModel(String modelId, String message) {
-    if (properties.getIam().isEnabled()) {
-      return chatIamModel(modelId, message);
-    }
-    requireText(modelId, "模型ID不能为空");
-    requireText(properties.getModelChatUrl(), "请配置模型对话接口 integration.platform.model-chat-url");
-    PlatformModelChatResponse response = exchangeJson(
-        "POST",
-        modelChatUrl(modelId),
-        new PlatformModelChatRequest(message == null ? "" : message),
-        authHeaders(true),
-        PlatformModelChatResponse.class);
-    ensureSuccess("模型对话接口", response.status(), response.success());
-    if (response.resultObjVO() == null) {
-      throw new IllegalStateException("模型对话接口返回为空");
-    }
-    return response.resultObjVO();
+    return chatIamModel(modelId, message);
   }
 
   private PlatformModelChatResult chatIamModel(String modelId, String message) {
@@ -562,10 +542,6 @@ public class PlatformIntegrationService {
     return pathParamUrl(url, Map.of(
         "pageSize", String.valueOf(DEFAULT_PAGE_SIZE),
         "curPage", String.valueOf(DEFAULT_CUR_PAGE)));
-  }
-
-  private String modelChatUrl(String modelId) {
-    return pathParamUrl(properties.getModelChatUrl(), Map.of("modelId", modelId));
   }
 
   private String agentDetailUrl(String agentId) {

@@ -11,7 +11,6 @@ public class PlatformIntegrationProperties {
   private String agentListUrl = "";
   private String agentDetailUrl = "";
   private String agentBundleListUrl = "";
-  private String modelChatUrl = "";
   private String agentChatUrl = "";
   private boolean trustAllSsl = true;
   private int connectTimeoutMs = 5000;
@@ -57,14 +56,6 @@ public class PlatformIntegrationProperties {
 
   public void setAgentBundleListUrl(String agentBundleListUrl) {
     this.agentBundleListUrl = clean(agentBundleListUrl);
-  }
-
-  public String getModelChatUrl() {
-    return modelChatUrl;
-  }
-
-  public void setModelChatUrl(String modelChatUrl) {
-    this.modelChatUrl = clean(modelChatUrl);
   }
 
   public String getAgentChatUrl() {
@@ -199,17 +190,8 @@ public class PlatformIntegrationProperties {
   }
 
   public static class Iam {
-    private boolean enabled = false;
     private String url = "";
     private String authorization = "";
-
-    public boolean isEnabled() {
-      return enabled;
-    }
-
-    public void setEnabled(boolean enabled) {
-      this.enabled = enabled;
-    }
 
     public String getUrl() {
       return url;

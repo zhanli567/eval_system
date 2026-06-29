@@ -68,7 +68,15 @@ class PlatformIntegrationServiceTest {
               "result": [
                 {
                   "modelId": "model-1",
+                  "authType": "IAM",
                   "name": "模型一",
+                  "timeoutPolicy": "default",
+                  "capabilities": ["chat"]
+                },
+                {
+                  "modelId": "model-cookie",
+                  "authType": "COOKIE",
+                  "name": "Cookie Model",
                   "timeoutPolicy": "default",
                   "capabilities": ["chat"]
                 }
@@ -249,39 +257,71 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
-  void chatModelReplacesModelIdPlaceholderInTestUrl() throws Exception {
-    AtomicReference<String> requestPath = new AtomicReference<>("");
+  void chatModelUsesIamEndpointByDefault() throws Exception {
+    AtomicReference<String> authorization = new AtomicReference<>("");
     AtomicReference<String> requestBody = new AtomicReference<>("");
+    ObjectMapper objectMapper = new ObjectMapper();
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/login", exchange -> {
       exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
       writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
     });
-    server.createContext("/chat/model-1/test", exchange -> {
-      requestPath.set(exchange.getRequestURI().getPath());
+    server.createContext("/models", exchange -> writeJson(exchange, 200, """
+        {
+          "status": "200",
+          "url": "/models",
+          "success": true,
+          "resultObjVO": {
+            "pageVO": {
+              "totalRows": 1,
+              "curPage": 1,
+              "pageSize": 10,
+              "resultMode": 0,
+              "startIndex": 0,
+              "endIndex": 1,
+              "totalPages": 1
+            },
+            "result": [
+              {
+                "modelId": "iam-model",
+                "name": "IAM Model",
+                "modelName": "MES-Qwen-V35-35B-A3B",
+                "authType": "IAM",
+                "capabilities": ["chat"]
+              }
+            ]
+          }
+        }
+        """));
+    server.createContext("/iam/chat", exchange -> {
+      authorization.set(firstHeader(exchange, "authorization"));
       requestBody.set(readBody(exchange));
       writeJson(exchange, 200, """
           {
-            "status": "200",
-            "url": "/chat/model-1/test",
-            "success": true,
-            "resultObjVO": {
-              "modelId": "model-1",
-              "outputText": "ok",
-              "checkedAt": "1"
-            }
+            "choices": [
+              {
+                "message": {
+                  "content": "Thinking</think>{\\"score\\":5}"
+                }
+              }
+            ]
           }
           """);
     });
     server.start();
 
-    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
+    PlatformIntegrationProperties properties = properties();
+    properties.getIam().setUrl("http://localhost:" + server.getAddress().getPort() + "/iam/chat");
+    properties.getIam().setAuthorization("eyJhbGci");
+    PlatformIntegrationService service = new PlatformIntegrationService(properties, objectMapper);
 
-    var result = service.chatModel("model-1", "hello");
+    var result = service.chatModel("iam-model", "please score");
 
-    assertThat(requestPath).hasValue("/chat/model-1/test");
-    assertThat(requestBody).hasValue("{\"message\":\"hello\"}");
-    assertThat(result.outputText()).isEqualTo("ok");
+    JsonNode root = objectMapper.readTree(requestBody.get());
+    assertThat(authorization).hasValue("eyJhbGci");
+    assertThat(root.get("model").asText()).isEqualTo("MES-Qwen-V35-35B-A3B");
+    assertThat(root.get("messages").get(0).get("content").asText()).isEqualTo("please score");
+    assertThat(result.outputText()).isEqualTo("{\"score\":5}");
   }
 
   @Test
@@ -468,7 +508,7 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
-  void listModelsFiltersIamModelsWhenIamRouteIsEnabled() throws Exception {
+  void listModelsFiltersIamModels() throws Exception {
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/login", exchange -> {
       exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
@@ -510,9 +550,7 @@ class PlatformIntegrationServiceTest {
         """));
     server.start();
 
-    PlatformIntegrationProperties properties = properties();
-    properties.getIam().setEnabled(true);
-    PlatformIntegrationService service = new PlatformIntegrationService(properties, new ObjectMapper());
+    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
 
     List<PlatformModelInfo> models = service.listModels();
 
@@ -520,7 +558,7 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
-  void chatModelUsesIamEndpointAndCleansThinkContentWhenIamRouteIsEnabled() throws Exception {
+  void chatModelUsesIamEndpointAndCleansThinkContent() throws Exception {
     AtomicReference<String> authorization = new AtomicReference<>("");
     AtomicReference<String> requestBody = new AtomicReference<>("");
     ObjectMapper objectMapper = new ObjectMapper();
@@ -588,7 +626,6 @@ class PlatformIntegrationServiceTest {
     server.start();
 
     PlatformIntegrationProperties properties = properties();
-    properties.getIam().setEnabled(true);
     properties.getIam().setUrl("http://localhost:" + server.getAddress().getPort() + "/iam/chat");
     properties.getIam().setAuthorization("eyJhbGci");
     PlatformIntegrationService service = new PlatformIntegrationService(properties, objectMapper);
@@ -612,7 +649,6 @@ class PlatformIntegrationServiceTest {
     properties.setAgentListUrl(baseUrl + "/agents/{pageSize}/{curPage}");
     properties.setAgentDetailUrl(baseUrl + "/agents/{superAgentId}");
     properties.setAgentBundleListUrl(baseUrl + "/agents/{superAgentId}/bundles");
-    properties.setModelChatUrl(baseUrl + "/chat/{modelId}/test");
     properties.setAgentChatUrl(baseUrl + "/agent/chat");
     properties.setXSpaceId("space-1");
     properties.getLogin().setUrl(baseUrl + "/login");
