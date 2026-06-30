@@ -136,9 +136,10 @@
   <select id="listTaskBases" resultMap="TaskBaseMap">
     SELECT <include refid="TaskBaseColumns"/>
     FROM t_eval_task t
-    JOIN t_eval_dataset d ON t.dataset_id = d.id
-    JOIN t_eval_dataset_version v ON t.dataset_version_id = v.id
+    JOIN t_eval_dataset d ON t.dataset_id = d.id AND d.space_id = #{spaceId}
+    JOIN t_eval_dataset_version v ON t.dataset_version_id = v.id AND v.space_id = #{spaceId}
     WHERE t.is_deleted = 0
+      AND t.space_id = #{spaceId}
       <if test="status != null and status != ''">
         AND t.status = #{status}
       </if>
@@ -150,9 +151,9 @@
   <select id="findTaskBase" resultMap="TaskBaseMap">
     SELECT <include refid="TaskBaseColumns"/>
     FROM t_eval_task t
-    JOIN t_eval_dataset d ON t.dataset_id = d.id
-    JOIN t_eval_dataset_version v ON t.dataset_version_id = v.id
-    WHERE t.id = #{taskId} AND t.is_deleted = 0
+    JOIN t_eval_dataset d ON t.dataset_id = d.id AND d.space_id = #{spaceId}
+    JOIN t_eval_dataset_version v ON t.dataset_version_id = v.id AND v.space_id = #{spaceId}
+    WHERE t.id = #{taskId} AND t.is_deleted = 0 AND t.space_id = #{spaceId}
   </select>
 
   <select id="listEvaluatorDimensions" resultMap="EvaluatorDimensionMap">
@@ -176,10 +177,10 @@
            END AS passRate,
            te.display_order AS displayOrder
     FROM t_eval_task_evaluator te
-    LEFT JOIN t_eval_evaluator e ON te.evaluator_source = 'custom' AND te.evaluator_id = e.id
-    LEFT JOIN t_eval_evaluator_version ev ON te.evaluator_version_id = ev.id
-    LEFT JOIN t_eval_task_evaluator_result r ON r.task_evaluator_id = te.id
-    WHERE te.task_id = #{taskId}
+    LEFT JOIN t_eval_evaluator e ON te.evaluator_source = 'custom' AND te.evaluator_id = e.id AND e.space_id = #{spaceId}
+    LEFT JOIN t_eval_evaluator_version ev ON te.evaluator_version_id = ev.id AND ev.space_id = #{spaceId}
+    LEFT JOIN t_eval_task_evaluator_result r ON r.task_evaluator_id = te.id AND r.space_id = #{spaceId}
+    WHERE te.task_id = #{taskId} AND te.space_id = #{spaceId}
     GROUP BY te.id, te.evaluator_source, te.evaluator_id, te.evaluator_version_id,
              e.evaluator_name, e.evaluator_type, ev.version_no, te.status, te.display_order
     ORDER BY te.display_order ASC
@@ -200,9 +201,9 @@
            END AS passRate,
            tt.display_order AS displayOrder
     FROM t_eval_task_tag tt
-    JOIN t_eval_tag tag ON tt.tag_id = tag.id
-    LEFT JOIN t_eval_task_tag_result r ON r.task_tag_id = tt.id
-    WHERE tt.task_id = #{taskId}
+    JOIN t_eval_tag tag ON tt.tag_id = tag.id AND tag.space_id = #{spaceId}
+    LEFT JOIN t_eval_task_tag_result r ON r.task_tag_id = tt.id AND r.space_id = #{spaceId}
+    WHERE tt.task_id = #{taskId} AND tt.space_id = #{spaceId}
     GROUP BY tt.id, tt.tag_id, tag.tag_name, tag.tag_type, tt.status, tt.display_order
     ORDER BY tt.display_order ASC
   </select>
@@ -225,10 +226,11 @@
            r.started_at AS startedAt,
            r.finished_at AS finishedAt
     FROM t_eval_task_evaluator_result r
-    JOIN t_eval_task_evaluator te ON r.task_evaluator_id = te.id
-    LEFT JOIN t_eval_evaluator e ON te.evaluator_source = 'custom' AND te.evaluator_id = e.id
-    LEFT JOIN t_eval_evaluator_version ev ON te.evaluator_version_id = ev.id
-    WHERE r.task_item_id IN
+    JOIN t_eval_task_evaluator te ON r.task_evaluator_id = te.id AND te.space_id = #{spaceId}
+    LEFT JOIN t_eval_evaluator e ON te.evaluator_source = 'custom' AND te.evaluator_id = e.id AND e.space_id = #{spaceId}
+    LEFT JOIN t_eval_evaluator_version ev ON te.evaluator_version_id = ev.id AND ev.space_id = #{spaceId}
+    WHERE r.space_id = #{spaceId}
+      AND r.task_item_id IN
     <foreach collection="taskItemIds" item="taskItemId" open="(" separator="," close=")">
       #{taskItemId}
     </foreach>
@@ -250,10 +252,11 @@
            r.pass_result AS passResult,
            r.annotated_at AS annotatedAt
     FROM t_eval_task_tag_result r
-    JOIN t_eval_task_tag tt ON r.task_tag_id = tt.id
-    JOIN t_eval_tag tag ON tt.tag_id = tag.id
-    LEFT JOIN t_eval_tag_option opt ON r.tag_option_id = opt.id
-    WHERE r.task_item_id IN
+    JOIN t_eval_task_tag tt ON r.task_tag_id = tt.id AND tt.space_id = #{spaceId}
+    JOIN t_eval_tag tag ON tt.tag_id = tag.id AND tag.space_id = #{spaceId}
+    LEFT JOIN t_eval_tag_option opt ON r.tag_option_id = opt.id AND opt.space_id = #{spaceId}
+    WHERE r.space_id = #{spaceId}
+      AND r.task_item_id IN
     <foreach collection="taskItemIds" item="taskItemId" open="(" separator="," close=")">
       #{taskItemId}
     </foreach>
@@ -273,8 +276,8 @@
            tt.status AS status,
            tt.display_order AS displayOrder
     FROM t_eval_task_tag tt
-    JOIN t_eval_tag tag ON tt.tag_id = tag.id
-    WHERE tt.task_id = #{taskId}
+    JOIN t_eval_tag tag ON tt.tag_id = tag.id AND tag.space_id = #{spaceId}
+    WHERE tt.task_id = #{taskId} AND tt.space_id = #{spaceId}
     ORDER BY tt.display_order ASC
   </select>
 </mapper>

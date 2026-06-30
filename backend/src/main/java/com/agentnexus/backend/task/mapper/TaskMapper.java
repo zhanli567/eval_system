@@ -13,6 +13,7 @@ import org.apache.ibatis.annotations.Param;
 
 public interface TaskMapper extends BaseMapper<EvalTask> {
   List<TaskBase> listTaskBases(
+      @Param("spaceId") String spaceId,
       @Param("status") String status,
       @Param("like") String like,
       @Param("orderColumn") String orderColumn,
@@ -21,15 +22,21 @@ public interface TaskMapper extends BaseMapper<EvalTask> {
       @Param("offset") int offset
   );
 
-  TaskBase findTaskBase(@Param("taskId") String taskId);
+  TaskBase findTaskBase(@Param("spaceId") String spaceId, @Param("taskId") String taskId);
 
-  List<TaskEvaluatorDimension> listEvaluatorDimensions(@Param("taskId") String taskId);
+  List<TaskEvaluatorDimension> listEvaluatorDimensions(@Param("spaceId") String spaceId, @Param("taskId") String taskId);
 
-  List<TaskTagDimension> listTagDimensions(@Param("taskId") String taskId);
+  List<TaskTagDimension> listTagDimensions(@Param("spaceId") String spaceId, @Param("taskId") String taskId);
 
-  List<TaskEvaluatorResultDto> listEvaluatorResultsByTaskItemIds(@Param("taskItemIds") List<String> taskItemIds);
+  List<TaskEvaluatorResultDto> listEvaluatorResultsByTaskItemIds(
+      @Param("spaceId") String spaceId,
+      @Param("taskItemIds") List<String> taskItemIds
+  );
 
-  List<TaskTagResultDto> listTagResultsByTaskItemIds(@Param("taskItemIds") List<String> taskItemIds);
+  List<TaskTagResultDto> listTagResultsByTaskItemIds(
+      @Param("spaceId") String spaceId,
+      @Param("taskItemIds") List<String> taskItemIds
+  );
 
-  List<TaskTagBindingRecord> listTaskTagBindings(@Param("taskId") String taskId);
+  List<TaskTagBindingRecord> listTaskTagBindings(@Param("spaceId") String spaceId, @Param("taskId") String taskId);
 }

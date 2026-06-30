@@ -2,6 +2,7 @@ package com.agentnexus.backend.common.context;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentnexus.backend.common.security.CurrentUser;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

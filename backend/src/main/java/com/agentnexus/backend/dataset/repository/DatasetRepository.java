@@ -3,6 +3,7 @@ package com.agentnexus.backend.dataset.repository;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.agentnexus.backend.common.context.RepositoryContext;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetSummary;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetVersionDto;
 import com.agentnexus.backend.dataset.api.dto.response.FieldDto;
@@ -48,11 +49,13 @@ public class DatasetRepository {
   }
 
   public List<DatasetSummary> listDatasetSummaries(String like, int size, int offset) {
-    return datasetMapper.listDatasetSummaries(like, size, offset);
+    return RepositoryContext.callWithCurrentSpace(() ->
+        datasetMapper.listDatasetSummaries(RepositoryContext.spaceId(), like, size, offset));
   }
 
   public long countDatasetSummaries(String like) {
     return datasetMapper.selectCount(new LambdaQueryWrapper<EvalDataset>()
+        .eq(EvalDataset::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDataset::getIsDeleted, 0)
         .like(hasLikeText(like), EvalDataset::getName, likeText(like)));
   }
@@ -66,6 +69,7 @@ public class DatasetRepository {
     dataset.setLatestPublishedVersionId(null);
     dataset.setIsDeleted(0);
     dataset.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(dataset);
     datasetMapper.insert(dataset);
   }
 
@@ -77,22 +81,28 @@ public class DatasetRepository {
     version.setItemCount(itemCount);
     version.setIsDeleted(0);
     version.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(version);
     versionMapper.insert(version);
   }
 
   public DatasetSummary findDatasetSummary(String datasetId) {
-    return datasetMapper.findDatasetSummary(datasetId);
+    return RepositoryContext.callWithCurrentSpace(() ->
+        datasetMapper.findDatasetSummary(RepositoryContext.spaceId(), datasetId));
   }
 
   public void softDeleteDataset(String datasetId, String now) {
     datasetMapper.update(null, new LambdaUpdateWrapper<EvalDataset>()
+        .eq(EvalDataset::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDataset::getId, datasetId)
         .set(EvalDataset::getIsDeleted, 1)
+        .set(EvalDataset::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalDataset::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalDataset::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public List<DatasetVersionDto> listVersions(String datasetId) {
     return versionMapper.selectList(new LambdaQueryWrapper<EvalDatasetVersion>()
+            .eq(EvalDatasetVersion::getSpaceId, RepositoryContext.spaceId())
             .eq(EvalDatasetVersion::getDatasetId, datasetId)
             .eq(EvalDatasetVersion::getIsDeleted, 0)
             .orderByAsc(EvalDatasetVersion::getVersionNo))
@@ -103,6 +113,7 @@ public class DatasetRepository {
 
   public DatasetVersionDto findVersion(String versionId) {
     EvalDatasetVersion version = versionMapper.selectOne(new LambdaQueryWrapper<EvalDatasetVersion>()
+        .eq(EvalDatasetVersion::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetVersion::getId, versionId)
         .eq(EvalDatasetVersion::getIsDeleted, 0)
         .last("LIMIT 1"));
@@ -112,6 +123,7 @@ public class DatasetRepository {
   public String findDraftVersionId(String datasetId) {
     EvalDatasetVersion version = versionMapper.selectOne(new LambdaQueryWrapper<EvalDatasetVersion>()
         .select(EvalDatasetVersion::getId)
+        .eq(EvalDatasetVersion::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetVersion::getDatasetId, datasetId)
         .eq(EvalDatasetVersion::getVersionNo, 0)
         .eq(EvalDatasetVersion::getIsDeleted, 0)
@@ -121,6 +133,7 @@ public class DatasetRepository {
 
   public List<FieldDto> listFields(String versionId) {
     return fieldMapper.selectList(new LambdaQueryWrapper<EvalDatasetField>()
+            .eq(EvalDatasetField::getSpaceId, RepositoryContext.spaceId())
             .eq(EvalDatasetField::getVersionId, versionId)
             .orderByAsc(EvalDatasetField::getDisplayOrder))
         .stream()
@@ -131,6 +144,7 @@ public class DatasetRepository {
   public List<String> listFieldIds(String versionId) {
     return fieldMapper.selectList(new LambdaQueryWrapper<EvalDatasetField>()
             .select(EvalDatasetField::getId)
+            .eq(EvalDatasetField::getSpaceId, RepositoryContext.spaceId())
             .eq(EvalDatasetField::getVersionId, versionId))
         .stream()
         .map(EvalDatasetField::getId)
@@ -147,12 +161,15 @@ public class DatasetRepository {
       String now
   ) {
     fieldMapper.update(null, new LambdaUpdateWrapper<EvalDatasetField>()
+        .eq(EvalDatasetField::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetField::getId, fieldId)
         .set(EvalDatasetField::getFieldName, fieldName)
         .set(EvalDatasetField::getFieldType, fieldType)
         .set(EvalDatasetField::getIsRequired, required)
         .set(EvalDatasetField::getDescription, description)
         .set(EvalDatasetField::getDisplayOrder, displayOrder)
+        .set(EvalDatasetField::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalDatasetField::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalDatasetField::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
@@ -175,6 +192,7 @@ public class DatasetRepository {
     field.setDescription(description);
     field.setDisplayOrder(displayOrder);
     field.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(field);
     fieldMapper.insert(field);
   }
 
@@ -183,23 +201,28 @@ public class DatasetRepository {
       return;
     }
     cellMapper.delete(new LambdaQueryWrapper<EvalDatasetItemCell>()
+        .eq(EvalDatasetItemCell::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetItemCell::getVersionId, versionId)
         .in(EvalDatasetItemCell::getFieldId, fieldIds));
     fieldMapper.delete(new LambdaQueryWrapper<EvalDatasetField>()
+        .eq(EvalDatasetField::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetField::getVersionId, versionId)
         .in(EvalDatasetField::getId, fieldIds));
   }
 
   public List<DatasetRowRecord> searchRows(String versionId, String fieldId, String like, int size, int offset) {
-    return datasetMapper.searchRows(versionId, fieldId, like, size, offset);
+    return RepositoryContext.callWithCurrentSpace(() ->
+        datasetMapper.searchRows(RepositoryContext.spaceId(), versionId, fieldId, like, size, offset));
   }
 
   public long countSearchRows(String versionId, String fieldId, String like) {
-    return datasetMapper.countSearchRows(versionId, fieldId, like);
+    return RepositoryContext.callWithCurrentSpace(() ->
+        datasetMapper.countSearchRows(RepositoryContext.spaceId(), versionId, fieldId, like));
   }
 
   public List<DatasetRowRecord> listRows(String versionId, int size, int offset) {
     return itemMapper.selectList(new LambdaQueryWrapper<EvalDatasetItem>()
+            .eq(EvalDatasetItem::getSpaceId, RepositoryContext.spaceId())
             .eq(EvalDatasetItem::getVersionId, versionId)
             .orderByAsc(EvalDatasetItem::getRowNo)
             .last("LIMIT " + size + " OFFSET " + offset))
@@ -210,6 +233,7 @@ public class DatasetRepository {
 
   public List<DatasetRowRecord> listAllRows(String versionId) {
     return itemMapper.selectList(new LambdaQueryWrapper<EvalDatasetItem>()
+            .eq(EvalDatasetItem::getSpaceId, RepositoryContext.spaceId())
             .eq(EvalDatasetItem::getVersionId, versionId)
             .orderByAsc(EvalDatasetItem::getRowNo))
         .stream()
@@ -219,6 +243,7 @@ public class DatasetRepository {
 
   public long countRows(String versionId) {
     return itemMapper.selectCount(new LambdaQueryWrapper<EvalDatasetItem>()
+        .eq(EvalDatasetItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetItem::getVersionId, versionId));
   }
 
@@ -228,6 +253,7 @@ public class DatasetRepository {
     }
     Map<String, Map<String, String>> values = new LinkedHashMap<>();
     for (EvalDatasetItemCell cell : cellMapper.selectList(new LambdaQueryWrapper<EvalDatasetItemCell>()
+        .eq(EvalDatasetItemCell::getSpaceId, RepositoryContext.spaceId())
         .in(EvalDatasetItemCell::getItemId, itemIds))) {
       values.computeIfAbsent(cell.getItemId(), ignored -> new LinkedHashMap<>())
           .put(cell.getFieldId(), cell.getCellValue());
@@ -238,6 +264,7 @@ public class DatasetRepository {
   public int nextRowNo(String versionId) {
     EvalDatasetItem item = itemMapper.selectOne(new QueryWrapper<EvalDatasetItem>()
         .select("COALESCE(MAX(row_no), 0) + 1 AS row_no")
+        .eq("space_id", RepositoryContext.spaceId())
         .eq("version_id", versionId));
     return item == null || item.getRowNo() == null ? 1 : item.getRowNo();
   }
@@ -248,6 +275,7 @@ public class DatasetRepository {
     item.setVersionId(versionId);
     item.setRowNo(rowNo);
     item.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(item);
     itemMapper.insert(item);
   }
 
@@ -259,29 +287,36 @@ public class DatasetRepository {
     cell.setFieldId(fieldId);
     cell.setCellValue(cellValue);
     cell.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(cell);
     cellMapper.insert(cell);
   }
 
   public void updateItem(String itemId, String versionId, String now) {
     itemMapper.update(null, new LambdaUpdateWrapper<EvalDatasetItem>()
+        .eq(EvalDatasetItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetItem::getId, itemId)
         .eq(EvalDatasetItem::getVersionId, versionId)
+        .set(EvalDatasetItem::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalDatasetItem::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalDatasetItem::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void deleteCellsByItem(String itemId) {
     cellMapper.delete(new LambdaQueryWrapper<EvalDatasetItemCell>()
+        .eq(EvalDatasetItemCell::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetItemCell::getItemId, itemId));
   }
 
   public void deleteItem(String itemId, String versionId) {
     itemMapper.delete(new LambdaQueryWrapper<EvalDatasetItem>()
+        .eq(EvalDatasetItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetItem::getId, itemId)
         .eq(EvalDatasetItem::getVersionId, versionId));
   }
 
   public DatasetRowRecord findRow(String itemId) {
     EvalDatasetItem item = itemMapper.selectOne(new LambdaQueryWrapper<EvalDatasetItem>()
+        .eq(EvalDatasetItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetItem::getId, itemId)
         .last("LIMIT 1"));
     return item == null ? null : toRowRecord(item);
@@ -290,6 +325,7 @@ public class DatasetRepository {
   public int nextVersionNo(String datasetId) {
     EvalDatasetVersion version = versionMapper.selectOne(new QueryWrapper<EvalDatasetVersion>()
         .select("COALESCE(MAX(version_no), 0) + 1 AS version_no")
+        .eq("space_id", RepositoryContext.spaceId())
         .eq("dataset_id", datasetId));
     return version == null || version.getVersionNo() == null ? 1 : version.getVersionNo();
   }
@@ -297,6 +333,7 @@ public class DatasetRepository {
   public int findVersionItemCount(String versionId) {
     EvalDatasetVersion version = versionMapper.selectOne(new LambdaQueryWrapper<EvalDatasetVersion>()
         .select(EvalDatasetVersion::getItemCount)
+        .eq(EvalDatasetVersion::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetVersion::getId, versionId)
         .last("LIMIT 1"));
     return version == null || version.getItemCount() == null ? 0 : version.getItemCount();
@@ -304,23 +341,29 @@ public class DatasetRepository {
 
   public void softDeleteVersion(String versionId, String now) {
     versionMapper.update(null, new LambdaUpdateWrapper<EvalDatasetVersion>()
+        .eq(EvalDatasetVersion::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetVersion::getId, versionId)
         .set(EvalDatasetVersion::getIsDeleted, 1)
+        .set(EvalDatasetVersion::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalDatasetVersion::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalDatasetVersion::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void clearVersionCells(String versionId) {
     cellMapper.delete(new LambdaQueryWrapper<EvalDatasetItemCell>()
+        .eq(EvalDatasetItemCell::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetItemCell::getVersionId, versionId));
   }
 
   public void clearVersionItems(String versionId) {
     itemMapper.delete(new LambdaQueryWrapper<EvalDatasetItem>()
+        .eq(EvalDatasetItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetItem::getVersionId, versionId));
   }
 
   public void clearVersionFields(String versionId) {
     fieldMapper.delete(new LambdaQueryWrapper<EvalDatasetField>()
+        .eq(EvalDatasetField::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetField::getVersionId, versionId));
   }
 
@@ -333,6 +376,7 @@ public class DatasetRepository {
   public List<String> listItemIds(String versionId) {
     return itemMapper.selectList(new LambdaQueryWrapper<EvalDatasetItem>()
             .select(EvalDatasetItem::getId)
+            .eq(EvalDatasetItem::getSpaceId, RepositoryContext.spaceId())
             .eq(EvalDatasetItem::getVersionId, versionId))
         .stream()
         .map(EvalDatasetItem::getId)
@@ -342,6 +386,7 @@ public class DatasetRepository {
   public Integer findVersionNo(String versionId) {
     EvalDatasetVersion version = versionMapper.selectOne(new LambdaQueryWrapper<EvalDatasetVersion>()
         .select(EvalDatasetVersion::getVersionNo)
+        .eq(EvalDatasetVersion::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetVersion::getId, versionId)
         .eq(EvalDatasetVersion::getIsDeleted, 0)
         .last("LIMIT 1"));
@@ -350,33 +395,46 @@ public class DatasetRepository {
 
   public void updateVersionItemCount(String versionId, int itemCount, String now) {
     versionMapper.update(null, new LambdaUpdateWrapper<EvalDatasetVersion>()
+        .eq(EvalDatasetVersion::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetVersion::getId, versionId)
         .set(EvalDatasetVersion::getItemCount, itemCount)
+        .set(EvalDatasetVersion::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalDatasetVersion::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalDatasetVersion::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void touchVersionAndDataset(String versionId, String now) {
     versionMapper.update(null, new LambdaUpdateWrapper<EvalDatasetVersion>()
+        .eq(EvalDatasetVersion::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetVersion::getId, versionId)
+        .set(EvalDatasetVersion::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalDatasetVersion::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalDatasetVersion::getLastUpdatedDate, toLastUpdatedDate(now)));
     String datasetId = findDatasetIdByVersionId(versionId);
     if (StringUtils.hasText(datasetId)) {
       datasetMapper.update(null, new LambdaUpdateWrapper<EvalDataset>()
+          .eq(EvalDataset::getSpaceId, RepositoryContext.spaceId())
           .eq(EvalDataset::getId, datasetId)
+          .set(EvalDataset::getLastUpdatedBy, RepositoryContext.userId())
+          .set(EvalDataset::getLastUpdatedByName, RepositoryContext.displayName())
           .set(EvalDataset::getLastUpdatedDate, toLastUpdatedDate(now)));
     }
   }
 
   public void refreshDatasetVersionStats(String datasetId, String now) {
     datasetMapper.update(null, new LambdaUpdateWrapper<EvalDataset>()
+        .eq(EvalDataset::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDataset::getId, datasetId)
         .set(EvalDataset::getPublishedVersionCount, countPublishedVersions(datasetId))
         .set(EvalDataset::getLatestPublishedVersionId, findLatestPublishedVersionId(datasetId))
+        .set(EvalDataset::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalDataset::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalDataset::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   private int countPublishedVersions(String datasetId) {
     return Math.toIntExact(versionMapper.selectCount(new LambdaQueryWrapper<EvalDatasetVersion>()
+        .eq(EvalDatasetVersion::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetVersion::getDatasetId, datasetId)
         .gt(EvalDatasetVersion::getVersionNo, 0)
         .eq(EvalDatasetVersion::getIsDeleted, 0)));
@@ -385,6 +443,7 @@ public class DatasetRepository {
   private String findLatestPublishedVersionId(String datasetId) {
     EvalDatasetVersion version = versionMapper.selectOne(new LambdaQueryWrapper<EvalDatasetVersion>()
         .select(EvalDatasetVersion::getId)
+        .eq(EvalDatasetVersion::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetVersion::getDatasetId, datasetId)
         .gt(EvalDatasetVersion::getVersionNo, 0)
         .eq(EvalDatasetVersion::getIsDeleted, 0)
@@ -396,6 +455,7 @@ public class DatasetRepository {
   private String findDatasetIdByVersionId(String versionId) {
     EvalDatasetVersion version = versionMapper.selectOne(new LambdaQueryWrapper<EvalDatasetVersion>()
         .select(EvalDatasetVersion::getDatasetId)
+        .eq(EvalDatasetVersion::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalDatasetVersion::getId, versionId)
         .last("LIMIT 1"));
     return version == null ? null : version.getDatasetId();

@@ -1,5 +1,6 @@
 package com.agentnexus.backend.common.context;
 
+import com.agentnexus.backend.common.security.CurrentUser;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class CurrentUserHolder {

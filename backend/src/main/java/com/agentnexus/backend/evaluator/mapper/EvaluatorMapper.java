@@ -9,11 +9,12 @@ import org.apache.ibatis.annotations.Param;
 
 public interface EvaluatorMapper extends BaseMapper<EvalEvaluator> {
   List<EvaluatorSummary> listEvaluators(
+      @Param("spaceId") String spaceId,
       @Param("evaluatorType") String evaluatorType,
       @Param("like") String like,
       @Param("size") int size,
       @Param("offset") int offset
   );
 
-  EvaluatorConfigBase findVersionConfig(@Param("versionId") String versionId);
+  EvaluatorConfigBase findVersionConfig(@Param("spaceId") String spaceId, @Param("versionId") String versionId);
 }

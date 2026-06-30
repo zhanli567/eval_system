@@ -3,6 +3,7 @@ package com.agentnexus.backend.task.repository;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.agentnexus.backend.common.context.RepositoryContext;
 import com.agentnexus.backend.task.api.dto.response.TaskBase;
 import com.agentnexus.backend.task.api.dto.response.TaskEvaluatorDimension;
 import com.agentnexus.backend.task.api.dto.response.TaskEvaluatorResultDto;
@@ -71,7 +72,8 @@ public class TaskRepository {
       int size,
       int offset
   ) {
-    return taskMapper.listTaskBases(status, like, orderColumn, orderDirection, size, offset);
+    return RepositoryContext.callWithCurrentSpace(() ->
+        taskMapper.listTaskBases(RepositoryContext.spaceId(), status, like, orderColumn, orderDirection, size, offset));
   }
 
   public long countTaskBases(String status, String like) {
@@ -79,15 +81,17 @@ public class TaskRepository {
   }
 
   public TaskBase findTaskBase(String taskId) {
-    return taskMapper.findTaskBase(taskId);
+    return RepositoryContext.callWithCurrentSpace(() -> taskMapper.findTaskBase(RepositoryContext.spaceId(), taskId));
   }
 
   public List<TaskEvaluatorDimension> listEvaluatorDimensions(String taskId) {
-    return taskMapper.listEvaluatorDimensions(taskId);
+    return RepositoryContext.callWithCurrentSpace(() ->
+        taskMapper.listEvaluatorDimensions(RepositoryContext.spaceId(), taskId));
   }
 
   public List<TaskTagDimension> listTagDimensions(String taskId) {
-    return taskMapper.listTagDimensions(taskId);
+    return RepositoryContext.callWithCurrentSpace(() ->
+        taskMapper.listTagDimensions(RepositoryContext.spaceId(), taskId));
   }
 
   public void insertTask(
@@ -120,6 +124,7 @@ public class TaskRepository {
     task.setFinishedAt("");
     task.setIsDeleted(0);
     task.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(task);
     taskMapper.insert(task);
   }
 
@@ -144,6 +149,7 @@ public class TaskRepository {
     mapping.setDatasetFieldId(datasetFieldId);
     mapping.setDisplayOrder(displayOrder);
     mapping.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(mapping);
     appFieldMappingMapper.insert(mapping);
   }
 
@@ -168,6 +174,7 @@ public class TaskRepository {
     evaluator.setStatus(status);
     evaluator.setDisplayOrder(displayOrder);
     evaluator.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(evaluator);
     taskEvaluatorMapper.insert(evaluator);
   }
 
@@ -196,6 +203,7 @@ public class TaskRepository {
     mapping.setAppOutputName(appOutputName);
     mapping.setDisplayOrder(displayOrder);
     mapping.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(mapping);
     paramMappingMapper.insert(mapping);
   }
 
@@ -207,6 +215,7 @@ public class TaskRepository {
     tag.setStatus(status);
     tag.setDisplayOrder(displayOrder);
     tag.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(tag);
     taskTagMapper.insert(tag);
   }
 
@@ -233,6 +242,7 @@ public class TaskRepository {
     item.setStartedAt("");
     item.setFinishedAt("");
     item.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(item);
     taskItemMapper.insert(item);
   }
 
@@ -250,6 +260,7 @@ public class TaskRepository {
     result.setStartedAt("");
     result.setFinishedAt("");
     result.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(result);
     evaluatorResultMapper.insert(result);
   }
 
@@ -268,42 +279,56 @@ public class TaskRepository {
     result.setAnnotatorName("");
     result.setAnnotatedAt("");
     result.setLastUpdatedDate(toLastUpdatedDate(now));
+    RepositoryContext.fillCreated(result);
     tagResultMapper.insert(result);
   }
 
   public void softDeleteTask(String taskId, String now) {
     taskMapper.update(null, new LambdaUpdateWrapper<EvalTask>()
+        .eq(EvalTask::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTask::getId, taskId)
         .set(EvalTask::getIsDeleted, 1)
+        .set(EvalTask::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTask::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTask::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTaskStatus(String taskId, String status, String startedAt, String finishedAt, String now) {
     taskMapper.update(null, new LambdaUpdateWrapper<EvalTask>()
+        .eq(EvalTask::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTask::getId, taskId)
         .eq(EvalTask::getIsDeleted, 0)
         .set(EvalTask::getStatus, status)
         .set(startedAt != null, EvalTask::getStartedAt, startedAt)
         .set(finishedAt != null, EvalTask::getFinishedAt, finishedAt)
+        .set(EvalTask::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTask::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTask::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTaskEvaluatorStatus(String taskEvaluatorId, String status, String now) {
     taskEvaluatorMapper.update(null, new LambdaUpdateWrapper<EvalTaskEvaluator>()
+        .eq(EvalTaskEvaluator::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskEvaluator::getId, taskEvaluatorId)
         .set(EvalTaskEvaluator::getStatus, status)
+        .set(EvalTaskEvaluator::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTaskEvaluator::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTaskEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTaskTagStatus(String taskTagId, String status, String now) {
     taskTagMapper.update(null, new LambdaUpdateWrapper<EvalTaskTag>()
+        .eq(EvalTaskTag::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskTag::getId, taskTagId)
         .set(EvalTaskTag::getStatus, status)
+        .set(EvalTaskTag::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTaskTag::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTaskTag::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void resetTaskItemsForRestart(String taskId, String appOutputStatus, String now) {
     taskItemMapper.update(null, new LambdaUpdateWrapper<EvalTaskItem>()
+        .eq(EvalTaskItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskItem::getTaskId, taskId)
         .set(EvalTaskItem::getStatus, "pending")
         .set(EvalTaskItem::getAppOutput, "")
@@ -311,11 +336,14 @@ public class TaskRepository {
         .set(EvalTaskItem::getAppErrorMessage, "")
         .set(EvalTaskItem::getStartedAt, "")
         .set(EvalTaskItem::getFinishedAt, "")
+        .set(EvalTaskItem::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTaskItem::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTaskItem::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void resetEvaluatorResultsForRestart(String taskId, String now) {
     evaluatorResultMapper.update(null, new LambdaUpdateWrapper<EvalTaskEvaluatorResult>()
+        .eq(EvalTaskEvaluatorResult::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskEvaluatorResult::getTaskId, taskId)
         .set(EvalTaskEvaluatorResult::getStatus, "pending")
         .set(EvalTaskEvaluatorResult::getScore, null)
@@ -324,18 +352,24 @@ public class TaskRepository {
         .set(EvalTaskEvaluatorResult::getErrorMessage, "")
         .set(EvalTaskEvaluatorResult::getStartedAt, "")
         .set(EvalTaskEvaluatorResult::getFinishedAt, "")
+        .set(EvalTaskEvaluatorResult::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTaskEvaluatorResult::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTaskEvaluatorResult::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void resetTaskTagsForRestart(String taskId, String now) {
     taskTagMapper.update(null, new LambdaUpdateWrapper<EvalTaskTag>()
+        .eq(EvalTaskTag::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskTag::getTaskId, taskId)
         .set(EvalTaskTag::getStatus, "pending")
+        .set(EvalTaskTag::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTaskTag::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTaskTag::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void resetTagResultsForRestart(String taskId, String now) {
     tagResultMapper.update(null, new LambdaUpdateWrapper<EvalTaskTagResult>()
+        .eq(EvalTaskTagResult::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskTagResult::getTaskId, taskId)
         .set(EvalTaskTagResult::getStatus, "pending")
         .set(EvalTaskTagResult::getValueText, "")
@@ -345,6 +379,8 @@ public class TaskRepository {
         .set(EvalTaskTagResult::getAnnotatorId, "")
         .set(EvalTaskTagResult::getAnnotatorName, "")
         .set(EvalTaskTagResult::getAnnotatedAt, "")
+        .set(EvalTaskTagResult::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTaskTagResult::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTaskTagResult::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
@@ -359,6 +395,7 @@ public class TaskRepository {
       String now
   ) {
     taskItemMapper.update(null, new LambdaUpdateWrapper<EvalTaskItem>()
+        .eq(EvalTaskItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskItem::getId, taskItemId)
         .set(EvalTaskItem::getStatus, status)
         .set(EvalTaskItem::getAppOutput, appOutput)
@@ -366,22 +403,30 @@ public class TaskRepository {
         .set(EvalTaskItem::getAppErrorMessage, appErrorMessage)
         .set(EvalTaskItem::getStartedAt, startedAt)
         .set(EvalTaskItem::getFinishedAt, finishedAt)
+        .set(EvalTaskItem::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTaskItem::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTaskItem::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTaskItemAppResult(String taskItemId, String appOutput, String appOutputStatus, String appErrorMessage, String now) {
     taskItemMapper.update(null, new LambdaUpdateWrapper<EvalTaskItem>()
+        .eq(EvalTaskItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskItem::getId, taskItemId)
         .set(EvalTaskItem::getAppOutput, appOutput)
         .set(EvalTaskItem::getAppOutputStatus, appOutputStatus)
         .set(EvalTaskItem::getAppErrorMessage, appErrorMessage)
+        .set(EvalTaskItem::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTaskItem::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTaskItem::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTaskItemStatus(String taskItemId, String status, String now) {
     taskItemMapper.update(null, new LambdaUpdateWrapper<EvalTaskItem>()
+        .eq(EvalTaskItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskItem::getId, taskItemId)
         .set(EvalTaskItem::getStatus, status)
+        .set(EvalTaskItem::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTaskItem::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTaskItem::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
@@ -398,6 +443,7 @@ public class TaskRepository {
       String now
   ) {
     evaluatorResultMapper.update(null, new LambdaUpdateWrapper<EvalTaskEvaluatorResult>()
+        .eq(EvalTaskEvaluatorResult::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskEvaluatorResult::getTaskItemId, taskItemId)
         .eq(EvalTaskEvaluatorResult::getTaskEvaluatorId, taskEvaluatorId)
         .set(EvalTaskEvaluatorResult::getStatus, status)
@@ -407,6 +453,8 @@ public class TaskRepository {
         .set(EvalTaskEvaluatorResult::getErrorMessage, errorMessage)
         .set(EvalTaskEvaluatorResult::getStartedAt, startedAt)
         .set(EvalTaskEvaluatorResult::getFinishedAt, finishedAt)
+        .set(EvalTaskEvaluatorResult::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTaskEvaluatorResult::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTaskEvaluatorResult::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
@@ -424,6 +472,7 @@ public class TaskRepository {
       String now
   ) {
     tagResultMapper.update(null, new LambdaUpdateWrapper<EvalTaskTagResult>()
+        .eq(EvalTaskTagResult::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskTagResult::getTaskItemId, taskItemId)
         .eq(EvalTaskTagResult::getTaskTagId, taskTagId)
         .set(EvalTaskTagResult::getStatus, status)
@@ -434,11 +483,14 @@ public class TaskRepository {
         .set(EvalTaskTagResult::getAnnotatorId, annotatorId)
         .set(EvalTaskTagResult::getAnnotatorName, annotatorName)
         .set(EvalTaskTagResult::getAnnotatedAt, annotatedAt)
+        .set(EvalTaskTagResult::getLastUpdatedBy, RepositoryContext.userId())
+        .set(EvalTaskTagResult::getLastUpdatedByName, RepositoryContext.displayName())
         .set(EvalTaskTagResult::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public List<TaskItemRecord> listTaskItems(String taskId, int size, int offset) {
     return taskItemMapper.selectList(new LambdaQueryWrapper<EvalTaskItem>()
+            .eq(EvalTaskItem::getSpaceId, RepositoryContext.spaceId())
             .eq(EvalTaskItem::getTaskId, taskId)
             .orderByAsc(EvalTaskItem::getRowNo)
             .last("LIMIT " + size + " OFFSET " + offset))
@@ -449,6 +501,7 @@ public class TaskRepository {
 
   public List<TaskItemRecord> listAllTaskItems(String taskId) {
     return taskItemMapper.selectList(new LambdaQueryWrapper<EvalTaskItem>()
+            .eq(EvalTaskItem::getSpaceId, RepositoryContext.spaceId())
             .eq(EvalTaskItem::getTaskId, taskId)
             .orderByAsc(EvalTaskItem::getRowNo))
         .stream()
@@ -458,19 +511,23 @@ public class TaskRepository {
 
   public long countTaskItems(String taskId) {
     return taskItemMapper.selectCount(new LambdaQueryWrapper<EvalTaskItem>()
+        .eq(EvalTaskItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskItem::getTaskId, taskId));
   }
 
   public List<TaskEvaluatorResultDto> listEvaluatorResultsByTaskItemIds(List<String> taskItemIds) {
-    return taskItemIds == null || taskItemIds.isEmpty() ? List.of() : taskMapper.listEvaluatorResultsByTaskItemIds(taskItemIds);
+    return taskItemIds == null || taskItemIds.isEmpty() ? List.of() : RepositoryContext.callWithCurrentSpace(() ->
+        taskMapper.listEvaluatorResultsByTaskItemIds(RepositoryContext.spaceId(), taskItemIds));
   }
 
   public List<TaskTagResultDto> listTagResultsByTaskItemIds(List<String> taskItemIds) {
-    return taskItemIds == null || taskItemIds.isEmpty() ? List.of() : taskMapper.listTagResultsByTaskItemIds(taskItemIds);
+    return taskItemIds == null || taskItemIds.isEmpty() ? List.of() : RepositoryContext.callWithCurrentSpace(() ->
+        taskMapper.listTagResultsByTaskItemIds(RepositoryContext.spaceId(), taskItemIds));
   }
 
   public List<TaskAppFieldMappingRecord> listAppFieldMappings(String taskId) {
     return appFieldMappingMapper.selectList(new LambdaQueryWrapper<EvalTaskAppFieldMapping>()
+            .eq(EvalTaskAppFieldMapping::getSpaceId, RepositoryContext.spaceId())
             .eq(EvalTaskAppFieldMapping::getTaskId, taskId)
             .orderByAsc(EvalTaskAppFieldMapping::getDisplayOrder))
         .stream()
@@ -480,6 +537,7 @@ public class TaskRepository {
 
   public List<TaskEvaluatorBindingRecord> listTaskEvaluatorBindings(String taskId) {
     return taskEvaluatorMapper.selectList(new LambdaQueryWrapper<EvalTaskEvaluator>()
+            .eq(EvalTaskEvaluator::getSpaceId, RepositoryContext.spaceId())
             .eq(EvalTaskEvaluator::getTaskId, taskId)
             .orderByAsc(EvalTaskEvaluator::getDisplayOrder))
         .stream()
@@ -489,6 +547,7 @@ public class TaskRepository {
 
   public List<TaskEvaluatorParamMappingRecord> listParamMappings(String taskEvaluatorId) {
     return paramMappingMapper.selectList(new LambdaQueryWrapper<EvalTaskEvaluatorParamMapping>()
+            .eq(EvalTaskEvaluatorParamMapping::getSpaceId, RepositoryContext.spaceId())
             .eq(EvalTaskEvaluatorParamMapping::getTaskEvaluatorId, taskEvaluatorId)
             .orderByAsc(EvalTaskEvaluatorParamMapping::getDisplayOrder))
         .stream()
@@ -498,6 +557,7 @@ public class TaskRepository {
 
   public List<TaskEvaluatorParamMappingRecord> listAllParamMappings(String taskId) {
     return paramMappingMapper.selectList(new LambdaQueryWrapper<EvalTaskEvaluatorParamMapping>()
+            .eq(EvalTaskEvaluatorParamMapping::getSpaceId, RepositoryContext.spaceId())
             .eq(EvalTaskEvaluatorParamMapping::getTaskId, taskId)
             .orderByAsc(EvalTaskEvaluatorParamMapping::getTaskEvaluatorId, EvalTaskEvaluatorParamMapping::getDisplayOrder))
         .stream()
@@ -506,11 +566,13 @@ public class TaskRepository {
   }
 
   public List<TaskTagBindingRecord> listTaskTagBindings(String taskId) {
-    return taskMapper.listTaskTagBindings(taskId);
+    return RepositoryContext.callWithCurrentSpace(() ->
+        taskMapper.listTaskTagBindings(RepositoryContext.spaceId(), taskId));
   }
 
   public TaskItemRecord findTaskItem(String taskItemId) {
     EvalTaskItem item = taskItemMapper.selectOne(new LambdaQueryWrapper<EvalTaskItem>()
+        .eq(EvalTaskItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskItem::getId, taskItemId)
         .last("LIMIT 1"));
     return item == null ? null : toTaskItemRecord(item);
@@ -519,6 +581,7 @@ public class TaskRepository {
   public String findPreviousTaskItemId(String taskId, int rowNo) {
     EvalTaskItem item = taskItemMapper.selectOne(new LambdaQueryWrapper<EvalTaskItem>()
         .select(EvalTaskItem::getId)
+        .eq(EvalTaskItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskItem::getTaskId, taskId)
         .lt(EvalTaskItem::getRowNo, rowNo)
         .orderByDesc(EvalTaskItem::getRowNo)
@@ -529,6 +592,7 @@ public class TaskRepository {
   public String findNextTaskItemId(String taskId, int rowNo) {
     EvalTaskItem item = taskItemMapper.selectOne(new LambdaQueryWrapper<EvalTaskItem>()
         .select(EvalTaskItem::getId)
+        .eq(EvalTaskItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskItem::getTaskId, taskId)
         .gt(EvalTaskItem::getRowNo, rowNo)
         .orderByAsc(EvalTaskItem::getRowNo)
@@ -538,47 +602,55 @@ public class TaskRepository {
 
   public int countTagResults(String taskTagId) {
     return Math.toIntExact(tagResultMapper.selectCount(new LambdaQueryWrapper<EvalTaskTagResult>()
+        .eq(EvalTaskTagResult::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskTagResult::getTaskTagId, taskTagId)));
   }
 
   public int countCompletedTagResults(String taskTagId) {
     return Math.toIntExact(tagResultMapper.selectCount(new LambdaQueryWrapper<EvalTaskTagResult>()
+        .eq(EvalTaskTagResult::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskTagResult::getTaskTagId, taskTagId)
         .eq(EvalTaskTagResult::getStatus, "completed")));
   }
 
   public int countUnfinishedTagResultsByItem(String taskItemId) {
     return Math.toIntExact(tagResultMapper.selectCount(new LambdaQueryWrapper<EvalTaskTagResult>()
+        .eq(EvalTaskTagResult::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskTagResult::getTaskItemId, taskItemId)
         .ne(EvalTaskTagResult::getStatus, "completed")));
   }
 
   public int countUnfinishedEvaluatorResultsByItem(String taskItemId) {
     return Math.toIntExact(evaluatorResultMapper.selectCount(new LambdaQueryWrapper<EvalTaskEvaluatorResult>()
+        .eq(EvalTaskEvaluatorResult::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskEvaluatorResult::getTaskItemId, taskItemId)
         .notIn(EvalTaskEvaluatorResult::getStatus, List.of("completed", "skipped"))));
   }
 
   public int countUnfinishedTaskItems(String taskId) {
     return Math.toIntExact(taskItemMapper.selectCount(new LambdaQueryWrapper<EvalTaskItem>()
+        .eq(EvalTaskItem::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskItem::getTaskId, taskId)
         .ne(EvalTaskItem::getStatus, "completed")));
   }
 
   public int countUnfinishedTagResultsByTask(String taskId) {
     return Math.toIntExact(tagResultMapper.selectCount(new LambdaQueryWrapper<EvalTaskTagResult>()
+        .eq(EvalTaskTagResult::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskTagResult::getTaskId, taskId)
         .ne(EvalTaskTagResult::getStatus, "completed")));
   }
 
   public int countUnfinishedEvaluatorResultsByTask(String taskId) {
     return Math.toIntExact(evaluatorResultMapper.selectCount(new LambdaQueryWrapper<EvalTaskEvaluatorResult>()
+        .eq(EvalTaskEvaluatorResult::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTaskEvaluatorResult::getTaskId, taskId)
         .notIn(EvalTaskEvaluatorResult::getStatus, List.of("completed", "skipped"))));
   }
 
   private LambdaQueryWrapper<EvalTask> taskQuery(String status, String like) {
     return new LambdaQueryWrapper<EvalTask>()
+        .eq(EvalTask::getSpaceId, RepositoryContext.spaceId())
         .eq(EvalTask::getIsDeleted, 0)
         .eq(StringUtils.hasText(status), EvalTask::getStatus, status)
         .like(hasLikeText(like), EvalTask::getTaskName, likeText(like));

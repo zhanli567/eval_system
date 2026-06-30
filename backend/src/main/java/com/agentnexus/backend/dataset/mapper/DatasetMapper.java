@@ -8,11 +8,17 @@ import java.util.List;
 import org.apache.ibatis.annotations.Param;
 
 public interface DatasetMapper extends BaseMapper<EvalDataset> {
-  List<DatasetSummary> listDatasetSummaries(@Param("like") String like, @Param("size") int size, @Param("offset") int offset);
+  List<DatasetSummary> listDatasetSummaries(
+      @Param("spaceId") String spaceId,
+      @Param("like") String like,
+      @Param("size") int size,
+      @Param("offset") int offset
+  );
 
-  DatasetSummary findDatasetSummary(@Param("datasetId") String datasetId);
+  DatasetSummary findDatasetSummary(@Param("spaceId") String spaceId, @Param("datasetId") String datasetId);
 
   List<DatasetRowRecord> searchRows(
+      @Param("spaceId") String spaceId,
       @Param("versionId") String versionId,
       @Param("fieldId") String fieldId,
       @Param("like") String like,
@@ -20,5 +26,10 @@ public interface DatasetMapper extends BaseMapper<EvalDataset> {
       @Param("offset") int offset
   );
 
-  long countSearchRows(@Param("versionId") String versionId, @Param("fieldId") String fieldId, @Param("like") String like);
+  long countSearchRows(
+      @Param("spaceId") String spaceId,
+      @Param("versionId") String versionId,
+      @Param("fieldId") String fieldId,
+      @Param("like") String like
+  );
 }
