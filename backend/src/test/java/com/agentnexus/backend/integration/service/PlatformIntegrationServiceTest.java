@@ -32,24 +32,20 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
-  void listModelsReplacesDefaultPagePlaceholdersAndReloginsWhenCookieIsRejected() throws Exception {
+  void listModelsReplacesDefaultPagePlaceholdersAndSendsEmptyCookieWithoutLogin() throws Exception {
     AtomicInteger loginCalls = new AtomicInteger();
     AtomicInteger modelCalls = new AtomicInteger();
     AtomicReference<String> modelPath = new AtomicReference<>("");
+    AtomicReference<String> cookie = new AtomicReference<>("missing");
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/login", exchange -> {
-      int call = loginCalls.incrementAndGet();
-      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=" + (call == 1 ? "old" : "new"));
+      loginCalls.incrementAndGet();
       writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
     });
     server.createContext("/models", exchange -> {
       modelCalls.incrementAndGet();
       modelPath.set(exchange.getRequestURI().getPath());
-      String cookie = firstHeader(exchange, "cookie");
-      if (!cookie.contains("SESSION=new")) {
-        writeJson(exchange, 403, "{\"message\":\"forbidden\"}");
-        return;
-      }
+      cookie.set(firstHeader(exchange, "cookie"));
       writeJson(exchange, 200, """
           {
             "status": "200",
@@ -93,18 +89,15 @@ class PlatformIntegrationServiceTest {
 
     assertThat(models).extracting(PlatformModelInfo::modelId).containsExactly("model-1");
     assertThat(modelPath).hasValue("/models/10/1");
-    assertThat(loginCalls).hasValue(2);
-    assertThat(modelCalls).hasValue(2);
+    assertThat(cookie).hasValue("");
+    assertThat(loginCalls).hasValue(0);
+    assertThat(modelCalls).hasValue(1);
   }
 
   @Test
   void listAgentsReplacesDefaultPagePlaceholdersAndMapsIconUrl() throws Exception {
     AtomicReference<String> agentPath = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/login", exchange -> {
-      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
-      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
-    });
     server.createContext("/agents", exchange -> {
       agentPath.set(exchange.getRequestURI().getPath());
       writeJson(exchange, 200, """
@@ -153,10 +146,6 @@ class PlatformIntegrationServiceTest {
     AtomicReference<String> cookie = new AtomicReference<>("");
     AtomicReference<String> spaceId = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/login", exchange -> {
-      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
-      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
-    });
     server.createContext("/agents/agent-1", exchange -> {
       cookie.set(firstHeader(exchange, "cookie"));
       spaceId.set(firstHeader(exchange, "x-space-id"));
@@ -195,7 +184,7 @@ class PlatformIntegrationServiceTest {
 
     PlatformAgentDefinition detail = service.getAgentDetail("agent-1");
 
-    assertThat(cookie).hasValue("SESSION=valid");
+    assertThat(cookie).hasValue("");
     assertThat(spaceId).hasValue("space-1");
     assertThat(detail.id()).isEqualTo("agent-1");
     assertThat(detail.agentName()).isEqualTo("Agent One");
@@ -219,10 +208,6 @@ class PlatformIntegrationServiceTest {
     AtomicReference<String> cookie = new AtomicReference<>("");
     AtomicReference<String> spaceId = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/login", exchange -> {
-      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
-      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
-    });
     server.createContext("/agents/agent-1/bundles", exchange -> {
       cookie.set(firstHeader(exchange, "cookie"));
       spaceId.set(firstHeader(exchange, "x-space-id"));
@@ -250,7 +235,7 @@ class PlatformIntegrationServiceTest {
 
     List<PlatformAgentVersion> bundles = service.listAgentBundles("agent-1");
 
-    assertThat(cookie).hasValue("SESSION=valid");
+    assertThat(cookie).hasValue("");
     assertThat(spaceId).hasValue("space-1");
     assertThat(bundles).extracting(PlatformAgentVersion::id).containsExactly("bundle-current", "bundle-old");
     assertThat(bundles).extracting(PlatformAgentVersion::versionName).containsExactly("v1", "bundle-old");
@@ -262,10 +247,6 @@ class PlatformIntegrationServiceTest {
     AtomicReference<String> requestBody = new AtomicReference<>("");
     ObjectMapper objectMapper = new ObjectMapper();
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/login", exchange -> {
-      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
-      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
-    });
     server.createContext("/models", exchange -> writeJson(exchange, 200, """
         {
           "status": "200",
@@ -329,10 +310,6 @@ class PlatformIntegrationServiceTest {
     AtomicReference<String> requestBody = new AtomicReference<>("");
     ObjectMapper objectMapper = new ObjectMapper();
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/login", exchange -> {
-      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
-      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
-    });
     server.createContext("/agent/chat", exchange -> {
       requestBody.set(readBody(exchange));
       writeJson(exchange, 200, """
@@ -361,17 +338,15 @@ class PlatformIntegrationServiceTest {
     AtomicReference<String> childAlias = new AtomicReference<>("missing");
     AtomicReference<String> superAgentId = new AtomicReference<>("");
     AtomicReference<String> bundleId = new AtomicReference<>("");
+    AtomicReference<String> cookie = new AtomicReference<>("missing");
     ObjectMapper objectMapper = new ObjectMapper();
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/login", exchange -> {
-      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
-      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
-    });
     server.createContext("/agent/chat", exchange -> {
       requestBody.set(readBody(exchange));
       childAlias.set(firstHeader(exchange, "x-agent-alias"));
       superAgentId.set(firstHeader(exchange, "x-super-agent-id"));
       bundleId.set(firstHeader(exchange, "x-bundle-id"));
+      cookie.set(firstHeader(exchange, "cookie"));
       writeJson(exchange, 200, """
           {"choices":[{"delta":{"content":[{"type":"text","text":"dynamic ok"}]}}]}
           """);
@@ -390,6 +365,7 @@ class PlatformIntegrationServiceTest {
     assertThat(childAlias).hasValue("");
     assertThat(superAgentId).hasValue("agent-1");
     assertThat(bundleId).hasValue("bundle-1");
+    assertThat(cookie).hasValue("");
     assertThat(response.outputs().get("text")).isEqualTo("dynamic ok");
   }
 
@@ -397,10 +373,6 @@ class PlatformIntegrationServiceTest {
   void invokeAgentSendsSelectedChildAliasHeader() throws Exception {
     AtomicReference<String> childAlias = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/login", exchange -> {
-      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
-      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
-    });
     server.createContext("/agent/chat", exchange -> {
       childAlias.set(firstHeader(exchange, "x-agent-alias"));
       writeJson(exchange, 200, """
@@ -423,10 +395,6 @@ class PlatformIntegrationServiceTest {
   void invokeAgentConcatenatesStreamingTextChunks() throws Exception {
     ObjectMapper objectMapper = new ObjectMapper();
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/login", exchange -> {
-      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
-      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
-    });
     server.createContext("/agent/chat", exchange -> {
       byte[] payload = """
           data: {"choices":[{"delta":{"content":[{"type":"text","text":"Hello"}]}}]}
@@ -456,10 +424,6 @@ class PlatformIntegrationServiceTest {
   void invokeAgentParsesAllStructuredContentTypes() throws Exception {
     ObjectMapper objectMapper = new ObjectMapper();
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/login", exchange -> {
-      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
-      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
-    });
     server.createContext("/agent/chat", exchange -> {
       byte[] payload = """
           data: {"id":"chunk-1","conversationId":"conversation-1","masterAgent":{"name":"master"},"metaAgent":{"name":"meta"},"userId":"user-1","object":"chat.completion.chunk","created":1781573919962,"model":"agent-model","choices":[{"index":0,"delta":{"role":"assistant","content":[{"type":"reasoning","reasoning":"thinking"},{"type":"skill_trigger","skillName":"search","skillDesc":"search docs"},{"type":"references","references":[{"id":"ref-1","title":"Doc title","url":"https://example.com/doc","sourceType":"web","sourceName":"Example","summary":"short summary","snippet":"matched snippet"}]},{"type":"debug","text":"debug line"},{"type":"text","text":"final answer"},{"type":"tool_call","toolCallId":"call-1","toolName":"lookup","arguments":"{\\"q\\":\\"abc\\"}"},{"type":"tool_response","toolCallId":"call-1","toolName":"lookup","response":"tool result"},{"type":"gen_ui","uicardDefinition":{"id":"card-1","type":"chart","version":"1","displayName":"Chart","location":"CHAT_UI","body":[{"id":"component-1","type":"text","componentKey":"Text","propsData":{"value":"hello"}}]}},{"type":"error","error":"minor error"}],"tool_calls":[{"index":0,"id":"call-2","type":"function","function":{"name":"fn","arguments":"{\\"x\\":1}"}}],"extra":{"traceId":"trace-1"}},"finish_reason":"stop"}]}
@@ -510,10 +474,6 @@ class PlatformIntegrationServiceTest {
   @Test
   void listModelsFiltersIamModels() throws Exception {
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/login", exchange -> {
-      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
-      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
-    });
     server.createContext("/models", exchange -> writeJson(exchange, 200, """
         {
           "status": "200",
@@ -563,10 +523,6 @@ class PlatformIntegrationServiceTest {
     AtomicReference<String> requestBody = new AtomicReference<>("");
     ObjectMapper objectMapper = new ObjectMapper();
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/login", exchange -> {
-      exchange.getResponseHeaders().add("Set-Cookie", "SESSION=valid");
-      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
-    });
     server.createContext("/models", exchange -> writeJson(exchange, 200, """
         {
           "status": "200",
@@ -651,13 +607,6 @@ class PlatformIntegrationServiceTest {
     properties.setAgentBundleListUrl(baseUrl + "/agents/{superAgentId}/bundles");
     properties.setAgentChatUrl(baseUrl + "/agent/chat");
     properties.setXSpaceId("space-1");
-    properties.getLogin().setUrl(baseUrl + "/login");
-    properties.getLogin().setLoginAccount("account");
-    properties.getLogin().setUid("uid");
-    properties.getLogin().setPassword("password");
-    properties.getLogin().setLang("zh_CN");
-    properties.getLogin().setAppId("app");
-    properties.getLogin().setEncryptedPasswordSwitch("false");
     return properties;
   }
 

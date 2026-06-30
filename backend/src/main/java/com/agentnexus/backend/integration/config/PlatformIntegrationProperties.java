@@ -15,7 +15,6 @@ public class PlatformIntegrationProperties {
   private boolean trustAllSsl = true;
   private int connectTimeoutMs = 5000;
   private int readTimeoutMs = 60000;
-  private Login login = new Login();
   private Iam iam = new Iam();
 
   public String getXSpaceId() {
@@ -90,14 +89,6 @@ public class PlatformIntegrationProperties {
     this.readTimeoutMs = readTimeoutMs;
   }
 
-  public Login getLogin() {
-    return login;
-  }
-
-  public void setLogin(Login login) {
-    this.login = login == null ? new Login() : login;
-  }
-
   public Iam getIam() {
     return iam;
   }
@@ -108,85 +99,6 @@ public class PlatformIntegrationProperties {
 
   private String clean(String value) {
     return value == null ? "" : value.trim();
-  }
-
-  public static class Login {
-    private String url = "";
-    private String loginAccount = "";
-    private String uid = "";
-    private String password = "";
-    private String lang = "";
-    private Boolean rememberAccountName = Boolean.TRUE;
-    private String appId = "";
-    private String encryptedPasswordSwitch = "";
-
-    public String getUrl() {
-      return url;
-    }
-
-    public void setUrl(String url) {
-      this.url = clean(url);
-    }
-
-    public String getLoginAccount() {
-      return loginAccount;
-    }
-
-    public void setLoginAccount(String loginAccount) {
-      this.loginAccount = clean(loginAccount);
-    }
-
-    public String getUid() {
-      return uid;
-    }
-
-    public void setUid(String uid) {
-      this.uid = clean(uid);
-    }
-
-    public String getPassword() {
-      return password;
-    }
-
-    public void setPassword(String password) {
-      this.password = clean(password);
-    }
-
-    public String getLang() {
-      return lang;
-    }
-
-    public void setLang(String lang) {
-      this.lang = clean(lang);
-    }
-
-    public Boolean getRememberAccountName() {
-      return rememberAccountName;
-    }
-
-    public void setRememberAccountName(Boolean rememberAccountName) {
-      this.rememberAccountName = rememberAccountName;
-    }
-
-    public String getAppId() {
-      return appId;
-    }
-
-    public void setAppId(String appId) {
-      this.appId = clean(appId);
-    }
-
-    public String getEncryptedPasswordSwitch() {
-      return encryptedPasswordSwitch;
-    }
-
-    public void setEncryptedPasswordSwitch(String encryptedPasswordSwitch) {
-      this.encryptedPasswordSwitch = clean(encryptedPasswordSwitch);
-    }
-
-    private String clean(String value) {
-      return value == null ? "" : value.trim();
-    }
   }
 
   public static class Iam {
