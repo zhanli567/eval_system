@@ -3,7 +3,9 @@ package com.agentnexus.backend.evaluator.repository;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.agentnexus.backend.common.context.RepositoryContext;
+import com.agentnexus.backend.common.context.CurrentSpaceHolder;
+import com.agentnexus.backend.common.context.CurrentUserHolder;
+import com.agentnexus.backend.common.security.CurrentUser;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorConfigBase;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorParamDto;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorSummary;
@@ -19,6 +21,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
@@ -39,13 +42,13 @@ public class EvaluatorRepository {
   }
 
   public List<EvaluatorSummary> listEvaluators(String evaluatorType, String like, int size, int offset) {
-    return RepositoryContext.callWithCurrentSpace(() ->
-        evaluatorMapper.listEvaluators(RepositoryContext.spaceId(), evaluatorType, like, size, offset));
+    return CurrentSpaceHolder.callWithSpace(currentSpaceId(), () ->
+        evaluatorMapper.listEvaluators(currentSpaceId(), evaluatorType, like, size, offset));
   }
 
   public long countEvaluators(String evaluatorType, String like) {
     return evaluatorMapper.selectCount(new LambdaQueryWrapper<EvalEvaluator>()
-        .eq(EvalEvaluator::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalEvaluator::getSpaceId, currentSpaceId())
         .eq(EvalEvaluator::getIsDeleted, 0)
         .eq(StringUtils.hasText(evaluatorType), EvalEvaluator::getEvaluatorType, evaluatorType)
         .like(hasLikeText(like), EvalEvaluator::getEvaluatorName, likeText(like)));
@@ -67,50 +70,50 @@ public class EvaluatorRepository {
     evaluator.setLatestVersionId(latestVersionId);
     evaluator.setIsDeleted(0);
     evaluator.setLastUpdatedDate(toLastUpdatedDate(now));
-    RepositoryContext.fillCreated(evaluator);
+    fillCreated(evaluator);
     evaluatorMapper.insert(evaluator);
   }
 
   public void updateEvaluatorBase(String evaluatorId, String evaluatorName, String description, String now) {
     evaluatorMapper.update(null, new LambdaUpdateWrapper<EvalEvaluator>()
-        .eq(EvalEvaluator::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalEvaluator::getSpaceId, currentSpaceId())
         .eq(EvalEvaluator::getId, evaluatorId)
         .eq(EvalEvaluator::getIsDeleted, 0)
         .set(EvalEvaluator::getEvaluatorName, evaluatorName)
         .set(EvalEvaluator::getDescription, description)
-        .set(EvalEvaluator::getLastUpdatedBy, RepositoryContext.userId())
-        .set(EvalEvaluator::getLastUpdatedByName, RepositoryContext.displayName())
+        .set(EvalEvaluator::getLastUpdatedBy, currentUserId())
+        .set(EvalEvaluator::getLastUpdatedByName, currentUserName())
         .set(EvalEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateLatestVersion(String evaluatorId, String versionId, String now) {
     evaluatorMapper.update(null, new LambdaUpdateWrapper<EvalEvaluator>()
-        .eq(EvalEvaluator::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalEvaluator::getSpaceId, currentSpaceId())
         .eq(EvalEvaluator::getId, evaluatorId)
         .eq(EvalEvaluator::getIsDeleted, 0)
         .set(EvalEvaluator::getLatestVersionId, versionId)
-        .set(EvalEvaluator::getLastUpdatedBy, RepositoryContext.userId())
-        .set(EvalEvaluator::getLastUpdatedByName, RepositoryContext.displayName())
+        .set(EvalEvaluator::getLastUpdatedBy, currentUserId())
+        .set(EvalEvaluator::getLastUpdatedByName, currentUserName())
         .set(EvalEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void softDeleteEvaluator(String evaluatorId, String now) {
     evaluatorMapper.update(null, new LambdaUpdateWrapper<EvalEvaluator>()
-        .eq(EvalEvaluator::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalEvaluator::getSpaceId, currentSpaceId())
         .eq(EvalEvaluator::getId, evaluatorId)
         .set(EvalEvaluator::getIsDeleted, 1)
-        .set(EvalEvaluator::getLastUpdatedBy, RepositoryContext.userId())
-        .set(EvalEvaluator::getLastUpdatedByName, RepositoryContext.displayName())
+        .set(EvalEvaluator::getLastUpdatedBy, currentUserId())
+        .set(EvalEvaluator::getLastUpdatedByName, currentUserName())
         .set(EvalEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void softDeleteVersionsByEvaluator(String evaluatorId, String now) {
     versionMapper.update(null, new LambdaUpdateWrapper<EvalEvaluatorVersion>()
-        .eq(EvalEvaluatorVersion::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalEvaluatorVersion::getSpaceId, currentSpaceId())
         .eq(EvalEvaluatorVersion::getEvaluatorId, evaluatorId)
         .set(EvalEvaluatorVersion::getIsDeleted, 1)
-        .set(EvalEvaluatorVersion::getLastUpdatedBy, RepositoryContext.userId())
-        .set(EvalEvaluatorVersion::getLastUpdatedByName, RepositoryContext.displayName())
+        .set(EvalEvaluatorVersion::getLastUpdatedBy, currentUserId())
+        .set(EvalEvaluatorVersion::getLastUpdatedByName, currentUserName())
         .set(EvalEvaluatorVersion::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
@@ -138,7 +141,7 @@ public class EvaluatorRepository {
     version.setPassThreshold(passThreshold);
     version.setIsDeleted(0);
     version.setLastUpdatedDate(toLastUpdatedDate(now));
-    RepositoryContext.fillCreated(version);
+    fillCreated(version);
     versionMapper.insert(version);
   }
 
@@ -153,7 +156,7 @@ public class EvaluatorRepository {
       String now
   ) {
     versionMapper.update(null, new LambdaUpdateWrapper<EvalEvaluatorVersion>()
-        .eq(EvalEvaluatorVersion::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalEvaluatorVersion::getSpaceId, currentSpaceId())
         .eq(EvalEvaluatorVersion::getId, versionId)
         .eq(EvalEvaluatorVersion::getVersionNo, 0)
         .eq(EvalEvaluatorVersion::getIsDeleted, 0)
@@ -163,15 +166,15 @@ public class EvaluatorRepository {
         .set(EvalEvaluatorVersion::getScoreMin, scoreMin)
         .set(EvalEvaluatorVersion::getScoreMax, scoreMax)
         .set(EvalEvaluatorVersion::getPassThreshold, passThreshold)
-        .set(EvalEvaluatorVersion::getLastUpdatedBy, RepositoryContext.userId())
-        .set(EvalEvaluatorVersion::getLastUpdatedByName, RepositoryContext.displayName())
+        .set(EvalEvaluatorVersion::getLastUpdatedBy, currentUserId())
+        .set(EvalEvaluatorVersion::getLastUpdatedByName, currentUserName())
         .set(EvalEvaluatorVersion::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public String findDraftVersionId(String evaluatorId) {
     EvalEvaluatorVersion version = versionMapper.selectOne(new LambdaQueryWrapper<EvalEvaluatorVersion>()
         .select(EvalEvaluatorVersion::getId)
-        .eq(EvalEvaluatorVersion::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalEvaluatorVersion::getSpaceId, currentSpaceId())
         .eq(EvalEvaluatorVersion::getEvaluatorId, evaluatorId)
         .eq(EvalEvaluatorVersion::getVersionNo, 0)
         .eq(EvalEvaluatorVersion::getIsDeleted, 0)
@@ -182,7 +185,7 @@ public class EvaluatorRepository {
   public int nextVersionNo(String evaluatorId) {
     EvalEvaluatorVersion version = versionMapper.selectOne(new QueryWrapper<EvalEvaluatorVersion>()
         .select("COALESCE(MAX(version_no), 0) + 1 AS version_no")
-        .eq("space_id", RepositoryContext.spaceId())
+        .eq("space_id", currentSpaceId())
         .eq("evaluator_id", evaluatorId));
     return version == null || version.getVersionNo() == null ? 1 : version.getVersionNo();
   }
@@ -190,7 +193,7 @@ public class EvaluatorRepository {
   public String findEvaluatorType(String evaluatorId) {
     EvalEvaluator evaluator = evaluatorMapper.selectOne(new LambdaQueryWrapper<EvalEvaluator>()
         .select(EvalEvaluator::getEvaluatorType)
-        .eq(EvalEvaluator::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalEvaluator::getSpaceId, currentSpaceId())
         .eq(EvalEvaluator::getId, evaluatorId)
         .eq(EvalEvaluator::getIsDeleted, 0)
         .last("LIMIT 1"));
@@ -199,7 +202,7 @@ public class EvaluatorRepository {
 
   public List<EvaluatorVersionDto> listVersions(String evaluatorId) {
     return versionMapper.selectList(new LambdaQueryWrapper<EvalEvaluatorVersion>()
-            .eq(EvalEvaluatorVersion::getSpaceId, RepositoryContext.spaceId())
+            .eq(EvalEvaluatorVersion::getSpaceId, currentSpaceId())
             .eq(EvalEvaluatorVersion::getEvaluatorId, evaluatorId)
             .eq(EvalEvaluatorVersion::getIsDeleted, 0)
             .orderByAsc(EvalEvaluatorVersion::getVersionNo))
@@ -209,8 +212,8 @@ public class EvaluatorRepository {
   }
 
   public EvaluatorConfigBase findVersionConfig(String versionId) {
-    return RepositoryContext.callWithCurrentSpace(() ->
-        evaluatorMapper.findVersionConfig(RepositoryContext.spaceId(), versionId));
+    return CurrentSpaceHolder.callWithSpace(currentSpaceId(), () ->
+        evaluatorMapper.findVersionConfig(currentSpaceId(), versionId));
   }
 
   public void insertParam(
@@ -236,20 +239,20 @@ public class EvaluatorRepository {
     param.setDescription(description);
     param.setDisplayOrder(displayOrder);
     param.setLastUpdatedDate(toLastUpdatedDate(now));
-    RepositoryContext.fillCreated(param);
+    fillCreated(param);
     paramMapper.insert(param);
   }
 
   public void deleteParams(String targetType, String targetId) {
     paramMapper.delete(new LambdaQueryWrapper<EvalEvaluatorParam>()
-        .eq(EvalEvaluatorParam::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalEvaluatorParam::getSpaceId, currentSpaceId())
         .eq(EvalEvaluatorParam::getTargetType, targetType)
         .eq(EvalEvaluatorParam::getTargetId, targetId));
   }
 
   public List<EvaluatorParamDto> listParams(String targetType, String targetId) {
     return paramMapper.selectList(new LambdaQueryWrapper<EvalEvaluatorParam>()
-            .eq(EvalEvaluatorParam::getSpaceId, RepositoryContext.spaceId())
+            .eq(EvalEvaluatorParam::getSpaceId, currentSpaceId())
             .eq(EvalEvaluatorParam::getTargetType, targetType)
             .eq(EvalEvaluatorParam::getTargetId, targetId)
             .orderByAsc(EvalEvaluatorParam::getDisplayOrder))
@@ -281,6 +284,44 @@ public class EvaluatorRepository {
         param.getIsRequired() != null && param.getIsRequired() != 0,
         param.getDescription(),
         param.getDisplayOrder());
+  }
+
+  private void fillCreated(EvalEvaluator evaluator) {
+    evaluator.setSpaceId(currentSpaceId());
+    evaluator.setCreatedBy(currentUserId());
+    evaluator.setCreatedByName(currentUserName());
+    evaluator.setLastUpdatedBy(currentUserId());
+    evaluator.setLastUpdatedByName(currentUserName());
+  }
+
+  private void fillCreated(EvalEvaluatorVersion version) {
+    version.setSpaceId(currentSpaceId());
+    version.setCreatedBy(currentUserId());
+    version.setCreatedByName(currentUserName());
+    version.setLastUpdatedBy(currentUserId());
+    version.setLastUpdatedByName(currentUserName());
+  }
+
+  private void fillCreated(EvalEvaluatorParam param) {
+    param.setSpaceId(currentSpaceId());
+    param.setCreatedBy(currentUserId());
+    param.setCreatedByName(currentUserName());
+    param.setLastUpdatedBy(currentUserId());
+    param.setLastUpdatedByName(currentUserName());
+  }
+
+  private String currentSpaceId() {
+    return Objects.toString(CurrentSpaceHolder.get(), "");
+  }
+
+  private String currentUserId() {
+    CurrentUser user = CurrentUserHolder.get();
+    return user == null ? "" : Objects.toString(user.userId(), "");
+  }
+
+  private String currentUserName() {
+    CurrentUser user = CurrentUserHolder.get();
+    return user == null ? "" : Objects.toString(user.displayName(), "");
   }
 
   private LocalDateTime toLastUpdatedDate(String now) {

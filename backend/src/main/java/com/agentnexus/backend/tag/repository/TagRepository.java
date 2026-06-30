@@ -2,7 +2,9 @@ package com.agentnexus.backend.tag.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.agentnexus.backend.common.context.RepositoryContext;
+import com.agentnexus.backend.common.context.CurrentUserHolder;
+import com.agentnexus.backend.common.context.CurrentSpaceHolder;
+import com.agentnexus.backend.common.security.CurrentUser;
 import com.agentnexus.backend.tag.api.dto.response.TagConfig;
 import com.agentnexus.backend.tag.api.dto.response.TagOptionDto;
 import com.agentnexus.backend.tag.api.dto.response.TagSummary;
@@ -14,6 +16,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
@@ -42,7 +45,7 @@ public class TagRepository {
 
   public TagConfig findTagConfig(String tagId) {
     EvalTag tag = tagMapper.selectOne(new LambdaQueryWrapper<EvalTag>()
-        .eq(EvalTag::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalTag::getSpaceId, currentSpaceId())
         .eq(EvalTag::getId, tagId)
         .last("LIMIT 1"));
     return tag == null ? null : toConfig(tag);
@@ -50,7 +53,7 @@ public class TagRepository {
 
   public List<TagOptionDto> listOptions(String tagId) {
     return optionMapper.selectList(new LambdaQueryWrapper<EvalTagOption>()
-            .eq(EvalTagOption::getSpaceId, RepositoryContext.spaceId())
+            .eq(EvalTagOption::getSpaceId, currentSpaceId())
             .eq(EvalTagOption::getTagId, tagId)
             .orderByAsc(EvalTagOption::getDisplayOrder))
         .stream()
@@ -61,7 +64,7 @@ public class TagRepository {
   public String findTagType(String tagId) {
     EvalTag tag = tagMapper.selectOne(new LambdaQueryWrapper<EvalTag>()
         .select(EvalTag::getTagType)
-        .eq(EvalTag::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalTag::getSpaceId, currentSpaceId())
         .eq(EvalTag::getId, tagId)
         .last("LIMIT 1"));
     return tag == null ? null : tag.getTagType();
@@ -69,14 +72,14 @@ public class TagRepository {
 
   public int countSameNameExcept(String tagName, String tagId) {
     return Math.toIntExact(tagMapper.selectCount(new LambdaQueryWrapper<EvalTag>()
-        .eq(EvalTag::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalTag::getSpaceId, currentSpaceId())
         .eq(EvalTag::getTagName, tagName)
         .ne(EvalTag::getId, tagId)));
   }
 
   public int countSameName(String tagName) {
     return Math.toIntExact(tagMapper.selectCount(new LambdaQueryWrapper<EvalTag>()
-        .eq(EvalTag::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalTag::getSpaceId, currentSpaceId())
         .eq(EvalTag::getTagName, tagName)));
   }
 
@@ -99,7 +102,7 @@ public class TagRepository {
     tag.setMaxValue(maxValue);
     tag.setPassThreshold(passThreshold);
     tag.setLastUpdatedDate(toLastUpdatedDate(now));
-    RepositoryContext.fillCreated(tag);
+    fillCreated(tag);
     tagMapper.insert(tag);
   }
 
@@ -113,21 +116,21 @@ public class TagRepository {
       String now
   ) {
     tagMapper.update(null, new LambdaUpdateWrapper<EvalTag>()
-        .eq(EvalTag::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalTag::getSpaceId, currentSpaceId())
         .eq(EvalTag::getId, tagId)
         .set(EvalTag::getTagName, tagName)
         .set(EvalTag::getDescription, description)
         .set(EvalTag::getMinValue, minValue)
         .set(EvalTag::getMaxValue, maxValue)
         .set(EvalTag::getPassThreshold, passThreshold)
-        .set(EvalTag::getLastUpdatedBy, RepositoryContext.userId())
-        .set(EvalTag::getLastUpdatedByName, RepositoryContext.displayName())
+        .set(EvalTag::getLastUpdatedBy, currentUserId())
+        .set(EvalTag::getLastUpdatedByName, currentUserName())
         .set(EvalTag::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void deleteOptions(String tagId) {
     optionMapper.delete(new LambdaQueryWrapper<EvalTagOption>()
-        .eq(EvalTagOption::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalTagOption::getSpaceId, currentSpaceId())
         .eq(EvalTagOption::getTagId, tagId));
   }
 
@@ -139,13 +142,13 @@ public class TagRepository {
     option.setOptionGroup(optionGroup);
     option.setDisplayOrder(displayOrder);
     option.setLastUpdatedDate(toLastUpdatedDate(now));
-    RepositoryContext.fillCreated(option);
+    fillCreated(option);
     optionMapper.insert(option);
   }
 
   private LambdaQueryWrapper<EvalTag> tagQuery(String tagType, String like) {
     return new LambdaQueryWrapper<EvalTag>()
-        .eq(EvalTag::getSpaceId, RepositoryContext.spaceId())
+        .eq(EvalTag::getSpaceId, currentSpaceId())
         .eq(StringUtils.hasText(tagType), EvalTag::getTagType, tagType)
         .like(hasLikeText(like), EvalTag::getTagName, likeText(like));
   }
@@ -182,6 +185,36 @@ public class TagRepository {
         option.getDisplayOrder(),
         option.getCreatedDate(),
         option.getLastUpdatedDate());
+  }
+
+  private void fillCreated(EvalTag tag) {
+    tag.setSpaceId(currentSpaceId());
+    tag.setCreatedBy(currentUserId());
+    tag.setCreatedByName(currentUserName());
+    tag.setLastUpdatedBy(currentUserId());
+    tag.setLastUpdatedByName(currentUserName());
+  }
+
+  private void fillCreated(EvalTagOption option) {
+    option.setSpaceId(currentSpaceId());
+    option.setCreatedBy(currentUserId());
+    option.setCreatedByName(currentUserName());
+    option.setLastUpdatedBy(currentUserId());
+    option.setLastUpdatedByName(currentUserName());
+  }
+
+  private String currentSpaceId() {
+    return Objects.toString(CurrentSpaceHolder.get(), "");
+  }
+
+  private String currentUserId() {
+    CurrentUser user = CurrentUserHolder.get();
+    return user == null ? "" : Objects.toString(user.userId(), "");
+  }
+
+  private String currentUserName() {
+    CurrentUser user = CurrentUserHolder.get();
+    return user == null ? "" : Objects.toString(user.displayName(), "");
   }
 
   private LocalDateTime toLastUpdatedDate(String now) {
