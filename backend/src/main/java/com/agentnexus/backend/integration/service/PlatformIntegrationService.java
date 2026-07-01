@@ -1,5 +1,7 @@
 package com.agentnexus.backend.integration.service;
 
+import com.agentnexus.backend.common.context.CurrentSpaceHolder;
+import com.agentnexus.backend.iam.IamTokenService;
 import com.agentnexus.backend.integration.config.PlatformIntegrationProperties;
 import com.agentnexus.backend.integration.api.dto.request.PlatformAgentChatRequest;
 import com.agentnexus.backend.integration.api.dto.response.PlatformAgentChild;
@@ -65,6 +67,11 @@ public class PlatformIntegrationService {
   private static final String DEFAULT_AGENT_ALIAS = "router-agent";
   private static final int DEFAULT_PAGE_SIZE = 10;
   private static final int DEFAULT_CUR_PAGE = 1;
+  private static final String MODEL_LIST_PATH = "/models/{pageSize}/{curPage}";
+  private static final String AGENT_LIST_PATH = "/agents/{pageSize}/{curPage}";
+  private static final String AGENT_DETAIL_PATH = "/agents/{superAgentId}";
+  private static final String AGENT_BUNDLE_LIST_PATH = "/agents/{superAgentId}/bundles";
+  private static final String AGENT_CHAT_PATH = "/agent/chat";
   private static final String RESPONSE_OBJECT = "com.agentnexus.backend.integration.api.dto.response.PlatformAgentChatResponse";
   private static final HostnameVerifier TRUST_ALL_HOSTNAME_VERIFIER = (hostname, session) -> true;
   private static final TypeReference<List<PlatformAgentToolCallDelta>> TOOL_CALLS_TYPE = new TypeReference<>() {
@@ -76,20 +83,25 @@ public class PlatformIntegrationService {
 
   private final PlatformIntegrationProperties properties;
   private final ObjectMapper objectMapper;
+  private final IamTokenService iamTokenService;
   private static volatile SSLSocketFactory trustAllSocketFactory;
 
-  public PlatformIntegrationService(PlatformIntegrationProperties properties, ObjectMapper objectMapper) {
+  public PlatformIntegrationService(
+      PlatformIntegrationProperties properties,
+      ObjectMapper objectMapper,
+      IamTokenService iamTokenService
+  ) {
     this.properties = properties;
     this.objectMapper = objectMapper;
+    this.iamTokenService = iamTokenService;
   }
 
   public List<PlatformModelInfo> listModels() {
-    requireText(properties.getModelListUrl(), "请配置模型列表接口 integration.platform.model-list-url");
     PlatformModelListResponse response = exchangeJson(
         "GET",
-        pagedListUrl(properties.getModelListUrl()),
+        pagedListUrl(platformUrl(MODEL_LIST_PATH)),
         null,
-        authHeaders(true),
+        platformHeaders(),
         PlatformModelListResponse.class);
     ensureSuccess("模型列表接口", response.status(), response.success());
     PlatformListResult<PlatformModelInfo> result = response.resultObjVO();
@@ -100,12 +112,11 @@ public class PlatformIntegrationService {
   }
 
   public List<PlatformAgentDefinition> listAgents() {
-    requireText(properties.getAgentListUrl(), "请配置智能体列表接口 integration.platform.agent-list-url");
     PlatformAgentListResponse response = exchangeJson(
         "GET",
-        pagedListUrl(properties.getAgentListUrl()),
+        pagedListUrl(platformUrl(AGENT_LIST_PATH)),
         null,
-        authHeaders(true),
+        platformHeaders(),
         PlatformAgentListResponse.class);
     ensureSuccess("智能体列表接口", response.status(), response.success());
     PlatformListResult<PlatformSuperAgentInfo> result = response.resultObjVO();
@@ -121,12 +132,11 @@ public class PlatformIntegrationService {
 
   public List<PlatformAgentVersion> listAgentBundles(String agentId) {
     String safeAgentId = requireText(agentId, "Agent ID cannot be blank");
-    requireText(properties.getAgentBundleListUrl(), "Please configure agent bundle list API integration.platform.agent-bundle-list-url");
     PlatformAgentBundleListResponse response = exchangeJson(
         "GET",
         agentBundleListUrl(safeAgentId),
         null,
-        authHeaders(true),
+        platformHeaders(),
         PlatformAgentBundleListResponse.class);
     ensureSuccess("Agent bundle list API", response.status(), response.success());
     return normalizeAgentBundles(response.resultObjVO());
@@ -134,12 +144,11 @@ public class PlatformIntegrationService {
 
   private PlatformSuperAgentDetail loadAgentDetail(String agentId) {
     String safeAgentId = requireText(agentId, "Agent ID cannot be blank");
-    requireText(properties.getAgentDetailUrl(), "Please configure agent detail API integration.platform.agent-detail-url");
     PlatformAgentDetailResponse response = exchangeJson(
         "GET",
         agentDetailUrl(safeAgentId),
         null,
-        authHeaders(true),
+        platformHeaders(),
         PlatformAgentDetailResponse.class);
     ensureSuccess("Agent detail API", response.status(), response.success());
     if (response.resultObjVO() == null) {
@@ -234,14 +243,14 @@ public class PlatformIntegrationService {
         conversationId,
         request == null || request.messages() == null ? List.of() : request.messages(),
         Boolean.TRUE);
-    String chatUrl = requireText(properties.getAgentChatUrl(), "Please configure agent chat API integration.platform.agent-chat-url");
+    String chatUrl = platformUrl(AGENT_CHAT_PATH);
 
     HttpURLConnection connection = null;
     try {
       connection = openConnection(chatUrl, "POST");
       connection.setRequestProperty("content-type", "application/json;charset=UTF-8");
       connection.setRequestProperty("accept", "text/event-stream, application/json");
-      connection.setRequestProperty("cookie", "");
+      platformHeaders().forEach(connection::setRequestProperty);
       connection.setRequestProperty("x-super-agent-id", safeAgentId);
       connection.setRequestProperty("x-bundle-id", safeBundleId);
       if (StringUtils.hasText(agentAlias)) {
@@ -354,12 +363,10 @@ public class PlatformIntegrationService {
         new PlatformAgentField("genUi", "genUi", "string", "Generated UI card definition", 10));
   }
 
-  private Map<String, String> authHeaders(boolean includeSpaceId) {
+  private Map<String, String> platformHeaders() {
     Map<String, String> headers = new LinkedHashMap<>();
-    headers.put("cookie", "");
-    if (includeSpaceId && StringUtils.hasText(properties.getXSpaceId())) {
-      headers.put("x-space-id", properties.getXSpaceId());
-    }
+    headers.put("Authorization", firstNonBlank(iamTokenService.getToken()));
+    headers.put("x-space-id", firstNonBlank(CurrentSpaceHolder.get()));
     return headers;
   }
 
@@ -463,11 +470,17 @@ public class PlatformIntegrationService {
   }
 
   private String agentDetailUrl(String agentId) {
-    return pathParamUrl(properties.getAgentDetailUrl(), Map.of("superAgentId", agentId));
+    return pathParamUrl(platformUrl(AGENT_DETAIL_PATH), Map.of("superAgentId", agentId));
   }
 
   private String agentBundleListUrl(String agentId) {
-    return pathParamUrl(properties.getAgentBundleListUrl(), Map.of("superAgentId", agentId));
+    return pathParamUrl(platformUrl(AGENT_BUNDLE_LIST_PATH), Map.of("superAgentId", agentId));
+  }
+
+  private String platformUrl(String path) {
+    String baseUrl = requireText(properties.getBaseUrl(), "Please configure platform API base URL integration.platform.base-url");
+    String base = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+    return base + path;
   }
 
   private String pathParamUrl(String template, Map<String, String> values) {

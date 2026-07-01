@@ -6,63 +6,18 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "integration.platform")
 public class PlatformIntegrationProperties {
-  private String xSpaceId = "";
-  private String modelListUrl = "";
-  private String agentListUrl = "";
-  private String agentDetailUrl = "";
-  private String agentBundleListUrl = "";
-  private String agentChatUrl = "";
+  private String baseUrl = "";
   private boolean trustAllSsl = true;
-  private int connectTimeoutMs = 5000;
-  private int readTimeoutMs = 60000;
+  private int connectTimeoutMs = 500000;
+  private int readTimeoutMs = 6000000;
   private Iam iam = new Iam();
 
-  public String getXSpaceId() {
-    return xSpaceId;
+  public String getBaseUrl() {
+    return baseUrl;
   }
 
-  public void setXSpaceId(String xSpaceId) {
-    this.xSpaceId = clean(xSpaceId);
-  }
-
-  public String getModelListUrl() {
-    return modelListUrl;
-  }
-
-  public void setModelListUrl(String modelListUrl) {
-    this.modelListUrl = clean(modelListUrl);
-  }
-
-  public String getAgentListUrl() {
-    return agentListUrl;
-  }
-
-  public void setAgentListUrl(String agentListUrl) {
-    this.agentListUrl = clean(agentListUrl);
-  }
-
-  public String getAgentDetailUrl() {
-    return agentDetailUrl;
-  }
-
-  public void setAgentDetailUrl(String agentDetailUrl) {
-    this.agentDetailUrl = clean(agentDetailUrl);
-  }
-
-  public String getAgentBundleListUrl() {
-    return agentBundleListUrl;
-  }
-
-  public void setAgentBundleListUrl(String agentBundleListUrl) {
-    this.agentBundleListUrl = clean(agentBundleListUrl);
-  }
-
-  public String getAgentChatUrl() {
-    return agentChatUrl;
-  }
-
-  public void setAgentChatUrl(String agentChatUrl) {
-    this.agentChatUrl = clean(agentChatUrl);
+  public void setBaseUrl(String baseUrl) {
+    this.baseUrl = clean(baseUrl);
   }
 
   public boolean isTrustAllSsl() {

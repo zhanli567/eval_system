@@ -2,6 +2,8 @@ package com.agentnexus.backend.integration.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentnexus.backend.common.context.CurrentSpaceHolder;
+import com.agentnexus.backend.iam.IamTokenService;
 import com.agentnexus.backend.integration.config.PlatformIntegrationProperties;
 import com.agentnexus.backend.integration.api.dto.request.PlatformAgentChatRequest;
 import com.agentnexus.backend.integration.api.dto.request.PlatformAgentMessage;
@@ -26,17 +28,20 @@ class PlatformIntegrationServiceTest {
 
   @AfterEach
   void tearDown() {
+    CurrentSpaceHolder.clear();
     if (server != null) {
       server.stop(0);
     }
   }
 
   @Test
-  void listModelsReplacesDefaultPagePlaceholdersAndSendsEmptyCookieWithoutLogin() throws Exception {
+  void listModelsReplacesDefaultPagePlaceholdersAndSendsIamAuthorizationWithoutLogin() throws Exception {
     AtomicInteger loginCalls = new AtomicInteger();
     AtomicInteger modelCalls = new AtomicInteger();
     AtomicReference<String> modelPath = new AtomicReference<>("");
-    AtomicReference<String> cookie = new AtomicReference<>("missing");
+    AtomicReference<String> authorization = new AtomicReference<>("missing");
+    AtomicReference<Boolean> hasCookie = new AtomicReference<>(true);
+    AtomicReference<String> spaceId = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/login", exchange -> {
       loginCalls.incrementAndGet();
@@ -45,7 +50,9 @@ class PlatformIntegrationServiceTest {
     server.createContext("/models", exchange -> {
       modelCalls.incrementAndGet();
       modelPath.set(exchange.getRequestURI().getPath());
-      cookie.set(firstHeader(exchange, "cookie"));
+      authorization.set(firstHeader(exchange, "Authorization"));
+      hasCookie.set(hasHeader(exchange, "Cookie"));
+      spaceId.set(firstHeader(exchange, "x-space-id"));
       writeJson(exchange, 200, """
           {
             "status": "200",
@@ -82,14 +89,17 @@ class PlatformIntegrationServiceTest {
           """);
     });
     server.start();
+    CurrentSpaceHolder.set("space-1");
 
-    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
+    PlatformIntegrationService service = service(new ObjectMapper());
 
     List<PlatformModelInfo> models = service.listModels();
 
     assertThat(models).extracting(PlatformModelInfo::modelId).containsExactly("model-1");
     assertThat(modelPath).hasValue("/models/10/1");
-    assertThat(cookie).hasValue("");
+    assertThat(authorization).hasValue("iam-token");
+    assertThat(hasCookie).hasValue(false);
+    assertThat(spaceId).hasValue("space-1");
     assertThat(loginCalls).hasValue(0);
     assertThat(modelCalls).hasValue(1);
   }
@@ -132,7 +142,7 @@ class PlatformIntegrationServiceTest {
     });
     server.start();
 
-    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
+    PlatformIntegrationService service = service(new ObjectMapper());
 
     List<PlatformAgentDefinition> agents = service.listAgents();
 
@@ -143,11 +153,13 @@ class PlatformIntegrationServiceTest {
 
   @Test
   void getAgentDetailSendsAuthHeadersAndNormalizesChildren() throws Exception {
-    AtomicReference<String> cookie = new AtomicReference<>("");
+    AtomicReference<String> authorization = new AtomicReference<>("");
+    AtomicReference<Boolean> hasCookie = new AtomicReference<>(true);
     AtomicReference<String> spaceId = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/agents/agent-1", exchange -> {
-      cookie.set(firstHeader(exchange, "cookie"));
+      authorization.set(firstHeader(exchange, "Authorization"));
+      hasCookie.set(hasHeader(exchange, "Cookie"));
       spaceId.set(firstHeader(exchange, "x-space-id"));
       writeJson(exchange, 200, """
           {
@@ -179,12 +191,14 @@ class PlatformIntegrationServiceTest {
           """);
     });
     server.start();
+    CurrentSpaceHolder.set("space-1");
 
-    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
+    PlatformIntegrationService service = service(new ObjectMapper());
 
     PlatformAgentDefinition detail = service.getAgentDetail("agent-1");
 
-    assertThat(cookie).hasValue("");
+    assertThat(authorization).hasValue("iam-token");
+    assertThat(hasCookie).hasValue(false);
     assertThat(spaceId).hasValue("space-1");
     assertThat(detail.id()).isEqualTo("agent-1");
     assertThat(detail.agentName()).isEqualTo("Agent One");
@@ -205,11 +219,13 @@ class PlatformIntegrationServiceTest {
 
   @Test
   void listAgentBundlesSendsAuthHeadersAndNormalizesItems() throws Exception {
-    AtomicReference<String> cookie = new AtomicReference<>("");
+    AtomicReference<String> authorization = new AtomicReference<>("");
+    AtomicReference<Boolean> hasCookie = new AtomicReference<>(true);
     AtomicReference<String> spaceId = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/agents/agent-1/bundles", exchange -> {
-      cookie.set(firstHeader(exchange, "cookie"));
+      authorization.set(firstHeader(exchange, "Authorization"));
+      hasCookie.set(hasHeader(exchange, "Cookie"));
       spaceId.set(firstHeader(exchange, "x-space-id"));
       writeJson(exchange, 200, """
           {
@@ -230,12 +246,14 @@ class PlatformIntegrationServiceTest {
           """);
     });
     server.start();
+    CurrentSpaceHolder.set("space-1");
 
-    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
+    PlatformIntegrationService service = service(new ObjectMapper());
 
     List<PlatformAgentVersion> bundles = service.listAgentBundles("agent-1");
 
-    assertThat(cookie).hasValue("");
+    assertThat(authorization).hasValue("iam-token");
+    assertThat(hasCookie).hasValue(false);
     assertThat(spaceId).hasValue("space-1");
     assertThat(bundles).extracting(PlatformAgentVersion::id).containsExactly("bundle-current", "bundle-old");
     assertThat(bundles).extracting(PlatformAgentVersion::versionName).containsExactly("v1", "bundle-old");
@@ -294,7 +312,7 @@ class PlatformIntegrationServiceTest {
     PlatformIntegrationProperties properties = properties();
     properties.getIam().setUrl("http://localhost:" + server.getAddress().getPort() + "/iam/chat");
     properties.getIam().setAuthorization("eyJhbGci");
-    PlatformIntegrationService service = new PlatformIntegrationService(properties, objectMapper);
+    PlatformIntegrationService service = service(properties, objectMapper);
 
     var result = service.chatModel("iam-model", "please score");
 
@@ -318,7 +336,7 @@ class PlatformIntegrationServiceTest {
     });
     server.start();
 
-    PlatformIntegrationService service = new PlatformIntegrationService(properties(), objectMapper);
+    PlatformIntegrationService service = service(objectMapper);
     service.invokeAgent(
         "router-agent",
         "bundle-1",
@@ -338,7 +356,8 @@ class PlatformIntegrationServiceTest {
     AtomicReference<String> childAlias = new AtomicReference<>("missing");
     AtomicReference<String> superAgentId = new AtomicReference<>("");
     AtomicReference<String> bundleId = new AtomicReference<>("");
-    AtomicReference<String> cookie = new AtomicReference<>("missing");
+    AtomicReference<String> authorization = new AtomicReference<>("missing");
+    AtomicReference<Boolean> hasCookie = new AtomicReference<>(true);
     ObjectMapper objectMapper = new ObjectMapper();
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/agent/chat", exchange -> {
@@ -346,14 +365,15 @@ class PlatformIntegrationServiceTest {
       childAlias.set(firstHeader(exchange, "x-agent-alias"));
       superAgentId.set(firstHeader(exchange, "x-super-agent-id"));
       bundleId.set(firstHeader(exchange, "x-bundle-id"));
-      cookie.set(firstHeader(exchange, "cookie"));
+      authorization.set(firstHeader(exchange, "Authorization"));
+      hasCookie.set(hasHeader(exchange, "Cookie"));
       writeJson(exchange, 200, """
           {"choices":[{"delta":{"content":[{"type":"text","text":"dynamic ok"}]}}]}
           """);
     });
     server.start();
 
-    PlatformIntegrationService service = new PlatformIntegrationService(properties(), objectMapper);
+    PlatformIntegrationService service = service(objectMapper);
     var response = service.invokeAgent(
         "agent-1",
         "bundle-1",
@@ -365,7 +385,8 @@ class PlatformIntegrationServiceTest {
     assertThat(childAlias).hasValue("");
     assertThat(superAgentId).hasValue("agent-1");
     assertThat(bundleId).hasValue("bundle-1");
-    assertThat(cookie).hasValue("");
+    assertThat(authorization).hasValue("iam-token");
+    assertThat(hasCookie).hasValue(false);
     assertThat(response.outputs().get("text")).isEqualTo("dynamic ok");
   }
 
@@ -381,7 +402,7 @@ class PlatformIntegrationServiceTest {
     });
     server.start();
 
-    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
+    PlatformIntegrationService service = service(new ObjectMapper());
     service.invokeAgent(
         "agent-1",
         "bundle-1",
@@ -410,7 +431,7 @@ class PlatformIntegrationServiceTest {
     });
     server.start();
 
-    PlatformIntegrationService service = new PlatformIntegrationService(properties(), objectMapper);
+    PlatformIntegrationService service = service(objectMapper);
     var response = service.invokeAgent(
         "router-agent",
         "bundle-1",
@@ -437,7 +458,7 @@ class PlatformIntegrationServiceTest {
     });
     server.start();
 
-    PlatformIntegrationService service = new PlatformIntegrationService(properties(), objectMapper);
+    PlatformIntegrationService service = service(objectMapper);
 
     var response = service.invokeAgent(
         "router-agent",
@@ -510,7 +531,7 @@ class PlatformIntegrationServiceTest {
         """));
     server.start();
 
-    PlatformIntegrationService service = new PlatformIntegrationService(properties(), new ObjectMapper());
+    PlatformIntegrationService service = service(new ObjectMapper());
 
     List<PlatformModelInfo> models = service.listModels();
 
@@ -584,7 +605,7 @@ class PlatformIntegrationServiceTest {
     PlatformIntegrationProperties properties = properties();
     properties.getIam().setUrl("http://localhost:" + server.getAddress().getPort() + "/iam/chat");
     properties.getIam().setAuthorization("eyJhbGci");
-    PlatformIntegrationService service = new PlatformIntegrationService(properties, objectMapper);
+    PlatformIntegrationService service = service(properties, objectMapper);
 
     var result = service.chatModel("iam-model", "please score");
 
@@ -601,13 +622,25 @@ class PlatformIntegrationServiceTest {
   private PlatformIntegrationProperties properties() {
     String baseUrl = "http://localhost:" + server.getAddress().getPort();
     PlatformIntegrationProperties properties = new PlatformIntegrationProperties();
-    properties.setModelListUrl(baseUrl + "/models/{pageSize}/{curPage}");
-    properties.setAgentListUrl(baseUrl + "/agents/{pageSize}/{curPage}");
-    properties.setAgentDetailUrl(baseUrl + "/agents/{superAgentId}");
-    properties.setAgentBundleListUrl(baseUrl + "/agents/{superAgentId}/bundles");
-    properties.setAgentChatUrl(baseUrl + "/agent/chat");
-    properties.setXSpaceId("space-1");
+    properties.setBaseUrl(baseUrl);
     return properties;
+  }
+
+  private PlatformIntegrationService service(ObjectMapper objectMapper) {
+    return service(properties(), objectMapper);
+  }
+
+  private PlatformIntegrationService service(PlatformIntegrationProperties properties, ObjectMapper objectMapper) {
+    return new PlatformIntegrationService(properties, objectMapper, tokenService());
+  }
+
+  private IamTokenService tokenService() {
+    return new IamTokenService() {
+      @Override
+      public String getToken() {
+        return "iam-token";
+      }
+    };
   }
 
   private void writeJson(HttpExchange exchange, int status, String body) throws IOException {
@@ -621,6 +654,10 @@ class PlatformIntegrationServiceTest {
 
   private String firstHeader(HttpExchange exchange, String headerName) {
     return exchange.getRequestHeaders().getOrDefault(headerName, List.of("")).getFirst();
+  }
+
+  private boolean hasHeader(HttpExchange exchange, String headerName) {
+    return exchange.getRequestHeaders().containsKey(headerName);
   }
 
   private String readBody(HttpExchange exchange) throws IOException {

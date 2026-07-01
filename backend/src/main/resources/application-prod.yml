@@ -1,14 +1,9 @@
 integration:
   platform:
-    x-space-id:
-    model-list-url:
-    agent-list-url:
-    agent-detail-url:
-    agent-bundle-list-url:
-    agent-chat-url:
+    base-url:
     trust-all-ssl: true
-    connect-timeout-ms: 5000
-    read-timeout-ms: 60000
+    connect-timeout-ms: 500000
+    read-timeout-ms: 6000000
     iam:
       url:
       authorization:
