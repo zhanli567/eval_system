@@ -478,9 +478,10 @@ public class PlatformIntegrationService {
   }
 
   private String platformUrl(String path) {
-    String baseUrl = requireText(properties.getBaseUrl(), "Please configure platform API base URL integration.platform.base-url");
-    String base = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-    return base + path;
+    String domain = requireText(properties.getDomain(), "Please configure platform API domain integration.platform.domain")
+        .replaceAll("/+$", "");
+    String subAppId = firstNonBlank(properties.getSubAppId()).replaceAll("^/+|/+$", "");
+    return domain + (subAppId.isEmpty() ? "" : "/" + subAppId) + path;
   }
 
   private String pathParamUrl(String template, Map<String, String> values) {

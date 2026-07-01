@@ -6,18 +6,27 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "integration.platform")
 public class PlatformIntegrationProperties {
-  private String baseUrl = "";
+  private String domain = "";
+  private String subAppId = "";
   private boolean trustAllSsl = true;
   private int connectTimeoutMs = 500000;
   private int readTimeoutMs = 6000000;
   private Iam iam = new Iam();
 
-  public String getBaseUrl() {
-    return baseUrl;
+  public String getDomain() {
+    return domain;
   }
 
-  public void setBaseUrl(String baseUrl) {
-    this.baseUrl = clean(baseUrl);
+  public void setDomain(String domain) {
+    this.domain = clean(domain);
+  }
+
+  public String getSubAppId() {
+    return subAppId;
+  }
+
+  public void setSubAppId(String subAppId) {
+    this.subAppId = clean(subAppId);
   }
 
   public boolean isTrustAllSsl() {

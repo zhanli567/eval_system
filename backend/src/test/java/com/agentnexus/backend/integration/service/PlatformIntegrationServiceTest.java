@@ -105,6 +105,35 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
+  void listModelsBuildsUrlFromDomainSubAppIdAndPath() throws Exception {
+    AtomicReference<String> modelPath = new AtomicReference<>("");
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/sub-app/models", exchange -> {
+      modelPath.set(exchange.getRequestURI().getPath());
+      writeJson(exchange, 200, """
+          {
+            "status": "200",
+            "success": true,
+            "resultObjVO": {
+              "result": [
+                {"modelId": "model-1", "modelName": "model-one", "authType": "IAM"}
+              ]
+            }
+          }
+          """);
+    });
+    server.start();
+
+    PlatformIntegrationProperties properties = new PlatformIntegrationProperties();
+    properties.setDomain("http://localhost:" + server.getAddress().getPort() + "/");
+    properties.setSubAppId("/sub-app/");
+
+    service(properties, new ObjectMapper()).listModels();
+
+    assertThat(modelPath).hasValue("/sub-app/models/10/1");
+  }
+
+  @Test
   void listAgentsReplacesDefaultPagePlaceholdersAndMapsIconUrl() throws Exception {
     AtomicReference<String> agentPath = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
@@ -620,9 +649,9 @@ class PlatformIntegrationServiceTest {
   }
 
   private PlatformIntegrationProperties properties() {
-    String baseUrl = "http://localhost:" + server.getAddress().getPort();
     PlatformIntegrationProperties properties = new PlatformIntegrationProperties();
-    properties.setBaseUrl(baseUrl);
+    properties.setDomain("http://localhost:" + server.getAddress().getPort());
+    properties.setSubAppId("");
     return properties;
   }
 

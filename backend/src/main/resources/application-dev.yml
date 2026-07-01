@@ -1,6 +1,7 @@
 integration:
   platform:
-    base-url:
+    domain:
+    sub-app-id:
     trust-all-ssl: true
     connect-timeout-ms: 500000
     read-timeout-ms: 6000000
