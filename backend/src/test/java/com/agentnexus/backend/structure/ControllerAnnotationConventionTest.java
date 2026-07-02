@@ -11,6 +11,7 @@ import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.FormParam;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -75,7 +76,7 @@ class ControllerAnnotationConventionTest {
         if (MultipartFile.class.isAssignableFrom(parameter.getType())) {
           assertThat(parameter.isAnnotationPresent(FormParam.class)).isTrue();
         } else if (isSimpleParameter(parameter)) {
-          assertThat(hasAnyAnnotation(parameter, PathParam.class, QueryParam.class, FormParam.class)).isTrue();
+          assertThat(hasAnyAnnotation(parameter, PathParam.class, QueryParam.class, HeaderParam.class, FormParam.class)).isTrue();
         }
       }
     }));

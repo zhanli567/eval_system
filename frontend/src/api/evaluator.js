@@ -1,21 +1,4 @@
-import axios from 'axios';
-const http = axios.create({
-    baseURL: '/api',
-    timeout: 10000
-});
-function unwrap(request) {
-    return request
-        .then((res) => {
-        if (res.data.code !== 0) {
-            throw new Error(res.data.msg);
-        }
-        return res.data.data;
-    })
-        .catch((error) => {
-        const message = error?.response?.data?.msg || error?.message || '请求失败';
-        throw new Error(message);
-    });
-}
+import { http, unwrap } from './http';
 export const evaluatorApi = {
     listEvaluators(params) {
         return unwrap(http.get('/evaluators', { params }));

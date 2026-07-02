@@ -3,9 +3,11 @@ package com.agentnexus.backend.common;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -15,6 +17,13 @@ public class GlobalExceptionHandler {
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   public ApiResponse<Void> handleIllegalArgument(IllegalArgumentException exception) {
     return ApiResponse.fail(400, exception.getMessage());
+  }
+
+  @ExceptionHandler(ResponseStatusException.class)
+  public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException exception) {
+    int status = exception.getStatusCode().value();
+    String message = exception.getReason() == null ? exception.getMessage() : exception.getReason();
+    return ResponseEntity.status(exception.getStatusCode()).body(ApiResponse.fail(status, message));
   }
 
   @ExceptionHandler(Exception.class)

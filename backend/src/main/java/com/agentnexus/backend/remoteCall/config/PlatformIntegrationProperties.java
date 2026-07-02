@@ -6,11 +6,29 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "integration.platform")
 public class PlatformIntegrationProperties {
+  private String domain = "";
+  private String subappid = "";
   private String agentChatUrl = "";
   private boolean trustAllSsl = true;
   private int connectTimeoutMs = 500000;
   private int readTimeoutMs = 6000000;
   private Iam iam = new Iam();
+
+  public String getDomain() {
+    return domain;
+  }
+
+  public void setDomain(String domain) {
+    this.domain = clean(domain);
+  }
+
+  public String getSubappid() {
+    return subappid;
+  }
+
+  public void setSubappid(String subappid) {
+    this.subappid = clean(subappid);
+  }
 
   public String getAgentChatUrl() {
     return agentChatUrl;

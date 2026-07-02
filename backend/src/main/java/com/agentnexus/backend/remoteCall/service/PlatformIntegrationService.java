@@ -23,6 +23,7 @@ import com.agentnexus.backend.remoteCall.api.dto.response.PlatformListResult;
 import com.agentnexus.backend.remoteCall.api.dto.response.PlatformModelChatResult;
 import com.agentnexus.backend.remoteCall.api.dto.response.PlatformModelInfo;
 import com.agentnexus.backend.remoteCall.api.dto.response.PlatformRemoteResponse;
+import com.agentnexus.backend.remoteCall.api.dto.response.PlatformSpaceInfo;
 import com.agentnexus.backend.remoteCall.api.dto.response.PlatformSuperAgentDetail;
 import com.agentnexus.backend.remoteCall.api.dto.response.PlatformSuperAgentInfo;
 import com.agentnexus.backend.remoteCall.client.MasterServiceClient;
@@ -51,8 +52,10 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class PlatformIntegrationService {
@@ -60,6 +63,7 @@ public class PlatformIntegrationService {
   private static final String STATUS_FAILED = "failed";
   private static final String ROLE_ASSISTANT = "assistant";
   private static final String IAM_AUTH_TYPE = "IAM";
+  private static final String STATUS_ACTIVE = "ACTIVE";
   private static final String THINK_END_TAG = "</think>";
   private static final String DEFAULT_AGENT_ALIAS = "router-agent";
   private static final int DEFAULT_PAGE_SIZE = 10;
@@ -71,6 +75,8 @@ public class PlatformIntegrationService {
   private static final TypeReference<List<PlatformAgentReferenceItem>> REFERENCES_TYPE = new TypeReference<>() {
   };
   private static final TypeReference<Map<String, Object>> EXTRA_TYPE = new TypeReference<>() {
+  };
+  private static final TypeReference<PlatformRemoteResponse<PlatformListResult<PlatformSpaceInfo>>> SPACE_LIST_TYPE = new TypeReference<>() {
   };
 
   private final PlatformIntegrationProperties properties;
@@ -128,6 +134,37 @@ public class PlatformIntegrationService {
         CurrentSpaceHolder.get());
     ensureSuccess("Agent bundle list API", response.status(), response.success());
     return normalizeAgentBundles(response.resultObjVO());
+  }
+
+  public List<PlatformSpaceInfo> listSpaces(int pageSize, int curPage, String cookie) {
+    HttpURLConnection connection = null;
+    try {
+      connection = openConnection(platformUrl("/spaces/" + pageSize + "/" + curPage), "GET");
+      connection.setRequestProperty("accept", "application/json");
+      if (StringUtils.hasText(cookie)) {
+        connection.setRequestProperty("Cookie", cookie.trim());
+      }
+      int statusCode = connection.getResponseCode();
+      String responseBody = readAll(statusCode >= 200 && statusCode < 300 ? connection.getInputStream() : connection.getErrorStream());
+      if (statusCode < 200 || statusCode >= 300) {
+        throw new ResponseStatusException(HttpStatusCode.valueOf(statusCode), truncate(responseBody, 500));
+      }
+      PlatformRemoteResponse<PlatformListResult<PlatformSpaceInfo>> response = objectMapper.readValue(responseBody, SPACE_LIST_TYPE);
+      ensureSuccess("Space list API", response.status(), response.success());
+      PlatformListResult<PlatformSpaceInfo> result = response.resultObjVO();
+      if (result == null || result.result() == null) {
+        return List.of();
+      }
+      return result.result().stream()
+          .filter(space -> STATUS_ACTIVE.equalsIgnoreCase(space.status()))
+          .toList();
+    } catch (IOException e) {
+      throw new IllegalStateException("Space list API failed: " + e.getMessage(), e);
+    } finally {
+      if (connection != null) {
+        connection.disconnect();
+      }
+    }
   }
 
   private PlatformSuperAgentDetail loadAgentDetail(String agentId) {
@@ -351,6 +388,16 @@ public class PlatformIntegrationService {
     headers.put("Authorization", firstNonBlank(iamTokenService.getToken()));
     headers.put("x-space-id", firstNonBlank(CurrentSpaceHolder.get()));
     return headers;
+  }
+
+  private String platformUrl(String path) {
+    String domain = requireText(properties.getDomain(), "Please configure integration.platform.domain");
+    String subappid = requireText(properties.getSubappid(), "Please configure integration.platform.subappid");
+    String cleanDomain = domain.endsWith("/") ? domain.substring(0, domain.length() - 1) : domain;
+    String cleanSubappid = subappid.startsWith("/") ? subappid.substring(1) : subappid;
+    cleanSubappid = cleanSubappid.endsWith("/") ? cleanSubappid.substring(0, cleanSubappid.length() - 1) : cleanSubappid;
+    String cleanPath = path.startsWith("/") ? path : "/" + path;
+    return cleanDomain + "/" + cleanSubappid + cleanPath;
   }
 
   private HttpURLConnection openConnection(String url, String method) throws IOException {

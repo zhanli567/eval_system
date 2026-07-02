@@ -1,6 +1,7 @@
 package com.agentnexus.backend.remoteCall.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.agentnexus.backend.common.context.CurrentSpaceHolder;
 import com.agentnexus.backend.iam.IamTokenService;
@@ -13,6 +14,7 @@ import com.agentnexus.backend.remoteCall.api.dto.response.PlatformAgentVersion;
 import com.agentnexus.backend.remoteCall.api.dto.response.PlatformListResult;
 import com.agentnexus.backend.remoteCall.api.dto.response.PlatformModelInfo;
 import com.agentnexus.backend.remoteCall.api.dto.response.PlatformRemoteResponse;
+import com.agentnexus.backend.remoteCall.api.dto.response.PlatformSpaceInfo;
 import com.agentnexus.backend.remoteCall.api.dto.response.PlatformSuperAgentDetail;
 import com.agentnexus.backend.remoteCall.api.dto.response.PlatformSuperAgentInfo;
 import com.agentnexus.backend.remoteCall.client.MasterServiceClient;
@@ -33,6 +35,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import jakarta.ws.rs.Path;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
 
 class PlatformIntegrationServiceTest {
   private HttpServer server;
@@ -124,6 +127,89 @@ class PlatformIntegrationServiceTest {
     assertThat(pathOf("getAgentDetail", String.class, String.class)).isEqualTo("/super-agents/{superAgentId}");
     assertThat(pathOf("listAgentBundles", String.class, String.class))
         .isEqualTo("/super-agents/{superAgentId}/bundles");
+  }
+
+  @Test
+  void listSpacesUsesHumanEndpointAndForwardsCookieOnly() throws Exception {
+    AtomicReference<String> requestPath = new AtomicReference<>("");
+    AtomicReference<String> cookie = new AtomicReference<>("");
+    AtomicReference<Boolean> hasSpaceId = new AtomicReference<>(true);
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/portal/spaces/20/1", exchange -> {
+      requestPath.set(exchange.getRequestURI().getPath());
+      cookie.set(firstHeader(exchange, "Cookie"));
+      hasSpaceId.set(hasHeader(exchange, "x-space-id"));
+      writeJson(exchange, 200, """
+          {
+            "status": "200",
+            "url": "/spaces/20/1",
+            "success": true,
+            "resultObjVO": {
+              "pageVO": {
+                "totalRows": 2,
+                "curPage": 1,
+                "pageSize": 20,
+                "resultMode": 0,
+                "startIndex": 0,
+                "endIndex": 2,
+                "totalPages": 1
+              },
+              "result": [
+                {
+                  "id": "space-1",
+                  "name": "Space One",
+                  "description": "Active space",
+                  "ownerId": "user-1",
+                  "status": "ACTIVE",
+                  "memberCount": "3",
+                  "createdAt": "2026-01-01",
+                  "updatedAt": "2026-01-02",
+                  "appId": "app-1"
+                },
+                {
+                  "id": "space-2",
+                  "name": "Space Two",
+                  "description": "Inactive space",
+                  "ownerId": "user-1",
+                  "status": "DISABLED",
+                  "memberCount": "1",
+                  "createdAt": "2026-01-03",
+                  "updatedAt": "2026-01-04",
+                  "appId": "app-2"
+                }
+              ]
+            }
+          }
+          """);
+    });
+    server.start();
+    CurrentSpaceHolder.set("space-old");
+    PlatformIntegrationProperties properties = properties();
+    properties.setDomain("http://localhost:" + server.getAddress().getPort());
+    properties.setSubappid("portal");
+
+    List<PlatformSpaceInfo> spaces = service(properties, new ObjectMapper()).listSpaces(20, 1, "sid=abc");
+
+    assertThat(requestPath).hasValue("/portal/spaces/20/1");
+    assertThat(cookie).hasValue("sid=abc");
+    assertThat(hasSpaceId).hasValue(false);
+    assertThat(spaces).extracting(PlatformSpaceInfo::id).containsExactly("space-1");
+  }
+
+  @Test
+  void listSpacesKeepsRemoteForbiddenStatus() throws Exception {
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/portal/spaces/20/1", exchange -> writeJson(exchange, 403, """
+        {"code":403,"msg":"login required"}
+        """));
+    server.start();
+    PlatformIntegrationProperties properties = properties();
+    properties.setDomain("http://localhost:" + server.getAddress().getPort());
+    properties.setSubappid("portal");
+
+    assertThatThrownBy(() -> service(properties, new ObjectMapper()).listSpaces(20, 1, ""))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasMessageContaining("403");
   }
 
   @Test

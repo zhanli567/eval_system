@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.FormParam;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.HttpMethod;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -64,6 +65,7 @@ public class WebConfig implements WebMvcConfigurer, WebMvcRegistrations {
   public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
     resolvers.add(new PathParamResolver());
     resolvers.add(new QueryParamResolver());
+    resolvers.add(new HeaderParamResolver());
     resolvers.add(new FormParamResolver());
     resolvers.add(new EntityBodyResolver(objectMapper));
   }
@@ -163,6 +165,19 @@ public class WebConfig implements WebMvcConfigurer, WebMvcRegistrations {
     protected String rawValue(MethodParameter parameter, NativeWebRequest webRequest) {
       QueryParam annotation = parameter.getParameterAnnotation(QueryParam.class);
       return webRequest.getParameter(annotation.value());
+    }
+  }
+
+  private static class HeaderParamResolver extends NamedValueResolver {
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+      return parameter.hasParameterAnnotation(HeaderParam.class);
+    }
+
+    @Override
+    protected String rawValue(MethodParameter parameter, NativeWebRequest webRequest) {
+      HeaderParam annotation = parameter.getParameterAnnotation(HeaderParam.class);
+      return webRequest.getHeader(annotation.value());
     }
   }
 

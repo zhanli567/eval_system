@@ -1,16 +1,4 @@
-import axios from 'axios';
-const http = axios.create({
-    baseURL: '/api',
-    timeout: 10000
-});
-function unwrap(request) {
-    return request.then((res) => {
-        if (res.data.code !== 0) {
-            throw new Error(res.data.msg);
-        }
-        return res.data.data;
-    });
-}
+import { http, unwrap } from './http';
 export const datasetApi = {
     listDatasets(params) {
         return unwrap(http.get('/datasets', { params }));

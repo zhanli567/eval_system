@@ -5,6 +5,8 @@ agentnexus:
 
 integration:
   platform:
+    domain:
+    subappid:
     agent-chat-url:
     trust-all-ssl: true
     connect-timeout-ms: 500000

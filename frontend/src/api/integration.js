@@ -1,22 +1,8 @@
-import axios from 'axios';
-const http = axios.create({
-    baseURL: '/api',
-    timeout: 10000
-});
-function unwrap(request) {
-    return request
-        .then((res) => {
-        if (res.data.code !== 0) {
-            throw new Error(res.data.msg);
-        }
-        return res.data.data;
-    })
-        .catch((error) => {
-        const message = error?.response?.data?.msg || error?.message || '请求失败';
-        throw new Error(message);
-    });
-}
+import { http, unwrap } from './http';
 export const integrationApi = {
+    listSpaces(pageSize = 20, curPage = 1) {
+        return unwrap(http.get(`/integration/spaces/${pageSize}/${curPage}`));
+    },
     listModels() {
         return unwrap(http.get('/integration/models'));
     },

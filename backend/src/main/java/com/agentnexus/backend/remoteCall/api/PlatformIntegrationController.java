@@ -6,8 +6,10 @@ import com.agentnexus.backend.remoteCall.api.dto.response.PlatformAgentVersion;
 import com.agentnexus.backend.remoteCall.api.dto.request.PlatformModelChatRequest;
 import com.agentnexus.backend.remoteCall.api.dto.response.PlatformModelChatResult;
 import com.agentnexus.backend.remoteCall.api.dto.response.PlatformModelInfo;
+import com.agentnexus.backend.remoteCall.api.dto.response.PlatformSpaceInfo;
 import com.agentnexus.backend.remoteCall.service.PlatformIntegrationService;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -47,6 +49,16 @@ public class PlatformIntegrationController {
   @Path("/agents/{agentId}/bundles")
   public ApiResponse<List<PlatformAgentVersion>> listAgentBundles(@PathParam("agentId") String agentId) {
     return ApiResponse.ok(integrationService.listAgentBundles(agentId));
+  }
+
+  @GET
+  @Path("/spaces/{pageSize}/{curPage}")
+  public ApiResponse<List<PlatformSpaceInfo>> listSpaces(
+      @PathParam("pageSize") int pageSize,
+      @PathParam("curPage") int curPage,
+      @HeaderParam("Cookie") String cookie
+  ) {
+    return ApiResponse.ok(integrationService.listSpaces(pageSize, curPage, cookie));
   }
 
   @POST
