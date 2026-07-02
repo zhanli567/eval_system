@@ -85,7 +85,7 @@ class BackendStructureConventionTest {
     assertConcreteService("com.agentnexus.backend.tag.service.TagService");
     assertConcreteService("com.agentnexus.backend.evaluator.service.EvaluatorService");
     assertConcreteService("com.agentnexus.backend.task.service.TaskService");
-    assertConcreteService("com.agentnexus.backend.integration.service.PlatformIntegrationService");
+    assertConcreteService("com.agentnexus.backend.remoteCall.service.PlatformIntegrationService");
   }
 
   @Test
@@ -103,9 +103,9 @@ class BackendStructureConventionTest {
         "com.agentnexus.backend.task.api.TaskController",
         "com.agentnexus.backend.task.api.dto.request.CreateTaskRequest",
         "com.agentnexus.backend.task.api.dto.response.TaskSummary",
-        "com.agentnexus.backend.integration.api.PlatformIntegrationController",
-        "com.agentnexus.backend.integration.api.dto.request.PlatformModelChatRequest",
-        "com.agentnexus.backend.integration.api.dto.response.PlatformModelInfo")) {
+        "com.agentnexus.backend.remoteCall.api.PlatformIntegrationController",
+        "com.agentnexus.backend.remoteCall.api.dto.request.PlatformModelChatRequest",
+        "com.agentnexus.backend.remoteCall.api.dto.response.PlatformModelInfo")) {
       assertThat(Class.forName(className)).isNotNull();
     }
   }

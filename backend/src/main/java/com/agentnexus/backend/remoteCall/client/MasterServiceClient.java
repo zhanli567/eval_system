@@ -1,9 +1,11 @@
 package com.agentnexus.backend.remoteCall.client;
 
-import com.agentnexus.backend.integration.api.dto.response.PlatformAgentBundleListResponse;
-import com.agentnexus.backend.integration.api.dto.response.PlatformAgentDetailResponse;
-import com.agentnexus.backend.integration.api.dto.response.PlatformAgentListResponse;
-import com.agentnexus.backend.integration.api.dto.response.PlatformModelListResponse;
+import com.agentnexus.backend.remoteCall.api.dto.response.PlatformAgentBundleListResult;
+import com.agentnexus.backend.remoteCall.api.dto.response.PlatformListResult;
+import com.agentnexus.backend.remoteCall.api.dto.response.PlatformModelInfo;
+import com.agentnexus.backend.remoteCall.api.dto.response.PlatformRemoteResponse;
+import com.agentnexus.backend.remoteCall.api.dto.response.PlatformSuperAgentDetail;
+import com.agentnexus.backend.remoteCall.api.dto.response.PlatformSuperAgentInfo;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
@@ -18,27 +20,27 @@ import jakarta.ws.rs.core.MediaType;
 public interface MasterServiceClient {
   @GET
   @Path("/models/{pageSize}/{curPage}")
-  PlatformModelListResponse listModels(
+  PlatformRemoteResponse<PlatformListResult<PlatformModelInfo>> listModels(
       @PathParam("pageSize") int pageSize,
       @PathParam("curPage") int curPage,
       @HeaderParam("x-space-id") String spaceId);
 
   @GET
   @Path("/super-agents/{pageSize}/{curPage}")
-  PlatformAgentListResponse listAgents(
+  PlatformRemoteResponse<PlatformListResult<PlatformSuperAgentInfo>> listAgents(
       @PathParam("pageSize") int pageSize,
       @PathParam("curPage") int curPage,
       @HeaderParam("x-space-id") String spaceId);
 
   @GET
   @Path("/super-agents/{superAgentId}")
-  PlatformAgentDetailResponse getAgentDetail(
+  PlatformRemoteResponse<PlatformSuperAgentDetail> getAgentDetail(
       @PathParam("superAgentId") String superAgentId,
       @HeaderParam("x-space-id") String spaceId);
 
   @GET
   @Path("/super-agents/{superAgentId}/{bundles}")
-  PlatformAgentBundleListResponse listAgentBundles(
+  PlatformRemoteResponse<PlatformAgentBundleListResult> listAgentBundles(
       @PathParam("superAgentId") String superAgentId,
       @PathParam("bundles") String bundles,
       @HeaderParam("x-space-id") String spaceId);

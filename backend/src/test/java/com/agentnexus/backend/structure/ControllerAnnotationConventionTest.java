@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentnexus.backend.dataset.api.DatasetController;
 import com.agentnexus.backend.evaluator.api.EvaluatorController;
-import com.agentnexus.backend.integration.api.PlatformIntegrationController;
+import com.agentnexus.backend.remoteCall.api.PlatformIntegrationController;
 import com.agentnexus.backend.tag.api.TagController;
 import com.agentnexus.backend.task.api.TaskController;
 import jakarta.ws.rs.DELETE;
