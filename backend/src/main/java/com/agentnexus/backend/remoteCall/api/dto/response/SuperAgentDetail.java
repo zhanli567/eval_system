@@ -1,0 +1,32 @@
+package com.agentnexus.backend.remoteCall.api.dto.response;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.util.List;
+import java.util.Map;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record SuperAgentDetail(
+    String superAgentId,
+    String name,
+    String displayName,
+    String description,
+    String appId,
+    String subAppId,
+    String accessUrl,
+    String publishStatus,
+    String iconStorage,
+    String currentBundleId,
+    Integer onlineInstances,
+    Integer totalInstances,
+    String bundleVersion,
+    String bundleDigest,
+    String syncStatus,
+    List<AgentInstance> instances,
+    Map<String, Object> metrics,
+    List<LoadedAgent> loadedAgents,
+    String spaceId,
+    Boolean routingAgentEnabled,
+    String routingAgentModelId,
+    Integer routingAgentPriority
+) {
+}

@@ -1,0 +1,819 @@
+package com.agentnexus.backend.remoteCall.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.agentnexus.backend.common.context.CurrentSpaceHolder;
+import com.agentnexus.backend.iam.IamTokenService;
+import com.agentnexus.backend.remoteCall.config.RemoteCallProperties;
+import com.agentnexus.backend.remoteCall.api.dto.request.AgentChatRequest;
+import com.agentnexus.backend.remoteCall.api.dto.request.AgentMessage;
+import com.agentnexus.backend.remoteCall.api.dto.response.AgentBundleListResult;
+import com.agentnexus.backend.remoteCall.api.dto.response.AgentDefinition;
+import com.agentnexus.backend.remoteCall.api.dto.response.AgentVersion;
+import com.agentnexus.backend.remoteCall.api.dto.response.ListResult;
+import com.agentnexus.backend.remoteCall.api.dto.response.ModelInfo;
+import com.agentnexus.backend.remoteCall.api.dto.response.RemoteResponse;
+import com.agentnexus.backend.remoteCall.api.dto.response.SpaceInfo;
+import com.agentnexus.backend.remoteCall.api.dto.response.SuperAgentDetail;
+import com.agentnexus.backend.remoteCall.api.dto.response.SuperAgentInfo;
+import com.agentnexus.backend.remoteCall.client.RemoteCallServiceClient;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import jakarta.ws.rs.Path;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+
+class RemoteCallServiceTest {
+  private HttpServer server;
+  private final FakeRemoteCallServiceClient remoteCallServiceClient = new FakeRemoteCallServiceClient();
+
+  @AfterEach
+  void tearDown() {
+    CurrentSpaceHolder.clear();
+    if (server != null) {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void listModelsUsesRemoteCallServiceClientWithDefaultPageAndCurrentSpace() throws Exception {
+    AtomicInteger loginCalls = new AtomicInteger();
+    AtomicInteger modelCalls = new AtomicInteger();
+    AtomicReference<String> modelPath = new AtomicReference<>("");
+    AtomicReference<String> authorization = new AtomicReference<>("missing");
+    AtomicReference<Boolean> hasCookie = new AtomicReference<>(true);
+    AtomicReference<String> spaceId = new AtomicReference<>("");
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/login", exchange -> {
+      loginCalls.incrementAndGet();
+      writeJson(exchange, 200, "{\"statusCode\":0,\"statusText\":\"ok\"}");
+    });
+    server.createContext("/models", exchange -> {
+      modelCalls.incrementAndGet();
+      modelPath.set(exchange.getRequestURI().getPath());
+      authorization.set(firstHeader(exchange, "Authorization"));
+      hasCookie.set(hasHeader(exchange, "Cookie"));
+      spaceId.set(firstHeader(exchange, "x-space-id"));
+      writeJson(exchange, 200, """
+          {
+            "status": "200",
+            "url": "/models",
+            "success": true,
+            "resultObjVO": {
+              "pageVO": {
+                "totalRows": 1,
+                "curPage": 1,
+                "pageSize": 10,
+                "resultMode": 0,
+                "startIndex": 0,
+                "endIndex": 1,
+                "totalPages": 1
+              },
+              "result": [
+                {
+                  "modelId": "model-1",
+                  "authType": "IAM",
+                  "name": "妯″瀷涓€",
+                  "timeoutPolicy": "default",
+                  "capabilities": ["chat"]
+                },
+                {
+                  "modelId": "model-cookie",
+                  "authType": "COOKIE",
+                  "name": "Cookie Model",
+                  "timeoutPolicy": "default",
+                  "capabilities": ["chat"]
+                }
+              ]
+            }
+          }
+          """);
+    });
+    server.start();
+    CurrentSpaceHolder.set("space-1");
+
+    RemoteCallService service = service(new ObjectMapper());
+
+    List<ModelInfo> models = service.listModels();
+
+    assertThat(models).extracting(ModelInfo::modelId).containsExactly("model-1");
+    assertThat(modelPath).hasValue("/models/10/1");
+    assertThat(authorization).hasValue("");
+    assertThat(hasCookie).hasValue(false);
+    assertThat(spaceId).hasValue("space-1");
+    assertThat(loginCalls).hasValue(0);
+    assertThat(modelCalls).hasValue(1);
+  }
+
+  @Test
+  void remoteCallServiceClientDeclaresRecommendedRemotePaths() throws Exception {
+    assertThat(RemoteCallServiceClient.class.getAnnotation(Path.class).value()).isEqualTo("");
+    assertThat(pathOf("listModels", int.class, int.class, String.class)).isEqualTo("/models/{pageSize}/{curPage}");
+    assertThat(pathOf("listAgents", int.class, int.class, String.class)).isEqualTo("/super-agents/{pageSize}/{curPage}");
+    assertThat(pathOf("getAgentDetail", String.class, String.class)).isEqualTo("/super-agents/{superAgentId}");
+    assertThat(pathOf("listAgentBundles", String.class, String.class))
+        .isEqualTo("/super-agents/{superAgentId}/bundles");
+  }
+
+  @Test
+  void listSpacesUsesHumanEndpointAndForwardsCookieOnly() throws Exception {
+    AtomicReference<String> requestPath = new AtomicReference<>("");
+    AtomicReference<String> cookie = new AtomicReference<>("");
+    AtomicReference<Boolean> hasSpaceId = new AtomicReference<>(true);
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/portal/spaces/20/1", exchange -> {
+      requestPath.set(exchange.getRequestURI().getPath());
+      cookie.set(firstHeader(exchange, "Cookie"));
+      hasSpaceId.set(hasHeader(exchange, "x-space-id"));
+      writeJson(exchange, 200, """
+          {
+            "status": "200",
+            "url": "/spaces/20/1",
+            "success": true,
+            "resultObjVO": {
+              "pageVO": {
+                "totalRows": 2,
+                "curPage": 1,
+                "pageSize": 20,
+                "resultMode": 0,
+                "startIndex": 0,
+                "endIndex": 2,
+                "totalPages": 1
+              },
+              "result": [
+                {
+                  "id": "space-1",
+                  "name": "Space One",
+                  "description": "Active space",
+                  "ownerId": "user-1",
+                  "status": "ACTIVE",
+                  "memberCount": "3",
+                  "createdAt": "2026-01-01",
+                  "updatedAt": "2026-01-02",
+                  "appId": "app-1"
+                },
+                {
+                  "id": "space-2",
+                  "name": "Space Two",
+                  "description": "Inactive space",
+                  "ownerId": "user-1",
+                  "status": "DISABLED",
+                  "memberCount": "1",
+                  "createdAt": "2026-01-03",
+                  "updatedAt": "2026-01-04",
+                  "appId": "app-2"
+                }
+              ]
+            }
+          }
+          """);
+    });
+    server.start();
+    CurrentSpaceHolder.set("space-old");
+    RemoteCallProperties properties = properties();
+    properties.setDomain("http://localhost:" + server.getAddress().getPort());
+    properties.setSubappid("portal");
+
+    List<SpaceInfo> spaces = service(properties, new ObjectMapper()).listSpaces(20, 1, "sid=abc");
+
+    assertThat(requestPath).hasValue("/portal/spaces/20/1");
+    assertThat(cookie).hasValue("sid=abc");
+    assertThat(hasSpaceId).hasValue(false);
+    assertThat(spaces).extracting(SpaceInfo::id).containsExactly("space-1");
+  }
+
+  @Test
+  void listSpacesKeepsRemoteForbiddenStatus() throws Exception {
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/portal/spaces/20/1", exchange -> writeJson(exchange, 403, """
+        {"code":403,"msg":"login required"}
+        """));
+    server.start();
+    RemoteCallProperties properties = properties();
+    properties.setDomain("http://localhost:" + server.getAddress().getPort());
+    properties.setSubappid("portal");
+
+    assertThatThrownBy(() -> service(properties, new ObjectMapper()).listSpaces(20, 1, ""))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasMessageContaining("403");
+  }
+
+  @Test
+  void listAgentsReplacesDefaultPagePlaceholdersAndMapsIconUrl() throws Exception {
+    AtomicReference<String> agentPath = new AtomicReference<>("");
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/super-agents", exchange -> {
+      agentPath.set(exchange.getRequestURI().getPath());
+      writeJson(exchange, 200, """
+          {
+            "status": "200",
+            "url": "/super-agents",
+            "success": true,
+            "resultObjVO": {
+              "pageVO": {
+                "totalRows": 1,
+                "curPage": 1,
+                "pageSize": 10,
+                "resultMode": 0,
+                "startIndex": 0,
+                "endIndex": 1,
+                "totalPages": 1
+              },
+              "result": [
+                {
+                  "superAgentId": "agent-1",
+                  "name": "agent-one",
+                  "displayName": "Agent One",
+                  "description": "Demo agent",
+                  "currentBundleId": "bundle-current-id",
+                  "bundleVersion": "bundle-main",
+                  "iconUrl": "https://example.com/agent.png"
+                }
+              ]
+            }
+          }
+          """);
+    });
+    server.start();
+
+    RemoteCallService service = service(new ObjectMapper());
+
+    List<AgentDefinition> agents = service.listAgents();
+
+    assertThat(agentPath).hasValue("/super-agents/10/1");
+    assertThat(agents).extracting(AgentDefinition::id).containsExactly("agent-1");
+    assertThat(agents.getFirst().iconUrl()).isEqualTo("https://example.com/agent.png");
+  }
+
+  @Test
+  void getAgentDetailSendsAuthHeadersAndNormalizesChildren() throws Exception {
+    AtomicReference<String> authorization = new AtomicReference<>("");
+    AtomicReference<Boolean> hasCookie = new AtomicReference<>(true);
+    AtomicReference<String> spaceId = new AtomicReference<>("");
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/super-agents/agent-1", exchange -> {
+      authorization.set(firstHeader(exchange, "Authorization"));
+      hasCookie.set(hasHeader(exchange, "Cookie"));
+      spaceId.set(firstHeader(exchange, "x-space-id"));
+      writeJson(exchange, 200, """
+          {
+            "status": "200",
+            "url": "/super-agents/agent-1",
+            "success": true,
+            "resultObjVO": {
+              "superAgentId": "agent-1",
+              "name": "agent-one",
+              "displayName": "Agent One",
+              "description": "Demo agent",
+              "accessUrl": "http://localhost/dynamic",
+              "currentBundleId": "bundle-current-id",
+              "bundleVersion": "bundle-main",
+              "instances": [
+                {"instanceId": "i-1", "bundleVersion": "bundle-main"},
+                {"instanceId": "i-2", "bundleVersion": ""},
+                {"instanceId": "i-3", "bundleVersion": "bundle-old"},
+                {"instanceId": "i-4", "bundleVersion": "bundle-old"}
+              ],
+              "loadedAgents": [
+                {"agentAlias": "child-a", "metaAgentName": "Child A", "version": "1"},
+                {"agentAlias": "", "metaAgentName": "Blank"},
+                {"agentAlias": "child-a", "metaAgentName": "Child A Duplicate"},
+                {"agentAlias": "child-b", "metaAgentName": "Child B", "version": "2"}
+              ]
+            }
+          }
+          """);
+    });
+    server.start();
+    CurrentSpaceHolder.set("space-1");
+
+    RemoteCallService service = service(new ObjectMapper());
+
+    AgentDefinition detail = service.getAgentDetail("agent-1");
+
+    assertThat(authorization).hasValue("");
+    assertThat(hasCookie).hasValue(false);
+    assertThat(spaceId).hasValue("space-1");
+    assertThat(detail.id()).isEqualTo("agent-1");
+    assertThat(detail.agentName()).isEqualTo("Agent One");
+    assertThat(detail.versions()).isEmpty();
+    assertThat(detail.childAgents()).extracting(child -> child.agentAlias()).containsExactly("child-a", "child-b");
+    assertThat(detail.outputs()).extracting(output -> output.fieldName()).contains(
+        "text",
+        "reasoning",
+        "debug",
+        "error",
+        "rawText",
+        "skillTrigger",
+        "references",
+        "toolCall",
+        "toolResponse",
+        "genUi");
+  }
+
+  @Test
+  void listAgentBundlesSendsAuthHeadersAndNormalizesItems() throws Exception {
+    AtomicReference<String> authorization = new AtomicReference<>("");
+    AtomicReference<Boolean> hasCookie = new AtomicReference<>(true);
+    AtomicReference<String> spaceId = new AtomicReference<>("");
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/super-agents/agent-1/bundles", exchange -> {
+      authorization.set(firstHeader(exchange, "Authorization"));
+      hasCookie.set(hasHeader(exchange, "Cookie"));
+      spaceId.set(firstHeader(exchange, "x-space-id"));
+      writeJson(exchange, 200, """
+          {
+            "status": "200",
+            "url": "/super-agents/agent-1/bundles",
+            "resultObjVO": {
+              "superAgentId": "agent-1",
+              "currentBundleId": "bundle-current",
+              "items": [
+                {"bundleId": "bundle-current", "status": "online", "bundleVersion": "v1"},
+                {"bundleId": "", "status": "online", "bundleVersion": "empty-id"},
+                {"bundleId": "bundle-old", "status": "offline", "bundleVersion": ""},
+                {"bundleId": "bundle-old", "status": "offline", "bundleVersion": "duplicate"}
+              ]
+            },
+            "success": true
+          }
+          """);
+    });
+    server.start();
+    CurrentSpaceHolder.set("space-1");
+
+    RemoteCallService service = service(new ObjectMapper());
+
+    List<AgentVersion> bundles = service.listAgentBundles("agent-1");
+
+    assertThat(authorization).hasValue("");
+    assertThat(hasCookie).hasValue(false);
+    assertThat(spaceId).hasValue("space-1");
+    assertThat(bundles).extracting(AgentVersion::id).containsExactly("bundle-current", "bundle-old");
+    assertThat(bundles).extracting(AgentVersion::versionName).containsExactly("v1", "bundle-old");
+  }
+
+  @Test
+  void chatModelUsesIamEndpointByDefault() throws Exception {
+    AtomicReference<String> authorization = new AtomicReference<>("");
+    AtomicReference<String> requestBody = new AtomicReference<>("");
+    ObjectMapper objectMapper = new ObjectMapper();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/models", exchange -> writeJson(exchange, 200, """
+        {
+          "status": "200",
+          "url": "/models",
+          "success": true,
+          "resultObjVO": {
+            "pageVO": {
+              "totalRows": 1,
+              "curPage": 1,
+              "pageSize": 10,
+              "resultMode": 0,
+              "startIndex": 0,
+              "endIndex": 1,
+              "totalPages": 1
+            },
+            "result": [
+              {
+                "modelId": "iam-model",
+                "name": "IAM Model",
+                "modelName": "MES-Qwen-V35-35B-A3B",
+                "authType": "IAM",
+                "capabilities": ["chat"]
+              }
+            ]
+          }
+        }
+        """));
+    server.createContext("/iam/chat", exchange -> {
+      authorization.set(firstHeader(exchange, "authorization"));
+      requestBody.set(readBody(exchange));
+      writeJson(exchange, 200, """
+          {
+            "choices": [
+              {
+                "message": {
+                  "content": "Thinking</think>{\\"score\\":5}"
+                }
+              }
+            ]
+          }
+          """);
+    });
+    server.start();
+
+    RemoteCallProperties properties = properties();
+    properties.getIam().setUrl("http://localhost:" + server.getAddress().getPort() + "/iam/chat");
+    properties.getIam().setAuthorization("eyJhbGci");
+    RemoteCallService service = service(properties, objectMapper);
+
+    var result = service.chatModel("iam-model", "please score");
+
+    JsonNode root = objectMapper.readTree(requestBody.get());
+    assertThat(authorization).hasValue("eyJhbGci");
+    assertThat(root.get("model").asText()).isEqualTo("MES-Qwen-V35-35B-A3B");
+    assertThat(root.get("messages").get(0).get("content").asText()).isEqualTo("please score");
+    assertThat(result.outputText()).isEqualTo("{\"score\":5}");
+  }
+
+  @Test
+  void invokeAgentSendsMessagesArrayField() throws Exception {
+    AtomicReference<String> requestBody = new AtomicReference<>("");
+    ObjectMapper objectMapper = new ObjectMapper();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/agent/chat", exchange -> {
+      requestBody.set(readBody(exchange));
+      writeJson(exchange, 200, """
+          {"choices":[{"delta":{"content":[{"type":"text","text":"ok"}]}}]}
+          """);
+    });
+    server.start();
+
+    RemoteCallService service = service(objectMapper);
+    service.invokeAgent(
+        "router-agent",
+        "bundle-1",
+        "",
+        new AgentChatRequest("conversation-1", List.of(new AgentMessage("user", "hello")), true));
+
+    JsonNode root = objectMapper.readTree(requestBody.get());
+    assertThat(root.has("messages")).isTrue();
+    assertThat(root.has("message")).isFalse();
+    assertThat(root.get("messages").get(0).get("role").asText()).isEqualTo("user");
+    assertThat(root.get("messages").get(0).get("content").asText()).isEqualTo("hello");
+  }
+
+  @Test
+  void invokeAgentUsesUnifiedChatUrlAndSendsAgentAndBundleHeaders() throws Exception {
+    AtomicReference<String> requestBody = new AtomicReference<>("");
+    AtomicReference<String> childAlias = new AtomicReference<>("missing");
+    AtomicReference<String> superAgentId = new AtomicReference<>("");
+    AtomicReference<String> bundleId = new AtomicReference<>("");
+    AtomicReference<String> authorization = new AtomicReference<>("missing");
+    AtomicReference<Boolean> hasCookie = new AtomicReference<>(true);
+    ObjectMapper objectMapper = new ObjectMapper();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/agent/chat", exchange -> {
+      requestBody.set(readBody(exchange));
+      childAlias.set(firstHeader(exchange, "x-agent-alias"));
+      superAgentId.set(firstHeader(exchange, "x-super-agent-id"));
+      bundleId.set(firstHeader(exchange, "x-bundle-id"));
+      authorization.set(firstHeader(exchange, "Authorization"));
+      hasCookie.set(hasHeader(exchange, "Cookie"));
+      writeJson(exchange, 200, """
+          {"choices":[{"delta":{"content":[{"type":"text","text":"dynamic ok"}]}}]}
+          """);
+    });
+    server.start();
+
+    RemoteCallService service = service(objectMapper);
+    var response = service.invokeAgent(
+        "agent-1",
+        "bundle-1",
+        "",
+        new AgentChatRequest("conversation-1", List.of(new AgentMessage("user", "hello")), true));
+
+    JsonNode root = objectMapper.readTree(requestBody.get());
+    assertThat(root.get("messages").get(0).get("content").asText()).isEqualTo("hello");
+    assertThat(childAlias).hasValue("");
+    assertThat(superAgentId).hasValue("agent-1");
+    assertThat(bundleId).hasValue("bundle-1");
+    assertThat(authorization).hasValue("iam-token");
+    assertThat(hasCookie).hasValue(false);
+    assertThat(response.outputs().get("text")).isEqualTo("dynamic ok");
+  }
+
+  @Test
+  void invokeAgentSendsSelectedChildAliasHeader() throws Exception {
+    AtomicReference<String> childAlias = new AtomicReference<>("");
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/agent/chat", exchange -> {
+      childAlias.set(firstHeader(exchange, "x-agent-alias"));
+      writeJson(exchange, 200, """
+          {"choices":[{"delta":{"content":[{"type":"text","text":"child ok"}]}}]}
+          """);
+    });
+    server.start();
+
+    RemoteCallService service = service(new ObjectMapper());
+    service.invokeAgent(
+        "agent-1",
+        "bundle-1",
+        "child-a",
+        new AgentChatRequest("conversation-1", List.of(new AgentMessage("user", "hello")), true));
+
+    assertThat(childAlias).hasValue("child-a");
+  }
+
+  @Test
+  void invokeAgentConcatenatesStreamingTextChunks() throws Exception {
+    ObjectMapper objectMapper = new ObjectMapper();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/agent/chat", exchange -> {
+      byte[] payload = """
+          data: {"choices":[{"delta":{"content":[{"type":"text","text":"Hello"}]}}]}
+          data: {"choices":[{"delta":{"content":[{"type":"text","text":" "}]}}]}
+          data: {"choices":[{"delta":{"content":[{"type":"text","text":"world"}]}}]}
+          data: [DONE]
+          """.getBytes(StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().set("Content-Type", "text/event-stream;charset=UTF-8");
+      exchange.sendResponseHeaders(200, payload.length);
+      try (var output = exchange.getResponseBody()) {
+        output.write(payload);
+      }
+    });
+    server.start();
+
+    RemoteCallService service = service(objectMapper);
+    var response = service.invokeAgent(
+        "router-agent",
+        "bundle-1",
+        "",
+        new AgentChatRequest("conversation-1", List.of(new AgentMessage("user", "hello")), true));
+
+    assertThat(response.outputs().get("text")).isEqualTo("Hello world");
+  }
+
+  @Test
+  void invokeAgentParsesAllStructuredContentTypes() throws Exception {
+    ObjectMapper objectMapper = new ObjectMapper();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/agent/chat", exchange -> {
+      byte[] payload = """
+          data: {"id":"chunk-1","conversationId":"conversation-1","masterAgent":{"name":"master"},"metaAgent":{"name":"meta"},"userId":"user-1","object":"chat.completion.chunk","created":1781573919962,"model":"agent-model","choices":[{"index":0,"delta":{"role":"assistant","content":[{"type":"reasoning","reasoning":"thinking"},{"type":"skill_trigger","skillName":"search","skillDesc":"search docs"},{"type":"references","references":[{"id":"ref-1","title":"Doc title","url":"https://example.com/doc","sourceType":"web","sourceName":"Example","summary":"short summary","snippet":"matched snippet"}]},{"type":"debug","text":"debug line"},{"type":"text","text":"final answer"},{"type":"tool_call","toolCallId":"call-1","toolName":"lookup","arguments":"{\\"q\\":\\"abc\\"}"},{"type":"tool_response","toolCallId":"call-1","toolName":"lookup","response":"tool result"},{"type":"gen_ui","uicardDefinition":{"id":"card-1","type":"chart","version":"1","displayName":"Chart","location":"CHAT_UI","body":[{"id":"component-1","type":"text","componentKey":"Text","propsData":{"value":"hello"}}]}},{"type":"error","error":"minor error"}],"tool_calls":[{"index":0,"id":"call-2","type":"function","function":{"name":"fn","arguments":"{\\"x\\":1}"}}],"extra":{"traceId":"trace-1"}},"finish_reason":"stop"}]}
+          data: [DONE]
+          """.getBytes(StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().set("Content-Type", "text/event-stream;charset=UTF-8");
+      exchange.sendResponseHeaders(200, payload.length);
+      try (var output = exchange.getResponseBody()) {
+        output.write(payload);
+      }
+    });
+    server.start();
+
+    RemoteCallService service = service(objectMapper);
+
+    var response = service.invokeAgent(
+        "router-agent",
+        "bundle-1",
+        "",
+        new AgentChatRequest("conversation-1", List.of(new AgentMessage("user", "hello")), true));
+
+    var delta = response.choices().getFirst().delta();
+    assertThat(delta.toolCalls().getFirst().function().name()).isEqualTo("fn");
+    assertThat(delta.extra()).containsEntry("traceId", "trace-1");
+    assertThat(delta.content()).extracting(content -> content.type()).containsExactly(
+        "reasoning",
+        "skill_trigger",
+        "references",
+        "debug",
+        "text",
+        "tool_call",
+        "tool_response",
+        "gen_ui",
+        "error");
+    assertThat(delta.content().get(1).skillName()).isEqualTo("search");
+    assertThat(delta.content().get(2).references().getFirst().sourceType().value()).isEqualTo("web");
+    assertThat(delta.content().get(5).toolCallId()).isEqualTo("call-1");
+    assertThat(delta.content().get(7).uiCardDefinition().body().getFirst().componentKey()).isEqualTo("Text");
+    assertThat(response.outputs()).containsEntry("text", "final answer");
+    assertThat(response.outputs().get("skillTrigger")).contains("search").contains("search docs");
+    assertThat(response.outputs().get("references")).contains("Doc title").contains("https://example.com/doc");
+    assertThat(response.outputs().get("toolCall")).contains("lookup").contains("call-1");
+    assertThat(response.outputs().get("toolResponse")).contains("tool result");
+    assertThat(response.outputs().get("genUi")).contains("card-1").contains("Chart");
+    assertThat(response.outputs().get("rawText")).contains("thinking").contains("final answer").contains("minor error");
+  }
+
+  @Test
+  void listModelsFiltersIamModels() throws Exception {
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/models", exchange -> writeJson(exchange, 200, """
+        {
+          "status": "200",
+          "url": "/models",
+          "success": true,
+          "resultObjVO": {
+            "pageVO": {
+              "totalRows": 2,
+              "curPage": 1,
+              "pageSize": 10,
+              "resultMode": 0,
+              "startIndex": 0,
+              "endIndex": 2,
+              "totalPages": 1
+            },
+            "result": [
+              {
+                "modelId": "iam-model",
+                "name": "IAM Model",
+                "modelName": "MES-Qwen-V35-35B-A3B",
+                "authType": "IAM",
+                "capabilities": ["chat"]
+              },
+              {
+                "modelId": "gateway-model",
+                "name": "Gateway Model",
+                "modelName": "Gateway-Qwen",
+                "authType": "COOKIE",
+                "capabilities": ["chat"]
+              }
+            ]
+          }
+        }
+        """));
+    server.start();
+
+    RemoteCallService service = service(new ObjectMapper());
+
+    List<ModelInfo> models = service.listModels();
+
+    assertThat(models).extracting(ModelInfo::modelId).containsExactly("iam-model");
+  }
+
+  @Test
+  void chatModelUsesIamEndpointAndCleansThinkContent() throws Exception {
+    AtomicReference<String> authorization = new AtomicReference<>("");
+    AtomicReference<String> requestBody = new AtomicReference<>("");
+    ObjectMapper objectMapper = new ObjectMapper();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/models", exchange -> writeJson(exchange, 200, """
+        {
+          "status": "200",
+          "url": "/models",
+          "success": true,
+          "resultObjVO": {
+            "pageVO": {
+              "totalRows": 1,
+              "curPage": 1,
+              "pageSize": 10,
+              "resultMode": 0,
+              "startIndex": 0,
+              "endIndex": 1,
+              "totalPages": 1
+            },
+            "result": [
+              {
+                "modelId": "iam-model",
+                "name": "IAM Model",
+                "modelName": "MES-Qwen-V35-35B-A3B",
+                "authType": "IAM",
+                "capabilities": ["chat"]
+              }
+            ]
+          }
+        }
+        """));
+    server.createContext("/iam/chat", exchange -> {
+      authorization.set(firstHeader(exchange, "authorization"));
+      requestBody.set(readBody(exchange));
+      writeJson(exchange, 200, """
+          {
+            "id": "chatcmpl-81f239c454",
+            "object": "chat.completion.chunk",
+            "created": 1781573919962,
+            "model": "Qwen-V3.5-35B-A3B-8K",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Thinking\\nprivate reasoning</think>\\n{\\"score\\":5,\\"reason\\":\\"ok\\"}"
+                },
+                "finish_reason": null,
+                "logprobs": null
+              }
+            ],
+            "usage": {
+              "prompt_token": 11,
+              "completion_tokens": 1022,
+              "total_tokens": 1033
+            },
+            "message": ""
+          }
+          """);
+    });
+    server.start();
+
+    RemoteCallProperties properties = properties();
+    properties.getIam().setUrl("http://localhost:" + server.getAddress().getPort() + "/iam/chat");
+    properties.getIam().setAuthorization("eyJhbGci");
+    RemoteCallService service = service(properties, objectMapper);
+
+    var result = service.chatModel("iam-model", "please score");
+
+    JsonNode root = objectMapper.readTree(requestBody.get());
+    assertThat(authorization).hasValue("eyJhbGci");
+    assertThat(root.get("model").asText()).isEqualTo("MES-Qwen-V35-35B-A3B");
+    assertThat(root.get("stream").asBoolean()).isFalse();
+    assertThat(root.get("messages").get(0).get("role").asText()).isEqualTo("user");
+    assertThat(root.get("messages").get(0).get("content").asText()).isEqualTo("please score");
+    assertThat(result.modelId()).isEqualTo("iam-model");
+    assertThat(result.outputText()).isEqualTo("{\"score\":5,\"reason\":\"ok\"}");
+  }
+
+  private RemoteCallProperties properties() {
+    RemoteCallProperties properties = new RemoteCallProperties();
+    if (server != null) {
+      properties.setAgentChatUrl("http://localhost:" + server.getAddress().getPort() + "/agent/chat");
+    }
+    return properties;
+  }
+
+  private RemoteCallService service(ObjectMapper objectMapper) {
+    return service(properties(), objectMapper);
+  }
+
+  private RemoteCallService service(RemoteCallProperties properties, ObjectMapper objectMapper) {
+    return new RemoteCallService(properties, objectMapper, tokenService(), remoteCallServiceClient);
+  }
+
+  private IamTokenService tokenService() {
+    return new IamTokenService() {
+      @Override
+      public String getToken() {
+        return "iam-token";
+      }
+    };
+  }
+
+  private String pathOf(String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
+    Method method = RemoteCallServiceClient.class.getMethod(methodName, parameterTypes);
+    return method.getAnnotation(Path.class).value();
+  }
+
+  private class FakeRemoteCallServiceClient implements RemoteCallServiceClient {
+    @Override
+    public RemoteResponse<ListResult<ModelInfo>> listModels(int pageSize, int curPage, String spaceId) {
+      return get("/models/" + pageSize + "/" + curPage, spaceId, new TypeReference<>() {
+      });
+    }
+
+    @Override
+    public RemoteResponse<ListResult<SuperAgentInfo>> listAgents(int pageSize, int curPage, String spaceId) {
+      return get("/super-agents/" + pageSize + "/" + curPage, spaceId, new TypeReference<>() {
+      });
+    }
+
+    @Override
+    public RemoteResponse<SuperAgentDetail> getAgentDetail(String superAgentId, String spaceId) {
+      return get("/super-agents/" + superAgentId, spaceId, new TypeReference<>() {
+      });
+    }
+
+    @Override
+    public RemoteResponse<AgentBundleListResult> listAgentBundles(String superAgentId, String spaceId) {
+      return get("/super-agents/" + superAgentId + "/bundles", spaceId, new TypeReference<>() {
+      });
+    }
+
+    private <T> T get(String path, String spaceId, TypeReference<T> responseType) {
+      try {
+        HttpURLConnection connection = (HttpURLConnection) URI.create(
+            "http://localhost:" + server.getAddress().getPort() + path).toURL().openConnection();
+        connection.setRequestMethod("GET");
+        connection.setRequestProperty("x-space-id", spaceId == null ? "" : spaceId);
+        return new ObjectMapper().readValue(connection.getInputStream(), responseType);
+      } catch (IOException e) {
+        throw new IllegalStateException(e);
+      }
+    }
+  }
+
+  private void writeJson(HttpExchange exchange, int status, String body) throws IOException {
+    byte[] payload = body.getBytes(StandardCharsets.UTF_8);
+    exchange.getResponseHeaders().set("Content-Type", "application/json;charset=UTF-8");
+    exchange.sendResponseHeaders(status, payload.length);
+    try (var output = exchange.getResponseBody()) {
+      output.write(payload);
+    }
+  }
+
+  private String firstHeader(HttpExchange exchange, String headerName) {
+    return exchange.getRequestHeaders().getOrDefault(headerName, List.of("")).getFirst();
+  }
+
+  private boolean hasHeader(HttpExchange exchange, String headerName) {
+    return exchange.getRequestHeaders().containsKey(headerName);
+  }
+
+  private String readBody(HttpExchange exchange) throws IOException {
+    return new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+  }
+
+}

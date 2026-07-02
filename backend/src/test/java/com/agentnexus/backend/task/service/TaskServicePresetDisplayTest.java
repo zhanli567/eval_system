@@ -16,7 +16,7 @@ import com.agentnexus.backend.dataset.repository.DatasetRepository;
 import com.agentnexus.backend.dataset.repository.DatasetRowRecord;
 import com.agentnexus.backend.evaluator.preset.PresetEvaluatorStore;
 import com.agentnexus.backend.evaluator.service.EvaluatorService;
-import com.agentnexus.backend.remoteCall.service.PlatformIntegrationService;
+import com.agentnexus.backend.remoteCall.service.RemoteCallService;
 import com.agentnexus.backend.tag.repository.TagRepository;
 import com.agentnexus.backend.task.api.dto.request.AppFieldMappingInput;
 import com.agentnexus.backend.task.api.dto.request.CreateTaskRequest;
@@ -45,7 +45,7 @@ class TaskServicePresetDisplayTest {
   private DatasetRepository datasetRepository;
   private EvaluatorService evaluatorService;
   private TagRepository tagRepository;
-  private PlatformIntegrationService integrationService;
+  private RemoteCallService remoteCallService;
   private PresetEvaluatorStore presetStore;
   private TaskService service;
 
@@ -55,7 +55,7 @@ class TaskServicePresetDisplayTest {
     datasetRepository = mock(DatasetRepository.class);
     evaluatorService = mock(EvaluatorService.class);
     tagRepository = mock(TagRepository.class);
-    integrationService = mock(PlatformIntegrationService.class);
+    remoteCallService = mock(RemoteCallService.class);
     presetStore = new PresetEvaluatorStore();
     service = newTaskService(Runnable::run);
   }
@@ -218,7 +218,7 @@ class TaskServicePresetDisplayTest {
         datasetRepository,
         evaluatorService,
         tagRepository,
-        integrationService,
+        remoteCallService,
         new ObjectMapper(),
         taskExecutor);
   }

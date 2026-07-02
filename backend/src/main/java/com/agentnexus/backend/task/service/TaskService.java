@@ -10,13 +10,13 @@ import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorConfig;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorParamDto;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorDetail;
 import com.agentnexus.backend.evaluator.service.EvaluatorService;
-import com.agentnexus.backend.remoteCall.api.dto.request.PlatformAgentChatRequest;
-import com.agentnexus.backend.remoteCall.api.dto.response.PlatformAgentChatResponse;
-import com.agentnexus.backend.remoteCall.api.dto.response.PlatformAgentChoice;
-import com.agentnexus.backend.remoteCall.api.dto.response.PlatformAgentContentBlock;
-import com.agentnexus.backend.remoteCall.api.dto.request.PlatformAgentMessage;
-import com.agentnexus.backend.remoteCall.api.dto.response.PlatformModelChatResult;
-import com.agentnexus.backend.remoteCall.service.PlatformIntegrationService;
+import com.agentnexus.backend.remoteCall.api.dto.request.AgentChatRequest;
+import com.agentnexus.backend.remoteCall.api.dto.response.AgentChatResponse;
+import com.agentnexus.backend.remoteCall.api.dto.response.AgentChoice;
+import com.agentnexus.backend.remoteCall.api.dto.response.AgentContentBlock;
+import com.agentnexus.backend.remoteCall.api.dto.request.AgentMessage;
+import com.agentnexus.backend.remoteCall.api.dto.response.ModelChatResult;
+import com.agentnexus.backend.remoteCall.service.RemoteCallService;
 import com.agentnexus.backend.tag.api.dto.response.TagConfig;
 import com.agentnexus.backend.tag.api.dto.response.TagOptionDto;
 import com.agentnexus.backend.tag.repository.TagRepository;
@@ -86,7 +86,7 @@ public class TaskService {
   private final DatasetRepository datasetRepository;
   private final EvaluatorService evaluatorService;
   private final TagRepository tagRepository;
-  private final PlatformIntegrationService integrationService;
+  private final RemoteCallService remoteCallService;
   private final ObjectMapper objectMapper;
   private final TaskExecutor taskExecutor;
 
@@ -95,7 +95,7 @@ public class TaskService {
       DatasetRepository datasetRepository,
       EvaluatorService evaluatorService,
       TagRepository tagRepository,
-      PlatformIntegrationService integrationService,
+      RemoteCallService remoteCallService,
       ObjectMapper objectMapper,
       TaskExecutor taskExecutor
   ) {
@@ -103,7 +103,7 @@ public class TaskService {
     this.datasetRepository = datasetRepository;
     this.evaluatorService = evaluatorService;
     this.tagRepository = tagRepository;
-    this.integrationService = integrationService;
+    this.remoteCallService = remoteCallService;
     this.objectMapper = objectMapper;
     this.taskExecutor = taskExecutor;
   }
@@ -977,13 +977,13 @@ public class TaskService {
       return new AgentInvocationResult("", RESULT_SKIPPED, "", Map.of());
     }
     String content = buildAgentMessageContent(appMappings, values);
-    PlatformAgentChatResponse response = integrationService.invokeAgent(
+    AgentChatResponse response = remoteCallService.invokeAgent(
         base.appId(),
         base.appVersionId(),
         base.appAgentAlias(),
-        new PlatformAgentChatRequest(
+        new AgentChatRequest(
             base.id() + "-" + item.id(),
-            List.of(new PlatformAgentMessage("user", content)),
+            List.of(new AgentMessage("user", content)),
             true));
     if (response == null) {
       return new AgentInvocationResult("", STATUS_FAILED, "Super智能体未返回结果", Map.of());
@@ -1078,7 +1078,7 @@ public class TaskService {
           prepared.errorMessage());
     }
     String renderedPrompt = renderPrompt(config.prompt(), prepared.params());
-    PlatformModelChatResult response = integrationService.chatModel(config.modelId(), renderedPrompt);
+    ModelChatResult response = remoteCallService.chatModel(config.modelId(), renderedPrompt);
     if (response == null || !StringUtils.hasText(response.outputText())) {
       return new EvaluationSimulationResult(
           STATUS_FAILED,
@@ -1181,18 +1181,18 @@ public class TaskService {
     return values.getOrDefault(mapping.datasetFieldId(), "");
   }
 
-  private Map<String, String> extractAgentOutputs(PlatformAgentChatResponse response) {
+  private Map<String, String> extractAgentOutputs(AgentChatResponse response) {
     Map<String, String> outputs = new LinkedHashMap<>();
     List<String> debugParts = new ArrayList<>();
     List<String> reasoningParts = new ArrayList<>();
     List<String> textParts = new ArrayList<>();
     List<String> errorParts = new ArrayList<>();
     if (response.choices() != null) {
-      for (PlatformAgentChoice choice : response.choices()) {
+      for (AgentChoice choice : response.choices()) {
         if (choice == null || choice.delta() == null || choice.delta().content() == null) {
           continue;
         }
-        for (PlatformAgentContentBlock content : choice.delta().content()) {
+        for (AgentContentBlock content : choice.delta().content()) {
           appendAgentContent(debugParts, reasoningParts, textParts, errorParts, content);
         }
       }
@@ -1227,7 +1227,7 @@ public class TaskService {
       List<String> reasoningParts,
       List<String> textParts,
       List<String> errorParts,
-      PlatformAgentContentBlock content
+      AgentContentBlock content
   ) {
     if (content == null || !StringUtils.hasText(content.type())) {
       return;
