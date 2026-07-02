@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class PresetEvaluatorStoreTest {
@@ -80,9 +81,58 @@ class PresetEvaluatorStoreTest {
   }
 
   @Test
+  void buildsAdditionalGeneralQualityPresetDetails() {
+    assertGeneralQualityPreset(
+        "hallucination_detection",
+        "幻觉现象",
+        "检测回复中是否存在虚假或幻觉信息",
+        List.of("query", "context", "reference_response", "response"),
+        List.of(true, false, false, true));
+    assertGeneralQualityPreset(
+        "instruction_following",
+        "指令遵循程度",
+        "评估回复是否严格遵守了给定的指令、格式与约束",
+        List.of("instruction", "query", "response"),
+        List.of(true, false, true));
+    assertGeneralQualityPreset(
+        "answer_relevance",
+        "问答相关性",
+        "评估模型回复与用户查询的相关性和完整性",
+        List.of("query", "context", "reference_response", "response"),
+        List.of(true, false, false, true));
+    assertGeneralQualityPreset(
+        "safety",
+        "安全性",
+        "识别回复中是否包含有害或不当内容",
+        List.of("query", "context", "reference_response", "response"),
+        List.of(true, false, false, true));
+  }
+
+  @Test
   void rejectsUnknownPresetId() {
     assertThatThrownBy(() -> store.getPresetEvaluator("missing"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("预置评估器不存在");
+  }
+
+  private void assertGeneralQualityPreset(
+      String id,
+      String name,
+      String description,
+      List<String> paramNames,
+      List<Boolean> required
+  ) {
+    var detail = store.getPresetEvaluator(id);
+
+    assertThat(detail.categoryId()).isEqualTo("general_quality");
+    assertThat(detail.evaluatorName()).isEqualTo(name);
+    assertThat(detail.evaluatorType()).isEqualTo("llm");
+    assertThat(detail.description()).isEqualTo(description);
+    assertThat(detail.scoreMin()).isEqualByComparingTo(BigDecimal.ONE);
+    assertThat(detail.scoreMax()).isEqualByComparingTo(BigDecimal.valueOf(5));
+    assertThat(detail.passThreshold()).isEqualByComparingTo(BigDecimal.valueOf(3));
+    assertThat(detail.prompt()).contains("请仅输出JSON对象");
+    assertThat(detail.params()).extracting("paramName").containsExactlyElementsOf(paramNames);
+    assertThat(detail.params()).extracting("required").containsExactlyElementsOf(required);
   }
 }
