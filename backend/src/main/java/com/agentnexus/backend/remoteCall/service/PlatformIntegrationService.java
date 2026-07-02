@@ -125,7 +125,6 @@ public class PlatformIntegrationService {
     String safeAgentId = requireText(agentId, "Agent ID cannot be blank");
     PlatformRemoteResponse<PlatformAgentBundleListResult> response = masterServiceClient.listAgentBundles(
         safeAgentId,
-        "bundles",
         CurrentSpaceHolder.get());
     ensureSuccess("Agent bundle list API", response.status(), response.success());
     return normalizeAgentBundles(response.resultObjVO());

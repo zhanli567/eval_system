@@ -122,8 +122,8 @@ class PlatformIntegrationServiceTest {
     assertThat(pathOf("listModels", int.class, int.class, String.class)).isEqualTo("/models/{pageSize}/{curPage}");
     assertThat(pathOf("listAgents", int.class, int.class, String.class)).isEqualTo("/super-agents/{pageSize}/{curPage}");
     assertThat(pathOf("getAgentDetail", String.class, String.class)).isEqualTo("/super-agents/{superAgentId}");
-    assertThat(pathOf("listAgentBundles", String.class, String.class, String.class))
-        .isEqualTo("/super-agents/{superAgentId}/{bundles}");
+    assertThat(pathOf("listAgentBundles", String.class, String.class))
+        .isEqualTo("/super-agents/{superAgentId}/bundles");
   }
 
   @Test
@@ -691,8 +691,8 @@ class PlatformIntegrationServiceTest {
     }
 
     @Override
-    public PlatformRemoteResponse<PlatformAgentBundleListResult> listAgentBundles(String superAgentId, String bundles, String spaceId) {
-      return get("/super-agents/" + superAgentId + "/" + bundles, spaceId, new TypeReference<>() {
+    public PlatformRemoteResponse<PlatformAgentBundleListResult> listAgentBundles(String superAgentId, String spaceId) {
+      return get("/super-agents/" + superAgentId + "/bundles", spaceId, new TypeReference<>() {
       });
     }
 

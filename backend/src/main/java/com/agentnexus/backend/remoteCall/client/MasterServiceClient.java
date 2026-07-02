@@ -39,9 +39,8 @@ public interface MasterServiceClient {
       @HeaderParam("x-space-id") String spaceId);
 
   @GET
-  @Path("/super-agents/{superAgentId}/{bundles}")
+  @Path("/super-agents/{superAgentId}/bundles")
   PlatformRemoteResponse<PlatformAgentBundleListResult> listAgentBundles(
       @PathParam("superAgentId") String superAgentId,
-      @PathParam("bundles") String bundles,
       @HeaderParam("x-space-id") String spaceId);
 }
