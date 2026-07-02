@@ -7,24 +7,34 @@ import com.agentnexus.backend.iam.IamTokenService;
 import com.agentnexus.backend.integration.config.PlatformIntegrationProperties;
 import com.agentnexus.backend.integration.api.dto.request.PlatformAgentChatRequest;
 import com.agentnexus.backend.integration.api.dto.request.PlatformAgentMessage;
+import com.agentnexus.backend.integration.api.dto.response.PlatformAgentBundleListResponse;
+import com.agentnexus.backend.integration.api.dto.response.PlatformAgentDetailResponse;
 import com.agentnexus.backend.integration.api.dto.response.PlatformAgentDefinition;
+import com.agentnexus.backend.integration.api.dto.response.PlatformAgentListResponse;
 import com.agentnexus.backend.integration.api.dto.response.PlatformAgentVersion;
 import com.agentnexus.backend.integration.api.dto.response.PlatformModelInfo;
+import com.agentnexus.backend.integration.api.dto.response.PlatformModelListResponse;
+import com.agentnexus.backend.remoteCall.client.MasterServiceClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import jakarta.ws.rs.Path;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 class PlatformIntegrationServiceTest {
   private HttpServer server;
+  private final FakeMasterServiceClient masterServiceClient = new FakeMasterServiceClient();
 
   @AfterEach
   void tearDown() {
@@ -35,7 +45,7 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
-  void listModelsReplacesDefaultPagePlaceholdersAndSendsIamAuthorizationWithoutLogin() throws Exception {
+  void listModelsUsesMasterClientWithDefaultPageAndCurrentSpace() throws Exception {
     AtomicInteger loginCalls = new AtomicInteger();
     AtomicInteger modelCalls = new AtomicInteger();
     AtomicReference<String> modelPath = new AtomicReference<>("");
@@ -97,7 +107,7 @@ class PlatformIntegrationServiceTest {
 
     assertThat(models).extracting(PlatformModelInfo::modelId).containsExactly("model-1");
     assertThat(modelPath).hasValue("/models/10/1");
-    assertThat(authorization).hasValue("iam-token");
+    assertThat(authorization).hasValue("");
     assertThat(hasCookie).hasValue(false);
     assertThat(spaceId).hasValue("space-1");
     assertThat(loginCalls).hasValue(0);
@@ -105,44 +115,25 @@ class PlatformIntegrationServiceTest {
   }
 
   @Test
-  void listModelsBuildsUrlFromDomainSubAppIdAndPath() throws Exception {
-    AtomicReference<String> modelPath = new AtomicReference<>("");
-    server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/sub-app/models", exchange -> {
-      modelPath.set(exchange.getRequestURI().getPath());
-      writeJson(exchange, 200, """
-          {
-            "status": "200",
-            "success": true,
-            "resultObjVO": {
-              "result": [
-                {"modelId": "model-1", "modelName": "model-one", "authType": "IAM"}
-              ]
-            }
-          }
-          """);
-    });
-    server.start();
-
-    PlatformIntegrationProperties properties = new PlatformIntegrationProperties();
-    properties.setDomain("http://localhost:" + server.getAddress().getPort() + "/");
-    properties.setSubAppId("/sub-app/");
-
-    service(properties, new ObjectMapper()).listModels();
-
-    assertThat(modelPath).hasValue("/sub-app/models/10/1");
+  void masterServiceClientDeclaresRecommendedRemotePaths() throws Exception {
+    assertThat(MasterServiceClient.class.getAnnotation(Path.class).value()).isEqualTo("");
+    assertThat(pathOf("listModels", int.class, int.class, String.class)).isEqualTo("/models/{pageSize}/{curPage}");
+    assertThat(pathOf("listAgents", int.class, int.class, String.class)).isEqualTo("/super-agents/{pageSize}/{curPage}");
+    assertThat(pathOf("getAgentDetail", String.class, String.class)).isEqualTo("/super-agents/{superAgentId}");
+    assertThat(pathOf("listAgentBundles", String.class, String.class, String.class))
+        .isEqualTo("/super-agents/{superAgentId}/{bundles}");
   }
 
   @Test
   void listAgentsReplacesDefaultPagePlaceholdersAndMapsIconUrl() throws Exception {
     AtomicReference<String> agentPath = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/agents", exchange -> {
+    server.createContext("/super-agents", exchange -> {
       agentPath.set(exchange.getRequestURI().getPath());
       writeJson(exchange, 200, """
           {
             "status": "200",
-            "url": "/agents",
+            "url": "/super-agents",
             "success": true,
             "resultObjVO": {
               "pageVO": {
@@ -175,7 +166,7 @@ class PlatformIntegrationServiceTest {
 
     List<PlatformAgentDefinition> agents = service.listAgents();
 
-    assertThat(agentPath).hasValue("/agents/10/1");
+    assertThat(agentPath).hasValue("/super-agents/10/1");
     assertThat(agents).extracting(PlatformAgentDefinition::id).containsExactly("agent-1");
     assertThat(agents.getFirst().iconUrl()).isEqualTo("https://example.com/agent.png");
   }
@@ -186,14 +177,14 @@ class PlatformIntegrationServiceTest {
     AtomicReference<Boolean> hasCookie = new AtomicReference<>(true);
     AtomicReference<String> spaceId = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/agents/agent-1", exchange -> {
+    server.createContext("/super-agents/agent-1", exchange -> {
       authorization.set(firstHeader(exchange, "Authorization"));
       hasCookie.set(hasHeader(exchange, "Cookie"));
       spaceId.set(firstHeader(exchange, "x-space-id"));
       writeJson(exchange, 200, """
           {
             "status": "200",
-            "url": "/agents/agent-1",
+            "url": "/super-agents/agent-1",
             "success": true,
             "resultObjVO": {
               "superAgentId": "agent-1",
@@ -226,7 +217,7 @@ class PlatformIntegrationServiceTest {
 
     PlatformAgentDefinition detail = service.getAgentDetail("agent-1");
 
-    assertThat(authorization).hasValue("iam-token");
+    assertThat(authorization).hasValue("");
     assertThat(hasCookie).hasValue(false);
     assertThat(spaceId).hasValue("space-1");
     assertThat(detail.id()).isEqualTo("agent-1");
@@ -252,14 +243,14 @@ class PlatformIntegrationServiceTest {
     AtomicReference<Boolean> hasCookie = new AtomicReference<>(true);
     AtomicReference<String> spaceId = new AtomicReference<>("");
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/agents/agent-1/bundles", exchange -> {
+    server.createContext("/super-agents/agent-1/bundles", exchange -> {
       authorization.set(firstHeader(exchange, "Authorization"));
       hasCookie.set(hasHeader(exchange, "Cookie"));
       spaceId.set(firstHeader(exchange, "x-space-id"));
       writeJson(exchange, 200, """
           {
             "status": "200",
-            "url": "/agents/agent-1/bundles",
+            "url": "/super-agents/agent-1/bundles",
             "resultObjVO": {
               "superAgentId": "agent-1",
               "currentBundleId": "bundle-current",
@@ -281,7 +272,7 @@ class PlatformIntegrationServiceTest {
 
     List<PlatformAgentVersion> bundles = service.listAgentBundles("agent-1");
 
-    assertThat(authorization).hasValue("iam-token");
+    assertThat(authorization).hasValue("");
     assertThat(hasCookie).hasValue(false);
     assertThat(spaceId).hasValue("space-1");
     assertThat(bundles).extracting(PlatformAgentVersion::id).containsExactly("bundle-current", "bundle-old");
@@ -650,8 +641,9 @@ class PlatformIntegrationServiceTest {
 
   private PlatformIntegrationProperties properties() {
     PlatformIntegrationProperties properties = new PlatformIntegrationProperties();
-    properties.setDomain("http://localhost:" + server.getAddress().getPort());
-    properties.setSubAppId("");
+    if (server != null) {
+      properties.setAgentChatUrl("http://localhost:" + server.getAddress().getPort() + "/agent/chat");
+    }
     return properties;
   }
 
@@ -660,7 +652,7 @@ class PlatformIntegrationServiceTest {
   }
 
   private PlatformIntegrationService service(PlatformIntegrationProperties properties, ObjectMapper objectMapper) {
-    return new PlatformIntegrationService(properties, objectMapper, tokenService());
+    return new PlatformIntegrationService(properties, objectMapper, tokenService(), masterServiceClient);
   }
 
   private IamTokenService tokenService() {
@@ -670,6 +662,45 @@ class PlatformIntegrationServiceTest {
         return "iam-token";
       }
     };
+  }
+
+  private String pathOf(String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
+    Method method = MasterServiceClient.class.getMethod(methodName, parameterTypes);
+    return method.getAnnotation(Path.class).value();
+  }
+
+  private class FakeMasterServiceClient implements MasterServiceClient {
+    @Override
+    public PlatformModelListResponse listModels(int pageSize, int curPage, String spaceId) {
+      return get("/models/" + pageSize + "/" + curPage, spaceId, PlatformModelListResponse.class);
+    }
+
+    @Override
+    public PlatformAgentListResponse listAgents(int pageSize, int curPage, String spaceId) {
+      return get("/super-agents/" + pageSize + "/" + curPage, spaceId, PlatformAgentListResponse.class);
+    }
+
+    @Override
+    public PlatformAgentDetailResponse getAgentDetail(String superAgentId, String spaceId) {
+      return get("/super-agents/" + superAgentId, spaceId, PlatformAgentDetailResponse.class);
+    }
+
+    @Override
+    public PlatformAgentBundleListResponse listAgentBundles(String superAgentId, String bundles, String spaceId) {
+      return get("/super-agents/" + superAgentId + "/" + bundles, spaceId, PlatformAgentBundleListResponse.class);
+    }
+
+    private <T> T get(String path, String spaceId, Class<T> responseType) {
+      try {
+        HttpURLConnection connection = (HttpURLConnection) URI.create(
+            "http://localhost:" + server.getAddress().getPort() + path).toURL().openConnection();
+        connection.setRequestMethod("GET");
+        connection.setRequestProperty("x-space-id", spaceId == null ? "" : spaceId);
+        return new ObjectMapper().readValue(connection.getInputStream(), responseType);
+      } catch (IOException e) {
+        throw new IllegalStateException(e);
+      }
+    }
   }
 
   private void writeJson(HttpExchange exchange, int status, String body) throws IOException {

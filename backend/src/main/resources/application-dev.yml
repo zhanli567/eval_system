@@ -1,7 +1,11 @@
+agentnexus:
+  master:
+    service:
+      url:
+
 integration:
   platform:
-    domain:
-    sub-app-id:
+    agent-chat-url:
     trust-all-ssl: true
     connect-timeout-ms: 500000
     read-timeout-ms: 6000000

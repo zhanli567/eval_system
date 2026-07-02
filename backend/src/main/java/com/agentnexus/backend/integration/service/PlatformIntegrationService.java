@@ -28,6 +28,7 @@ import com.agentnexus.backend.integration.api.dto.response.PlatformModelInfo;
 import com.agentnexus.backend.integration.api.dto.response.PlatformModelListResponse;
 import com.agentnexus.backend.integration.api.dto.response.PlatformSuperAgentDetail;
 import com.agentnexus.backend.integration.api.dto.response.PlatformSuperAgentInfo;
+import com.agentnexus.backend.remoteCall.client.MasterServiceClient;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,7 +38,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -67,11 +67,6 @@ public class PlatformIntegrationService {
   private static final String DEFAULT_AGENT_ALIAS = "router-agent";
   private static final int DEFAULT_PAGE_SIZE = 10;
   private static final int DEFAULT_CUR_PAGE = 1;
-  private static final String MODEL_LIST_PATH = "/models/{pageSize}/{curPage}";
-  private static final String AGENT_LIST_PATH = "/agents/{pageSize}/{curPage}";
-  private static final String AGENT_DETAIL_PATH = "/agents/{superAgentId}";
-  private static final String AGENT_BUNDLE_LIST_PATH = "/agents/{superAgentId}/bundles";
-  private static final String AGENT_CHAT_PATH = "/agent/chat";
   private static final String RESPONSE_OBJECT = "com.agentnexus.backend.integration.api.dto.response.PlatformAgentChatResponse";
   private static final HostnameVerifier TRUST_ALL_HOSTNAME_VERIFIER = (hostname, session) -> true;
   private static final TypeReference<List<PlatformAgentToolCallDelta>> TOOL_CALLS_TYPE = new TypeReference<>() {
@@ -84,25 +79,26 @@ public class PlatformIntegrationService {
   private final PlatformIntegrationProperties properties;
   private final ObjectMapper objectMapper;
   private final IamTokenService iamTokenService;
+  private final MasterServiceClient masterServiceClient;
   private static volatile SSLSocketFactory trustAllSocketFactory;
 
   public PlatformIntegrationService(
       PlatformIntegrationProperties properties,
       ObjectMapper objectMapper,
-      IamTokenService iamTokenService
+      IamTokenService iamTokenService,
+      MasterServiceClient masterServiceClient
   ) {
     this.properties = properties;
     this.objectMapper = objectMapper;
     this.iamTokenService = iamTokenService;
+    this.masterServiceClient = masterServiceClient;
   }
 
   public List<PlatformModelInfo> listModels() {
-    PlatformModelListResponse response = exchangeJson(
-        "GET",
-        pagedListUrl(platformUrl(MODEL_LIST_PATH)),
-        null,
-        platformHeaders(),
-        PlatformModelListResponse.class);
+    PlatformModelListResponse response = masterServiceClient.listModels(
+        DEFAULT_PAGE_SIZE,
+        DEFAULT_CUR_PAGE,
+        CurrentSpaceHolder.get());
     ensureSuccess("模型列表接口", response.status(), response.success());
     PlatformListResult<PlatformModelInfo> result = response.resultObjVO();
     List<PlatformModelInfo> models = result == null || result.result() == null ? List.of() : result.result();
@@ -112,12 +108,10 @@ public class PlatformIntegrationService {
   }
 
   public List<PlatformAgentDefinition> listAgents() {
-    PlatformAgentListResponse response = exchangeJson(
-        "GET",
-        pagedListUrl(platformUrl(AGENT_LIST_PATH)),
-        null,
-        platformHeaders(),
-        PlatformAgentListResponse.class);
+    PlatformAgentListResponse response = masterServiceClient.listAgents(
+        DEFAULT_PAGE_SIZE,
+        DEFAULT_CUR_PAGE,
+        CurrentSpaceHolder.get());
     ensureSuccess("智能体列表接口", response.status(), response.success());
     PlatformListResult<PlatformSuperAgentInfo> result = response.resultObjVO();
     if (result == null || result.result() == null) {
@@ -132,24 +126,17 @@ public class PlatformIntegrationService {
 
   public List<PlatformAgentVersion> listAgentBundles(String agentId) {
     String safeAgentId = requireText(agentId, "Agent ID cannot be blank");
-    PlatformAgentBundleListResponse response = exchangeJson(
-        "GET",
-        agentBundleListUrl(safeAgentId),
-        null,
-        platformHeaders(),
-        PlatformAgentBundleListResponse.class);
+    PlatformAgentBundleListResponse response = masterServiceClient.listAgentBundles(
+        safeAgentId,
+        "bundles",
+        CurrentSpaceHolder.get());
     ensureSuccess("Agent bundle list API", response.status(), response.success());
     return normalizeAgentBundles(response.resultObjVO());
   }
 
   private PlatformSuperAgentDetail loadAgentDetail(String agentId) {
     String safeAgentId = requireText(agentId, "Agent ID cannot be blank");
-    PlatformAgentDetailResponse response = exchangeJson(
-        "GET",
-        agentDetailUrl(safeAgentId),
-        null,
-        platformHeaders(),
-        PlatformAgentDetailResponse.class);
+    PlatformAgentDetailResponse response = masterServiceClient.getAgentDetail(safeAgentId, CurrentSpaceHolder.get());
     ensureSuccess("Agent detail API", response.status(), response.success());
     if (response.resultObjVO() == null) {
       throw new IllegalStateException("Agent detail API returned empty result");
@@ -243,7 +230,7 @@ public class PlatformIntegrationService {
         conversationId,
         request == null || request.messages() == null ? List.of() : request.messages(),
         Boolean.TRUE);
-    String chatUrl = platformUrl(AGENT_CHAT_PATH);
+    String chatUrl = requireText(properties.getAgentChatUrl(), "Please configure agent chat API integration.platform.agent-chat-url");
 
     HttpURLConnection connection = null;
     try {
@@ -370,34 +357,6 @@ public class PlatformIntegrationService {
     return headers;
   }
 
-  private <T> T exchangeJson(String method, String url, Object body, Map<String, String> headers, Class<T> responseType) {
-    Map<String, String> requestHeaders = headers == null ? new LinkedHashMap<>() : new LinkedHashMap<>(headers);
-    HttpURLConnection connection = null;
-    try {
-      connection = openConnection(url, method);
-      connection.setRequestProperty("accept", "application/json");
-      if (!requestHeaders.isEmpty()) {
-        requestHeaders.forEach(connection::setRequestProperty);
-      }
-      if (body != null) {
-        connection.setRequestProperty("content-type", "application/json;charset=UTF-8");
-        writeJson(connection, body);
-      }
-      int statusCode = connection.getResponseCode();
-      String responseBody = readAll(statusCode >= 200 && statusCode < 300 ? connection.getInputStream() : connection.getErrorStream());
-      if (statusCode < 200 || statusCode >= 300) {
-        throw new IllegalStateException("接口调用失败，HTTP " + statusCode + "：" + truncate(responseBody, 500));
-      }
-      return objectMapper.readValue(responseBody, responseType);
-    } catch (IOException e) {
-      throw new IllegalStateException("接口调用失败：" + e.getMessage(), e);
-    } finally {
-      if (connection != null) {
-        connection.disconnect();
-      }
-    }
-  }
-
   private HttpURLConnection openConnection(String url, String method) throws IOException {
     HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
     if (connection instanceof HttpsURLConnection httpsConnection) {
@@ -461,39 +420,6 @@ public class PlatformIntegrationService {
     try (var outputStream = connection.getOutputStream()) {
       outputStream.write(payload);
     }
-  }
-
-  private String pagedListUrl(String url) {
-    return pathParamUrl(url, Map.of(
-        "pageSize", String.valueOf(DEFAULT_PAGE_SIZE),
-        "curPage", String.valueOf(DEFAULT_CUR_PAGE)));
-  }
-
-  private String agentDetailUrl(String agentId) {
-    return pathParamUrl(platformUrl(AGENT_DETAIL_PATH), Map.of("superAgentId", agentId));
-  }
-
-  private String agentBundleListUrl(String agentId) {
-    return pathParamUrl(platformUrl(AGENT_BUNDLE_LIST_PATH), Map.of("superAgentId", agentId));
-  }
-
-  private String platformUrl(String path) {
-    String domain = requireText(properties.getDomain(), "Please configure platform API domain integration.platform.domain")
-        .replaceAll("/+$", "");
-    String subAppId = firstNonBlank(properties.getSubAppId()).replaceAll("^/+|/+$", "");
-    return domain + (subAppId.isEmpty() ? "" : "/" + subAppId) + path;
-  }
-
-  private String pathParamUrl(String template, Map<String, String> values) {
-    String result = template;
-    for (Map.Entry<String, String> entry : values.entrySet()) {
-      String placeholder = "{" + entry.getKey() + "}";
-      if (!result.contains(placeholder)) {
-        throw new IllegalStateException("URL template missing path parameter " + placeholder);
-      }
-      result = result.replace(placeholder, URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
-    }
-    return result;
   }
 
   private void ensureSuccess(String name, String status, Boolean success) {
