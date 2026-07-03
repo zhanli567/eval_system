@@ -9,6 +9,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.agentnexus.backend.common.context.CurrentSpaceHolder;
+import com.agentnexus.backend.common.context.CurrentUserHolder;
+import com.agentnexus.backend.common.security.CurrentUser;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetSummary;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetVersionDto;
 import com.agentnexus.backend.dataset.api.dto.response.FieldDto;
@@ -32,6 +35,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -58,6 +65,12 @@ class TaskServicePresetDisplayTest {
     remoteCallService = mock(RemoteCallService.class);
     presetStore = new PresetEvaluatorStore();
     service = newTaskService(Runnable::run);
+  }
+
+  @AfterEach
+  void tearDown() {
+    CurrentSpaceHolder.clear();
+    CurrentUserHolder.clear();
   }
 
   @Test
@@ -201,6 +214,39 @@ class TaskServicePresetDisplayTest {
     verify(taskRepository).resetEvaluatorResultsForRestart(eq("task-1"), anyString());
     verify(taskRepository).resetTaskTagsForRestart(eq("task-1"), anyString());
     verify(taskRepository).resetTagResultsForRestart(eq("task-1"), anyString());
+  }
+
+  @Test
+  void asyncTaskExecutionKeepsRequestContext() {
+    AtomicReference<String> asyncSpaceId = new AtomicReference<>();
+    AtomicReference<String> asyncUserId = new AtomicReference<>();
+    AtomicInteger findTaskCalls = new AtomicInteger();
+    TaskService contextDroppingExecutorService = newTaskService(command -> {
+      CurrentSpaceHolder.clear();
+      CurrentUserHolder.clear();
+      command.run();
+    });
+    CurrentSpaceHolder.set("space-1");
+    CurrentUserHolder.set(new CurrentUser("user-1", "User One", Set.of("space-1")));
+    when(taskRepository.findTaskBase("task-1")).thenAnswer(invocation ->
+        findTaskCalls.incrementAndGet() == 1 ? taskBase("failed", "none") : taskBase("running", "none"));
+    when(taskRepository.listTaskEvaluatorBindings("task-1")).thenReturn(List.of());
+    when(taskRepository.listAllTaskItems("task-1")).thenAnswer(invocation -> {
+      asyncSpaceId.set(CurrentSpaceHolder.get());
+      CurrentUser user = CurrentUserHolder.get();
+      asyncUserId.set(user == null ? null : user.userId());
+      return List.of();
+    });
+    when(taskRepository.listAllParamMappings("task-1")).thenReturn(List.of());
+    when(datasetRepository.listFields("version-1")).thenReturn(List.of());
+    when(taskRepository.listEvaluatorDimensions("task-1")).thenReturn(List.of());
+    when(taskRepository.listTagDimensions("task-1")).thenReturn(List.of());
+    when(taskRepository.listTaskItems("task-1", 10, 0)).thenReturn(List.of());
+
+    contextDroppingExecutorService.startTask("task-1");
+
+    assertThat(asyncSpaceId).hasValue("space-1");
+    assertThat(asyncUserId).hasValue("user-1");
   }
 
   @Test

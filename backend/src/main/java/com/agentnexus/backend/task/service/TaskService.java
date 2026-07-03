@@ -1,6 +1,9 @@
 package com.agentnexus.backend.task.service;
 
 import com.agentnexus.backend.common.PageResponse;
+import com.agentnexus.backend.common.context.CurrentSpaceHolder;
+import com.agentnexus.backend.common.context.CurrentUserHolder;
+import com.agentnexus.backend.common.security.CurrentUser;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetSummary;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetVersionDto;
 import com.agentnexus.backend.dataset.api.dto.response.FieldDto;
@@ -191,7 +194,9 @@ public class TaskService {
   }
 
   private void scheduleTaskExecution(String taskId) {
-    Runnable task = () -> taskExecutor.execute(() -> runTaskSafely(taskId));
+    String spaceId = CurrentSpaceHolder.get();
+    CurrentUser currentUser = CurrentUserHolder.get();
+    Runnable task = () -> taskExecutor.execute(() -> runWithRequestContext(spaceId, currentUser, () -> runTaskSafely(taskId)));
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
       TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
         @Override
@@ -201,6 +206,38 @@ public class TaskService {
       });
     } else {
       task.run();
+    }
+  }
+
+  private void runWithRequestContext(String spaceId, CurrentUser currentUser, Runnable action) {
+    String previousSpaceId = CurrentSpaceHolder.get();
+    CurrentUser previousUser = CurrentUserHolder.get();
+    if (spaceId == null) {
+      CurrentSpaceHolder.clear();
+    } else {
+      CurrentSpaceHolder.set(spaceId);
+    }
+    try {
+      if (currentUser == null) {
+        CurrentUserHolder.clear();
+      } else {
+        CurrentUserHolder.set(currentUser);
+      }
+      try {
+        action.run();
+      } finally {
+        if (previousUser == null) {
+          CurrentUserHolder.clear();
+        } else {
+          CurrentUserHolder.set(previousUser);
+        }
+      }
+    } finally {
+      if (previousSpaceId == null) {
+        CurrentSpaceHolder.clear();
+      } else {
+        CurrentSpaceHolder.set(previousSpaceId);
+      }
     }
   }
 
