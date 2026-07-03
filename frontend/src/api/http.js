@@ -1,26 +1,40 @@
-import axios from 'axios';
+import Aurora from './aurora';
 import { SPACE_STORAGE_KEY } from '../utils/spaceSelection';
 
-export const http = axios.create({
-    baseURL: '/api',
-    timeout: 10000,
-    withCredentials: true
-});
+function apiPath(path) {
+    const { hostname, port } = window.location;
+    const prefix = port === '5173' || hostname === 'localhost' || hostname === '127.0.0.1' ? '/api' : '';
+    return `${prefix}${path}`;
+}
 
-http.interceptors.request.use((config) => {
-    const url = String(config.url || '');
-    if (!url.startsWith('/integration/spaces')) {
-        const spaceId = localStorage.getItem(SPACE_STORAGE_KEY);
-        if (spaceId) {
-            if (typeof config.headers?.set === 'function') {
-                config.headers.set('x-space-id', spaceId);
-            } else {
-                config.headers = { ...(config.headers || {}), 'x-space-id': spaceId };
-            }
+function withSpace(config = {}) {
+    const spaceId = localStorage.getItem(SPACE_STORAGE_KEY);
+    return {
+        ...config,
+        headers: {
+            ...(config.headers || {}),
+            ...(spaceId ? { 'x-space-id': spaceId } : {})
         }
+    };
+}
+
+export const http = {
+    get(path, config) {
+        return Aurora.service.network.get(apiPath(path), withSpace(config));
+    },
+    post(path, data, config) {
+        return Aurora.service.network.post(apiPath(path), data, withSpace(config));
+    },
+    put(path, data, config) {
+        return Aurora.service.network.put(apiPath(path), data, withSpace(config));
+    },
+    patch(path, data, config) {
+        return Aurora.service.network.patch(apiPath(path), data, withSpace(config));
+    },
+    delete(path, config) {
+        return Aurora.service.network.delete(apiPath(path), withSpace(config));
     }
-    return config;
-});
+};
 
 export function unwrap(request) {
     return request
@@ -31,7 +45,7 @@ export function unwrap(request) {
             return res.data.data;
         })
         .catch((error) => {
-            const message = error?.response?.data?.msg || error?.message || '请求失败';
+            const message = error?.response?.data?.msg || error?.message || 'request failed';
             throw new Error(message);
         });
 }
