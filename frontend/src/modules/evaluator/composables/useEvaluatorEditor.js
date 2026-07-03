@@ -2,7 +2,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { evaluatorApi } from '../../../api/evaluator';
-import { integrationApi } from '../../../api/integration';
+import { remoteCallApi } from '../../../api/remoteCall';
 const DEFAULT_PROMPT = `你是一位专业的AI评估员。
 请根据评分标准评估回复质量。
 
@@ -78,7 +78,7 @@ export function useEvaluatorEditor() {
         }
         modelLoading.value = true;
         try {
-            models.value = await integrationApi.listModels();
+            models.value = await remoteCallApi.listModels();
         }
         catch (error) {
             ElMessage.error(errorMessage(error, '获取模型列表失败'));

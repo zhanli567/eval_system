@@ -293,7 +293,7 @@ public class TaskService {
         List<TaskEvaluatorParamMappingRecord> mappings = mappingsByEvaluator.getOrDefault(evaluator.id(), List.of());
         EvaluationSimulationResult result;
         try {
-          result = evaluateWithIntegration(config, mappings, rowValues, agentResult.outputs());
+          result = evaluateWithRemoteCall(config, mappings, rowValues, agentResult.outputs());
         } catch (Exception e) {
           result = failedEvaluationResult("Evaluator execution failed: " + safeErrorMessage(e));
         }
@@ -1030,7 +1030,7 @@ public class TaskService {
         .collect(Collectors.joining("\n"));
   }
 
-  private EvaluationSimulationResult evaluateWithIntegration(
+  private EvaluationSimulationResult evaluateWithRemoteCall(
       EvaluationRuntimeConfig config,
       List<TaskEvaluatorParamMappingRecord> mappings,
       Map<String, String> values,

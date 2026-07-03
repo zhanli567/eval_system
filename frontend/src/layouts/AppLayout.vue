@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
-import { integrationApi } from '../api/integration';
+import { remoteCallApi } from '../api/remoteCall';
 import { appModules } from '../config/appModules';
 import { activeSpaces, findSelectedSpace, resolveSpaceSelection, SPACE_STORAGE_KEY } from '../utils/spaceSelection';
 
@@ -20,7 +20,7 @@ onMounted(loadSpaces);
 async function loadSpaces() {
     spaceLoading.value = true;
     try {
-        spaces.value = await integrationApi.listSpaces(20, 1);
+        spaces.value = await remoteCallApi.listSpaces(20, 1);
         persistSpaceId(resolveSpaceSelection(spaces.value, localStorage.getItem(SPACE_STORAGE_KEY) || ''));
     } catch (error) {
         spaces.value = [];

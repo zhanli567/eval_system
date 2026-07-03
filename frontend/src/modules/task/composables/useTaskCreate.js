@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { datasetApi } from '../../../api/dataset';
 import { evaluatorApi } from '../../../api/evaluator';
-import { integrationApi } from '../../../api/integration';
+import { remoteCallApi } from '../../../api/remoteCall';
 import { tagApi } from '../../../api/tag';
 import { taskApi } from '../../../api/task';
 function createEvaluatorBlock() {
@@ -175,7 +175,7 @@ export function useTaskCreate() {
             return;
         agentDetailLoading.value = true;
         try {
-            agentDetails[agentId] = await integrationApi.getAgentDetail(agentId);
+            agentDetails[agentId] = await remoteCallApi.getAgentDetail(agentId);
         }
         catch (error) {
             ElMessage.error(error instanceof Error ? error.message : '获取智能体详情失败');
@@ -189,7 +189,7 @@ export function useTaskCreate() {
             return;
         agentVersionLoading.value = true;
         try {
-            agentBundleVersions[agentId] = await integrationApi.listAgentBundles(agentId);
+            agentBundleVersions[agentId] = await remoteCallApi.listAgentBundles(agentId);
         }
         catch (error) {
             ElMessage.error(error instanceof Error ? error.message : '获取智能体快照失败');
@@ -203,7 +203,7 @@ export function useTaskCreate() {
             return;
         modelLoading.value = true;
         try {
-            models.value = await integrationApi.listModels();
+            models.value = await remoteCallApi.listModels();
             modelsLoaded.value = true;
         }
         catch (error) {
@@ -309,7 +309,7 @@ export function useTaskCreate() {
         presetCategories.value = await evaluatorApi.listPresetCategories();
     }
     async function loadAgents() {
-        agents.value = await integrationApi.listAgents();
+        agents.value = await remoteCallApi.listAgents();
         if (form.appType === 'agent') {
             selectDefaultAgent();
         }

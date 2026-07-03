@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 @Component
 @ResponseBody
-@Path("/integration")
+@Path("/remoteCall")
 public class RemoteCallController {
   private final RemoteCallService remoteCallService;
 

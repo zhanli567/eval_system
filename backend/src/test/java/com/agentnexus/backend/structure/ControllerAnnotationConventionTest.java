@@ -51,6 +51,7 @@ class ControllerAnnotationConventionTest {
       assertThat(controller.isAnnotationPresent(RestController.class)).isFalse();
       assertThat(controller.isAnnotationPresent(RequestMapping.class)).isFalse();
     });
+    assertThat(RemoteCallController.class.getAnnotation(Path.class).value()).isEqualTo("/remoteCall");
   }
 
   @Test

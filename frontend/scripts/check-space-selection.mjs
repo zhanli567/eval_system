@@ -11,11 +11,11 @@ assert.equal(resolveSpaceSelection(spaces, 'space-2'), 'space-2');
 assert.equal(resolveSpaceSelection(spaces, 'missing'), 'space-1');
 assert.equal(resolveSpaceSelection([], 'space-2'), '');
 const httpSource = readFileSync('src/api/http.js', 'utf8');
-const integrationSource = readFileSync('src/api/integration.js', 'utf8');
+const remoteCallSource = readFileSync('src/api/remoteCall.js', 'utf8');
 assert.match(httpSource, /Aurora\.service\.network\.get/);
 assert.match(httpSource, /'x-space-id'/);
 assert.doesNotMatch(httpSource, /const\s+\w+\s*=\s*Aurora\.service\.network/);
 assert.doesNotMatch(httpSource, /startsWith/);
-assert.match(integrationSource, /\/integration\/spaces/);
+assert.match(remoteCallSource, /\/remoteCall\/spaces/);
 
 console.log('space selection checks passed');
