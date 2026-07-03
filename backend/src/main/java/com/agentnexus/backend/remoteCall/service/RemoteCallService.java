@@ -1,7 +1,7 @@
 package com.agentnexus.backend.remoteCall.service;
 
 import com.agentnexus.backend.common.context.CurrentSpaceHolder;
-import com.agentnexus.backend.iam.IamTokenService;
+import com.agentnexus.backend.common.context.TaskCookieHolder;
 import com.agentnexus.backend.remoteCall.config.RemoteCallProperties;
 import com.agentnexus.backend.remoteCall.api.dto.request.AgentChatRequest;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentChild;
@@ -81,19 +81,16 @@ public class RemoteCallService {
 
   private final RemoteCallProperties properties;
   private final ObjectMapper objectMapper;
-  private final IamTokenService iamTokenService;
   private final RemoteCallServiceClient remoteCallServiceClient;
   private static volatile SSLSocketFactory trustAllSocketFactory;
 
   public RemoteCallService(
       RemoteCallProperties properties,
       ObjectMapper objectMapper,
-      IamTokenService iamTokenService,
       RemoteCallServiceClient remoteCallServiceClient
   ) {
     this.properties = properties;
     this.objectMapper = objectMapper;
-    this.iamTokenService = iamTokenService;
     this.remoteCallServiceClient = remoteCallServiceClient;
   }
 
@@ -385,8 +382,11 @@ public class RemoteCallService {
 
   private Map<String, String> platformHeaders() {
     Map<String, String> headers = new LinkedHashMap<>();
-    headers.put("Authorization", firstNonBlank(iamTokenService.getToken()));
     headers.put("x-space-id", firstNonBlank(CurrentSpaceHolder.get()));
+    String taskCookie = TaskCookieHolder.get();
+    if (StringUtils.hasText(taskCookie)) {
+      headers.put("Cookie", taskCookie.trim());
+    }
     return headers;
   }
 

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.agentnexus.backend.common.context.CurrentSpaceHolder;
+import com.agentnexus.backend.common.context.TaskCookieHolder;
 import com.agentnexus.backend.common.context.CurrentUserHolder;
 import com.agentnexus.backend.common.security.CurrentUser;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetSummary;
@@ -70,6 +71,7 @@ class TaskServicePresetDisplayTest {
   @AfterEach
   void tearDown() {
     CurrentSpaceHolder.clear();
+    TaskCookieHolder.clear();
     CurrentUserHolder.clear();
   }
 
@@ -219,10 +221,12 @@ class TaskServicePresetDisplayTest {
   @Test
   void asyncTaskExecutionKeepsRequestContext() {
     AtomicReference<String> asyncSpaceId = new AtomicReference<>();
+    AtomicReference<String> asyncCookie = new AtomicReference<>();
     AtomicReference<String> asyncUserId = new AtomicReference<>();
     AtomicInteger findTaskCalls = new AtomicInteger();
     TaskService contextDroppingExecutorService = newTaskService(command -> {
       CurrentSpaceHolder.clear();
+      TaskCookieHolder.clear();
       CurrentUserHolder.clear();
       command.run();
     });
@@ -233,6 +237,7 @@ class TaskServicePresetDisplayTest {
     when(taskRepository.listTaskEvaluatorBindings("task-1")).thenReturn(List.of());
     when(taskRepository.listAllTaskItems("task-1")).thenAnswer(invocation -> {
       asyncSpaceId.set(CurrentSpaceHolder.get());
+      asyncCookie.set(TaskCookieHolder.get());
       CurrentUser user = CurrentUserHolder.get();
       asyncUserId.set(user == null ? null : user.userId());
       return List.of();
@@ -243,10 +248,12 @@ class TaskServicePresetDisplayTest {
     when(taskRepository.listTagDimensions("task-1")).thenReturn(List.of());
     when(taskRepository.listTaskItems("task-1", 10, 0)).thenReturn(List.of());
 
-    contextDroppingExecutorService.startTask("task-1");
+    contextDroppingExecutorService.startTask("task-1", "sid=abc; hwssot3=123");
 
     assertThat(asyncSpaceId).hasValue("space-1");
+    assertThat(asyncCookie).hasValue("sid=abc; hwssot3=123");
     assertThat(asyncUserId).hasValue("user-1");
+    assertThat(TaskCookieHolder.get()).isNull();
   }
 
   @Test

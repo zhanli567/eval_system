@@ -11,6 +11,7 @@ import com.agentnexus.backend.task.service.TaskService;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -60,8 +61,8 @@ public class TaskController {
 
   @POST
   @Path("/{taskId}/start")
-  public ApiResponse<TaskDetail> startTask(@PathParam("taskId") String taskId) {
-    return ApiResponse.ok(taskService.startTask(taskId));
+  public ApiResponse<TaskDetail> startTask(@PathParam("taskId") String taskId, @HeaderParam("Cookie") String cookie) {
+    return ApiResponse.ok(taskService.startTask(taskId, cookie));
   }
 
   @DELETE

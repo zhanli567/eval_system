@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.agentnexus.backend.common.context.CurrentSpaceHolder;
-import com.agentnexus.backend.iam.IamTokenService;
+import com.agentnexus.backend.common.context.TaskCookieHolder;
 import com.agentnexus.backend.remoteCall.config.RemoteCallProperties;
 import com.agentnexus.backend.remoteCall.api.dto.request.AgentChatRequest;
 import com.agentnexus.backend.remoteCall.api.dto.request.AgentMessage;
@@ -44,6 +44,7 @@ class RemoteCallServiceTest {
   @AfterEach
   void tearDown() {
     CurrentSpaceHolder.clear();
+    TaskCookieHolder.clear();
     if (server != null) {
       server.stop(0);
     }
@@ -465,7 +466,7 @@ class RemoteCallServiceTest {
     AtomicReference<String> superAgentId = new AtomicReference<>("");
     AtomicReference<String> bundleId = new AtomicReference<>("");
     AtomicReference<String> authorization = new AtomicReference<>("missing");
-    AtomicReference<Boolean> hasCookie = new AtomicReference<>(true);
+    AtomicReference<String> cookie = new AtomicReference<>("");
     ObjectMapper objectMapper = new ObjectMapper();
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext("/agent/chat", exchange -> {
@@ -474,7 +475,7 @@ class RemoteCallServiceTest {
       superAgentId.set(firstHeader(exchange, "x-super-agent-id"));
       bundleId.set(firstHeader(exchange, "x-bundle-id"));
       authorization.set(firstHeader(exchange, "Authorization"));
-      hasCookie.set(hasHeader(exchange, "Cookie"));
+      cookie.set(firstHeader(exchange, "Cookie"));
       writeJson(exchange, 200, """
           {"choices":[{"delta":{"content":[{"type":"text","text":"dynamic ok"}]}}]}
           """);
@@ -482,6 +483,7 @@ class RemoteCallServiceTest {
     server.start();
 
     RemoteCallService service = service(objectMapper);
+    TaskCookieHolder.set("sid=abc; hwssot3=123");
     var response = service.invokeAgent(
         "agent-1",
         "bundle-1",
@@ -493,8 +495,8 @@ class RemoteCallServiceTest {
     assertThat(childAlias).hasValue("");
     assertThat(superAgentId).hasValue("agent-1");
     assertThat(bundleId).hasValue("bundle-1");
-    assertThat(authorization).hasValue("iam-token");
-    assertThat(hasCookie).hasValue(false);
+    assertThat(authorization).hasValue("");
+    assertThat(cookie).hasValue("sid=abc; hwssot3=123");
     assertThat(response.outputs().get("text")).isEqualTo("dynamic ok");
   }
 
@@ -740,16 +742,7 @@ class RemoteCallServiceTest {
   }
 
   private RemoteCallService service(RemoteCallProperties properties, ObjectMapper objectMapper) {
-    return new RemoteCallService(properties, objectMapper, tokenService(), remoteCallServiceClient);
-  }
-
-  private IamTokenService tokenService() {
-    return new IamTokenService() {
-      @Override
-      public String getToken() {
-        return "iam-token";
-      }
-    };
+    return new RemoteCallService(properties, objectMapper, remoteCallServiceClient);
   }
 
   private String pathOf(String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {

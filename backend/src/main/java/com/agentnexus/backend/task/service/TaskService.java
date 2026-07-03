@@ -3,6 +3,7 @@ package com.agentnexus.backend.task.service;
 import com.agentnexus.backend.common.PageResponse;
 import com.agentnexus.backend.common.context.CurrentSpaceHolder;
 import com.agentnexus.backend.common.context.CurrentUserHolder;
+import com.agentnexus.backend.common.context.TaskCookieHolder;
 import com.agentnexus.backend.common.security.CurrentUser;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetSummary;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetVersionDto;
@@ -171,6 +172,11 @@ public class TaskService {
 
   @Transactional
   public TaskDetail startTask(String taskId) {
+    return startTask(taskId, "");
+  }
+
+  @Transactional
+  public TaskDetail startTask(String taskId, String cookie) {
     TaskBase base = findTask(taskId);
     if (STATUS_RUNNING.equals(base.status())) {
       return getTask(taskId, 1, 10);
@@ -189,14 +195,15 @@ public class TaskService {
     for (TaskEvaluatorBindingRecord evaluator : taskRepository.listTaskEvaluatorBindings(taskId)) {
       taskRepository.updateTaskEvaluatorStatus(evaluator.id(), STATUS_RUNNING, startedAt);
     }
-    scheduleTaskExecution(taskId);
+    scheduleTaskExecution(taskId, cookie);
     return getTask(taskId, 1, 10);
   }
 
-  private void scheduleTaskExecution(String taskId) {
+  private void scheduleTaskExecution(String taskId, String cookie) {
     String spaceId = CurrentSpaceHolder.get();
     CurrentUser currentUser = CurrentUserHolder.get();
-    Runnable task = () -> taskExecutor.execute(() -> runWithRequestContext(spaceId, currentUser, () -> runTaskSafely(taskId)));
+    String taskCookie = StringUtils.hasText(cookie) ? cookie.trim() : null;
+    Runnable task = () -> taskExecutor.execute(() -> runWithRequestContext(spaceId, currentUser, taskCookie, () -> runTaskSafely(taskId)));
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
       TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
         @Override
@@ -209,13 +216,19 @@ public class TaskService {
     }
   }
 
-  private void runWithRequestContext(String spaceId, CurrentUser currentUser, Runnable action) {
+  private void runWithRequestContext(String spaceId, CurrentUser currentUser, String taskCookie, Runnable action) {
     String previousSpaceId = CurrentSpaceHolder.get();
     CurrentUser previousUser = CurrentUserHolder.get();
+    String previousCookie = TaskCookieHolder.get();
     if (spaceId == null) {
       CurrentSpaceHolder.clear();
     } else {
       CurrentSpaceHolder.set(spaceId);
+    }
+    if (taskCookie == null) {
+      TaskCookieHolder.clear();
+    } else {
+      TaskCookieHolder.set(taskCookie);
     }
     try {
       if (currentUser == null) {
@@ -233,6 +246,11 @@ public class TaskService {
         }
       }
     } finally {
+      if (previousCookie == null) {
+        TaskCookieHolder.clear();
+      } else {
+        TaskCookieHolder.set(previousCookie);
+      }
       if (previousSpaceId == null) {
         CurrentSpaceHolder.clear();
       } else {
