@@ -4,6 +4,7 @@ import com.agentnexus.backend.remoteCall.api.dto.response.AgentBundleListResult;
 import com.agentnexus.backend.remoteCall.api.dto.response.ListResult;
 import com.agentnexus.backend.remoteCall.api.dto.response.ModelInfo;
 import com.agentnexus.backend.remoteCall.api.dto.response.RemoteResponse;
+import com.agentnexus.backend.remoteCall.api.dto.response.SpaceInfo;
 import com.agentnexus.backend.remoteCall.api.dto.response.SuperAgentDetail;
 import com.agentnexus.backend.remoteCall.api.dto.response.SuperAgentInfo;
 import jakarta.ws.rs.Consumes;
@@ -43,4 +44,11 @@ public interface RemoteCallServiceClient {
   RemoteResponse<AgentBundleListResult> listAgentBundles(
       @PathParam("superAgentId") String superAgentId,
       @HeaderParam("x-space-id") String spaceId);
+
+  @GET
+  @Path("/spaces/{pageSize}/{curPage}")
+  RemoteResponse<ListResult<SpaceInfo>> listSpaces(
+      @PathParam("pageSize") int pageSize,
+      @PathParam("curPage") int curPage,
+      @HeaderParam("Cookie") String cookie);
 }

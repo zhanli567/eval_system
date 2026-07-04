@@ -35,7 +35,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import jakarta.ws.rs.Path;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.server.ResponseStatusException;
 
 class RemoteCallServiceTest {
   private HttpServer server;
@@ -128,15 +127,16 @@ class RemoteCallServiceTest {
     assertThat(pathOf("getAgentDetail", String.class, String.class)).isEqualTo("/super-agents/{superAgentId}");
     assertThat(pathOf("listAgentBundles", String.class, String.class))
         .isEqualTo("/super-agents/{superAgentId}/bundles");
+    assertThat(pathOf("listSpaces", int.class, int.class, String.class)).isEqualTo("/spaces/{pageSize}/{curPage}");
   }
 
   @Test
-  void listSpacesUsesHumanEndpointAndForwardsCookieOnly() throws Exception {
+  void listSpacesUsesRemoteCallServiceClientAndKeepsActiveSpaces() throws Exception {
     AtomicReference<String> requestPath = new AtomicReference<>("");
     AtomicReference<String> cookie = new AtomicReference<>("");
     AtomicReference<Boolean> hasSpaceId = new AtomicReference<>(true);
     server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/portal/spaces/20/1", exchange -> {
+    server.createContext("/spaces/20/1", exchange -> {
       requestPath.set(exchange.getRequestURI().getPath());
       cookie.set(firstHeader(exchange, "Cookie"));
       hasSpaceId.set(hasHeader(exchange, "x-space-id"));
@@ -184,33 +184,13 @@ class RemoteCallServiceTest {
           """);
     });
     server.start();
-    CurrentSpaceHolder.set("space-old");
-    RemoteCallProperties properties = properties();
-    properties.setDomain("http://localhost:" + server.getAddress().getPort());
-    properties.setSubappid("portal");
 
-    List<SpaceInfo> spaces = service(properties, new ObjectMapper()).listSpaces(20, 1, "sid=abc");
+    List<SpaceInfo> spaces = service(new ObjectMapper()).listSpaces(20, 1, "sid=abc");
 
-    assertThat(requestPath).hasValue("/portal/spaces/20/1");
+    assertThat(requestPath).hasValue("/spaces/20/1");
     assertThat(cookie).hasValue("sid=abc");
     assertThat(hasSpaceId).hasValue(false);
     assertThat(spaces).extracting(SpaceInfo::id).containsExactly("space-1");
-  }
-
-  @Test
-  void listSpacesKeepsRemoteForbiddenStatus() throws Exception {
-    server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/portal/spaces/20/1", exchange -> writeJson(exchange, 403, """
-        {"code":403,"msg":"login required"}
-        """));
-    server.start();
-    RemoteCallProperties properties = properties();
-    properties.setDomain("http://localhost:" + server.getAddress().getPort());
-    properties.setSubappid("portal");
-
-    assertThatThrownBy(() -> service(properties, new ObjectMapper()).listSpaces(20, 1, ""))
-        .isInstanceOf(ResponseStatusException.class)
-        .hasMessageContaining("403");
   }
 
   @Test
@@ -775,12 +755,32 @@ class RemoteCallServiceTest {
       });
     }
 
+    @Override
+    public RemoteResponse<ListResult<SpaceInfo>> listSpaces(int pageSize, int curPage, String cookie) {
+      return getWithoutSpace("/spaces/" + pageSize + "/" + curPage, cookie, new TypeReference<>() {
+      });
+    }
+
     private <T> T get(String path, String spaceId, TypeReference<T> responseType) {
       try {
         HttpURLConnection connection = (HttpURLConnection) URI.create(
             "http://localhost:" + server.getAddress().getPort() + path).toURL().openConnection();
         connection.setRequestMethod("GET");
         connection.setRequestProperty("x-space-id", spaceId == null ? "" : spaceId);
+        return new ObjectMapper().readValue(connection.getInputStream(), responseType);
+      } catch (IOException e) {
+        throw new IllegalStateException(e);
+      }
+    }
+
+    private <T> T getWithoutSpace(String path, String cookie, TypeReference<T> responseType) {
+      try {
+        HttpURLConnection connection = (HttpURLConnection) URI.create(
+            "http://localhost:" + server.getAddress().getPort() + path).toURL().openConnection();
+        connection.setRequestMethod("GET");
+        if (cookie != null) {
+          connection.setRequestProperty("Cookie", cookie);
+        }
         return new ObjectMapper().readValue(connection.getInputStream(), responseType);
       } catch (IOException e) {
         throw new IllegalStateException(e);

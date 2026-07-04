@@ -52,10 +52,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class RemoteCallService {
@@ -75,8 +73,6 @@ public class RemoteCallService {
   private static final TypeReference<List<AgentReferenceItem>> REFERENCES_TYPE = new TypeReference<>() {
   };
   private static final TypeReference<Map<String, Object>> EXTRA_TYPE = new TypeReference<>() {
-  };
-  private static final TypeReference<RemoteResponse<ListResult<SpaceInfo>>> SPACE_LIST_TYPE = new TypeReference<>() {
   };
 
   private final RemoteCallProperties properties;
@@ -134,34 +130,18 @@ public class RemoteCallService {
   }
 
   public List<SpaceInfo> listSpaces(int pageSize, int curPage, String cookie) {
-    HttpURLConnection connection = null;
-    try {
-      connection = openConnection(platformUrl("/spaces/" + pageSize + "/" + curPage), "GET");
-      connection.setRequestProperty("accept", "application/json");
-      if (StringUtils.hasText(cookie)) {
-        connection.setRequestProperty("Cookie", cookie.trim());
-      }
-      int statusCode = connection.getResponseCode();
-      String responseBody = readAll(statusCode >= 200 && statusCode < 300 ? connection.getInputStream() : connection.getErrorStream());
-      if (statusCode < 200 || statusCode >= 300) {
-        throw new ResponseStatusException(HttpStatusCode.valueOf(statusCode), truncate(responseBody, 500));
-      }
-      RemoteResponse<ListResult<SpaceInfo>> response = objectMapper.readValue(responseBody, SPACE_LIST_TYPE);
-      ensureSuccess("Space list API", response.status(), response.success());
-      ListResult<SpaceInfo> result = response.resultObjVO();
-      if (result == null || result.result() == null) {
-        return List.of();
-      }
-      return result.result().stream()
-          .filter(space -> STATUS_ACTIVE.equalsIgnoreCase(space.status()))
-          .toList();
-    } catch (IOException e) {
-      throw new IllegalStateException("Space list API failed: " + e.getMessage(), e);
-    } finally {
-      if (connection != null) {
-        connection.disconnect();
-      }
+    RemoteResponse<ListResult<SpaceInfo>> response = remoteCallServiceClient.listSpaces(
+        pageSize,
+        curPage,
+        firstNonBlank(cookie));
+    ensureSuccess("Space list API", response.status(), response.success());
+    ListResult<SpaceInfo> result = response.resultObjVO();
+    if (result == null || result.result() == null) {
+      return List.of();
     }
+    return result.result().stream()
+        .filter(space -> STATUS_ACTIVE.equalsIgnoreCase(space.status()))
+        .toList();
   }
 
   private SuperAgentDetail loadAgentDetail(String agentId) {
@@ -388,16 +368,6 @@ public class RemoteCallService {
       headers.put("Cookie", taskCookie.trim());
     }
     return headers;
-  }
-
-  private String platformUrl(String path) {
-    String domain = requireText(properties.getDomain(), "Please configure integration.platform.domain");
-    String subappid = requireText(properties.getSubappid(), "Please configure integration.platform.subappid");
-    String cleanDomain = domain.endsWith("/") ? domain.substring(0, domain.length() - 1) : domain;
-    String cleanSubappid = subappid.startsWith("/") ? subappid.substring(1) : subappid;
-    cleanSubappid = cleanSubappid.endsWith("/") ? cleanSubappid.substring(0, cleanSubappid.length() - 1) : cleanSubappid;
-    String cleanPath = path.startsWith("/") ? path : "/" + path;
-    return cleanDomain + "/" + cleanSubappid + cleanPath;
   }
 
   private HttpURLConnection openConnection(String url, String method) throws IOException {
