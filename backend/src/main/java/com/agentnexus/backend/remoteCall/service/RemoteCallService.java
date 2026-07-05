@@ -52,6 +52,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -78,16 +79,28 @@ public class RemoteCallService {
   private final RemoteCallProperties properties;
   private final ObjectMapper objectMapper;
   private final RemoteCallServiceClient remoteCallServiceClient;
+  private final SsoCookieRenewalService ssoCookieRenewalService;
   private static volatile SSLSocketFactory trustAllSocketFactory;
 
+  @Autowired
   public RemoteCallService(
       RemoteCallProperties properties,
       ObjectMapper objectMapper,
-      RemoteCallServiceClient remoteCallServiceClient
+      RemoteCallServiceClient remoteCallServiceClient,
+      SsoCookieRenewalService ssoCookieRenewalService
   ) {
     this.properties = properties;
     this.objectMapper = objectMapper;
     this.remoteCallServiceClient = remoteCallServiceClient;
+    this.ssoCookieRenewalService = ssoCookieRenewalService;
+  }
+
+  RemoteCallService(
+      RemoteCallProperties properties,
+      ObjectMapper objectMapper,
+      RemoteCallServiceClient remoteCallServiceClient
+  ) {
+    this(properties, objectMapper, remoteCallServiceClient, new SsoCookieRenewalService(properties));
   }
 
   public List<ModelInfo> listModels() {
@@ -247,7 +260,7 @@ public class RemoteCallService {
       connection = openConnection(chatUrl, "POST");
       connection.setRequestProperty("content-type", "application/json;charset=UTF-8");
       connection.setRequestProperty("accept", "text/event-stream, application/json");
-      platformHeaders().forEach(connection::setRequestProperty);
+      chatCompletionHeaders().forEach(connection::setRequestProperty);
       connection.setRequestProperty("x-super-agent-id", safeAgentId);
       connection.setRequestProperty("x-bundle-id", safeBundleId);
       if (StringUtils.hasText(agentAlias)) {
@@ -360,12 +373,14 @@ public class RemoteCallService {
         new AgentField("genUi", "genUi", "string", "Generated UI card definition", 10));
   }
 
-  private Map<String, String> platformHeaders() {
+  private Map<String, String> chatCompletionHeaders() {
     Map<String, String> headers = new LinkedHashMap<>();
     headers.put("x-space-id", firstNonBlank(CurrentSpaceHolder.get()));
     String taskCookie = TaskCookieHolder.get();
     if (StringUtils.hasText(taskCookie)) {
-      headers.put("Cookie", taskCookie.trim());
+      String renewedCookie = ssoCookieRenewalService.ensureCookiesValid(taskCookie.trim());
+      TaskCookieHolder.set(renewedCookie);
+      headers.put("Cookie", renewedCookie);
     }
     return headers;
   }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "integration.platform")
 public class RemoteCallProperties {
   private String agentChatUrl = "";
+  private String ssoCookieRenewalUrl = "";
   private boolean trustAllSsl = true;
   private int connectTimeoutMs = 500000;
   private int readTimeoutMs = 6000000;
@@ -18,6 +19,14 @@ public class RemoteCallProperties {
 
   public void setAgentChatUrl(String agentChatUrl) {
     this.agentChatUrl = clean(agentChatUrl);
+  }
+
+  public String getSsoCookieRenewalUrl() {
+    return ssoCookieRenewalUrl;
+  }
+
+  public void setSsoCookieRenewalUrl(String ssoCookieRenewalUrl) {
+    this.ssoCookieRenewalUrl = clean(ssoCookieRenewalUrl);
   }
 
   public boolean isTrustAllSsl() {

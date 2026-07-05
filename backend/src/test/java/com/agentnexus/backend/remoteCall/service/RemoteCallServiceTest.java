@@ -30,6 +30,7 @@ import java.net.URI;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import jakarta.ws.rs.Path;
@@ -440,15 +441,23 @@ class RemoteCallServiceTest {
   }
 
   @Test
-  void invokeAgentUsesUnifiedChatUrlAndSendsAgentAndBundleHeaders() throws Exception {
+  void invokeAgentUsesUnifiedChatUrlAndSendsRenewedCookieAndAgentHeaders() throws Exception {
     AtomicReference<String> requestBody = new AtomicReference<>("");
     AtomicReference<String> childAlias = new AtomicReference<>("missing");
     AtomicReference<String> superAgentId = new AtomicReference<>("");
     AtomicReference<String> bundleId = new AtomicReference<>("");
     AtomicReference<String> authorization = new AtomicReference<>("missing");
     AtomicReference<String> cookie = new AtomicReference<>("");
+    AtomicReference<String> renewalCookie = new AtomicReference<>("");
     ObjectMapper objectMapper = new ObjectMapper();
     server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/only4ssoTimeUpdate.do", exchange -> {
+      renewalCookie.set(firstHeader(exchange, "Cookie"));
+      exchange.getResponseHeaders().add("Set-Cookie", "hwssot3=7654321; Path=/; Domain=example.com");
+      exchange.getResponseHeaders().add("Set-Cookie", "hwssotinter3=renewed-inter; Path=/");
+      exchange.sendResponseHeaders(200, -1);
+      exchange.close();
+    });
     server.createContext("/agent/chat", exchange -> {
       requestBody.set(readBody(exchange));
       childAlias.set(firstHeader(exchange, "x-agent-alias"));
@@ -462,8 +471,12 @@ class RemoteCallServiceTest {
     });
     server.start();
 
-    RemoteCallService service = service(objectMapper);
-    TaskCookieHolder.set("sid=abc; hwssot3=123");
+    RemoteCallProperties properties = properties();
+    properties.setSsoCookieRenewalUrl("http://localhost:" + server.getAddress().getPort() + "/only4ssoTimeUpdate.do");
+    RemoteCallService service = service(properties, objectMapper);
+    String originalCookie = "sid=abc; hwssot3=" + Long.toOctalString(System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(25))
+        + "; theme=dark; hwssotinter3=old-inter";
+    TaskCookieHolder.set(originalCookie);
     var response = service.invokeAgent(
         "agent-1",
         "bundle-1",
@@ -476,7 +489,9 @@ class RemoteCallServiceTest {
     assertThat(superAgentId).hasValue("agent-1");
     assertThat(bundleId).hasValue("bundle-1");
     assertThat(authorization).hasValue("");
-    assertThat(cookie).hasValue("sid=abc; hwssot3=123");
+    assertThat(renewalCookie).hasValue(originalCookie);
+    assertThat(cookie).hasValue("sid=abc; hwssot3=7654321; theme=dark; hwssotinter3=renewed-inter");
+    assertThat(TaskCookieHolder.get()).isEqualTo("sid=abc; hwssot3=7654321; theme=dark; hwssotinter3=renewed-inter");
     assertThat(response.outputs().get("text")).isEqualTo("dynamic ok");
   }
 
