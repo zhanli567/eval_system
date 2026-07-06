@@ -163,6 +163,7 @@ public class TaskRepository {
       String evaluatorId,
       String evaluatorVersionId,
       String modelId,
+      String modelName,
       String status,
       int displayOrder,
       String now
@@ -174,6 +175,7 @@ public class TaskRepository {
     evaluator.setEvaluatorId(evaluatorId);
     evaluator.setEvaluatorVersionId(evaluatorVersionId);
     evaluator.setModelId(modelId);
+    evaluator.setModelName(modelName);
     evaluator.setStatus(status);
     evaluator.setDisplayOrder(displayOrder);
     evaluator.setLastUpdatedDate(toLastUpdatedDate(now));
@@ -694,6 +696,7 @@ public class TaskRepository {
         evaluator.getEvaluatorId(),
         evaluator.getEvaluatorVersionId(),
         evaluator.getModelId(),
+        evaluator.getModelName(),
         evaluator.getStatus(),
         evaluator.getDisplayOrder());
   }

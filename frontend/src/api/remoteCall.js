@@ -14,8 +14,5 @@ export const remoteCallApi = {
     },
     listAgentBundles(agentId) {
         return unwrap(http.get(`/remoteCall/agents/${encodeURIComponent(agentId)}/bundles`));
-    },
-    chatModel(modelId, message) {
-        return unwrap(http.post(`/remoteCall/models/${encodeURIComponent(modelId)}/chat`, { message }));
     }
 };

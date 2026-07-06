@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS t_eval_evaluator_version (
   evaluator_id VARCHAR(64) NOT NULL,
   version_no INT NOT NULL DEFAULT 0,
   model_id VARCHAR(64) NOT NULL DEFAULT '',
+  model_name VARCHAR(128) NOT NULL DEFAULT '',
   prompt TEXT NOT NULL DEFAULT '',
   execute_code TEXT NOT NULL DEFAULT '',
   score_min DECIMAL(10,4) NOT NULL,
@@ -70,6 +71,7 @@ COMMENT ON COLUMN t_eval_evaluator_version.last_updated_date IS '最后更新时
 COMMENT ON COLUMN t_eval_evaluator_version.evaluator_id IS '自定义评估器ID';
 COMMENT ON COLUMN t_eval_evaluator_version.version_no IS '版本号：0草稿，>0发布版本';
 COMMENT ON COLUMN t_eval_evaluator_version.model_id IS 'LLM评估使用的模型ID，后续可作为模型表外键';
+COMMENT ON COLUMN t_eval_evaluator_version.model_name IS 'LLM评估器调用模型名称';
 COMMENT ON COLUMN t_eval_evaluator_version.prompt IS 'LLM评估Prompt';
 COMMENT ON COLUMN t_eval_evaluator_version.execute_code IS 'Code评估Python执行函数';
 COMMENT ON COLUMN t_eval_evaluator_version.score_min IS '评分范围最小值';

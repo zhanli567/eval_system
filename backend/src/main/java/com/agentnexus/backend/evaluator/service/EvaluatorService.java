@@ -86,6 +86,7 @@ public class EvaluatorService {
         evaluatorId,
         0,
         normalized.modelId(),
+        normalized.modelName(),
         normalized.prompt(),
         normalized.executeCode(),
         normalized.scoreMin(),
@@ -120,6 +121,7 @@ public class EvaluatorService {
     evaluatorRepository.updateDraftVersion(
         versionId,
         normalized.modelId(),
+        normalized.modelName(),
         normalized.prompt(),
         normalized.executeCode(),
         normalized.scoreMin(),
@@ -146,6 +148,7 @@ public class EvaluatorService {
         evaluatorId,
         nextVersionNo,
         draft.modelId(),
+        draft.modelName(),
         draft.prompt(),
         draft.executeCode(),
         draft.scoreMin(),
@@ -183,6 +186,7 @@ public class EvaluatorService {
         base.versionName(),
         base.draft(),
         base.modelId(),
+        base.modelName(),
         base.prompt(),
         base.executeCode(),
         base.scoreMin(),
@@ -233,11 +237,13 @@ public class EvaluatorService {
     validateScore(scoreMin, scoreMax, passThreshold);
 
     String modelId = "";
+    String modelName = "";
     String prompt = "";
     String executeCode = "";
     List<EvaluatorParamInput> params = List.of();
     if (TYPE_LLM.equals(evaluatorType)) {
       modelId = request.modelId() == null ? "" : request.modelId().trim();
+      modelName = requireText(request.modelName(), "请选择模型");
       prompt = requireText(request.prompt(), "Prompt不能为空");
       validateMaxLength(prompt, MAX_PROMPT_LENGTH, "Prompt不能超过2000个字符");
       params = normalizePromptParams(prompt, request.params());
@@ -252,6 +258,7 @@ public class EvaluatorService {
         evaluatorType,
         description,
         modelId,
+        modelName,
         prompt,
         executeCode,
         scoreMin,
@@ -439,6 +446,7 @@ public class EvaluatorService {
       String evaluatorType,
       String description,
       String modelId,
+      String modelName,
       String prompt,
       String executeCode,
       BigDecimal scoreMin,

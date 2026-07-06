@@ -7,6 +7,7 @@ public record TaskEvaluatorBindingRecord(
     String evaluatorId,
     String evaluatorVersionId,
     String modelId,
+    String modelName,
     String status,
     Integer displayOrder
 ) {

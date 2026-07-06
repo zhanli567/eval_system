@@ -43,6 +43,7 @@ export function useEvaluatorEditor() {
         description: '',
         evaluatorType: 'llm',
         modelId: '',
+        modelName: '',
         prompt: DEFAULT_PROMPT,
         executeCode: DEFAULT_CODE,
         scoreMin: 1,
@@ -144,6 +145,7 @@ export function useEvaluatorEditor() {
         form.description = preset.description;
         form.evaluatorType = preset.evaluatorType;
         form.modelId = preset.modelId || '';
+        form.modelName = preset.modelName || '';
         form.prompt = preset.prompt;
         form.executeCode = preset.executeCode;
         form.scoreMin = Number(preset.scoreMin ?? 1);
@@ -159,6 +161,7 @@ export function useEvaluatorEditor() {
         form.description = config.description;
         form.evaluatorType = config.evaluatorType;
         form.modelId = config.modelId || '';
+        form.modelName = config.modelName || '';
         form.prompt = config.prompt || DEFAULT_PROMPT;
         form.executeCode = config.executeCode || DEFAULT_CODE;
         form.scoreMin = Number(config.scoreMin ?? 1);
@@ -252,6 +255,7 @@ export function useEvaluatorEditor() {
             evaluatorType: form.evaluatorType,
             description: form.description.trim(),
             modelId: form.evaluatorType === 'llm' ? form.modelId : '',
+            modelName: form.evaluatorType === 'llm' ? selectedModelName() : '',
             prompt: form.evaluatorType === 'llm' ? form.prompt : '',
             executeCode: form.evaluatorType === 'code' ? form.executeCode : '',
             scoreMin: Number(form.scoreMin),
@@ -259,6 +263,12 @@ export function useEvaluatorEditor() {
             passThreshold: Number(form.passThreshold),
             params: params.map(toParamPayload)
         };
+    }
+    function selectedModelName() {
+        if (!form.modelId) {
+            return '';
+        }
+        return models.value.find((model) => model.modelId === form.modelId)?.modelName || form.modelName || '';
     }
     function toParamPayload(param) {
         return {
@@ -307,6 +317,10 @@ export function useEvaluatorEditor() {
         }
         if (form.evaluatorType === 'llm' && !form.modelId) {
             ElMessage.warning('请选择模型');
+            return false;
+        }
+        if (form.evaluatorType === 'llm' && !selectedModelName()) {
+            ElMessage.warning('请选择模型名称');
             return false;
         }
         if (form.evaluatorType === 'llm' && !extractPromptParams(form.prompt).length) {

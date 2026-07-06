@@ -12,6 +12,7 @@ public record EvaluatorConfigBase(
     String versionName,
     Boolean draft,
     String modelId,
+    String modelName,
     String prompt,
     String executeCode,
     BigDecimal scoreMin,

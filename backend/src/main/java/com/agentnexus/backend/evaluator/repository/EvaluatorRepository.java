@@ -122,6 +122,7 @@ public class EvaluatorRepository {
       String evaluatorId,
       int versionNo,
       String modelId,
+      String modelName,
       String prompt,
       String executeCode,
       BigDecimal scoreMin,
@@ -134,6 +135,7 @@ public class EvaluatorRepository {
     version.setEvaluatorId(evaluatorId);
     version.setVersionNo(versionNo);
     version.setModelId(modelId);
+    version.setModelName(modelName);
     version.setPrompt(prompt);
     version.setExecuteCode(executeCode);
     version.setScoreMin(scoreMin);
@@ -148,6 +150,7 @@ public class EvaluatorRepository {
   public void updateDraftVersion(
       String versionId,
       String modelId,
+      String modelName,
       String prompt,
       String executeCode,
       BigDecimal scoreMin,
@@ -161,6 +164,7 @@ public class EvaluatorRepository {
         .eq(EvalEvaluatorVersion::getVersionNo, 0)
         .eq(EvalEvaluatorVersion::getIsDeleted, 0)
         .set(EvalEvaluatorVersion::getModelId, modelId)
+        .set(EvalEvaluatorVersion::getModelName, modelName)
         .set(EvalEvaluatorVersion::getPrompt, prompt)
         .set(EvalEvaluatorVersion::getExecuteCode, executeCode)
         .set(EvalEvaluatorVersion::getScoreMin, scoreMin)

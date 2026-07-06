@@ -618,6 +618,7 @@ export function useTaskCreate() {
             evaluatorId: block.evaluatorId,
             evaluatorVersionId: block.evaluatorSource === 'custom' ? block.evaluatorVersionId : '',
             modelId: block.evaluatorSource === 'preset' ? block.modelId : '',
+            modelName: block.evaluatorSource === 'preset' ? selectedModelName(block.modelId) : '',
             paramMappings: block.params
                 .map((param) => {
                 const mapping = block.paramMappings[paramKey(param)];
@@ -633,6 +634,9 @@ export function useTaskCreate() {
             })
                 .filter((mapping) => Boolean(mapping))
         };
+    }
+    function selectedModelName(modelId) {
+        return models.value.find((model) => model.modelId === modelId)?.modelName || '';
     }
     function shouldSubmitParamMapping(param, mapping) {
         if (param.required) {
@@ -691,6 +695,10 @@ export function useTaskCreate() {
             }
             if (block.evaluatorSource === 'preset' && block.evaluatorType === 'llm' && !block.modelId) {
                 ElMessage.warning(`请选择预置评估器模型：${block.evaluatorName || block.evaluatorId}`);
+                return false;
+            }
+            if (block.evaluatorSource === 'preset' && block.evaluatorType === 'llm' && !selectedModelName(block.modelId)) {
+                ElMessage.warning(`请选择预置评估器模型名称：${block.evaluatorName || block.evaluatorId}`);
                 return false;
             }
             for (const param of block.params) {

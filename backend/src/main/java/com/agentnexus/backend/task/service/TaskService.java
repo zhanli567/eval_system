@@ -624,10 +624,12 @@ public class TaskService {
       EvaluatorRuntimeDefinition definition;
       String evaluatorVersionId = "";
       String modelId = "";
+      String modelName = "";
       if (EVALUATOR_PRESET.equals(source)) {
         PresetEvaluatorDetail preset = evaluatorService.getPresetEvaluator(evaluatorId);
         if ("llm".equals(preset.evaluatorType())) {
           modelId = requireText(input.modelId(), "\u8bf7\u9009\u62e9\u9884\u7f6e\u8bc4\u4f30\u5668\u6a21\u578b");
+          modelName = requireText(input.modelName(), "请选择预置评估器模型");
         }
         definition = new EvaluatorRuntimeDefinition(
             preset.evaluatorName(),
@@ -639,6 +641,8 @@ public class TaskService {
       } else {
         evaluatorVersionId = requireText(input.evaluatorVersionId(), "请选择自定义评估器版本");
         EvaluatorConfig config = evaluatorService.getVersion(evaluatorVersionId);
+        modelId = config.modelId();
+        modelName = config.modelName();
         if (!evaluatorId.equals(config.evaluatorId())) {
           throw new IllegalArgumentException("自定义评估器版本不属于所选评估器");
         }
@@ -660,7 +664,7 @@ public class TaskService {
           input.paramMappings(),
           fieldById,
           datasetVersionId);
-      normalized.add(new NormalizedEvaluator(source, evaluatorId, evaluatorVersionId, modelId, definition, paramMappings, order++));
+      normalized.add(new NormalizedEvaluator(source, evaluatorId, evaluatorVersionId, modelId, modelName, definition, paramMappings, order++));
     }
     if (normalized.isEmpty()) {
       throw new IllegalArgumentException("请至少添加一个评估器");
@@ -785,6 +789,7 @@ public class TaskService {
           evaluator.evaluatorId(),
           evaluator.evaluatorVersionId(),
           evaluator.modelId(),
+          evaluator.modelName(),
           STATUS_PENDING,
           evaluator.displayOrder(),
           now);
@@ -985,6 +990,7 @@ public class TaskService {
             preset.evaluatorName(),
             preset.evaluatorType(),
             evaluator.modelId(),
+            evaluator.modelName(),
             preset.prompt(),
             preset.executeCode(),
             preset.scoreMin(),
@@ -996,7 +1002,8 @@ public class TaskService {
         configs.put(evaluator.id(), new EvaluationRuntimeConfig(
             config.evaluatorName(),
             config.evaluatorType(),
-            config.modelId(),
+            evaluator.modelId(),
+            evaluator.modelName(),
             config.prompt(),
             config.executeCode(),
             config.scoreMin(),
@@ -1123,6 +1130,14 @@ public class TaskService {
           "",
           "LLM评估器未绑定模型");
     }
+    if (!StringUtils.hasText(config.modelName())) {
+      return new EvaluationSimulationResult(
+          STATUS_FAILED,
+          null,
+          "",
+          "",
+          "LLM评估器未绑定模型名称");
+    }
     PreparedEvaluationInput prepared = prepareEvaluationInput(config, mappings, values, appOutputs);
     if (StringUtils.hasText(prepared.errorMessage())) {
       return new EvaluationSimulationResult(
@@ -1133,7 +1148,7 @@ public class TaskService {
           prepared.errorMessage());
     }
     String renderedPrompt = renderPrompt(config.prompt(), prepared.params());
-    ModelChatResult response = remoteCallService.chatModel(config.modelId(), renderedPrompt);
+    ModelChatResult response = remoteCallService.chatModel(config.modelId(), config.modelName(), renderedPrompt);
     if (response == null || !StringUtils.hasText(response.outputText())) {
       return new EvaluationSimulationResult(
           STATUS_FAILED,
@@ -1577,6 +1592,7 @@ public class TaskService {
       String evaluatorId,
       String evaluatorVersionId,
       String modelId,
+      String modelName,
       EvaluatorRuntimeDefinition definition,
       List<NormalizedParamMapping> paramMappings,
       Integer displayOrder
@@ -1608,6 +1624,7 @@ public class TaskService {
       String evaluatorName,
       String evaluatorType,
       String modelId,
+      String modelName,
       String prompt,
       String executeCode,
       BigDecimal scoreMin,

@@ -3,14 +3,11 @@ package com.agentnexus.backend.remoteCall.api;
 import com.agentnexus.backend.common.ApiResponse;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentDefinition;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentVersion;
-import com.agentnexus.backend.remoteCall.api.dto.request.ModelChatRequest;
-import com.agentnexus.backend.remoteCall.api.dto.response.ModelChatResult;
 import com.agentnexus.backend.remoteCall.api.dto.response.ModelInfo;
 import com.agentnexus.backend.remoteCall.api.dto.response.SpaceInfo;
 import com.agentnexus.backend.remoteCall.service.RemoteCallService;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
-import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import java.util.List;
@@ -61,12 +58,4 @@ public class RemoteCallController {
     return ApiResponse.ok(remoteCallService.listSpaces(pageSize, curPage, cookie));
   }
 
-  @POST
-  @Path("/models/{modelId}/chat")
-  public ApiResponse<ModelChatResult> chatModel(
-      @PathParam("modelId") String modelId,
-      ModelChatRequest request
-  ) {
-    return ApiResponse.ok(remoteCallService.chatModel(modelId, request == null ? "" : request.message()));
-  }
 }

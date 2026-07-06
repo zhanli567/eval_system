@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task_evaluator (
   evaluator_id VARCHAR(64) NOT NULL,
   evaluator_version_id VARCHAR(64) NOT NULL DEFAULT '',
   model_id VARCHAR(64) NOT NULL DEFAULT '',
+  model_name VARCHAR(128) NOT NULL DEFAULT '',
   status VARCHAR(32) NOT NULL,
   display_order INT NOT NULL,
   created_by_name VARCHAR(100) NOT NULL DEFAULT '',
@@ -124,7 +125,8 @@ COMMENT ON COLUMN t_eval_task_evaluator.task_id IS '评测任务ID';
 COMMENT ON COLUMN t_eval_task_evaluator.evaluator_source IS '评估器来源：preset预置评估器，custom自定义评估器';
 COMMENT ON COLUMN t_eval_task_evaluator.evaluator_id IS '评估器ID：预置评估器ID或自定义评估器ID';
 COMMENT ON COLUMN t_eval_task_evaluator.evaluator_version_id IS '自定义评估器版本ID，预置评估器为空';
-COMMENT ON COLUMN t_eval_task_evaluator.model_id IS '预置LLM评估器在任务中绑定的模型ID';
+COMMENT ON COLUMN t_eval_task_evaluator.model_id IS 'LLM评估器在任务中绑定的模型ID快照';
+COMMENT ON COLUMN t_eval_task_evaluator.model_name IS 'LLM评估器在任务中绑定的模型名称快照';
 COMMENT ON COLUMN t_eval_task_evaluator.status IS '评估器执行状态：pending待执行，running进行中，completed完成，failed失败';
 COMMENT ON COLUMN t_eval_task_evaluator.display_order IS '展示顺序';
 

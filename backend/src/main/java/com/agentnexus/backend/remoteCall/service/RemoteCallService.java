@@ -167,16 +167,15 @@ public class RemoteCallService {
     return response.resultObjVO();
   }
 
-  public ModelChatResult chatModel(String modelId, String message) {
-    return chatIamModel(modelId, message);
+  public ModelChatResult chatModel(String modelId, String modelName, String message) {
+    return chatIamModel(modelId, modelName, message);
   }
 
-  private ModelChatResult chatIamModel(String modelId, String message) {
+  private ModelChatResult chatIamModel(String modelId, String modelName, String message) {
     requireText(modelId, "模型ID不能为空");
+    String safeModelName = requireText(modelName, "模型名称不能为空");
     requireText(properties.getIam().getUrl(), "请配置IAM模型对话接口 integration.platform.iam.url");
     requireText(properties.getIam().getAuthorization(), "请配置IAM模型Authorization integration.platform.iam.authorization");
-    ModelInfo model = findIamModel(modelId);
-    String modelName = requireText(model.modelName(), "IAM模型缺少modelName：" + modelId);
     HttpURLConnection connection = null;
     try {
       connection = openConnection(properties.getIam().getUrl(), "POST");
@@ -184,7 +183,7 @@ public class RemoteCallService {
       connection.setRequestProperty("content-type", "application/json;charset=UTF-8");
       connection.setRequestProperty("authorization", properties.getIam().getAuthorization());
       Map<String, Object> body = new LinkedHashMap<>();
-      body.put("model", modelName);
+      body.put("model", safeModelName);
       body.put("messages", List.of(Map.of(
           "role", "user",
           "content", message == null ? "" : message)));
@@ -204,13 +203,6 @@ public class RemoteCallService {
         connection.disconnect();
       }
     }
-  }
-
-  private ModelInfo findIamModel(String modelId) {
-    return listModels().stream()
-        .filter(model -> modelId.equals(model.modelId()))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("IAM模型不存在或未启用：" + modelId));
   }
 
   private String parseIamModelOutput(String responseBody) throws IOException {

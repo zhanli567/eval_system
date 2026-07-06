@@ -29,6 +29,7 @@
       <arg column="versionName" javaType="java.lang.String"/>
       <arg column="draft" javaType="java.lang.Boolean"/>
       <arg column="modelId" javaType="java.lang.String"/>
+      <arg column="modelName" javaType="java.lang.String"/>
       <arg column="prompt" javaType="java.lang.String"/>
       <arg column="executeCode" javaType="java.lang.String"/>
       <arg column="scoreMin" javaType="java.math.BigDecimal"/>
@@ -71,6 +72,7 @@
            CASE WHEN v.version_no = 0 THEN '&#x8349;&#x7A3F;' ELSE CONCAT('V', v.version_no) END AS versionName,
            CASE WHEN v.version_no = 0 THEN TRUE ELSE FALSE END AS draft,
            v.model_id AS modelId,
+           v.model_name AS modelName,
            v.prompt AS prompt,
            v.execute_code AS executeCode,
            v.score_min AS scoreMin,

@@ -8,6 +8,7 @@ public record EvaluatorInput(
     String evaluatorType,
     String description,
     String modelId,
+    String modelName,
     String prompt,
     String executeCode,
     BigDecimal scoreMin,
