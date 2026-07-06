@@ -2,6 +2,7 @@ package com.agentnexus.backend.remoteCall.service;
 
 import com.agentnexus.backend.common.context.CurrentSpaceHolder;
 import com.agentnexus.backend.common.context.TaskCookieHolder;
+import com.agentnexus.backend.iam.IamTokenService;
 import com.agentnexus.backend.remoteCall.config.RemoteCallProperties;
 import com.agentnexus.backend.remoteCall.api.dto.request.AgentChatRequest;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentChild;
@@ -80,6 +81,7 @@ public class RemoteCallService {
   private final ObjectMapper objectMapper;
   private final RemoteCallServiceClient remoteCallServiceClient;
   private final SsoCookieRenewalService ssoCookieRenewalService;
+  private final IamTokenService iamTokenService;
   private static volatile SSLSocketFactory trustAllSocketFactory;
 
   @Autowired
@@ -87,20 +89,14 @@ public class RemoteCallService {
       RemoteCallProperties properties,
       ObjectMapper objectMapper,
       RemoteCallServiceClient remoteCallServiceClient,
-      SsoCookieRenewalService ssoCookieRenewalService
+      SsoCookieRenewalService ssoCookieRenewalService,
+      IamTokenService iamTokenService
   ) {
     this.properties = properties;
     this.objectMapper = objectMapper;
     this.remoteCallServiceClient = remoteCallServiceClient;
     this.ssoCookieRenewalService = ssoCookieRenewalService;
-  }
-
-  RemoteCallService(
-      RemoteCallProperties properties,
-      ObjectMapper objectMapper,
-      RemoteCallServiceClient remoteCallServiceClient
-  ) {
-    this(properties, objectMapper, remoteCallServiceClient, new SsoCookieRenewalService(properties));
+    this.iamTokenService = iamTokenService;
   }
 
   public List<ModelInfo> listModels() {
@@ -175,13 +171,13 @@ public class RemoteCallService {
     requireText(modelId, "模型ID不能为空");
     String safeModelName = requireText(modelName, "模型名称不能为空");
     requireText(properties.getIam().getUrl(), "请配置IAM模型对话接口 integration.platform.iam.url");
-    requireText(properties.getIam().getAuthorization(), "请配置IAM模型Authorization integration.platform.iam.authorization");
+    String token = requireText(iamTokenService.getToken(), "请配置IAM模型Authorization integration.platform.iam.authorization");
     HttpURLConnection connection = null;
     try {
       connection = openConnection(properties.getIam().getUrl(), "POST");
       connection.setRequestProperty("accept", "application/json");
       connection.setRequestProperty("content-type", "application/json;charset=UTF-8");
-      connection.setRequestProperty("authorization", properties.getIam().getAuthorization());
+      connection.setRequestProperty("authorization", token);
       Map<String, Object> body = new LinkedHashMap<>();
       body.put("model", safeModelName);
       body.put("messages", List.of(Map.of(
