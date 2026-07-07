@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS t_eval_tag (
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
   last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_tag_name UNIQUE (tag_name),
+  CONSTRAINT uq_t_eval_tag_space_name UNIQUE (space_id, tag_name),
   CONSTRAINT ck_t_eval_tag_type CHECK (tag_type IN ('category', 'boolean', 'number', 'text')),
   CONSTRAINT ck_t_eval_tag_number_config CHECK (
     tag_type <> 'number'
