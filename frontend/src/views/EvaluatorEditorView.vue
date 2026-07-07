@@ -92,6 +92,7 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
                 :disabled="!canEdit"
                 :loading="modelLoading"
                 filterable
+                clearable
                 placeholder="请选择模型"
                 @visible-change="handleModelVisibleChange"
               >
@@ -121,7 +122,7 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
             <div class="param-editor-list">
               <div v-for="param in promptParams" :key="param.paramName" class="param-editor param-editor-llm">
                 <el-input v-model="param.paramName" disabled placeholder="变量名" />
-                <el-select v-model="param.dataType" :disabled="!canEdit" placeholder="数据类型">
+                <el-select v-model="param.dataType" clearable :disabled="!canEdit" placeholder="数据类型">
                   <el-option label="string" value="string" />
                   <el-option label="number" value="number" />
                   <el-option label="boolean" value="boolean" />
@@ -141,7 +142,7 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
             <div class="param-editor-list">
               <div v-for="(param, index) in form.params" :key="index" class="param-editor">
                 <el-input v-model="param.paramName" :disabled="!canEdit" placeholder="变量名" />
-                <el-select v-model="param.dataType" :disabled="!canEdit" placeholder="数据类型">
+                <el-select v-model="param.dataType" clearable :disabled="!canEdit" placeholder="数据类型">
                   <el-option label="string" value="string" />
                   <el-option label="number" value="number" />
                   <el-option label="boolean" value="boolean" />

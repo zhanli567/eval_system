@@ -30,10 +30,10 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
             <el-form-item>
               <template #label>选择评测集及版本 <span class="required-mark">*</span></template>
               <div class="inline-controls">
-                <el-select v-model="form.datasetId" placeholder="请选择评测集" filterable @visible-change="handleDatasetVisible">
+                <el-select v-model="form.datasetId" clearable placeholder="请选择评测集" filterable @visible-change="handleDatasetVisible">
                   <el-option v-for="dataset in datasets" :key="dataset.id" :label="dataset.name" :value="dataset.id" />
                 </el-select>
-                <el-select v-model="form.datasetVersionId" placeholder="请选择发布版本" :disabled="!form.datasetId">
+                <el-select v-model="form.datasetVersionId" clearable placeholder="请选择发布版本" :disabled="!form.datasetId">
                   <el-option
                     v-for="version in publishedVersions"
                     :key="version.id"
@@ -51,10 +51,10 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
                   <el-radio label="agent">智能体</el-radio>
                 </el-radio-group>
                 <div v-if="form.appType === 'agent'" class="app-select-grid">
-                  <el-select v-model="form.appId" placeholder="请选择智能体" filterable @visible-change="handleAgentVisible">
+                  <el-select v-model="form.appId" clearable placeholder="请选择智能体" filterable @visible-change="handleAgentVisible">
                     <el-option v-for="agent in agents" :key="agent.id" :label="agent.agentName" :value="agent.id" />
                   </el-select>
-                  <el-select v-model="form.appVersionId" placeholder="请选择智能体版本" :disabled="!form.appId" :loading="agentVersionLoading">
+                  <el-select v-model="form.appVersionId" clearable placeholder="请选择智能体版本" :disabled="!form.appId" :loading="agentVersionLoading">
                     <el-option v-for="version in agentVersions" :key="version.id" :label="version.versionName" :value="version.id" />
                   </el-select>
                   <el-select v-model="form.appAgentAlias" placeholder="选择子智能体（可选）" clearable :disabled="!form.appId" :loading="agentDetailLoading">
@@ -86,7 +86,7 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
                 </div>
                 <span class="mapping-arrow">→</span>
                 <span class="mapping-source-label">评测集字段</span>
-                <el-select v-model="appFieldMappings[input.id]" filterable placeholder="请选择评测集字段" :disabled="!form.datasetVersionId">
+                <el-select v-model="appFieldMappings[input.id]" clearable filterable placeholder="请选择评测集字段" :disabled="!form.datasetVersionId">
                   <el-option v-for="field in fields" :key="field.id" :label="`${field.fieldName} · ${fieldTypeLabel(field.fieldType)}`" :value="field.id" />
                 </el-select>
               </div>
@@ -120,7 +120,7 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
 
               <template v-if="block.evaluatorSource === 'preset'">
                 <el-form-item label="分类">
-                  <el-select v-model="block.presetCategoryId" @visible-change="handlePresetCategoryVisible" @change="changePresetCategory(block)">
+                  <el-select v-model="block.presetCategoryId" clearable @visible-change="handlePresetCategoryVisible" @change="changePresetCategory(block)">
                     <el-option v-for="category in categoryOptions" :key="category.id || 'all'" :label="category.categoryName" :value="category.id" />
                   </el-select>
                 </el-form-item>
@@ -128,6 +128,7 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
                   <template #label>选择评估器 <span class="required-mark">*</span></template>
                   <el-select
                     v-model="block.evaluatorId"
+                    clearable
                     filterable
                     placeholder="请选择预置评估器"
                     @visible-change="handlePresetEvaluatorVisible(block, $event)"
@@ -140,6 +141,7 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
                   <template #label>选择模型 <span class="required-mark">*</span></template>
                   <el-select
                     v-model="block.modelId"
+                    clearable
                     filterable
                     :loading="modelLoading"
                     placeholder="请选择评估模型"
@@ -160,6 +162,7 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
                   <template #label>选择评估器 <span class="required-mark">*</span></template>
                   <el-select
                     v-model="block.evaluatorId"
+                    clearable
                     filterable
                     placeholder="请选择自定义评估器"
                     @visible-change="handleCustomEvaluatorVisible"
@@ -170,7 +173,7 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
                 </el-form-item>
                 <el-form-item>
                   <template #label>选择版本 <span class="required-mark">*</span></template>
-                  <el-select v-model="block.evaluatorVersionId" placeholder="请选择版本" :disabled="!block.evaluatorId" @change="selectCustomVersion(block)">
+                  <el-select v-model="block.evaluatorVersionId" clearable placeholder="请选择版本" :disabled="!block.evaluatorId" @change="selectCustomVersion(block)">
                     <el-option v-for="version in block.versions" :key="version.id" :label="version.versionName" :value="version.id" />
                   </el-select>
                 </el-form-item>
@@ -186,13 +189,14 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
                   <span>{{ param.dataType }}</span>
                 </div>
                 <span class="mapping-arrow">→</span>
-                <el-select v-model="block.paramMappings[paramKey(param)].sourceType" class="mapping-source">
+                <el-select v-model="block.paramMappings[paramKey(param)].sourceType" clearable class="mapping-source">
                   <el-option label="评测集" value="dataset_field" />
                   <el-option label="应用输出" value="app_output" :disabled="form.appType !== 'agent'" />
                 </el-select>
                 <el-select
                   v-if="block.paramMappings[paramKey(param)].sourceType === 'dataset_field'"
                   v-model="block.paramMappings[paramKey(param)].datasetFieldId"
+                  clearable
                   filterable
                   placeholder="请选择评测集字段"
                 >
@@ -201,6 +205,7 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
                 <el-select
                   v-else
                   v-model="block.paramMappings[paramKey(param)].appOutputName"
+                  clearable
                   placeholder="请选择应用输出字段"
                   :disabled="form.appType !== 'agent'"
                 >

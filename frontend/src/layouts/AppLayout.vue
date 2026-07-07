@@ -63,6 +63,7 @@ function persistSpaceId(spaceId) {
             :disabled="spaceLoading || !spaceOptions.length"
             placeholder="暂无可用空间"
             filterable
+            clearable
             @change="handleSpaceChange"
           >
             <el-option

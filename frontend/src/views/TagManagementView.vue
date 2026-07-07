@@ -101,7 +101,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
       </el-form-item>
       <el-form-item>
         <template #label>类型 <span class="required-mark">*</span></template>
-        <el-select v-model="tagForm.tagType" class="wide-control" :disabled="editing">
+        <el-select v-model="tagForm.tagType" clearable class="wide-control" :disabled="editing">
           <el-option v-for="item in tagTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
         <span v-if="editing" class="hint">标签类型创建后不可修改</span>

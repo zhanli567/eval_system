@@ -28,7 +28,7 @@ function formatAppBinding(base) {
 
   <section class="task-panel">
     <div class="panel-toolbar task-toolbar">
-      <el-select v-model="status" class="field-select" @change="searchTasks">
+      <el-select v-model="status" clearable class="field-select" @change="searchTasks">
         <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
       </el-select>
       <el-input

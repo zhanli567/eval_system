@@ -107,7 +107,7 @@ const formattedAppOutput = computed(() => formatAppOutput(item.value?.appOutput 
               {{ option.optionName }}
             </el-radio-button>
           </el-radio-group>
-          <el-select v-else v-model="form[tag.taskTagId]" placeholder="请选择分类" class="wide-control">
+          <el-select v-else v-model="form[tag.taskTagId]" clearable placeholder="请选择分类" class="wide-control">
             <el-option
               v-for="option in tag.options"
               :key="option.id"

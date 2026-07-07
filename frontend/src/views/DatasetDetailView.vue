@@ -149,7 +149,7 @@ const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tab
           </span>
         </button>
         <el-input v-model="field.fieldName" placeholder="列名" />
-        <el-select v-model="field.fieldType" placeholder="类型">
+        <el-select v-model="field.fieldType" clearable placeholder="类型">
           <el-option label="文本" value="string" />
           <el-option label="数字" value="number" />
           <el-option label="布尔" value="boolean" />
