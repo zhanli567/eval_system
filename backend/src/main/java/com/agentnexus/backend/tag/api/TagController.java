@@ -9,7 +9,6 @@ import com.agentnexus.backend.tag.service.TagService;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
@@ -49,7 +48,7 @@ public class TagController {
     return ApiResponse.ok(tagService.createTag(request));
   }
 
-  @PUT
+  @POST
   @Path("/{tagId}")
   public ApiResponse<TagDetail> updateTag(@PathParam("tagId") String tagId, TagInput request) {
     return ApiResponse.ok(tagService.updateTag(tagId, request));

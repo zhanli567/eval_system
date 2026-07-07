@@ -7,7 +7,7 @@ export const datasetApi = {
         return unwrap(http.post('/datasets', data));
     },
     deleteDataset(datasetId) {
-        return unwrap(http.delete(`/datasets/${datasetId}`));
+        return unwrap(http.post(`/datasets/${datasetId}/delete`));
     },
     listVersions(datasetId) {
         return unwrap(http.get(`/datasets/${datasetId}/versions`));
@@ -16,7 +16,7 @@ export const datasetApi = {
         return unwrap(http.get(`/datasets/versions/${versionId}`, { params }));
     },
     replaceFields(versionId, fields) {
-        return unwrap(http.put(`/datasets/versions/${versionId}/fields`, fields));
+        return unwrap(http.post(`/datasets/versions/${versionId}/fields`, fields));
     },
     addRow(versionId, values) {
         return unwrap(http.post(`/datasets/versions/${versionId}/items`, { values }));
@@ -35,16 +35,16 @@ export const datasetApi = {
         return unwrap(http.post(`/datasets/versions/${versionId}/items/import-cover`, formData));
     },
     updateRow(versionId, itemId, values) {
-        return unwrap(http.put(`/datasets/versions/${versionId}/items/${itemId}`, { values }));
+        return unwrap(http.post(`/datasets/versions/${versionId}/items/${itemId}`, { values }));
     },
     deleteRow(versionId, itemId) {
-        return unwrap(http.delete(`/datasets/versions/${versionId}/items/${itemId}`));
+        return unwrap(http.post(`/datasets/versions/${versionId}/items/${itemId}/delete`));
     },
     publish(datasetId) {
         return unwrap(http.post(`/datasets/${datasetId}/publish`));
     },
     deleteVersion(versionId) {
-        return unwrap(http.delete(`/datasets/versions/${versionId}`));
+        return unwrap(http.post(`/datasets/versions/${versionId}/delete`));
     },
     coverDraft(datasetId, versionId) {
         return unwrap(http.post(`/datasets/${datasetId}/versions/${versionId}/cover-draft`));

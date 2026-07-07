@@ -10,6 +10,6 @@ export const tagApi = {
         return unwrap(http.post('/tags', data));
     },
     updateTag(tagId, data) {
-        return unwrap(http.put(`/tags/${tagId}`, data));
+        return unwrap(http.post(`/tags/${tagId}`, data));
     }
 };

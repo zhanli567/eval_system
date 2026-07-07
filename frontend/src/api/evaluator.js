@@ -16,7 +16,7 @@ export const evaluatorApi = {
         return unwrap(http.post('/evaluators', data));
     },
     deleteEvaluator(evaluatorId) {
-        return unwrap(http.delete(`/evaluators/${evaluatorId}`));
+        return unwrap(http.post(`/evaluators/${evaluatorId}/delete`));
     },
     listVersions(evaluatorId) {
         return unwrap(http.get(`/evaluators/${evaluatorId}/versions`));
@@ -28,6 +28,6 @@ export const evaluatorApi = {
         return unwrap(http.get(`/evaluators/versions/${versionId}`));
     },
     updateDraft(versionId, data) {
-        return unwrap(http.put(`/evaluators/versions/${versionId}`, data));
+        return unwrap(http.post(`/evaluators/versions/${versionId}`, data));
     }
 };

@@ -10,11 +10,9 @@ import com.agentnexus.backend.evaluator.api.dto.response.PresetCategoryDto;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorDetail;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorSummary;
 import com.agentnexus.backend.evaluator.service.EvaluatorService;
-import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
@@ -72,8 +70,8 @@ public class EvaluatorController {
     return ApiResponse.ok(evaluatorService.createEvaluator(request));
   }
 
-  @DELETE
-  @Path("/{evaluatorId}")
+  @POST
+  @Path("/{evaluatorId}/delete")
   public ApiResponse<Void> deleteEvaluator(@PathParam("evaluatorId") String evaluatorId) {
     evaluatorService.deleteEvaluator(evaluatorId);
     return ApiResponse.ok(null);
@@ -97,7 +95,7 @@ public class EvaluatorController {
     return ApiResponse.ok(evaluatorService.getVersion(versionId));
   }
 
-  @PUT
+  @POST
   @Path("/versions/{versionId}")
   public ApiResponse<EvaluatorConfig> updateDraft(@PathParam("versionId") String versionId, EvaluatorInput request) {
     return ApiResponse.ok(evaluatorService.updateDraft(versionId, request));

@@ -381,7 +381,7 @@ public class RemoteCallService {
     connection.setRequestMethod(method);
     connection.setConnectTimeout(Math.max(properties.getConnectTimeoutMs(), 1));
     connection.setReadTimeout(Math.max(properties.getReadTimeoutMs(), 1));
-    if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)) {
+    if ("POST".equalsIgnoreCase(method)) {
       connection.setDoOutput(true);
     }
     return connection;

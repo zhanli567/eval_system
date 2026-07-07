@@ -13,12 +13,10 @@ import com.agentnexus.backend.dataset.api.dto.response.RowDto;
 import com.agentnexus.backend.dataset.api.dto.request.RowInput;
 import com.agentnexus.backend.dataset.api.dto.response.VersionDetail;
 import com.agentnexus.backend.dataset.service.DatasetService;
-import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.FormParam;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
@@ -53,8 +51,8 @@ public class DatasetController {
     return ApiResponse.ok(datasetService.createDataset(request));
   }
 
-  @DELETE
-  @Path("/{datasetId}")
+  @POST
+  @Path("/{datasetId}/delete")
   public ApiResponse<Void> deleteDataset(@PathParam("datasetId") String datasetId) {
     datasetService.deleteDataset(datasetId);
     return ApiResponse.ok(null);
@@ -78,8 +76,8 @@ public class DatasetController {
     return ApiResponse.ok(datasetService.coverDraft(datasetId, versionId));
   }
 
-  @DELETE
-  @Path("/versions/{versionId}")
+  @POST
+  @Path("/versions/{versionId}/delete")
   public ApiResponse<Void> deleteVersion(@PathParam("versionId") String versionId) {
     datasetService.deleteVersion(versionId);
     return ApiResponse.ok(null);
@@ -97,7 +95,7 @@ public class DatasetController {
     return ApiResponse.ok(datasetService.getVersionDetail(versionId, page, size, fieldId, keyword));
   }
 
-  @PUT
+  @POST
   @Path("/versions/{versionId}/fields")
   public ApiResponse<List<FieldDto>> replaceFields(@PathParam("versionId") String versionId, List<FieldInput> fields) {
     return ApiResponse.ok(datasetService.replaceFields(versionId, fields));
@@ -127,14 +125,14 @@ public class DatasetController {
     return ApiResponse.ok(datasetService.coverRowsByExcel(versionId, file));
   }
 
-  @PUT
+  @POST
   @Path("/versions/{versionId}/items/{itemId}")
   public ApiResponse<RowDto> updateRow(@PathParam("versionId") String versionId, @PathParam("itemId") String itemId, RowInput request) {
     return ApiResponse.ok(datasetService.updateRow(versionId, itemId, request));
   }
 
-  @DELETE
-  @Path("/versions/{versionId}/items/{itemId}")
+  @POST
+  @Path("/versions/{versionId}/items/{itemId}/delete")
   public ApiResponse<Void> deleteRow(@PathParam("versionId") String versionId, @PathParam("itemId") String itemId) {
     datasetService.deleteRow(versionId, itemId);
     return ApiResponse.ok(null);

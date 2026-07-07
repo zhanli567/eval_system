@@ -8,12 +8,10 @@ import com.agentnexus.backend.task.api.dto.request.SaveAnnotationRequest;
 import com.agentnexus.backend.task.api.dto.response.TaskDetail;
 import com.agentnexus.backend.task.api.dto.response.TaskSummary;
 import com.agentnexus.backend.task.service.TaskService;
-import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
@@ -65,8 +63,8 @@ public class TaskController {
     return ApiResponse.ok(taskService.startTask(taskId, cookie));
   }
 
-  @DELETE
-  @Path("/{taskId}")
+  @POST
+  @Path("/{taskId}/delete")
   public ApiResponse<Void> deleteTask(@PathParam("taskId") String taskId) {
     taskService.deleteTask(taskId);
     return ApiResponse.ok(null);
@@ -78,7 +76,7 @@ public class TaskController {
     return ApiResponse.ok(taskService.getAnnotation(taskId, taskItemId));
   }
 
-  @PUT
+  @POST
   @Path("/{taskId}/items/{taskItemId}/annotation")
   public ApiResponse<AnnotationDetail> saveAnnotation(
       @PathParam("taskId") String taskId,

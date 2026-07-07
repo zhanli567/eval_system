@@ -13,12 +13,12 @@ export const taskApi = {
         return unwrap(http.post(`/tasks/${taskId}/start`));
     },
     deleteTask(taskId) {
-        return unwrap(http.delete(`/tasks/${taskId}`));
+        return unwrap(http.post(`/tasks/${taskId}/delete`));
     },
     getAnnotation(taskId, taskItemId) {
         return unwrap(http.get(`/tasks/${taskId}/items/${taskItemId}/annotation`));
     },
     saveAnnotation(taskId, taskItemId, data) {
-        return unwrap(http.put(`/tasks/${taskId}/items/${taskItemId}/annotation`, data));
+        return unwrap(http.post(`/tasks/${taskId}/items/${taskItemId}/annotation`, data));
     }
 };

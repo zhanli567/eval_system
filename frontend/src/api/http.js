@@ -24,15 +24,6 @@ export const http = {
     },
     post(path, data, config) {
         return Aurora.service.network.post(apiPath(path), data, withSpace(config));
-    },
-    put(path, data, config) {
-        return Aurora.service.network.put(apiPath(path), data, withSpace(config));
-    },
-    patch(path, data, config) {
-        return Aurora.service.network.patch(apiPath(path), data, withSpace(config));
-    },
-    delete(path, config) {
-        return Aurora.service.network.delete(apiPath(path), withSpace(config));
     }
 };
 
