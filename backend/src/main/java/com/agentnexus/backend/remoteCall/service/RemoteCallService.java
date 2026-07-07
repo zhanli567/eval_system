@@ -170,8 +170,8 @@ public class RemoteCallService {
   private ModelChatResult chatIamModel(String modelId, String modelName, String message) {
     requireText(modelId, "模型ID不能为空");
     String safeModelName = requireText(modelName, "模型名称不能为空");
-    requireText(properties.getIam().getUrl(), "请配置IAM模型对话接口 integration.platform.iam.url");
-    String token = requireText(iamTokenService.getToken(), "请配置IAM模型Authorization integration.platform.iam.authorization");
+    requireText(properties.getIam().getUrl(), "请配置IAM模型对话接口 remoteCall.iam.url");
+    String token = requireText(iamTokenService.getToken(), "IAM token不能为空");
     HttpURLConnection connection = null;
     try {
       connection = openConnection(properties.getIam().getUrl(), "POST");
@@ -241,7 +241,7 @@ public class RemoteCallService {
         conversationId,
         request == null || request.messages() == null ? List.of() : request.messages(),
         Boolean.TRUE);
-    String chatUrl = requireText(properties.getAgentChatUrl(), "Please configure agent chat API integration.platform.agent-chat-url");
+    String chatUrl = requireText(properties.getAgentChatUrl(), "Please configure agent chat API remoteCall.agent-chat-url");
 
     HttpURLConnection connection = null;
     try {

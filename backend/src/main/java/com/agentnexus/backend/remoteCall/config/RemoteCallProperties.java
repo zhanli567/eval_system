@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConfigurationProperties(prefix = "integration.platform")
+@ConfigurationProperties(prefix = "remote-call")
 public class RemoteCallProperties {
   private String agentChatUrl = "";
   private String ssoCookieRenewalUrl = "";
