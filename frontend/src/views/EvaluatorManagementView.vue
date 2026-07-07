@@ -26,7 +26,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
       <div class="panel-toolbar">
         <el-select v-model="customType" clearable placeholder="全部类型" class="field-select" @change="searchCustom">
           <el-option label="LLM" value="llm" />
-          <el-option label="Code" value="code" />
+          <el-option label="Code" value="code" disabled />
         </el-select>
         <el-input
           v-model="customKeyword"
@@ -118,7 +118,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
               </div>
               <p>{{ preset.description }}</p>
               <div class="preset-card-actions">
-                <el-button type="primary" @click="createFromPreset(preset.id)">基于预置创建</el-button>
+                <el-button type="primary" :disabled="preset.evaluatorType === 'code'" @click="createFromPreset(preset.id)">基于预置创建</el-button>
                 <el-button @click="viewPreset(preset.id)">查看详情</el-button>
               </div>
             </article>
@@ -183,7 +183,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             </div>
             <p>{{ preset.description }}</p>
             <div class="preset-card-actions">
-              <el-button type="primary" @click="createFromPreset(preset.id)">基于预置创建</el-button>
+              <el-button type="primary" :disabled="preset.evaluatorType === 'code'" @click="createFromPreset(preset.id)">基于预置创建</el-button>
               <el-button @click="viewPreset(preset.id)">查看详情</el-button>
             </div>
           </article>
@@ -207,7 +207,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
       <template v-if="selectedPreset">
         <div class="detail-header-line">
           <span class="meta">{{ selectedPreset.description }}</span>
-          <el-button type="primary" @click="createFromPreset(selectedPreset.id)">基于此预置评估器创建</el-button>
+          <el-button type="primary" :disabled="selectedPreset.evaluatorType === 'code'" @click="createFromPreset(selectedPreset.id)">基于此预置评估器创建</el-button>
         </div>
 
         <template v-if="selectedPreset.evaluatorType === 'llm'">

@@ -140,6 +140,9 @@ public class EvaluatorService {
       throw new IllegalArgumentException("草稿版本不存在");
     }
     EvaluatorConfig draft = getVersion(draftVersionId);
+    if (TYPE_CODE.equals(draft.evaluatorType())) {
+      throw new IllegalArgumentException("暂不支持Code型评估器");
+    }
     int nextVersionNo = evaluatorRepository.nextVersionNo(evaluatorId);
     String newVersionId = id();
     String now = now();
@@ -229,6 +232,9 @@ public class EvaluatorService {
         : normalizeEvaluatorType(request.evaluatorType());
     if (StringUtils.hasText(request.evaluatorType()) && !evaluatorType.equals(request.evaluatorType().trim())) {
       throw new IllegalArgumentException("评估器类型创建后不允许修改");
+    }
+    if (TYPE_CODE.equals(evaluatorType)) {
+      throw new IllegalArgumentException("暂不支持Code型评估器");
     }
     String description = normalizeDescription(request.description());
     BigDecimal scoreMin = request.scoreMin() == null ? DEFAULT_SCORE_MIN : request.scoreMin();

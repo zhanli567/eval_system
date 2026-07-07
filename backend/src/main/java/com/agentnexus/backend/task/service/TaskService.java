@@ -627,6 +627,9 @@ public class TaskService {
       String modelName = "";
       if (EVALUATOR_PRESET.equals(source)) {
         PresetEvaluatorDetail preset = evaluatorService.getPresetEvaluator(evaluatorId);
+        if ("code".equals(preset.evaluatorType())) {
+          throw new IllegalArgumentException("暂不支持Code型评估器");
+        }
         if ("llm".equals(preset.evaluatorType())) {
           modelId = requireText(input.modelId(), "\u8bf7\u9009\u62e9\u9884\u7f6e\u8bc4\u4f30\u5668\u6a21\u578b");
           modelName = requireText(input.modelName(), "请选择预置评估器模型");
@@ -643,6 +646,9 @@ public class TaskService {
         EvaluatorConfig config = evaluatorService.getVersion(evaluatorVersionId);
         modelId = config.modelId();
         modelName = config.modelName();
+        if ("code".equals(config.evaluatorType())) {
+          throw new IllegalArgumentException("暂不支持Code型评估器");
+        }
         if (!evaluatorId.equals(config.evaluatorId())) {
           throw new IllegalArgumentException("自定义评估器版本不属于所选评估器");
         }

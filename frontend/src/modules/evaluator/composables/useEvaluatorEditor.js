@@ -54,7 +54,7 @@ export function useEvaluatorEditor() {
     const evaluatorId = computed(() => String(route.params.evaluatorId ?? ''));
     const presetId = computed(() => String(route.query.presetId ?? ''));
     const isEdit = computed(() => Boolean(evaluatorId.value));
-    const canEdit = computed(() => !isEdit.value || Boolean(activeDetail.value?.draft));
+    const canEdit = computed(() => (!isEdit.value || Boolean(activeDetail.value?.draft)) && form.evaluatorType !== 'code');
     const pageTitle = computed(() => (isEdit.value ? form.evaluatorName || '编辑评估器' : '创建评估器'));
     const activeVersion = computed(() => versions.value.find((item) => item.id === activeVersionId.value));
     const promptParams = computed(() => (form.evaluatorType === 'llm' ? form.params : []));
@@ -328,36 +328,20 @@ export function useEvaluatorEditor() {
             return false;
         }
         if (form.evaluatorType === 'code') {
-            if (!form.executeCode.trim()) {
-                ElMessage.warning('请输入执行函数');
-                return false;
-            }
-            if (!form.params.length) {
-                ElMessage.warning('请至少添加一个变量');
-                return false;
-            }
-            if (form.params.some((param) => !param.paramName.trim())) {
-                ElMessage.warning('请完善变量名');
-                return false;
-            }
-            const paramNames = form.params.map((param) => param.paramName.trim()).filter(Boolean);
-            if (new Set(paramNames).size !== paramNames.length) {
-                ElMessage.warning('变量名不能重复');
-                return false;
-            }
+            ElMessage.warning('暂不支持Code型评估器');
+            return false;
         }
         return true;
     }
     function switchType(type) {
+        if (type === 'code') {
+            return;
+        }
         if (!canEdit.value || (isEdit.value && activeDetail.value?.evaluatorType !== type)) {
             return;
         }
-        const previousType = form.evaluatorType;
         form.evaluatorType = type;
-        if (type === 'code' && (previousType !== 'code' || !form.params.length)) {
-            form.params = defaultParams();
-        }
-        else if (type === 'llm') {
+        if (type === 'llm') {
             syncPromptParams();
         }
     }

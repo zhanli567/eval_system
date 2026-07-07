@@ -16,8 +16,8 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
     </div>
     <div class="top-actions">
       <el-button v-if="isEdit" :icon="Refresh" @click="refreshEditor">刷新</el-button>
-      <el-button :loading="saving" type="primary" :disabled="isEdit && !canEdit" @click="submit">{{ isEdit ? '保存草稿' : '创建' }}</el-button>
-      <el-button v-if="isEdit" type="success" :icon="Promotion" :loading="publishing" :disabled="!canEdit" @click="publishDraft">发布</el-button>
+      <el-button :loading="saving" type="primary" :disabled="(isEdit && !canEdit) || form.evaluatorType === 'code'" @click="submit">{{ isEdit ? '保存草稿' : '创建' }}</el-button>
+      <el-button v-if="isEdit" type="success" :icon="Promotion" :loading="publishing" :disabled="!canEdit || form.evaluatorType === 'code'" @click="publishDraft">发布</el-button>
     </div>
   </header>
 
@@ -64,8 +64,8 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
               <button
                 type="button"
                 class="method-card"
-                :class="{ active: form.evaluatorType === 'llm', disabled: isEdit && form.evaluatorType !== 'llm' }"
-                :disabled="isEdit && form.evaluatorType !== 'llm'"
+                :class="{ active: form.evaluatorType === 'llm', disabled: !canEdit && form.evaluatorType !== 'llm' }"
+                :disabled="!canEdit && form.evaluatorType !== 'llm'"
                 @click="switchType('llm')"
               >
                 <strong>LLM</strong>
@@ -74,8 +74,8 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
               <button
                 type="button"
                 class="method-card"
-                :class="{ active: form.evaluatorType === 'code', disabled: isEdit && form.evaluatorType !== 'code' }"
-                :disabled="isEdit && form.evaluatorType !== 'code'"
+                :class="{ active: form.evaluatorType === 'code', disabled: true }"
+                disabled
                 @click="switchType('code')"
               >
                 <strong>Code</strong>

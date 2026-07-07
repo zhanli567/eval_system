@@ -133,7 +133,7 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
                     @visible-change="handlePresetEvaluatorVisible(block, $event)"
                     @change="selectEvaluator(block)"
                   >
-                    <el-option v-for="item in block.presetOptions" :key="item.id" :label="item.evaluatorName" :value="item.id" />
+                    <el-option v-for="item in block.presetOptions" :key="item.id" :label="item.evaluatorName" :value="item.id" :disabled="item.evaluatorType === 'code'" />
                   </el-select>
                 </el-form-item>
                 <el-form-item v-if="block.evaluatorType === 'llm'">
@@ -165,7 +165,7 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
                     @visible-change="handleCustomEvaluatorVisible"
                     @change="selectEvaluator(block)"
                   >
-                    <el-option v-for="item in customEvaluators" :key="item.id" :label="item.evaluatorName" :value="item.id" />
+                    <el-option v-for="item in customEvaluators" :key="item.id" :label="item.evaluatorName" :value="item.id" :disabled="item.evaluatorType === 'code'" />
                   </el-select>
                 </el-form-item>
                 <el-form-item>

@@ -134,6 +134,13 @@ export function useEvaluatorManagement() {
         router.push({ name: 'evaluator-create' });
     }
     function createFromPreset(presetId) {
+        const preset = [...presetEvaluators.value, ...pickerPresets.value, selectedPreset.value]
+            .filter(Boolean)
+            .find((item) => item.id === presetId);
+        if (preset?.evaluatorType === 'code') {
+            ElMessage.warning('暂不支持Code型评估器');
+            return;
+        }
         pickerVisible.value = false;
         detailVisible.value = false;
         router.push({ name: 'evaluator-create', query: { presetId } });

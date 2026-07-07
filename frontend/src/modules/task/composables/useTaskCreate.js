@@ -349,6 +349,9 @@ export function useTaskCreate() {
         try {
             if (block.evaluatorSource === 'preset') {
                 const detail = await evaluatorApi.getPresetEvaluator(block.evaluatorId);
+                if (rejectCodeEvaluator(block, detail)) {
+                    return;
+                }
                 fillFromPreset(block, detail);
             }
             else {
@@ -370,11 +373,24 @@ export function useTaskCreate() {
         block.loading = true;
         try {
             const detail = await evaluatorApi.getVersion(block.evaluatorVersionId);
+            if (rejectCodeEvaluator(block, detail)) {
+                return;
+            }
             fillFromCustom(block, detail);
         }
         finally {
             block.loading = false;
         }
+    }
+    function rejectCodeEvaluator(block, detail) {
+        if (detail.evaluatorType !== 'code') {
+            return false;
+        }
+        ElMessage.warning('暂不支持Code型评估器');
+        block.evaluatorId = '';
+        block.evaluatorVersionId = '';
+        clearEvaluatorDetail(block);
+        return true;
     }
     function fillFromPreset(block, detail) {
         block.evaluatorName = detail.evaluatorName;
@@ -691,6 +707,10 @@ export function useTaskCreate() {
         for (const block of evaluatorBlocks.value) {
             if (!block.evaluatorId || (block.evaluatorSource === 'custom' && !block.evaluatorVersionId)) {
                 ElMessage.warning('请选择评估器及版本');
+                return false;
+            }
+            if (block.evaluatorType === 'code') {
+                ElMessage.warning('暂不支持Code型评估器');
                 return false;
             }
             if (block.evaluatorSource === 'preset' && block.evaluatorType === 'llm' && !block.modelId) {
