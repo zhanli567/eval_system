@@ -2,6 +2,8 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { taskApi } from '../../../api/task';
+import { formatDateTime } from '../../../utils/formatters';
+import { useColumnWidths } from '../../../utils/tableColumns';
 export function useTaskManagement() {
     const router = useRouter();
     const loading = ref(false);
@@ -9,7 +11,7 @@ export function useTaskManagement() {
     const startingTaskIds = ref(new Set());
     const total = ref(0);
     const page = ref(1);
-    const size = ref(8);
+    const size = ref(10);
     const keyword = ref('');
     const status = ref('');
     const sortBy = ref('lastUpdatedDate');
@@ -22,6 +24,18 @@ export function useTaskManagement() {
         { label: '评测完成', value: 'completed' },
         { label: '评测失败', value: 'failed' }
     ];
+    const { columnWidths, handleColumnResize } = useColumnWidths({
+        status: { width: 90, min: 76, max: 120 },
+        taskName: { width: 220, min: 160, max: 380 },
+        datasetName: { width: 210, min: 160, max: 360 },
+        app: { width: 260, min: 180, max: 460 },
+        description: { width: 260, min: 180, max: 500 },
+        evaluators: { width: 220, min: 160, max: 360 },
+        tags: { width: 190, min: 140, max: 320 },
+        createdByName: { width: 140, min: 100, max: 220 },
+        createdDate: { width: 190, min: 160, max: 240 },
+        actions: { width: 190, min: 160, max: 230 }
+    });
     onMounted(async () => {
         await loadTasks();
         startPolling();
@@ -68,6 +82,10 @@ export function useTaskManagement() {
         page.value = 1;
         await loadTasks();
     }
+    async function changeSize() {
+        page.value = 1;
+        await loadTasks();
+    }
     function openCreate() {
         router.push({ name: 'task-create' });
     }
@@ -106,6 +124,9 @@ export function useTaskManagement() {
         await ElMessageBox.confirm(`确定删除评测任务“${row.base.taskName}”吗？`, '删除评测任务', { type: 'warning' });
         await taskApi.deleteTask(row.base.id);
         ElMessage.success('已删除');
+        if (tasks.value.length === 1 && page.value > 1) {
+            page.value -= 1;
+        }
         await loadTasks();
     }
     function toggleSort(field) {
@@ -116,19 +137,11 @@ export function useTaskManagement() {
             sortBy.value = field;
             sortOrder.value = 'desc';
         }
+        page.value = 1;
         loadTasks();
     }
     function statusLabel(value) {
         return statusOptions.find((item) => item.value === value)?.label || value || '-';
-    }
-    function statusTagType(value) {
-        if (value === 'completed')
-            return 'success';
-        if (value === 'running')
-            return 'primary';
-        if (value === 'failed')
-            return 'danger';
-        return 'info';
     }
     function canStartTask(row) {
         return row.base.status === 'pending' || row.base.status === 'failed';
@@ -136,28 +149,7 @@ export function useTaskManagement() {
     function canDeleteTask(row) {
         return row.base.status === 'pending' || row.base.status === 'completed' || row.base.status === 'failed';
     }
-    function dimensionStatusLabel(value) {
-        if (value === 'completed')
-            return '完成';
-        if (value === 'running')
-            return '进行中';
-        if (value === 'annotating')
-            return '标注中';
-        if (value === 'failed')
-            return '失败';
-        return '待处理';
-    }
-    function formatRate(value) {
-        return value === undefined || value === null ? '-' : `${value}%`;
-    }
-    function formatTime(value) {
-        if (!value)
-            return '-';
-        const numberValue = Number(value);
-        if (Number.isNaN(numberValue))
-            return value;
-        return new Date(numberValue).toLocaleString();
-    }
+    const formatTime = formatDateTime;
     return {
         loading,
         tasks,
@@ -169,9 +161,11 @@ export function useTaskManagement() {
         status,
         sortBy,
         sortOrder,
+        columnWidths,
         statusOptions,
         loadTasks,
         searchTasks,
+        changeSize,
         openCreate,
         openDetail,
         startTask,
@@ -180,10 +174,8 @@ export function useTaskManagement() {
         canStartTask,
         canDeleteTask,
         toggleSort,
+        handleColumnResize,
         statusLabel,
-        statusTagType,
-        dimensionStatusLabel,
-        formatRate,
         formatTime
     };
 }

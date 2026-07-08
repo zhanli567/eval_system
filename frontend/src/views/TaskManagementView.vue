@@ -1,23 +1,43 @@
 <script setup>
-import { Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
+import { CircleCheck, CircleClose, Clock, Loading, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useTaskManagement } from '../modules/task/composables/useTaskManagement';
-const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, statusOptions, loadTasks, searchTasks, openCreate, openDetail, startTask, isStartingTask, removeTask, canStartTask, canDeleteTask, toggleSort, statusLabel, statusTagType, dimensionStatusLabel, formatRate, formatTime } = useTaskManagement();
+const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, columnWidths, statusOptions, loadTasks, searchTasks, changeSize, openCreate, openDetail, startTask, isStartingTask, removeTask, canStartTask, canDeleteTask, toggleSort, handleColumnResize, statusLabel, formatTime } = useTaskManagement();
+const statusIcons = {
+    pending: Clock,
+    running: Loading,
+    completed: CircleCheck,
+    failed: CircleClose
+};
+function statusIcon(value) {
+    return statusIcons[value] || Clock;
+}
+function statusIconClass(value) {
+    return `is-${value || 'pending'}`;
+}
+function formatNameVersion(name, version) {
+    return `${name || '-'} / ${version || '-'}`;
+}
 function formatAppBinding(base) {
-    if (base.appType !== 'agent')
+    if (base.appType !== 'agent' || !base.appId)
         return '-';
-    const parts = [base.appId || '智能体应用'];
-    if (base.appVersionId)
-        parts.push(`快照 ${base.appVersionId}`);
-    if (base.appAgentAlias)
-        parts.push(`子智能体 ${base.appAgentAlias}`);
-    return parts.join(' / ');
+    return [base.appId || '-', base.appVersionId || '-', base.appAgentAlias || '-'].join(' / ');
+}
+function formatEvaluatorList(evaluators) {
+    return formatNameList(evaluators, (item) => item.evaluatorName || item.versionName);
+}
+function formatTagList(tags) {
+    return formatNameList(tags, (item) => item.tagName);
+}
+function formatNameList(items, picker) {
+    if (!items?.length)
+        return '-';
+    return items.map((item) => picker(item) || '-').join('、');
 }
 </script>
 
 <template>
   <header class="topbar">
     <div>
-      <p class="eyebrow">运行评测</p>
       <h1>评测任务</h1>
     </div>
     <div class="top-actions">
@@ -56,67 +76,60 @@ function formatAppBinding(base) {
       </div>
     </div>
 
-    <el-table v-loading="loading" :data="tasks" row-key="base.id" height="100%" tooltip-effect="light" class="task-table">
-      <el-table-column label="评测状态" width="130">
+    <el-table
+      v-loading="loading"
+      :data="tasks"
+      row-key="base.id"
+      border
+      height="100%"
+      tooltip-effect="light"
+      class="task-table"
+      @header-dragend="handleColumnResize"
+    >
+      <el-table-column prop="status" label="评测状态" :width="columnWidths.status" min-width="76" align="center">
         <template #default="{ row }">
-          <el-tag :type="statusTagType(row.base.status)" effect="plain">{{ statusLabel(row.base.status) }}</el-tag>
+          <el-tooltip :content="statusLabel(row.base.status)" placement="top">
+            <el-icon class="task-status-icon" :class="statusIconClass(row.base.status)">
+              <component :is="statusIcon(row.base.status)" />
+            </el-icon>
+          </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column label="任务名称" min-width="210" show-overflow-tooltip>
+      <el-table-column prop="taskName" label="任务名称" :width="columnWidths.taskName" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">
           <button class="table-link" type="button" @click="openDetail(row)">{{ row.base.taskName }}</button>
         </template>
       </el-table-column>
-      <el-table-column label="评测集名称" min-width="180" show-overflow-tooltip>
+      <el-table-column prop="datasetName" label="评测集名称" :width="columnWidths.datasetName" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">
-          <span>{{ row.base.datasetName }}</span>
-          <el-tag size="small" effect="plain">{{ row.base.datasetVersionName }}</el-tag>
+          {{ formatNameVersion(row.base.datasetName, row.base.datasetVersionName) }}
         </template>
       </el-table-column>
-      <el-table-column label="应用" min-width="150" show-overflow-tooltip>
+      <el-table-column column-key="app" label="应用" :width="columnWidths.app" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">
           {{ formatAppBinding(row.base) }}
         </template>
       </el-table-column>
-      <el-table-column label="评估器详情" min-width="240" show-overflow-tooltip>
-        <template #default="{ row }">
-          <div v-if="row.evaluators.length" class="dimension-cell">
-            <div class="dimension-chip">
-              <strong>{{ row.evaluators[0].evaluatorName }}</strong>
-              <span>
-                {{ row.evaluators[0].versionName }} · {{ dimensionStatusLabel(row.evaluators[0].status) }} · 通过率
-                {{ formatRate(row.evaluators[0].passRate) }}
-              </span>
-            </div>
-            <el-tag v-if="row.evaluators.length > 1" size="small">+{{ row.evaluators.length - 1 }}</el-tag>
-          </div>
-          <span v-else>-</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="标签详情" min-width="220" show-overflow-tooltip>
-        <template #default="{ row }">
-          <div v-if="row.tags.length" class="dimension-cell">
-            <div class="dimension-chip">
-              <strong>{{ row.tags[0].tagName }}</strong>
-              <span>{{ dimensionStatusLabel(row.tags[0].status) }} · 通过率 {{ formatRate(row.tags[0].passRate) }}</span>
-            </div>
-            <el-tag v-if="row.tags.length > 1" size="small">+{{ row.tags.length - 1 }}</el-tag>
-          </div>
-          <span v-else>-</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="评测时间" width="230">
-        <template #default="{ row }">
-          <div class="time-stack">
-            <span>创建 {{ formatTime(row.base.createdDate) }}</span>
-            <span>更新 {{ formatTime(row.base.lastUpdatedDate) }}</span>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column label="描述" min-width="220" show-overflow-tooltip>
+      <el-table-column prop="description" label="描述" :width="columnWidths.description" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">{{ row.base.description || '暂无描述' }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right">
+      <el-table-column column-key="evaluators" label="评估器" :width="columnWidths.evaluators" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ formatEvaluatorList(row.evaluators) }}
+        </template>
+      </el-table-column>
+      <el-table-column column-key="tags" label="标签" :width="columnWidths.tags" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ formatTagList(row.tags) }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.base.createdByName || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="createdDate" label="创建时间" :width="columnWidths.createdDate" min-width="160">
+        <template #default="{ row }">{{ formatTime(row.base.createdDate) }}</template>
+      </el-table-column>
+      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="160" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDetail(row)">详情</el-button>
           <el-button
@@ -138,8 +151,10 @@ function formatAppBinding(base) {
       <el-pagination
         v-model:current-page="page"
         v-model:page-size="size"
-        layout="total, prev, pager, next"
+        :page-sizes="[5, 10, 20]"
+        layout="total, sizes, prev, pager, next, jumper"
         :total="total"
+        @size-change="changeSize"
         @current-change="loadTasks"
       />
     </div>

@@ -37,7 +37,6 @@ function evaluatorResultLabel(result) {
   <header class="topbar detail-topbar">
     <div>
       <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评测任务列表</el-button>
-      <p class="eyebrow">应用评测 / 评测任务详情</p>
       <h1>
         {{ base?.taskName || '评测任务详情' }}
         <el-tag v-if="base" :type="statusTagType(base.status)" effect="plain">{{ statusLabel(base.status) }}</el-tag>

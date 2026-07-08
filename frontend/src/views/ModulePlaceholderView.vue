@@ -9,14 +9,12 @@ const moduleMeta = computed(() => getModuleMeta(String(route.meta.moduleKey ?? '
 <template>
   <header class="topbar">
     <div>
-      <p class="eyebrow">{{ moduleMeta.eyebrow }}</p>
       <h1>{{ moduleMeta.title }}</h1>
     </div>
   </header>
 
   <section class="module-placeholder">
     <div>
-      <p class="eyebrow">{{ moduleMeta.eyebrow }}</p>
       <h2>{{ moduleMeta.title }}</h2>
       <span class="meta">{{ moduleMeta.description }}</span>
     </div>

@@ -8,7 +8,6 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
   <header class="topbar detail-topbar">
     <div>
       <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评测任务列表</el-button>
-      <p class="eyebrow">运行评测 / 创建评测任务</p>
       <h1>创建评测任务</h1>
     </div>
   </header>
