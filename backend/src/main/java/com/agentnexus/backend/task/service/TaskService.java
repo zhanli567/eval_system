@@ -217,45 +217,15 @@ public class TaskService {
   }
 
   private void runWithRequestContext(String spaceId, CurrentUser currentUser, String taskCookie, Runnable action) {
-    String previousSpaceId = CurrentSpaceHolder.get();
-    CurrentUser previousUser = CurrentUserHolder.get();
-    String previousCookie = TaskCookieHolder.get();
-    if (spaceId == null) {
-      CurrentSpaceHolder.clear();
-    } else {
-      CurrentSpaceHolder.set(spaceId);
-    }
-    if (taskCookie == null) {
-      TaskCookieHolder.clear();
-    } else {
-      TaskCookieHolder.set(taskCookie);
-    }
+    CurrentSpaceHolder.set(spaceId);
+    CurrentUserHolder.set(currentUser);
+    TaskCookieHolder.set(taskCookie);
     try {
-      if (currentUser == null) {
-        CurrentUserHolder.clear();
-      } else {
-        CurrentUserHolder.set(currentUser);
-      }
-      try {
-        action.run();
-      } finally {
-        if (previousUser == null) {
-          CurrentUserHolder.clear();
-        } else {
-          CurrentUserHolder.set(previousUser);
-        }
-      }
+      action.run();
     } finally {
-      if (previousCookie == null) {
-        TaskCookieHolder.clear();
-      } else {
-        TaskCookieHolder.set(previousCookie);
-      }
-      if (previousSpaceId == null) {
-        CurrentSpaceHolder.clear();
-      } else {
-        CurrentSpaceHolder.set(previousSpaceId);
-      }
+      CurrentUserHolder.clear();
+      TaskCookieHolder.clear();
+      CurrentSpaceHolder.clear();
     }
   }
 
