@@ -8,7 +8,9 @@ public record EvaluatorSummary(
     Integer latestVersionNo,
     String latestVersionName,
     String description,
+    String createdByName,
     java.time.LocalDateTime createdDate,
+    String lastUpdatedByName,
     java.time.LocalDateTime lastUpdatedDate
 ) {
 }

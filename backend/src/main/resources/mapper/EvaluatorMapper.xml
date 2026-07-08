@@ -13,7 +13,9 @@
       <arg column="latestVersionNo" javaType="java.lang.Integer"/>
       <arg column="latestVersionName" javaType="java.lang.String"/>
       <arg column="description" javaType="java.lang.String"/>
+      <arg column="createdByName" javaType="java.lang.String"/>
       <arg column="createdDate" javaType="java.time.LocalDateTime"/>
+      <arg column="lastUpdatedByName" javaType="java.lang.String"/>
       <arg column="lastUpdatedDate" javaType="java.time.LocalDateTime"/>
     </constructor>
   </resultMap>
@@ -45,11 +47,13 @@
            e.evaluator_name AS evaluatorName,
            e.evaluator_type AS evaluatorType,
            e.latest_version_id AS latestVersionId,
-           COALESCE(v.version_no, 0) AS latestVersionNo,
-           CASE WHEN COALESCE(v.version_no, 0) = 0 THEN '&#x8349;&#x7A3F;' ELSE CONCAT('V', v.version_no) END AS latestVersionName,
-           e.description AS description,
-           e.created_date AS createdDate,
-           e.last_updated_date AS lastUpdatedDate
+            COALESCE(v.version_no, 0) AS latestVersionNo,
+            CASE WHEN COALESCE(v.version_no, 0) = 0 THEN '&#x8349;&#x7A3F;' ELSE CONCAT('V', v.version_no) END AS latestVersionName,
+            e.description AS description,
+            e.created_by_name AS createdByName,
+            e.created_date AS createdDate,
+            e.last_updated_by_name AS lastUpdatedByName,
+            e.last_updated_date AS lastUpdatedDate
     FROM t_eval_evaluator e
     LEFT JOIN t_eval_evaluator_version v ON e.latest_version_id = v.id AND v.space_id = #{spaceId}
     WHERE e.space_id = #{spaceId}
@@ -57,7 +61,7 @@
         AND e.evaluator_type = #{evaluatorType}
       </if>
       AND (#{like} = '%%' OR e.evaluator_name LIKE #{like})
-    ORDER BY e.last_updated_date DESC
+    ORDER BY ${orderColumn} ${orderDirection}
     LIMIT #{size} OFFSET #{offset}
   </select>
 

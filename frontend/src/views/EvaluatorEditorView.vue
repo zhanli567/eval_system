@@ -8,7 +8,6 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
   <header class="topbar detail-topbar">
     <div>
       <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评估器列表</el-button>
-      <p class="eyebrow">应用评测 / {{ isEdit ? '编辑评估器' : '创建评估器' }}</p>
       <h1>{{ pageTitle }}</h1>
       <span v-if="isEdit && activeVersion" class="meta">
         当前版本 {{ activeVersion.versionName }} · {{ activeVersion.draft ? '草稿可编辑' : '发布版本只读' }}

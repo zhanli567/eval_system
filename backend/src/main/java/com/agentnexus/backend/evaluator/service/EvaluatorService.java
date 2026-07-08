@@ -51,13 +51,15 @@ public class EvaluatorService {
     this.presetEvaluatorStore = presetEvaluatorStore;
   }
 
-  public PageResponse<EvaluatorSummary> listEvaluators(int page, int size, String evaluatorType, String keyword) {
+  public PageResponse<EvaluatorSummary> listEvaluators(int page, int size, String evaluatorType, String keyword, String sortBy, String sortOrder) {
     String normalizedType = normalizeOptionalEvaluatorType(evaluatorType);
     int safePage = Math.max(page, 1);
     int safeSize = Math.min(Math.max(size, 1), 100);
     int offset = (safePage - 1) * safeSize;
     String like = "%" + (keyword == null ? "" : keyword.trim()) + "%";
-    List<EvaluatorSummary> records = evaluatorRepository.listEvaluators(normalizedType, like, safeSize, offset);
+    String orderColumn = "createdDate".equals(sortBy) ? "e.created_date" : "e.last_updated_date";
+    String orderDirection = "asc".equalsIgnoreCase(sortOrder) ? "ASC" : "DESC";
+    List<EvaluatorSummary> records = evaluatorRepository.listEvaluators(normalizedType, like, orderColumn, orderDirection, safeSize, offset);
     long total = evaluatorRepository.countEvaluators(normalizedType, like);
     return new PageResponse<>(records, total, safePage, safeSize);
   }

@@ -1,13 +1,12 @@
 <script setup>
-import { Delete, Edit, Plus, Refresh, Search } from '@element-plus/icons-vue';
+import { Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useEvaluatorManagement } from '../modules/evaluator/composables/useEvaluatorManagement';
-const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, loadCustomEvaluators, searchCustom, loadPresetEvaluators, searchPreset, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, typeLabel, formatTime } = useEvaluatorManagement();
+const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, columnWidths, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, loadCustomEvaluators, searchCustom, changeCustomSize, toggleCustomSort, loadPresetEvaluators, searchPreset, changePresetSize, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, changePickerSize, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, handleColumnResize, typeLabel, formatTime } = useEvaluatorManagement();
 </script>
 
 <template>
   <header class="topbar">
     <div>
-      <p class="eyebrow">应用评测</p>
       <h1>评估器管理</h1>
     </div>
     <div class="top-actions">
@@ -16,14 +15,14 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
     </div>
   </header>
 
-  <section class="evaluator-panel">
+  <section class="evaluator-panel fill-workspace">
     <div class="evaluator-tabs">
       <button :class="{ active: activeTab === 'custom' }" @click="activeTab = 'custom'">自定义</button>
       <button :class="{ active: activeTab === 'preset' }" @click="activeTab = 'preset'">预置</button>
     </div>
 
     <template v-if="activeTab === 'custom'">
-      <div class="panel-toolbar">
+      <div class="panel-toolbar table-toolbar">
         <el-select v-model="customType" clearable placeholder="全部类型" class="field-select" @change="searchCustom">
           <el-option label="LLM" value="llm" />
           <el-option label="Code" value="code" disabled />
@@ -41,29 +40,52 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
           </template>
         </el-input>
         <el-button @click="searchCustom">搜索</el-button>
+        <div class="task-sort-actions">
+          <el-button :class="{ active: customSortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleCustomSort('lastUpdatedDate')">
+            更新时间 {{ customSortBy === 'lastUpdatedDate' ? (customSortOrder === 'desc' ? '降序' : '升序') : '' }}
+          </el-button>
+          <el-button :class="{ active: customSortBy === 'createdDate' }" :icon="Sort" @click="toggleCustomSort('createdDate')">
+            创建时间 {{ customSortBy === 'createdDate' ? (customSortOrder === 'desc' ? '降序' : '升序') : '' }}
+          </el-button>
+        </div>
       </div>
 
-      <el-table v-loading="customLoading" :data="customEvaluators" row-key="id" tooltip-effect="light" class="evaluator-table">
-        <el-table-column prop="evaluatorName" label="名称" min-width="180" show-overflow-tooltip />
-        <el-table-column label="类型" width="110">
+      <el-table
+        v-loading="customLoading"
+        :data="customEvaluators"
+        row-key="id"
+        border
+        height="100%"
+        tooltip-effect="light"
+        class="evaluator-table"
+        @header-dragend="handleColumnResize"
+      >
+        <el-table-column prop="evaluatorName" label="评估器名称" :width="columnWidths.evaluatorName" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="evaluatorType" label="类型" :width="columnWidths.evaluatorType" min-width="100">
           <template #default="{ row }">
             <el-tag size="small" effect="plain">{{ typeLabel(row.evaluatorType) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="latestVersionName" label="最新版本" width="120" />
-        <el-table-column prop="description" label="描述" min-width="260" show-overflow-tooltip>
+        <el-table-column prop="latestVersionName" label="最新版本" :width="columnWidths.latestVersionName" min-width="110" />
+        <el-table-column prop="description" label="描述" :width="columnWidths.description" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">{{ row.description || '暂无描述' }}</template>
         </el-table-column>
-        <el-table-column label="更新时间" width="190">
-          <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>
+        <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.createdByName || '-' }}</template>
         </el-table-column>
-        <el-table-column label="创建时间" width="190">
+        <el-table-column prop="createdDate" label="创建时间" :width="columnWidths.createdDate" min-width="160">
           <template #default="{ row }">{{ formatTime(row.createdDate) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column prop="lastUpdatedByName" label="更新人" :width="columnWidths.lastUpdatedByName" min-width="100" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.lastUpdatedByName || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="lastUpdatedDate" label="更新时间" :width="columnWidths.lastUpdatedDate" min-width="160">
+          <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>
+        </el-table-column>
+        <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="120" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" :icon="Edit" @click="editEvaluator(row)">编辑</el-button>
-            <el-button link type="danger" :icon="Delete" @click="removeEvaluator(row)">删除</el-button>
+            <el-button link type="primary" @click="editEvaluator(row)">详情</el-button>
+            <el-button link type="danger" @click="removeEvaluator(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -72,8 +94,10 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         <el-pagination
           v-model:current-page="customPage"
           v-model:page-size="customSize"
-          layout="total, prev, pager, next"
+          :page-sizes="[5, 10, 20]"
+          layout="total, sizes, prev, pager, next, jumper"
           :total="customTotal"
+          @size-change="changeCustomSize"
           @current-change="loadCustomEvaluators"
         />
       </div>
@@ -128,8 +152,10 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             <el-pagination
               v-model:current-page="presetPage"
               v-model:page-size="presetSize"
-              layout="total, prev, pager, next"
+              :page-sizes="[5, 10, 20]"
+              layout="total, sizes, prev, pager, next, jumper"
               :total="presetTotal"
+              @size-change="changePresetSize"
               @current-change="loadPresetEvaluators"
             />
           </div>
@@ -138,7 +164,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
     </template>
   </section>
 
-  <el-dialog v-model="pickerVisible" title="创建评估器" width="1180px" class="evaluator-picker-dialog">
+  <el-dialog v-model="pickerVisible" title="创建评估器" width="1180px" class="evaluator-picker-dialog resizable-dialog">
     <div class="preset-layout picker-layout">
       <aside class="preset-category-rail">
         <span class="rail-caption">预置评估器分类</span>
@@ -193,8 +219,10 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
           <el-pagination
             v-model:current-page="pickerPage"
             v-model:page-size="pickerSize"
-            layout="prev, pager, next"
+            :page-sizes="[5, 10, 20]"
+            layout="total, sizes, prev, pager, next, jumper"
             :total="pickerTotal"
+            @size-change="changePickerSize"
             @current-change="loadPickerPresets"
           />
         </div>
@@ -202,7 +230,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
     </div>
   </el-dialog>
 
-  <el-dialog v-model="detailVisible" :title="selectedPreset?.evaluatorName || '预置评估器详情'" width="900px" class="preset-detail-dialog">
+  <el-dialog v-model="detailVisible" :title="selectedPreset?.evaluatorName || '预置评估器详情'" width="900px" class="preset-detail-dialog resizable-dialog">
     <div v-loading="detailLoading" class="preset-detail">
       <template v-if="selectedPreset">
         <div class="detail-header-line">

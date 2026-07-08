@@ -36,9 +36,11 @@ public class EvaluatorController {
       @QueryParam("page") @DefaultValue("1") int page,
       @QueryParam("size") @DefaultValue("10") int size,
       @QueryParam("evaluatorType") String evaluatorType,
-      @QueryParam("keyword") String keyword
+      @QueryParam("keyword") String keyword,
+      @QueryParam("sortBy") @DefaultValue("lastUpdatedDate") String sortBy,
+      @QueryParam("sortOrder") @DefaultValue("desc") String sortOrder
   ) {
-    return ApiResponse.ok(evaluatorService.listEvaluators(page, size, evaluatorType, keyword));
+    return ApiResponse.ok(evaluatorService.listEvaluators(page, size, evaluatorType, keyword, sortBy, sortOrder));
   }
 
   @GET

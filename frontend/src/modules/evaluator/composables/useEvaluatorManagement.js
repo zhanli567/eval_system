@@ -2,6 +2,8 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { evaluatorApi } from '../../../api/evaluator';
+import { formatDateTime } from '../../../utils/formatters';
+import { useColumnWidths } from '../../../utils/tableColumns';
 export function useEvaluatorManagement() {
     const router = useRouter();
     const activeTab = ref('custom');
@@ -9,22 +11,24 @@ export function useEvaluatorManagement() {
     const customEvaluators = ref([]);
     const customTotal = ref(0);
     const customPage = ref(1);
-    const customSize = ref(8);
+    const customSize = ref(10);
     const customKeyword = ref('');
     const customType = ref('');
+    const customSortBy = ref('lastUpdatedDate');
+    const customSortOrder = ref('desc');
     const categories = ref([]);
     const activeCategoryId = ref('');
     const presetLoading = ref(false);
     const presetEvaluators = ref([]);
     const presetTotal = ref(0);
     const presetPage = ref(1);
-    const presetSize = ref(12);
+    const presetSize = ref(10);
     const presetKeyword = ref('');
     const pickerVisible = ref(false);
     const pickerCategoryId = ref('');
     const pickerKeyword = ref('');
     const pickerPage = ref(1);
-    const pickerSize = ref(12);
+    const pickerSize = ref(10);
     const pickerTotal = ref(0);
     const pickerLoading = ref(false);
     const pickerPresets = ref([]);
@@ -35,6 +39,17 @@ export function useEvaluatorManagement() {
         { id: '', categoryName: '全部分类', displayOrder: 0 },
         ...categories.value
     ]);
+    const { columnWidths, handleColumnResize } = useColumnWidths({
+        evaluatorName: { width: 220, min: 160, max: 380 },
+        evaluatorType: { width: 130, min: 100, max: 170 },
+        latestVersionName: { width: 130, min: 110, max: 180 },
+        description: { width: 280, min: 180, max: 520 },
+        createdByName: { width: 140, min: 100, max: 220 },
+        createdDate: { width: 190, min: 160, max: 240 },
+        lastUpdatedByName: { width: 140, min: 100, max: 220 },
+        lastUpdatedDate: { width: 190, min: 160, max: 240 },
+        actions: { width: 140, min: 120, max: 180 }
+    });
     onMounted(async () => {
         await Promise.all([loadCategories(), loadCustomEvaluators()]);
         await loadPresetEvaluators();
@@ -49,7 +64,9 @@ export function useEvaluatorManagement() {
                 page: customPage.value,
                 size: customSize.value,
                 evaluatorType: customType.value,
-                keyword: customKeyword.value
+                keyword: customKeyword.value,
+                sortBy: customSortBy.value,
+                sortOrder: customSortOrder.value
             });
             customEvaluators.value = page.records;
             customTotal.value = page.total;
@@ -59,6 +76,21 @@ export function useEvaluatorManagement() {
         }
     }
     async function searchCustom() {
+        customPage.value = 1;
+        await loadCustomEvaluators();
+    }
+    async function changeCustomSize() {
+        customPage.value = 1;
+        await loadCustomEvaluators();
+    }
+    async function toggleCustomSort(field) {
+        if (customSortBy.value === field) {
+            customSortOrder.value = customSortOrder.value === 'desc' ? 'asc' : 'desc';
+        }
+        else {
+            customSortBy.value = field;
+            customSortOrder.value = 'desc';
+        }
         customPage.value = 1;
         await loadCustomEvaluators();
     }
@@ -79,6 +111,10 @@ export function useEvaluatorManagement() {
         }
     }
     async function searchPreset() {
+        presetPage.value = 1;
+        await loadPresetEvaluators();
+    }
+    async function changePresetSize() {
         presetPage.value = 1;
         await loadPresetEvaluators();
     }
@@ -111,6 +147,10 @@ export function useEvaluatorManagement() {
         }
     }
     async function searchPicker() {
+        pickerPage.value = 1;
+        await loadPickerPresets();
+    }
+    async function changePickerSize() {
         pickerPage.value = 1;
         await loadPickerPresets();
     }
@@ -152,19 +192,15 @@ export function useEvaluatorManagement() {
         await ElMessageBox.confirm(`确定删除评估器“${row.evaluatorName}”吗？`, '删除评估器', { type: 'warning' });
         await evaluatorApi.deleteEvaluator(row.id);
         ElMessage.success('已删除');
+        if (customEvaluators.value.length === 1 && customPage.value > 1) {
+            customPage.value -= 1;
+        }
         await loadCustomEvaluators();
     }
     function typeLabel(type) {
         return type === 'code' ? 'Code' : 'LLM';
     }
-    function formatTime(value) {
-        if (!value)
-            return '-';
-        const numberValue = Number(value);
-        if (Number.isNaN(numberValue))
-            return value;
-        return new Date(numberValue).toLocaleString();
-    }
+    const formatTime = formatDateTime;
     return {
         activeTab,
         customLoading,
@@ -174,7 +210,10 @@ export function useEvaluatorManagement() {
         customSize,
         customKeyword,
         customType,
+        customSortBy,
+        customSortOrder,
         categories,
+        columnWidths,
         categoryOptions,
         activeCategoryId,
         presetLoading,
@@ -196,18 +235,23 @@ export function useEvaluatorManagement() {
         selectedPreset,
         loadCustomEvaluators,
         searchCustom,
+        changeCustomSize,
+        toggleCustomSort,
         loadPresetEvaluators,
         searchPreset,
+        changePresetSize,
         selectPresetCategory,
         openPicker,
         loadPickerPresets,
         searchPicker,
+        changePickerSize,
         selectPickerCategory,
         viewPreset,
         createCustom,
         createFromPreset,
         editEvaluator,
         removeEvaluator,
+        handleColumnResize,
         typeLabel,
         formatTime
     };

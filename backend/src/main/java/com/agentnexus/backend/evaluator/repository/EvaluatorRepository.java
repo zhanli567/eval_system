@@ -41,9 +41,9 @@ public class EvaluatorRepository {
     this.paramMapper = paramMapper;
   }
 
-  public List<EvaluatorSummary> listEvaluators(String evaluatorType, String like, int size, int offset) {
+  public List<EvaluatorSummary> listEvaluators(String evaluatorType, String like, String orderColumn, String orderDirection, int size, int offset) {
     return CurrentSpaceHolder.callWithSpace(currentSpaceId(), () ->
-        evaluatorMapper.listEvaluators(currentSpaceId(), evaluatorType, like, size, offset));
+        evaluatorMapper.listEvaluators(currentSpaceId(), evaluatorType, like, orderColumn, orderDirection, size, offset));
   }
 
   public long countEvaluators(String evaluatorType, String like) {

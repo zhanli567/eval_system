@@ -12,6 +12,8 @@ public interface EvaluatorMapper extends BaseMapper<EvalEvaluator> {
       @Param("spaceId") String spaceId,
       @Param("evaluatorType") String evaluatorType,
       @Param("like") String like,
+      @Param("orderColumn") String orderColumn,
+      @Param("orderDirection") String orderDirection,
       @Param("size") int size,
       @Param("offset") int offset
   );
