@@ -82,7 +82,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         <el-table-column prop="lastUpdatedDate" label="更新时间" :width="columnWidths.lastUpdatedDate" min-width="160">
           <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>
         </el-table-column>
-        <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="120" fixed="right">
+        <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="120" fixed="right" :resizable="false">
           <template #default="{ row }">
             <el-button link type="primary" @click="editEvaluator(row)">详情</el-button>
             <el-button link type="danger" @click="removeEvaluator(row)">删除</el-button>
@@ -164,7 +164,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
     </template>
   </section>
 
-  <el-dialog v-model="pickerVisible" title="创建评估器" width="1180px" class="evaluator-picker-dialog resizable-dialog">
+  <el-dialog v-model="pickerVisible" title="创建评估器" width="1180px" class="evaluator-picker-dialog fixed-dialog" :close-on-click-modal="true">
     <div class="preset-layout picker-layout">
       <aside class="preset-category-rail">
         <span class="rail-caption">预置评估器分类</span>
@@ -230,7 +230,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
     </div>
   </el-dialog>
 
-  <el-dialog v-model="detailVisible" :title="selectedPreset?.evaluatorName || '预置评估器详情'" width="900px" class="preset-detail-dialog resizable-dialog">
+  <el-dialog v-model="detailVisible" :title="selectedPreset?.evaluatorName || '预置评估器详情'" width="900px" class="preset-detail-dialog fixed-dialog" :close-on-click-modal="true">
     <div v-loading="detailLoading" class="preset-detail">
       <template v-if="selectedPreset">
         <div class="detail-header-line">

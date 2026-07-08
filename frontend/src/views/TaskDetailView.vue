@@ -1,12 +1,27 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { Back, Refresh, VideoPlay } from '@element-plus/icons-vue';
+import { Back, CircleCheck, CircleClose, Clock, Loading, Refresh, VideoPlay } from '@element-plus/icons-vue';
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
 import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
-const { loading, starting, page, size, base, fields, evaluators, tags, rows, total, loadDetail, backToList, startTask, openAnnotation, statusLabel, statusTagType, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
+const { loading, starting, page, size, base, fields, evaluators, tags, rows, total, loadDetail, backToList, startTask, openAnnotation, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
+const statusIcons = {
+    pending: Clock,
+    running: Loading,
+    completed: CircleCheck,
+    failed: CircleClose,
+    annotation_pending: Clock,
+    annotating: Loading,
+    skipped: Clock
+};
+function statusIcon(value) {
+    return statusIcons[value] || Clock;
+}
+function statusIconClass(value) {
+    return `is-${value || 'pending'}`;
+}
 function findTagResult(row, taskTagId) {
     return row.tagResults.find((item) => item.taskTagId === taskTagId);
 }
@@ -39,7 +54,11 @@ function evaluatorResultLabel(result) {
       <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评测任务列表</el-button>
       <h1>
         {{ base?.taskName || '评测任务详情' }}
-        <el-tag v-if="base" :type="statusTagType(base.status)" effect="plain">{{ statusLabel(base.status) }}</el-tag>
+        <el-tooltip v-if="base" :content="statusLabel(base.status)" placement="top">
+          <el-icon class="task-status-icon task-title-status" :class="statusIconClass(base.status)">
+            <component :is="statusIcon(base.status)" />
+          </el-icon>
+        </el-tooltip>
       </h1>
     </div>
     <div class="top-actions">
@@ -108,7 +127,11 @@ function evaluatorResultLabel(result) {
       <el-table :data="rows" row-key="id" border height="100%" tooltip-effect="light" class="task-detail-table">
         <el-table-column label="状态" width="120" fixed="left">
           <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)" effect="plain">{{ statusLabel(row.status) }}</el-tag>
+            <el-tooltip :content="statusLabel(row.status)" placement="top">
+              <el-icon class="task-status-icon" :class="statusIconClass(row.status)">
+                <component :is="statusIcon(row.status)" />
+              </el-icon>
+            </el-tooltip>
           </template>
         </el-table-column>
         <el-table-column label="序号" width="90" fixed="left">
@@ -156,15 +179,17 @@ function evaluatorResultLabel(result) {
                 {{ compactText(formatEvaluatorReason(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.resultValue), 96) }}
               </p>
             </template>
-            <el-tag v-else :type="statusTagType(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" effect="plain">
-              {{ statusLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status) }}
-            </el-tag>
+            <el-tooltip v-else :content="statusLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" placement="top">
+              <el-icon class="task-status-icon" :class="statusIconClass(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)">
+                <component :is="statusIcon(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" />
+              </el-icon>
+            </el-tooltip>
             <p v-if="findEvaluatorResult(row, evaluator.taskEvaluatorId)?.errorMessage" class="task-error-preview">
               {{ compactText(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.errorMessage, 120) }}
             </p>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="120" fixed="right" :resizable="false">
           <template #default="{ row }">
             <el-button link type="primary" @click="openAnnotation(row)">标注</el-button>
           </template>

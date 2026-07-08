@@ -275,12 +275,42 @@ h2 {
 }
 
 .evaluator-panel {
-  min-height: 640px;
+  min-height: 0;
   padding: 18px;
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: 0 12px 32px rgba(31, 41, 66, 0.06);
+}
+
+.dataset-panel,
+.tag-panel,
+.evaluator-panel,
+.task-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dataset-panel > .panel-toolbar,
+.tag-panel > .panel-toolbar,
+.evaluator-panel > .panel-toolbar,
+.task-panel > .panel-toolbar,
+.dataset-panel > .pager-row,
+.tag-panel > .pager-row,
+.evaluator-panel > .pager-row,
+.task-panel > .pager-row {
+  flex: 0 0 auto;
+}
+
+.dataset-panel > .el-table,
+.tag-panel > .el-table,
+.evaluator-panel > .el-table,
+.task-panel > .el-table {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .fill-workspace {
@@ -485,17 +515,6 @@ h2 {
   min-height: 0;
 }
 
-.evaluator-picker-dialog.resizable-dialog .el-dialog {
-  width: min(1180px, 92vw);
-  height: min(780px, 90vh);
-}
-
-.evaluator-picker-dialog.resizable-dialog .el-dialog__body {
-  height: calc(100% - 118px);
-  max-height: none;
-  overflow: hidden;
-}
-
 .evaluator-picker-dialog .preset-layout {
   height: 100%;
   min-height: 0;
@@ -542,11 +561,6 @@ h2 {
 
 .preset-detail {
   min-height: 0;
-}
-
-.preset-detail-dialog .el-dialog__body {
-  max-height: min(68vh, 640px);
-  overflow-y: auto;
 }
 
 .detail-header-line {
@@ -805,20 +819,63 @@ h2 {
   padding-top: 14px;
 }
 
-.resizable-dialog .el-dialog {
-  width: min(860px, 86vw);
-  height: min(720px, 86vh);
+.fixed-dialog.el-dialog {
+  height: min(660px, 86vh);
   min-width: 640px;
   min-height: 420px;
   max-width: 1180px;
   max-height: 90vh;
-  resize: both;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  resize: none;
 }
 
-.resizable-dialog .el-dialog__body {
-  max-height: calc(100% - 118px);
+.fixed-dialog .el-dialog__header,
+.fixed-dialog .el-dialog__footer {
+  flex: 0 0 auto;
+}
+
+.fixed-dialog .el-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
+}
+
+.dataset-create-dialog.fixed-dialog.el-dialog,
+.dataset-field-dialog.fixed-dialog.el-dialog {
+  width: min(860px, 86vw) !important;
+  height: min(640px, 86vh);
+}
+
+.dataset-row-dialog.fixed-dialog.el-dialog {
+  width: min(780px, 86vw) !important;
+  height: min(620px, 86vh);
+}
+
+.tag-dialog.fixed-dialog.el-dialog {
+  width: min(900px, 86vw) !important;
+  height: min(660px, 86vh);
+}
+
+.tag-detail-dialog.fixed-dialog.el-dialog {
+  width: min(760px, 86vw) !important;
+  height: min(560px, 82vh);
+}
+
+.evaluator-picker-dialog.fixed-dialog.el-dialog {
+  width: min(1180px, 92vw) !important;
+  height: min(760px, 90vh);
+}
+
+.evaluator-picker-dialog.fixed-dialog .el-dialog__body {
+  overflow: hidden;
+}
+
+.preset-detail-dialog.fixed-dialog.el-dialog {
+  width: min(900px, 86vw) !important;
+  height: min(640px, 86vh);
 }
 
 .detail-panel {
@@ -1150,11 +1207,25 @@ h2 {
   vertical-align: middle;
 }
 
+.task-title-status {
+  margin-left: 8px;
+}
+
 .task-status-icon.is-pending {
   color: #8b95a7;
 }
 
+.task-status-icon.is-annotation_pending,
+.task-status-icon.is-skipped {
+  color: #8b95a7;
+}
+
 .task-status-icon.is-running {
+  color: var(--accent);
+  animation: task-status-spin 1.1s linear infinite;
+}
+
+.task-status-icon.is-annotating {
   color: var(--accent);
   animation: task-status-spin 1.1s linear infinite;
 }

@@ -23,7 +23,12 @@ function formatAppBinding(base) {
     return [base.appId || '-', base.appVersionId || '-', base.appAgentAlias || '-'].join(' / ');
 }
 function formatEvaluatorList(evaluators) {
-    return formatNameList(evaluators, (item) => item.evaluatorName || item.versionName);
+    return formatNameList(evaluators, (item) => {
+        const name = item.evaluatorName || item.versionName || '-';
+        const version = item.versionName || '-';
+        const passRate = item.passRate === undefined || item.passRate === null ? '-' : `${item.passRate}%`;
+        return `${name} / ${version} / 通过率 ${passRate}`;
+    });
 }
 function formatTagList(tags) {
     return formatNameList(tags, (item) => item.tagName);
@@ -129,7 +134,7 @@ function formatNameList(items, picker) {
       <el-table-column prop="createdDate" label="创建时间" :width="columnWidths.createdDate" min-width="160">
         <template #default="{ row }">{{ formatTime(row.base.createdDate) }}</template>
       </el-table-column>
-      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="160" fixed="right">
+      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="160" fixed="right" :resizable="false">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDetail(row)">详情</el-button>
           <el-button

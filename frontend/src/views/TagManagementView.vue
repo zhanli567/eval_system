@@ -89,7 +89,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
       <el-table-column prop="lastUpdatedDate" label="更新时间" :width="columnWidths.lastUpdatedDate" min-width="160">
         <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>
       </el-table-column>
-      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="150" fixed="right">
+      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="150" fixed="right" :resizable="false">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetailDialog(row)">详情</el-button>
           <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
@@ -111,7 +111,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
     </div>
   </section>
 
-  <el-dialog v-model="dialogVisible" :title="dialogTitle" width="900px" class="tag-dialog resizable-dialog" :close-on-click-modal="false">
+  <el-dialog v-model="dialogVisible" :title="dialogTitle" width="900px" class="tag-dialog fixed-dialog" :close-on-click-modal="true">
     <el-form label-position="top" class="tag-form">
       <el-form-item>
         <template #label>标签名称 <span class="required-mark">*</span></template>
@@ -208,7 +208,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
     </template>
   </el-dialog>
 
-  <el-dialog v-model="detailDialogVisible" title="标签详情" width="760px" class="tag-dialog tag-detail-dialog resizable-dialog">
+  <el-dialog v-model="detailDialogVisible" title="标签详情" width="760px" class="tag-dialog tag-detail-dialog fixed-dialog" :close-on-click-modal="true">
     <div v-loading="detailLoading" class="tag-detail-body">
       <template v-if="tagDetail">
         <el-descriptions :column="2" border class="tag-detail-descriptions">

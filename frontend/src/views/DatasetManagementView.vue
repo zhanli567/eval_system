@@ -73,7 +73,7 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
       <el-table-column prop="lastUpdatedDate" label="更新时间" :width="columnWidths.lastUpdatedDate" min-width="160">
         <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>
       </el-table-column>
-      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="120" fixed="right">
+      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="120" fixed="right" :resizable="false">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDataset(row)">详情</el-button>
           <el-button link type="danger" @click.stop="removeDataset(row)">删除</el-button>
@@ -94,7 +94,7 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
     </div>
   </section>
 
-  <el-dialog v-model="createVisible" title="创建评测集" width="860px" class="dataset-create-dialog resizable-dialog">
+  <el-dialog v-model="createVisible" title="创建评测集" width="860px" class="dataset-create-dialog fixed-dialog" :close-on-click-modal="true">
     <el-form label-position="top">
       <el-form-item>
         <template #label>评测集名称 <span class="required-mark">*</span></template>
