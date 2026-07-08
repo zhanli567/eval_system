@@ -28,13 +28,13 @@ public class TagService {
     this.tagRepository = tagRepository;
   }
 
-  public PageResponse<TagSummary> listTags(int page, int size, String tagType, String keyword) {
+  public PageResponse<TagSummary> listTags(int page, int size, String tagType, String keyword, String sortBy, String sortOrder) {
     String normalizedType = normalizeOptionalTagType(tagType);
     int safePage = Math.max(page, 1);
     int safeSize = Math.min(Math.max(size, 1), 100);
     int offset = (safePage - 1) * safeSize;
     String like = "%" + (keyword == null ? "" : keyword.trim()) + "%";
-    List<TagSummary> records = tagRepository.listTags(normalizedType, like, safeSize, offset);
+    List<TagSummary> records = tagRepository.listTags(normalizedType, like, sortBy, sortOrder, safeSize, offset);
     long total = tagRepository.countTags(normalizedType, like);
     return new PageResponse<>(records, total, safePage, safeSize);
   }

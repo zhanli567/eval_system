@@ -31,9 +31,11 @@ public class TagController {
       @QueryParam("page") @DefaultValue("1") int page,
       @QueryParam("size") @DefaultValue("10") int size,
       @QueryParam("tagType") String tagType,
-      @QueryParam("keyword") String keyword
+      @QueryParam("keyword") String keyword,
+      @QueryParam("sortBy") @DefaultValue("lastUpdatedDate") String sortBy,
+      @QueryParam("sortOrder") @DefaultValue("desc") String sortOrder
   ) {
-    return ApiResponse.ok(tagService.listTags(page, size, tagType, keyword));
+    return ApiResponse.ok(tagService.listTags(page, size, tagType, keyword, sortBy, sortOrder));
   }
 
   @GET

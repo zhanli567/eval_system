@@ -1,13 +1,12 @@
 <script setup>
-import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
+import { Delete, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useTagManagement } from '../modules/tag/composables/useTagManagement';
-const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, dialogVisible, detailDialogVisible, detailLoading, tagDetail, detailPassOptions, detailFailOptions, editing, dialogTitle, tagForm, tagTypeOptions, booleanOptions, loadTags, openCreateDialog, openDetailDialog, openEditDialog, submitTag, removeTag, addCategoryOption, removeCategoryOption, getTagTypeLabel, formatTime } = useTagManagement();
+const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, sortBy, sortOrder, dialogVisible, detailDialogVisible, detailLoading, tagDetail, detailPassOptions, detailFailOptions, editing, dialogTitle, tagForm, columnWidths, tagTypeOptions, booleanOptions, loadTags, searchTags, changeTagSize, toggleSort, openCreateDialog, openDetailDialog, openEditDialog, submitTag, removeTag, addCategoryOption, removeCategoryOption, handleColumnResize, getTagTypeLabel, formatTime } = useTagManagement();
 </script>
 
 <template>
   <header class="topbar">
     <div>
-      <p class="eyebrow">人工评测</p>
       <h1>标签管理</h1>
     </div>
     <div class="top-actions">
@@ -16,9 +15,9 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
     </div>
   </header>
 
-  <section class="tag-panel">
-    <div class="panel-toolbar">
-      <el-select v-model="tagType" clearable placeholder="全部类型" class="field-select" @change="loadTags">
+  <section class="tag-panel fill-workspace">
+    <div class="panel-toolbar table-toolbar">
+      <el-select v-model="tagType" clearable placeholder="全部类型" class="field-select" @change="searchTags">
         <el-option v-for="item in tagTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
       </el-select>
       <el-input
@@ -28,18 +27,35 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
         class="search-input"
         maxlength="20"
         show-word-limit
-        @keyup.enter="loadTags"
-        @clear="loadTags"
+        @keyup.enter="searchTags"
+        @clear="searchTags"
       >
         <template #prefix>
           <el-icon><Search /></el-icon>
         </template>
       </el-input>
-      <el-button @click="loadTags">搜索</el-button>
+      <el-button @click="searchTags">搜索</el-button>
+      <div class="task-sort-actions">
+        <el-button :class="{ active: sortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleSort('lastUpdatedDate')">
+          更新时间 {{ sortBy === 'lastUpdatedDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
+        </el-button>
+        <el-button :class="{ active: sortBy === 'createdDate' }" :icon="Sort" @click="toggleSort('createdDate')">
+          创建时间 {{ sortBy === 'createdDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
+        </el-button>
+      </div>
     </div>
 
-    <el-table v-loading="tagLoading" :data="tags" row-key="id" tooltip-effect="light" class="tag-table">
-      <el-table-column prop="tagName" label="标签名称" min-width="260" show-overflow-tooltip>
+    <el-table
+      v-loading="tagLoading"
+      :data="tags"
+      row-key="id"
+      border
+      height="100%"
+      tooltip-effect="light"
+      class="tag-table"
+      @header-dragend="handleColumnResize"
+    >
+      <el-table-column prop="tagName" label="标签名称" :width="columnWidths.tagName" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">
           <span
             class="linkish"
@@ -53,18 +69,27 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
           </span>
         </template>
       </el-table-column>
-      <el-table-column label="类型" width="160">
+      <el-table-column prop="tagType" label="类型" :width="columnWidths.tagType" min-width="110">
         <template #default="{ row }">
           <el-tag effect="plain">{{ getTagTypeLabel(row.tagType) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="描述" min-width="300" show-overflow-tooltip>
+      <el-table-column prop="description" label="描述" :width="columnWidths.description" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">{{ row.description || '暂无描述' }}</template>
       </el-table-column>
-      <el-table-column label="创建时间" width="210">
+      <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.createdByName || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="createdDate" label="创建时间" :width="columnWidths.createdDate" min-width="160">
         <template #default="{ row }">{{ formatTime(row.createdDate) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="210" fixed="right">
+      <el-table-column prop="lastUpdatedByName" label="更新人" :width="columnWidths.lastUpdatedByName" min-width="100" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.lastUpdatedByName || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="lastUpdatedDate" label="更新时间" :width="columnWidths.lastUpdatedDate" min-width="160">
+        <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>
+      </el-table-column>
+      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="150" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetailDialog(row)">详情</el-button>
           <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
@@ -75,16 +100,18 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
 
     <div class="pager-row">
       <el-pagination
-        v-model:current-page="tagPage"
-        v-model:page-size="tagSize"
-        layout="total, prev, pager, next"
-        :total="tagTotal"
-        @current-change="loadTags"
-      />
+          v-model:current-page="tagPage"
+          v-model:page-size="tagSize"
+          :page-sizes="[5, 10, 20]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="tagTotal"
+          @size-change="changeTagSize"
+          @current-change="loadTags"
+        />
     </div>
   </section>
 
-  <el-dialog v-model="dialogVisible" :title="dialogTitle" width="900px" class="tag-dialog" :close-on-click-modal="false">
+  <el-dialog v-model="dialogVisible" :title="dialogTitle" width="900px" class="tag-dialog resizable-dialog" :close-on-click-modal="false">
     <el-form label-position="top" class="tag-form">
       <el-form-item>
         <template #label>标签名称 <span class="required-mark">*</span></template>
@@ -181,7 +208,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
     </template>
   </el-dialog>
 
-  <el-dialog v-model="detailDialogVisible" title="标签详情" width="760px" class="tag-dialog tag-detail-dialog">
+  <el-dialog v-model="detailDialogVisible" title="标签详情" width="760px" class="tag-dialog tag-detail-dialog resizable-dialog">
     <div v-loading="detailLoading" class="tag-detail-body">
       <template v-if="tagDetail">
         <el-descriptions :column="2" border class="tag-detail-descriptions">

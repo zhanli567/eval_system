@@ -1,6 +1,8 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { tagApi } from '../../../api/tag';
+import { formatDateTime } from '../../../utils/formatters';
+import { useColumnWidths } from '../../../utils/tableColumns';
 export const tagTypeOptions = [
     { label: '分类', value: 'category' },
     { label: '布尔值', value: 'boolean' },
@@ -20,6 +22,8 @@ export function useTagManagement() {
     const tagSize = ref(10);
     const tagKeyword = ref('');
     const tagType = ref('');
+    const sortBy = ref('lastUpdatedDate');
+    const sortOrder = ref('desc');
     const dialogVisible = ref(false);
     const detailDialogVisible = ref(false);
     const detailLoading = ref(false);
@@ -39,6 +43,16 @@ export function useTagManagement() {
     const dialogTitle = computed(() => (editing.value ? '编辑标签' : '创建标签'));
     const detailPassOptions = computed(() => tagDetail.value?.options.filter((option) => option.optionGroup === 'pass') ?? []);
     const detailFailOptions = computed(() => tagDetail.value?.options.filter((option) => option.optionGroup === 'fail') ?? []);
+    const { columnWidths, handleColumnResize } = useColumnWidths({
+        tagName: { width: 220, min: 160, max: 380 },
+        tagType: { width: 140, min: 110, max: 180 },
+        description: { width: 280, min: 180, max: 520 },
+        createdByName: { width: 140, min: 100, max: 220 },
+        createdDate: { width: 190, min: 160, max: 240 },
+        lastUpdatedByName: { width: 140, min: 100, max: 220 },
+        lastUpdatedDate: { width: 190, min: 160, max: 240 },
+        actions: { width: 180, min: 150, max: 220 }
+    });
     onMounted(async () => {
         await loadTags();
     });
@@ -49,7 +63,9 @@ export function useTagManagement() {
                 page: tagPage.value,
                 size: tagSize.value,
                 tagType: tagType.value,
-                keyword: tagKeyword.value
+                keyword: tagKeyword.value,
+                sortBy: sortBy.value,
+                sortOrder: sortOrder.value
             });
             tags.value = page.records;
             tagTotal.value = page.total;
@@ -106,6 +122,25 @@ export function useTagManagement() {
         finally {
             saving.value = false;
         }
+    }
+    function searchTags() {
+        tagPage.value = 1;
+        return loadTags();
+    }
+    function changeTagSize() {
+        tagPage.value = 1;
+        return loadTags();
+    }
+    function toggleSort(field) {
+        if (sortBy.value === field) {
+            sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc';
+        }
+        else {
+            sortBy.value = field;
+            sortOrder.value = 'desc';
+        }
+        tagPage.value = 1;
+        return loadTags();
     }
     async function removeTag(row) {
         await ElMessageBox.confirm(`确定删除标签“${row.tagName}”吗？`, '删除标签', { type: 'warning' });
@@ -204,14 +239,7 @@ export function useTagManagement() {
     function getTagTypeLabel(value) {
         return tagTypeOptions.find((item) => item.value === value)?.label ?? '-';
     }
-    function formatTime(value) {
-        if (!value)
-            return '-';
-        const numberValue = Number(value);
-        if (Number.isNaN(numberValue))
-            return value;
-        return new Date(numberValue).toLocaleString();
-    }
+    const formatTime = formatDateTime;
     function getErrorMessage(error, fallback) {
         if (error instanceof Error) {
             return error.message || fallback;
@@ -228,6 +256,8 @@ export function useTagManagement() {
         tagSize,
         tagKeyword,
         tagType,
+        sortBy,
+        sortOrder,
         dialogVisible,
         detailDialogVisible,
         detailLoading,
@@ -237,9 +267,13 @@ export function useTagManagement() {
         editing,
         dialogTitle,
         tagForm,
+        columnWidths,
         tagTypeOptions,
         booleanOptions,
         loadTags,
+        searchTags,
+        changeTagSize,
+        toggleSort,
         openCreateDialog,
         openEditDialog,
         openDetailDialog,
@@ -247,6 +281,7 @@ export function useTagManagement() {
         removeTag,
         addCategoryOption,
         removeCategoryOption,
+        handleColumnResize,
         getTagTypeLabel,
         formatTime
     };

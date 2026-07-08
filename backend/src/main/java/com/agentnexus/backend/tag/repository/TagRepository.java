@@ -34,10 +34,15 @@ public class TagRepository {
     this.taskTagMapper = taskTagMapper;
   }
 
-  public List<TagSummary> listTags(String tagType, String like, int size, int offset) {
-    return tagMapper.selectList(tagQuery(tagType, like)
-            .orderByDesc(EvalTag::getCreatedDate)
-            .last("LIMIT " + size + " OFFSET " + offset))
+  public List<TagSummary> listTags(String tagType, String like, String sortBy, String sortOrder, int size, int offset) {
+    LambdaQueryWrapper<EvalTag> query = tagQuery(tagType, like);
+    boolean asc = "asc".equalsIgnoreCase(sortOrder);
+    if ("createdDate".equals(sortBy)) {
+      query.orderBy(true, asc, EvalTag::getCreatedDate);
+    } else {
+      query.orderBy(true, asc, EvalTag::getLastUpdatedDate);
+    }
+    return tagMapper.selectList(query.last("LIMIT " + size + " OFFSET " + offset))
         .stream()
         .map(this::toSummary)
         .toList();
@@ -176,7 +181,9 @@ public class TagRepository {
         tag.getTagName(),
         tag.getTagType(),
         tag.getDescription(),
+        tag.getCreatedByName(),
         tag.getCreatedDate(),
+        tag.getLastUpdatedByName(),
         tag.getLastUpdatedDate());
   }
 

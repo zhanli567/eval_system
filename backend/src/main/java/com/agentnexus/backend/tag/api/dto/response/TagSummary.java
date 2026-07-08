@@ -5,7 +5,9 @@ public record TagSummary(
     String tagName,
     String tagType,
     String description,
+    String createdByName,
     java.time.LocalDateTime createdDate,
+    String lastUpdatedByName,
     java.time.LocalDateTime lastUpdatedDate
 ) {
 }
