@@ -13,17 +13,16 @@ CREATE TABLE IF NOT EXISTS t_eval_task (
   app_agent_alias VARCHAR(128) NOT NULL DEFAULT '',
   started_at VARCHAR(32) NOT NULL DEFAULT '',
   finished_at VARCHAR(32) NOT NULL DEFAULT '',
-  is_deleted SMALLINT NOT NULL DEFAULT 0,
   created_by_name VARCHAR(100) NOT NULL DEFAULT '',
   created_by VARCHAR(36) NOT NULL DEFAULT '',
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
   last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT uq_t_eval_task_space_name UNIQUE (space_id, task_name),
   CONSTRAINT ck_t_eval_task_status CHECK (status IN ('pending', 'running', 'completed', 'failed')),
   CONSTRAINT ck_t_eval_task_app_type CHECK (app_type IN ('none', 'agent')),
-  CONSTRAINT ck_t_eval_task_item_count CHECK (item_count >= 0),
-  CONSTRAINT ck_t_eval_task_is_deleted CHECK (is_deleted IN (0, 1))
+  CONSTRAINT ck_t_eval_task_item_count CHECK (item_count >= 0)
 );
 
 COMMENT ON TABLE t_eval_task IS '评测任务主表';
@@ -47,7 +46,6 @@ COMMENT ON COLUMN t_eval_task.app_version_id IS '智能体应用版本ID，未�
 COMMENT ON COLUMN t_eval_task.app_agent_alias IS '子智能体ID/alias，未指定子智能体时为空';
 COMMENT ON COLUMN t_eval_task.started_at IS '开始执行时间';
 COMMENT ON COLUMN t_eval_task.finished_at IS '结束执行时间';
-COMMENT ON COLUMN t_eval_task.is_deleted IS '是否删除：0否，1是';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_app_field_mapping (
   id VARCHAR(36) PRIMARY KEY,

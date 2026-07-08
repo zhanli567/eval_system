@@ -138,8 +138,7 @@
     FROM t_eval_task t
     JOIN t_eval_dataset d ON t.dataset_id = d.id AND d.space_id = #{spaceId}
     JOIN t_eval_dataset_version v ON t.dataset_version_id = v.id AND v.space_id = #{spaceId}
-    WHERE t.is_deleted = 0
-      AND t.space_id = #{spaceId}
+    WHERE t.space_id = #{spaceId}
       <if test="status != null and status != ''">
         AND t.status = #{status}
       </if>
@@ -153,7 +152,7 @@
     FROM t_eval_task t
     JOIN t_eval_dataset d ON t.dataset_id = d.id AND d.space_id = #{spaceId}
     JOIN t_eval_dataset_version v ON t.dataset_version_id = v.id AND v.space_id = #{spaceId}
-    WHERE t.id = #{taskId} AND t.is_deleted = 0 AND t.space_id = #{spaceId}
+    WHERE t.id = #{taskId} AND t.space_id = #{spaceId}
   </select>
 
   <select id="listEvaluatorDimensions" resultMap="EvaluatorDimensionMap">

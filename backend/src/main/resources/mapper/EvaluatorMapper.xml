@@ -52,8 +52,7 @@
            e.last_updated_date AS lastUpdatedDate
     FROM t_eval_evaluator e
     LEFT JOIN t_eval_evaluator_version v ON e.latest_version_id = v.id AND v.space_id = #{spaceId}
-    WHERE e.is_deleted = 0
-      AND e.space_id = #{spaceId}
+    WHERE e.space_id = #{spaceId}
       <if test="evaluatorType != null and evaluatorType != ''">
         AND e.evaluator_type = #{evaluatorType}
       </if>
@@ -85,7 +84,5 @@
     WHERE v.id = #{versionId}
       AND v.space_id = #{spaceId}
       AND e.space_id = #{spaceId}
-      AND v.is_deleted = 0
-      AND e.is_deleted = 0
   </select>
 </mapper>

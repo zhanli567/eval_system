@@ -410,7 +410,7 @@ public class TaskService {
     if (!List.of(STATUS_PENDING, STATUS_COMPLETED, STATUS_FAILED).contains(task.status())) {
       throw new IllegalArgumentException("Only pending, completed or failed tasks can be deleted");
     }
-    taskRepository.softDeleteTask(taskId, now());
+    taskRepository.deleteTask(taskId);
   }
 
   public AnnotationDetail getAnnotation(String taskId, String taskItemId) {

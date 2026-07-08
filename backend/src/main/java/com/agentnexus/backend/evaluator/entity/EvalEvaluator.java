@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
@@ -26,6 +25,4 @@ public class EvalEvaluator {
   private String evaluatorType;
   private String description;
   private String latestVersionId;
-  @TableField("is_deleted")
-  private Integer isDeleted;
 }

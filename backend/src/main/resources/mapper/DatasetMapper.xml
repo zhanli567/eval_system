@@ -37,8 +37,7 @@
            d.last_updated_date AS lastUpdatedDate
     FROM t_eval_dataset d
     LEFT JOIN t_eval_dataset_version v ON d.latest_published_version_id = v.id AND v.space_id = #{spaceId}
-    WHERE d.is_deleted = 0
-      AND d.space_id = #{spaceId}
+    WHERE d.space_id = #{spaceId}
       AND (#{like} = '%%' OR d.name LIKE #{like})
     ORDER BY d.last_updated_date DESC
     LIMIT #{size} OFFSET #{offset}
@@ -55,7 +54,7 @@
            d.last_updated_date AS lastUpdatedDate
     FROM t_eval_dataset d
     LEFT JOIN t_eval_dataset_version v ON d.latest_published_version_id = v.id AND v.space_id = #{spaceId}
-    WHERE d.id = #{datasetId} AND d.is_deleted = 0 AND d.space_id = #{spaceId}
+    WHERE d.id = #{datasetId} AND d.space_id = #{spaceId}
   </select>
 
   <select id="searchRows" resultMap="RowRecordMap">

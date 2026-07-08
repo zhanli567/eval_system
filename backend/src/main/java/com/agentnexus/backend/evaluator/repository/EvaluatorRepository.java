@@ -49,7 +49,6 @@ public class EvaluatorRepository {
   public long countEvaluators(String evaluatorType, String like) {
     return evaluatorMapper.selectCount(new LambdaQueryWrapper<EvalEvaluator>()
         .eq(EvalEvaluator::getSpaceId, currentSpaceId())
-        .eq(EvalEvaluator::getIsDeleted, 0)
         .eq(StringUtils.hasText(evaluatorType), EvalEvaluator::getEvaluatorType, evaluatorType)
         .like(hasLikeText(like), EvalEvaluator::getEvaluatorName, likeText(like)));
   }
@@ -68,7 +67,6 @@ public class EvaluatorRepository {
     evaluator.setEvaluatorType(evaluatorType);
     evaluator.setDescription(description);
     evaluator.setLatestVersionId(latestVersionId);
-    evaluator.setIsDeleted(0);
     evaluator.setLastUpdatedDate(toLastUpdatedDate(now));
     fillCreated(evaluator);
     evaluatorMapper.insert(evaluator);
@@ -78,7 +76,6 @@ public class EvaluatorRepository {
     evaluatorMapper.update(null, new LambdaUpdateWrapper<EvalEvaluator>()
         .eq(EvalEvaluator::getSpaceId, currentSpaceId())
         .eq(EvalEvaluator::getId, evaluatorId)
-        .eq(EvalEvaluator::getIsDeleted, 0)
         .set(EvalEvaluator::getEvaluatorName, evaluatorName)
         .set(EvalEvaluator::getDescription, description)
         .set(EvalEvaluator::getLastUpdatedBy, currentUserId())
@@ -90,31 +87,27 @@ public class EvaluatorRepository {
     evaluatorMapper.update(null, new LambdaUpdateWrapper<EvalEvaluator>()
         .eq(EvalEvaluator::getSpaceId, currentSpaceId())
         .eq(EvalEvaluator::getId, evaluatorId)
-        .eq(EvalEvaluator::getIsDeleted, 0)
         .set(EvalEvaluator::getLatestVersionId, versionId)
         .set(EvalEvaluator::getLastUpdatedBy, currentUserId())
         .set(EvalEvaluator::getLastUpdatedByName, currentUserName())
         .set(EvalEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
-  public void softDeleteEvaluator(String evaluatorId, String now) {
-    evaluatorMapper.update(null, new LambdaUpdateWrapper<EvalEvaluator>()
-        .eq(EvalEvaluator::getSpaceId, currentSpaceId())
-        .eq(EvalEvaluator::getId, evaluatorId)
-        .set(EvalEvaluator::getIsDeleted, 1)
-        .set(EvalEvaluator::getLastUpdatedBy, currentUserId())
-        .set(EvalEvaluator::getLastUpdatedByName, currentUserName())
-        .set(EvalEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
-  }
-
-  public void softDeleteVersionsByEvaluator(String evaluatorId, String now) {
-    versionMapper.update(null, new LambdaUpdateWrapper<EvalEvaluatorVersion>()
+  public void deleteEvaluator(String evaluatorId) {
+    List<String> versionIds = versionMapper.selectList(new LambdaQueryWrapper<EvalEvaluatorVersion>()
+            .select(EvalEvaluatorVersion::getId)
+            .eq(EvalEvaluatorVersion::getSpaceId, currentSpaceId())
+            .eq(EvalEvaluatorVersion::getEvaluatorId, evaluatorId))
+        .stream()
+        .map(EvalEvaluatorVersion::getId)
+        .toList();
+    versionIds.forEach(versionId -> deleteParams("version", versionId));
+    versionMapper.delete(new LambdaQueryWrapper<EvalEvaluatorVersion>()
         .eq(EvalEvaluatorVersion::getSpaceId, currentSpaceId())
-        .eq(EvalEvaluatorVersion::getEvaluatorId, evaluatorId)
-        .set(EvalEvaluatorVersion::getIsDeleted, 1)
-        .set(EvalEvaluatorVersion::getLastUpdatedBy, currentUserId())
-        .set(EvalEvaluatorVersion::getLastUpdatedByName, currentUserName())
-        .set(EvalEvaluatorVersion::getLastUpdatedDate, toLastUpdatedDate(now)));
+        .eq(EvalEvaluatorVersion::getEvaluatorId, evaluatorId));
+    evaluatorMapper.delete(new LambdaQueryWrapper<EvalEvaluator>()
+        .eq(EvalEvaluator::getSpaceId, currentSpaceId())
+        .eq(EvalEvaluator::getId, evaluatorId));
   }
 
   public void insertVersion(
@@ -141,7 +134,6 @@ public class EvaluatorRepository {
     version.setScoreMin(scoreMin);
     version.setScoreMax(scoreMax);
     version.setPassThreshold(passThreshold);
-    version.setIsDeleted(0);
     version.setLastUpdatedDate(toLastUpdatedDate(now));
     fillCreated(version);
     versionMapper.insert(version);
@@ -162,7 +154,6 @@ public class EvaluatorRepository {
         .eq(EvalEvaluatorVersion::getSpaceId, currentSpaceId())
         .eq(EvalEvaluatorVersion::getId, versionId)
         .eq(EvalEvaluatorVersion::getVersionNo, 0)
-        .eq(EvalEvaluatorVersion::getIsDeleted, 0)
         .set(EvalEvaluatorVersion::getModelId, modelId)
         .set(EvalEvaluatorVersion::getModelName, modelName)
         .set(EvalEvaluatorVersion::getPrompt, prompt)
@@ -181,7 +172,6 @@ public class EvaluatorRepository {
         .eq(EvalEvaluatorVersion::getSpaceId, currentSpaceId())
         .eq(EvalEvaluatorVersion::getEvaluatorId, evaluatorId)
         .eq(EvalEvaluatorVersion::getVersionNo, 0)
-        .eq(EvalEvaluatorVersion::getIsDeleted, 0)
         .last("LIMIT 1"));
     return version == null ? null : version.getId();
   }
@@ -199,7 +189,6 @@ public class EvaluatorRepository {
         .select(EvalEvaluator::getEvaluatorType)
         .eq(EvalEvaluator::getSpaceId, currentSpaceId())
         .eq(EvalEvaluator::getId, evaluatorId)
-        .eq(EvalEvaluator::getIsDeleted, 0)
         .last("LIMIT 1"));
     return evaluator == null ? null : evaluator.getEvaluatorType();
   }
@@ -208,7 +197,6 @@ public class EvaluatorRepository {
     return versionMapper.selectList(new LambdaQueryWrapper<EvalEvaluatorVersion>()
             .eq(EvalEvaluatorVersion::getSpaceId, currentSpaceId())
             .eq(EvalEvaluatorVersion::getEvaluatorId, evaluatorId)
-            .eq(EvalEvaluatorVersion::getIsDeleted, 0)
             .orderByAsc(EvalEvaluatorVersion::getVersionNo))
         .stream()
         .map(this::toVersionDto)

@@ -125,7 +125,6 @@ public class TaskRepository {
     task.setAppAgentAlias(appAgentAlias);
     task.setStartedAt("");
     task.setFinishedAt("");
-    task.setIsDeleted(0);
     task.setLastUpdatedDate(toLastUpdatedDate(now));
     fillCreated(task);
     taskMapper.insert(task);
@@ -288,21 +287,37 @@ public class TaskRepository {
     tagResultMapper.insert(result);
   }
 
-  public void softDeleteTask(String taskId, String now) {
-    taskMapper.update(null, new LambdaUpdateWrapper<EvalTask>()
+  public void deleteTask(String taskId) {
+    evaluatorResultMapper.delete(new LambdaQueryWrapper<EvalTaskEvaluatorResult>()
+        .eq(EvalTaskEvaluatorResult::getSpaceId, currentSpaceId())
+        .eq(EvalTaskEvaluatorResult::getTaskId, taskId));
+    tagResultMapper.delete(new LambdaQueryWrapper<EvalTaskTagResult>()
+        .eq(EvalTaskTagResult::getSpaceId, currentSpaceId())
+        .eq(EvalTaskTagResult::getTaskId, taskId));
+    paramMappingMapper.delete(new LambdaQueryWrapper<EvalTaskEvaluatorParamMapping>()
+        .eq(EvalTaskEvaluatorParamMapping::getSpaceId, currentSpaceId())
+        .eq(EvalTaskEvaluatorParamMapping::getTaskId, taskId));
+    appFieldMappingMapper.delete(new LambdaQueryWrapper<EvalTaskAppFieldMapping>()
+        .eq(EvalTaskAppFieldMapping::getSpaceId, currentSpaceId())
+        .eq(EvalTaskAppFieldMapping::getTaskId, taskId));
+    taskEvaluatorMapper.delete(new LambdaQueryWrapper<EvalTaskEvaluator>()
+        .eq(EvalTaskEvaluator::getSpaceId, currentSpaceId())
+        .eq(EvalTaskEvaluator::getTaskId, taskId));
+    taskTagMapper.delete(new LambdaQueryWrapper<EvalTaskTag>()
+        .eq(EvalTaskTag::getSpaceId, currentSpaceId())
+        .eq(EvalTaskTag::getTaskId, taskId));
+    taskItemMapper.delete(new LambdaQueryWrapper<EvalTaskItem>()
+        .eq(EvalTaskItem::getSpaceId, currentSpaceId())
+        .eq(EvalTaskItem::getTaskId, taskId));
+    taskMapper.delete(new LambdaQueryWrapper<EvalTask>()
         .eq(EvalTask::getSpaceId, currentSpaceId())
-        .eq(EvalTask::getId, taskId)
-        .set(EvalTask::getIsDeleted, 1)
-        .set(EvalTask::getLastUpdatedBy, currentUserId())
-        .set(EvalTask::getLastUpdatedByName, currentUserName())
-        .set(EvalTask::getLastUpdatedDate, toLastUpdatedDate(now)));
+        .eq(EvalTask::getId, taskId));
   }
 
   public void updateTaskStatus(String taskId, String status, String startedAt, String finishedAt, String now) {
     taskMapper.update(null, new LambdaUpdateWrapper<EvalTask>()
         .eq(EvalTask::getSpaceId, currentSpaceId())
         .eq(EvalTask::getId, taskId)
-        .eq(EvalTask::getIsDeleted, 0)
         .set(EvalTask::getStatus, status)
         .set(startedAt != null, EvalTask::getStartedAt, startedAt)
         .set(finishedAt != null, EvalTask::getFinishedAt, finishedAt)
@@ -656,7 +671,6 @@ public class TaskRepository {
   private LambdaQueryWrapper<EvalTask> taskQuery(String status, String like) {
     return new LambdaQueryWrapper<EvalTask>()
         .eq(EvalTask::getSpaceId, currentSpaceId())
-        .eq(EvalTask::getIsDeleted, 0)
         .eq(StringUtils.hasText(status), EvalTask::getStatus, status)
         .like(hasLikeText(like), EvalTask::getTaskName, likeText(like));
   }

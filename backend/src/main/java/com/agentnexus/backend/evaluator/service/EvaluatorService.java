@@ -173,9 +173,7 @@ public class EvaluatorService {
 
   @Transactional
   public void deleteEvaluator(String evaluatorId) {
-    String now = now();
-    evaluatorRepository.softDeleteEvaluator(evaluatorId, now);
-    evaluatorRepository.softDeleteVersionsByEvaluator(evaluatorId, now);
+    evaluatorRepository.deleteEvaluator(evaluatorId);
   }
 
   private EvaluatorConfig attachParams(EvaluatorConfigBase base) {

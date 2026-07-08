@@ -72,7 +72,7 @@ public class DatasetService {
   }
 
   public void deleteDataset(String datasetId) {
-    datasetRepository.softDeleteDataset(datasetId, now());
+    datasetRepository.deleteDataset(datasetId);
   }
 
   public List<DatasetVersionDto> listVersions(String datasetId) {
@@ -229,7 +229,7 @@ public class DatasetService {
     if (version.draft()) {
       throw new IllegalArgumentException("草稿版本不能删除");
     }
-    datasetRepository.softDeleteVersion(versionId, now());
+    datasetRepository.deleteVersion(versionId);
     datasetRepository.refreshDatasetVersionStats(version.datasetId(), now());
   }
 
