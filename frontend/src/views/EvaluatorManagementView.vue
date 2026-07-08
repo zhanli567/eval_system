@@ -67,7 +67,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
           </template>
         </el-table-column>
         <el-table-column prop="latestVersionName" label="最新版本" :width="columnWidths.latestVersionName" min-width="110" />
-        <el-table-column prop="description" label="描述" :width="columnWidths.description" min-width="180" show-overflow-tooltip>
+        <el-table-column prop="description" label="描述" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">{{ row.description || '暂无描述' }}</template>
         </el-table-column>
         <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100" show-overflow-tooltip>

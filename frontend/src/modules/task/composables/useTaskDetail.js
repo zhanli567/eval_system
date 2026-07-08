@@ -2,13 +2,14 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { taskApi } from '../../../api/task';
+import { formatDateTime } from '../../../utils/formatters';
 export function useTaskDetail(taskId) {
     const router = useRouter();
     const loading = ref(false);
     const starting = ref(false);
     const detail = ref();
     const page = ref(1);
-    const size = ref(8);
+    const size = ref(10);
     let pollTimer;
     const base = computed(() => detail.value?.base);
     const fields = computed(() => detail.value?.fields ?? []);
@@ -43,6 +44,10 @@ export function useTaskDetail(taskId) {
                 loading.value = false;
             }
         }
+    }
+    async function changeSize() {
+        page.value = 1;
+        await loadDetail();
     }
     function backToList() {
         router.push({ name: 'tasks' });
@@ -90,24 +95,12 @@ export function useTaskDetail(taskId) {
         };
         return value ? map[value] || value : '-';
     }
-    function statusTagType(value) {
-        if (value === 'completed')
-            return 'success';
-        if (value === 'running' || value === 'annotation_pending')
-            return 'primary';
-        if (value === 'failed')
-            return 'danger';
-        return 'info';
-    }
     function passTagType(value) {
         if (value === 'pass')
             return 'success';
         if (value === 'fail')
             return 'danger';
         return 'info';
-    }
-    function formatRate(value) {
-        return value === undefined || value === null ? '-' : `${value}%`;
     }
     function tagTypeLabel(value) {
         const map = {
@@ -118,14 +111,7 @@ export function useTaskDetail(taskId) {
         };
         return value ? map[value] || value : '-';
     }
-    function formatTime(value) {
-        if (!value)
-            return '-';
-        const numberValue = Number(value);
-        if (Number.isNaN(numberValue))
-            return value;
-        return new Date(numberValue).toLocaleString();
-    }
+    const formatTime = formatDateTime;
     return {
         loading,
         starting,
@@ -142,10 +128,9 @@ export function useTaskDetail(taskId) {
         backToList,
         startTask,
         openAnnotation,
+        changeSize,
         statusLabel,
-        statusTagType,
         passTagType,
-        formatRate,
         tagTypeLabel,
         formatTime
     };

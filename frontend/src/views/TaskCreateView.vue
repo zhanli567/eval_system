@@ -183,8 +183,7 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
               <h3>字段映射</h3>
               <div v-for="param in block.params" :key="paramKey(param)" class="param-mapping-row">
                 <div class="param-cell">
-                  <strong>{{ param.paramName }}</strong>
-                  <el-tag v-if="param.required" size="small" type="danger" effect="plain">必填</el-tag>
+                  <strong>{{ param.paramName }}<span v-if="param.required" class="required-mark">*</span></strong>
                   <span>{{ param.dataType }}</span>
                 </div>
                 <span class="mapping-arrow">→</span>

@@ -115,7 +115,7 @@ function formatNameList(items, picker) {
           {{ formatAppBinding(row.base) }}
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="描述" :width="columnWidths.description" min-width="180" show-overflow-tooltip>
+      <el-table-column prop="description" label="描述" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">{{ row.base.description || '暂无描述' }}</template>
       </el-table-column>
       <el-table-column column-key="evaluators" label="评估器" :width="columnWidths.evaluators" min-width="160" show-overflow-tooltip>

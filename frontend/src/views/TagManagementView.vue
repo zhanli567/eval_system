@@ -74,7 +74,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
           <el-tag effect="plain">{{ getTagTypeLabel(row.tagType) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="描述" :width="columnWidths.description" min-width="180" show-overflow-tooltip>
+      <el-table-column prop="description" label="描述" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">{{ row.description || '暂无描述' }}</template>
       </el-table-column>
       <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100" show-overflow-tooltip>

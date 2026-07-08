@@ -6,7 +6,7 @@ import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
 import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
-const { loading, starting, page, size, base, fields, evaluators, tags, rows, total, loadDetail, backToList, startTask, openAnnotation, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
+const { loading, starting, page, size, base, fields, evaluators, tags, rows, total, loadDetail, backToList, startTask, openAnnotation, changeSize, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -28,15 +28,23 @@ function findTagResult(row, taskTagId) {
 function findEvaluatorResult(row, taskEvaluatorId) {
     return row.evaluatorResults.find((item) => item.taskEvaluatorId === taskEvaluatorId);
 }
+function formatNameVersion(name, version) {
+    return `${name || '-'} / ${version || '-'}`;
+}
 function formatAppBinding(task) {
-    if (!task || task.appType !== 'agent')
+    if (!task || task.appType !== 'agent' || !task.appId)
         return '-';
-    const parts = [task.appId || '智能体应用'];
-    if (task.appVersionId)
-        parts.push(`快照 ${task.appVersionId}`);
-    if (task.appAgentAlias)
-        parts.push(`子智能体 ${task.appAgentAlias}`);
-    return parts.join(' / ');
+    return [task.appId || '-', task.appVersionId || '-', task.appAgentAlias || '-'].join(' / ');
+}
+function formatPassRate(value) {
+    return value === undefined || value === null ? '-' : `${value}%`;
+}
+function formatEvaluatorDimension(evaluator) {
+    const name = evaluator.evaluatorName || evaluator.versionName || '-';
+    return `${name} / ${evaluator.versionName || '-'} / 通过率 ${formatPassRate(evaluator.passRate)}`;
+}
+function formatTagDimension(tag) {
+    return `${tag.tagName || '-'}（${tagTypeLabel(tag.tagType)}）`;
 }
 function isScoredEvaluatorResult(result) {
     return Boolean(result && (result.status === 'completed' || result.score != null || result.passResult));
@@ -79,43 +87,45 @@ function evaluatorResultLabel(result) {
   <section class="task-detail-shell" v-loading="loading">
     <section class="task-basic-band">
       <h2>基础信息</h2>
-      <div class="task-basic-grid">
-        <div>
+      <div class="task-basic-grid task-detail-info-grid">
+        <div class="task-info-item">
           <span>评测集</span>
-          <strong>{{ base?.datasetName || '-' }} {{ base?.datasetVersionName || '' }}</strong>
+          <strong>{{ formatNameVersion(base?.datasetName, base?.datasetVersionName) }}</strong>
         </div>
-        <div>
+        <div class="task-info-item">
           <span>评测应用</span>
           <strong>{{ formatAppBinding(base) }}</strong>
         </div>
-        <div>
+        <div class="task-info-item">
+          <span>创建人</span>
+          <strong>{{ base?.createdByName || '-' }}</strong>
+        </div>
+        <div class="task-info-item">
           <span>创建时间</span>
           <strong>{{ formatTime(base?.createdDate) }}</strong>
         </div>
-        <div>
-          <span>更新时间</span>
-          <strong>{{ formatTime(base?.lastUpdatedDate) }}</strong>
-        </div>
-        <div>
+        <div class="task-info-item task-info-full">
           <span>描述</span>
           <strong>{{ base?.description || '暂无描述' }}</strong>
         </div>
-      </div>
-      <div class="dimension-summary-row">
-        <span class="dimension-summary-label">评测维度</span>
-        <div v-if="evaluators.length" class="dimension-summary-group">
-          <strong>评估器</strong>
-          <el-tag v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" class="dimension-summary-pill" type="info" effect="light">
-            {{ evaluator.evaluatorName }}
-          </el-tag>
+        <div class="task-info-item task-info-full">
+          <span>评测维度</span>
+          <div class="dimension-summary-row task-dimension-summary">
+            <div v-if="evaluators.length" class="dimension-summary-group">
+              <strong>评估器</strong>
+              <el-tag v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" class="dimension-summary-pill" type="info" effect="light">
+                {{ formatEvaluatorDimension(evaluator) }}
+              </el-tag>
+            </div>
+            <div v-if="tags.length" class="dimension-summary-group">
+              <strong>标签</strong>
+              <el-tag v-for="tag in tags" :key="tag.taskTagId" class="dimension-summary-pill" type="info" effect="light">
+                {{ formatTagDimension(tag) }}
+              </el-tag>
+            </div>
+            <span v-if="!evaluators.length && !tags.length" class="dimension-summary-empty">暂无评测维度</span>
+          </div>
         </div>
-        <div v-if="tags.length" class="dimension-summary-group">
-          <strong>标签</strong>
-          <el-tag v-for="tag in tags" :key="tag.taskTagId" class="dimension-summary-pill" type="info" effect="light">
-            {{ tag.tagName }}（{{ tagTypeLabel(tag.tagType) }}）
-          </el-tag>
-        </div>
-        <span v-if="!evaluators.length && !tags.length" class="dimension-summary-empty">暂无评测维度</span>
       </div>
     </section>
 
@@ -200,8 +210,10 @@ function evaluatorResultLabel(result) {
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="size"
-          layout="total, prev, pager, next"
+          :page-sizes="[5, 10, 20]"
+          layout="total, sizes, prev, pager, next, jumper"
           :total="total"
+          @size-change="changeSize"
           @current-change="loadDetail"
         />
       </div>

@@ -58,7 +58,7 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
       </el-table-column>
       <el-table-column prop="publishedVersionCount" label="版本数量" :width="columnWidths.publishedVersionCount" min-width="100" />
       <el-table-column prop="latestItemCount" label="数据量" :width="columnWidths.latestItemCount" min-width="90" />
-      <el-table-column prop="description" label="描述" :width="columnWidths.description" min-width="180" show-overflow-tooltip>
+      <el-table-column prop="description" label="描述" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">{{ row.description || '暂无描述' }}</template>
       </el-table-column>
       <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100" show-overflow-tooltip>
