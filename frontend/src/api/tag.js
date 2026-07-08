@@ -11,5 +11,8 @@ export const tagApi = {
     },
     updateTag(tagId, data) {
         return unwrap(http.post(`/tags/${tagId}`, data));
+    },
+    deleteTag(tagId) {
+        return unwrap(http.post(`/tags/${tagId}/delete`));
     }
 };

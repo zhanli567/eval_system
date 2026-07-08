@@ -1,7 +1,7 @@
 <script setup>
 import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useTagManagement } from '../modules/tag/composables/useTagManagement';
-const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, dialogVisible, detailDialogVisible, detailLoading, tagDetail, detailPassOptions, detailFailOptions, editing, dialogTitle, tagForm, tagTypeOptions, booleanOptions, loadTags, openCreateDialog, openDetailDialog, openEditDialog, submitTag, addCategoryOption, removeCategoryOption, getTagTypeLabel, formatTime } = useTagManagement();
+const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, dialogVisible, detailDialogVisible, detailLoading, tagDetail, detailPassOptions, detailFailOptions, editing, dialogTitle, tagForm, tagTypeOptions, booleanOptions, loadTags, openCreateDialog, openDetailDialog, openEditDialog, submitTag, removeTag, addCategoryOption, removeCategoryOption, getTagTypeLabel, formatTime } = useTagManagement();
 </script>
 
 <template>
@@ -64,10 +64,11 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
       <el-table-column label="创建时间" width="210">
         <template #default="{ row }">{{ formatTime(row.createdDate) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column label="操作" width="210" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetailDialog(row)">详情</el-button>
           <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
+          <el-button link type="danger" @click="removeTag(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>

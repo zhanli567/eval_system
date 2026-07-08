@@ -90,6 +90,15 @@ public class TagService {
     return getTag(tagId);
   }
 
+  @Transactional
+  public void deleteTag(String tagId) {
+    findExistingTag(tagId);
+    if (tagRepository.countTaskBindings(tagId) > 0) {
+      throw new IllegalArgumentException("标签已被评测任务使用，不能删除");
+    }
+    tagRepository.deleteTag(tagId);
+  }
+
   private TagDetail toDetail(TagConfig config) {
     return new TagDetail(
         config.id(),

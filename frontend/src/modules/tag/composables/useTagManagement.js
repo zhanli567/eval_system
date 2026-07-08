@@ -1,5 +1,5 @@
 import { computed, onMounted, reactive, ref } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { tagApi } from '../../../api/tag';
 export const tagTypeOptions = [
     { label: '分类', value: 'category' },
@@ -106,6 +106,15 @@ export function useTagManagement() {
         finally {
             saving.value = false;
         }
+    }
+    async function removeTag(row) {
+        await ElMessageBox.confirm(`确定删除标签“${row.tagName}”吗？`, '删除标签', { type: 'warning' });
+        await tagApi.deleteTag(row.id);
+        ElMessage.success('已删除');
+        if (tags.value.length === 1 && tagPage.value > 1) {
+            tagPage.value -= 1;
+        }
+        await loadTags();
     }
     function resetForm() {
         tagForm.tagName = '';
@@ -235,6 +244,7 @@ export function useTagManagement() {
         openEditDialog,
         openDetailDialog,
         submitTag,
+        removeTag,
         addCategoryOption,
         removeCategoryOption,
         getTagTypeLabel,

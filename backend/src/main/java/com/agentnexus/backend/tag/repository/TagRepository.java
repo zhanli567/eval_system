@@ -12,6 +12,8 @@ import com.agentnexus.backend.tag.mapper.TagMapper;
 import com.agentnexus.backend.tag.mapper.TagOptionMapper;
 import com.agentnexus.backend.tag.entity.EvalTag;
 import com.agentnexus.backend.tag.entity.EvalTagOption;
+import com.agentnexus.backend.task.entity.EvalTaskTag;
+import com.agentnexus.backend.task.mapper.TaskTagMapper;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -24,10 +26,12 @@ import org.springframework.util.StringUtils;
 public class TagRepository {
   private final TagMapper tagMapper;
   private final TagOptionMapper optionMapper;
+  private final TaskTagMapper taskTagMapper;
 
-  public TagRepository(TagMapper tagMapper, TagOptionMapper optionMapper) {
+  public TagRepository(TagMapper tagMapper, TagOptionMapper optionMapper, TaskTagMapper taskTagMapper) {
     this.tagMapper = tagMapper;
     this.optionMapper = optionMapper;
+    this.taskTagMapper = taskTagMapper;
   }
 
   public List<TagSummary> listTags(String tagType, String like, int size, int offset) {
@@ -132,6 +136,19 @@ public class TagRepository {
     optionMapper.delete(new LambdaQueryWrapper<EvalTagOption>()
         .eq(EvalTagOption::getSpaceId, currentSpaceId())
         .eq(EvalTagOption::getTagId, tagId));
+  }
+
+  public int countTaskBindings(String tagId) {
+    return Math.toIntExact(taskTagMapper.selectCount(new LambdaQueryWrapper<EvalTaskTag>()
+        .eq(EvalTaskTag::getSpaceId, currentSpaceId())
+        .eq(EvalTaskTag::getTagId, tagId)));
+  }
+
+  public void deleteTag(String tagId) {
+    deleteOptions(tagId);
+    tagMapper.delete(new LambdaQueryWrapper<EvalTag>()
+        .eq(EvalTag::getSpaceId, currentSpaceId())
+        .eq(EvalTag::getId, tagId));
   }
 
   public void insertOption(String optionId, String tagId, String optionName, String optionGroup, int displayOrder, String now) {

@@ -53,4 +53,11 @@ public class TagController {
   public ApiResponse<TagDetail> updateTag(@PathParam("tagId") String tagId, TagInput request) {
     return ApiResponse.ok(tagService.updateTag(tagId, request));
   }
+
+  @POST
+  @Path("/{tagId}/delete")
+  public ApiResponse<Void> deleteTag(@PathParam("tagId") String tagId) {
+    tagService.deleteTag(tagId);
+    return ApiResponse.ok(null);
+  }
 }
