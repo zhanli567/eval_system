@@ -5,8 +5,8 @@
   --line: #e6ebf3;
   --ink: #1f2942;
   --muted: #7b8498;
-  --accent: #635bff;
-  --accent-soft: #eef0ff;
+  --accent: #2563eb;
+  --accent-soft: #eff6ff;
   --success: #20b486;
   --radius: 8px;
   --sidebar-width: 236px;
@@ -76,23 +76,21 @@ body {
   overflow-y: auto;
 }
 
-.brand-block {
+.brand-logo-slot {
   flex: 0 0 auto;
-  min-width: 150px;
+  width: 156px;
+  height: 44px;
+  border: 1px dashed #bfd2f8;
+  border-radius: 7px;
+  background: #f8fbff;
+  overflow: hidden;
 }
 
-.brand-block span {
+.brand-logo-slot img {
+  width: 100%;
+  height: 100%;
   display: block;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.brand-block strong {
-  display: block;
-  margin-top: 4px;
-  color: var(--ink);
-  font-size: 20px;
+  object-fit: contain;
 }
 
 .space-switcher {
@@ -138,9 +136,11 @@ body {
 }
 
 .nav-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
-  min-height: 56px;
+  min-height: 44px;
   padding: 10px 12px;
   border: 1px solid transparent;
   border-radius: var(--radius);
@@ -152,29 +152,25 @@ body {
   text-decoration: none;
 }
 
-.nav-item span,
-.nav-item small {
-  display: block;
-}
-
 .nav-item span {
   font-weight: 700;
 }
 
-.nav-item small {
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 12px;
+.nav-icon {
+  flex: 0 0 auto;
+  color: #5f75a5;
+  font-size: 18px;
 }
 
 .nav-item:hover,
 .nav-item.active {
-  border-color: #d9ddff;
+  border-color: #bfdbfe;
   background: var(--accent-soft);
   color: var(--accent);
 }
 
-.nav-item.active small {
+.nav-item:hover .nav-icon,
+.nav-item.active .nav-icon {
   color: var(--accent);
 }
 
@@ -313,7 +309,7 @@ h2 {
 
 .evaluator-tabs button:hover,
 .evaluator-tabs button.active {
-  border-color: #d9ddff;
+  border-color: #bfdbfe;
   background: var(--accent-soft);
   color: var(--accent);
 }
@@ -350,7 +346,7 @@ h2 {
 
 .preset-category-rail button:hover,
 .preset-category-rail button.active {
-  border-color: #d9ddff;
+  border-color: #bfdbfe;
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 700;
@@ -752,7 +748,7 @@ h2 {
 
 .version-item:hover,
 .version-item.active {
-  border-color: #d9ddff;
+  border-color: #bfdbfe;
   background: var(--accent-soft);
   color: var(--accent);
 }
@@ -1030,7 +1026,7 @@ h2 {
 
 .task-sort-actions .active {
   color: var(--accent);
-  border-color: #d9ddff;
+  border-color: #bfdbfe;
   background: var(--accent-soft);
 }
 

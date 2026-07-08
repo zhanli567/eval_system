@@ -1,12 +1,20 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
+import { Collection, DataAnalysis, Finished, PriceTag } from '@element-plus/icons-vue';
 import { remoteCallApi } from '../api/remoteCall';
 import { appModules } from '../config/appModules';
 import { activeSpaces, findSelectedSpace, resolveSpaceSelection, SPACE_STORAGE_KEY } from '../utils/spaceSelection';
 
 const route = useRoute();
 const activeModuleKey = computed(() => String(route.meta.moduleKey ?? 'datasets'));
+const brandLogoUrl = '';
+const moduleIcons = {
+    datasets: Collection,
+    tags: PriceTag,
+    evaluators: Finished,
+    tasks: DataAnalysis
+};
 const spaces = ref([]);
 const spacesReady = ref(false);
 const spaceLoading = ref(false);
@@ -49,9 +57,8 @@ function persistSpaceId(spaceId) {
   <main class="app-shell">
     <header class="app-header">
       <div class="brand-space-row">
-        <div class="brand-block">
-          <span>智能体平台</span>
-          <strong>评测中心</strong>
+        <div class="brand-logo-slot" aria-label="品牌图片占位">
+          <img v-if="brandLogoUrl" :src="brandLogoUrl" alt="评测中心" />
         </div>
 
         <div class="space-switcher">
@@ -92,8 +99,8 @@ function persistSpaceId(spaceId) {
             class="nav-item"
             :class="{ active: activeModuleKey === item.key }"
           >
+            <el-icon class="nav-icon"><component :is="moduleIcons[item.key]" /></el-icon>
             <span>{{ item.title }}</span>
-            <small>{{ item.eyebrow }}</small>
           </RouterLink>
         </nav>
       </aside>
