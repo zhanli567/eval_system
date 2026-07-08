@@ -11,6 +11,8 @@ public interface DatasetMapper extends BaseMapper<EvalDataset> {
   List<DatasetSummary> listDatasetSummaries(
       @Param("spaceId") String spaceId,
       @Param("like") String like,
+      @Param("orderColumn") String orderColumn,
+      @Param("orderDirection") String orderDirection,
       @Param("size") int size,
       @Param("offset") int offset
   );

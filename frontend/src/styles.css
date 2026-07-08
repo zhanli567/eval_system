@@ -192,6 +192,7 @@ body {
 }
 
 .workspace:has(.task-panel),
+.workspace:has(.fill-workspace),
 .workspace:has(.task-detail-shell),
 .workspace:has(.annotation-shell) {
   overflow: hidden;
@@ -287,6 +288,37 @@ h2 {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: 0 12px 32px rgba(31, 41, 66, 0.06);
+}
+
+.fill-workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fill-workspace .panel-toolbar,
+.fill-workspace .pager-row,
+.fill-workspace .version-head {
+  flex: 0 0 auto;
+}
+
+.fill-workspace .el-table {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.detail-panel.fill-workspace {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+.detail-panel.fill-workspace .version-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .evaluator-tabs {
@@ -656,6 +688,10 @@ h2 {
   margin-bottom: 14px;
 }
 
+.table-toolbar {
+  flex-wrap: wrap;
+}
+
 .search-input {
   width: 300px;
 }
@@ -704,6 +740,22 @@ h2 {
 .pager-row {
   justify-content: flex-end;
   padding-top: 14px;
+}
+
+.resizable-dialog .el-dialog {
+  width: min(860px, 86vw);
+  height: min(720px, 86vh);
+  min-width: 640px;
+  min-height: 420px;
+  max-width: 1180px;
+  max-height: 90vh;
+  resize: both;
+  overflow: auto;
+}
+
+.resizable-dialog .el-dialog__body {
+  max-height: calc(100% - 118px);
+  overflow-y: auto;
 }
 
 .detail-panel {

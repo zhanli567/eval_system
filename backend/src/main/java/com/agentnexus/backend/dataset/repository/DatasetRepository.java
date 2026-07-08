@@ -51,9 +51,9 @@ public class DatasetRepository {
     this.cellMapper = cellMapper;
   }
 
-  public List<DatasetSummary> listDatasetSummaries(String like, int size, int offset) {
+  public List<DatasetSummary> listDatasetSummaries(String like, String orderColumn, String orderDirection, int size, int offset) {
     return CurrentSpaceHolder.callWithSpace(currentSpaceId(), () ->
-        datasetMapper.listDatasetSummaries(currentSpaceId(), like, size, offset));
+        datasetMapper.listDatasetSummaries(currentSpaceId(), like, orderColumn, orderDirection, size, offset));
   }
 
   public long countDatasetSummaries(String like) {

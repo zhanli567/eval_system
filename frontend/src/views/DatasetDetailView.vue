@@ -5,7 +5,7 @@ import { ArrowDown, Back, Delete, Plus, Refresh } from '@element-plus/icons-vue'
 import { useDatasetDetail } from '../modules/dataset/composables/useDatasetDetail';
 const route = useRoute();
 const datasetId = computed(() => String(route.params.datasetId ?? ''));
-const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tableSize, searchFieldId, searchKeyword, fieldVisible, rowVisible, rowEditingId, excelInput, coverExcelInput, draggedFieldIndex, dragOverFieldIndex, fieldForm, rowForm, activeVersion, isDraft, tableRows, tableTotal, fields, dataTableKey, loadDataset, selectVersion, loadDetail, backToList, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, openFieldDialog, submitFields, openRowDialog, submitRow, removeRow, handleAddDataCommand, importExcel, coverExcel, publishDraft, removeVersion, coverDraft } = useDatasetDetail(datasetId);
+const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tableSize, searchFieldId, searchKeyword, fieldVisible, rowVisible, rowEditingId, excelInput, coverExcelInput, draggedFieldIndex, dragOverFieldIndex, fieldForm, rowForm, activeVersion, isDraft, tableRows, tableTotal, fields, dataTableKey, loadDataset, selectVersion, loadDetail, changeTableSize, backToList, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, openFieldDialog, submitFields, openRowDialog, submitRow, removeRow, handleAddDataCommand, importExcel, coverExcel, publishDraft, removeVersion, coverDraft } = useDatasetDetail(datasetId);
 </script>
 
 <template>
@@ -19,7 +19,7 @@ const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tab
     </div>
   </header>
 
-  <section v-if="versions.length" class="detail-panel standalone-detail-panel">
+  <section v-if="versions.length" class="detail-panel standalone-detail-panel fill-workspace">
     <aside class="version-rail">
       <div class="rail-title">
         <span>评测集版本</span>
@@ -78,7 +78,7 @@ const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tab
         <el-button @click="loadDetail">筛选</el-button>
       </div>
 
-      <el-table :key="dataTableKey" :data="tableRows" row-key="id" border tooltip-effect="light" class="data-table">
+      <el-table :key="dataTableKey" :data="tableRows" row-key="id" border height="100%" tooltip-effect="light" class="data-table">
         <el-table-column label="序号" width="90">
           <template #default="{ row }"># {{ row.rowNo }}</template>
         </el-table-column>
@@ -109,8 +109,10 @@ const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tab
         <el-pagination
           v-model:current-page="tablePage"
           v-model:page-size="tableSize"
-          layout="total, prev, pager, next"
+          :page-sizes="[5, 10, 20]"
+          layout="total, sizes, prev, pager, next, jumper"
           :total="tableTotal"
+          @size-change="changeTableSize"
           @current-change="loadDetail"
         />
       </div>
@@ -119,7 +121,7 @@ const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tab
 
   <el-empty v-else v-loading="detailLoading" description="暂无版本数据" />
 
-  <el-dialog v-model="fieldVisible" title="编辑表头" width="780px">
+  <el-dialog v-model="fieldVisible" title="编辑表头" width="860px" class="resizable-dialog">
     <div class="dialog-subtitle">
       <span>草稿表结构</span>
       <el-button link type="primary" :icon="Plus" @click="addField(fieldForm)">添加列</el-button>
@@ -165,7 +167,7 @@ const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tab
     </template>
   </el-dialog>
 
-  <el-dialog v-model="rowVisible" :title="rowEditingId ? '编辑数据' : '新增数据'" width="720px">
+  <el-dialog v-model="rowVisible" :title="rowEditingId ? '编辑数据' : '新增数据'" width="780px" class="resizable-dialog">
     <el-form label-position="top">
       <el-form-item v-for="field in fields" :key="field.id">
         <template #label>

@@ -43,12 +43,16 @@ public class DatasetService {
     this.datasetRepository = datasetRepository;
   }
 
-  public PageResponse<DatasetSummary> listDatasets(int page, int size, String keyword) {
-    int offset = Math.max(page - 1, 0) * size;
+  public PageResponse<DatasetSummary> listDatasets(int page, int size, String keyword, String sortBy, String sortOrder) {
+    int safePage = Math.max(page, 1);
+    int safeSize = Math.min(Math.max(size, 1), 100);
+    int offset = (safePage - 1) * safeSize;
     String like = "%" + (keyword == null ? "" : keyword.trim()) + "%";
-    List<DatasetSummary> records = datasetRepository.listDatasetSummaries(like, size, offset);
+    String orderColumn = "createdDate".equals(sortBy) ? "d.created_date" : "d.last_updated_date";
+    String orderDirection = "asc".equalsIgnoreCase(sortOrder) ? "ASC" : "DESC";
+    List<DatasetSummary> records = datasetRepository.listDatasetSummaries(like, orderColumn, orderDirection, safeSize, offset);
     long total = datasetRepository.countDatasetSummaries(like);
-    return new PageResponse<>(records, total, page, size);
+    return new PageResponse<>(records, total, safePage, safeSize);
   }
 
   @Transactional

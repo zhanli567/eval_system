@@ -1,13 +1,12 @@
 <script setup>
-import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
+import { Delete, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useDatasetList } from '../modules/dataset/composables/useDatasetList';
-const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datasetKeyword, createVisible, draggedFieldIndex, dragOverFieldIndex, createForm, loadDatasets, openDataset, openCreateDialog, submitCreate, removeDataset, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, formatTime } = useDatasetList();
+const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datasetKeyword, sortBy, sortOrder, createVisible, draggedFieldIndex, dragOverFieldIndex, createForm, columnWidths, loadDatasets, searchDatasets, changeDatasetSize, toggleSort, openDataset, openCreateDialog, submitCreate, removeDataset, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, handleColumnResize, formatTime } = useDatasetList();
 </script>
 
 <template>
   <header class="topbar">
     <div>
-      <p class="eyebrow">应用评测</p>
       <h1>评测集管理</h1>
     </div>
     <div class="top-actions">
@@ -16,48 +15,65 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
     </div>
   </header>
 
-  <section class="dataset-panel">
-    <div class="panel-toolbar">
+  <section class="dataset-panel fill-workspace">
+    <div class="panel-toolbar table-toolbar">
       <el-input
         v-model="datasetKeyword"
         clearable
         placeholder="请输入评测集名称"
         class="search-input"
-        @keyup.enter="loadDatasets"
-        @clear="loadDatasets"
+        @keyup.enter="searchDatasets"
+        @clear="searchDatasets"
       >
         <template #prefix>
           <el-icon><Search /></el-icon>
         </template>
       </el-input>
-      <el-button @click="loadDatasets">搜索</el-button>
+      <el-button @click="searchDatasets">搜索</el-button>
+      <div class="task-sort-actions">
+        <el-button :class="{ active: sortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleSort('lastUpdatedDate')">
+          更新时间 {{ sortBy === 'lastUpdatedDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
+        </el-button>
+        <el-button :class="{ active: sortBy === 'createdDate' }" :icon="Sort" @click="toggleSort('createdDate')">
+          创建时间 {{ sortBy === 'createdDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
+        </el-button>
+      </div>
     </div>
 
     <el-table
       v-loading="datasetLoading"
       :data="datasets"
       row-key="id"
+      border
+      height="100%"
       highlight-current-row
       tooltip-effect="light"
       class="dataset-table"
+      @header-dragend="handleColumnResize"
     >
-      <el-table-column prop="name" label="评测集名称" min-width="220">
+      <el-table-column prop="name" label="评测集名称" :width="columnWidths.name" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">
           <button class="table-link" type="button" @click.stop="openDataset(row)">{{ row.name }}</button>
         </template>
       </el-table-column>
-      <el-table-column prop="publishedVersionCount" label="版本数量" width="110" />
-      <el-table-column prop="latestItemCount" label="数据量" width="110" />
-      <el-table-column prop="description" label="描述" min-width="260" show-overflow-tooltip>
+      <el-table-column prop="publishedVersionCount" label="版本数量" :width="columnWidths.publishedVersionCount" min-width="100" />
+      <el-table-column prop="latestItemCount" label="数据量" :width="columnWidths.latestItemCount" min-width="90" />
+      <el-table-column prop="description" label="描述" :width="columnWidths.description" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">{{ row.description || '暂无描述' }}</template>
       </el-table-column>
-      <el-table-column label="创建时间" width="190">
+      <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.createdByName || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="createdDate" label="创建时间" :width="columnWidths.createdDate" min-width="160">
         <template #default="{ row }">{{ formatTime(row.createdDate) }}</template>
       </el-table-column>
-      <el-table-column label="更新时间" width="190">
+      <el-table-column prop="lastUpdatedByName" label="更新人" :width="columnWidths.lastUpdatedByName" min-width="100" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.lastUpdatedByName || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="lastUpdatedDate" label="更新时间" :width="columnWidths.lastUpdatedDate" min-width="160">
         <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="150" fixed="right">
+      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="120" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDataset(row)">详情</el-button>
           <el-button link type="danger" @click.stop="removeDataset(row)">删除</el-button>
@@ -69,16 +85,19 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
       <el-pagination
         v-model:current-page="datasetPage"
         v-model:page-size="datasetSize"
-        layout="total, prev, pager, next"
+        :page-sizes="[5, 10, 20]"
+        layout="total, sizes, prev, pager, next, jumper"
         :total="datasetTotal"
+        @size-change="changeDatasetSize"
         @current-change="loadDatasets"
       />
     </div>
   </section>
 
-  <el-dialog v-model="createVisible" title="创建评测集" width="760px" class="dataset-create-dialog">
+  <el-dialog v-model="createVisible" title="创建评测集" width="860px" class="dataset-create-dialog resizable-dialog">
     <el-form label-position="top">
-      <el-form-item label="评测集名称">
+      <el-form-item>
+        <template #label>评测集名称 <span class="required-mark">*</span></template>
         <el-input v-model="createForm.name" maxlength="50" show-word-limit />
       </el-form-item>
       <el-form-item label="描述">

@@ -40,9 +40,11 @@ public class DatasetController {
   public ApiResponse<PageResponse<DatasetSummary>> listDatasets(
       @QueryParam("page") @DefaultValue("1") int page,
       @QueryParam("size") @DefaultValue("10") int size,
-      @QueryParam("keyword") String keyword
+      @QueryParam("keyword") String keyword,
+      @QueryParam("sortBy") @DefaultValue("lastUpdatedDate") String sortBy,
+      @QueryParam("sortOrder") @DefaultValue("desc") String sortOrder
   ) {
-    return ApiResponse.ok(datasetService.listDatasets(page, size, keyword));
+    return ApiResponse.ok(datasetService.listDatasets(page, size, keyword, sortBy, sortOrder));
   }
 
   @POST

@@ -2,6 +2,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { datasetApi } from '../../../api/dataset';
+import { formatDateTime } from '../../../utils/formatters';
 export function useDatasetDetail(datasetId) {
     const router = useRouter();
     const detailLoading = ref(false);
@@ -10,7 +11,7 @@ export function useDatasetDetail(datasetId) {
     const activeVersionId = ref('');
     const detail = ref();
     const tablePage = ref(1);
-    const tableSize = ref(8);
+    const tableSize = ref(10);
     const searchFieldId = ref('');
     const searchKeyword = ref('');
     const fieldVisible = ref(false);
@@ -83,6 +84,10 @@ export function useDatasetDetail(datasetId) {
         finally {
             detailLoading.value = false;
         }
+    }
+    async function changeTableSize() {
+        tablePage.value = 1;
+        await loadDetail();
     }
     function backToList() {
         router.push({ name: 'datasets' });
@@ -269,14 +274,7 @@ export function useDatasetDetail(datasetId) {
         ElMessage.success('草稿已覆盖');
         await loadVersions(draft.id);
     }
-    function formatTime(value) {
-        if (!value)
-            return '-';
-        const numberValue = Number(value);
-        if (Number.isNaN(numberValue))
-            return value;
-        return new Date(numberValue).toLocaleString();
-    }
+    const formatTime = formatDateTime;
     function getErrorMessage(error, fallback) {
         const axiosError = error;
         if (axiosError.response?.data?.msg || axiosError.response?.data?.message) {
@@ -313,6 +311,7 @@ export function useDatasetDetail(datasetId) {
         loadDataset,
         selectVersion,
         loadDetail,
+        changeTableSize,
         backToList,
         addField,
         removeField,
