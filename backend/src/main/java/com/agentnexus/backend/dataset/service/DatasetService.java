@@ -1,7 +1,6 @@
 package com.agentnexus.backend.dataset.service;
 
 import com.agentnexus.backend.common.PageResponse;
-import com.agentnexus.backend.dataset.api.dto.request.BatchRowsRequest;
 import com.agentnexus.backend.dataset.api.dto.request.CreateDatasetRequest;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetSummary;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetVersionDto;
@@ -159,18 +158,6 @@ public class DatasetService {
   }
 
   @Transactional
-  public List<RowDto> addRows(String versionId, BatchRowsRequest request) {
-    List<RowDto> rows = new ArrayList<>();
-    if (request.rows() == null) {
-      return rows;
-    }
-    for (Map<String, String> values : request.rows()) {
-      rows.add(addRow(versionId, new RowInput(null, values)));
-    }
-    return rows;
-  }
-
-  @Transactional
   public ImportRowsResult importRows(String versionId, MultipartFile file) {
     ensureDraft(versionId);
     validateExcelFile(file);
@@ -180,7 +167,7 @@ public class DatasetService {
     }
 
     List<Map<String, String>> rows = readExcelRows(file, fields);
-    addRows(versionId, new BatchRowsRequest(rows));
+    addRows(versionId, rows);
     return new ImportRowsResult(rows.size());
   }
 
@@ -196,7 +183,7 @@ public class DatasetService {
     List<Map<String, String>> rows = readExcelRows(file, fields);
     datasetRepository.clearVersionCells(versionId);
     datasetRepository.clearVersionItems(versionId);
-    addRows(versionId, new BatchRowsRequest(rows));
+    addRows(versionId, rows);
     updateItemCount(versionId);
     touchVersion(versionId);
     return new ImportRowsResult(rows.size());
@@ -419,6 +406,12 @@ public class DatasetService {
       }
     }
     return true;
+  }
+
+  private void addRows(String versionId, List<Map<String, String>> rows) {
+    for (Map<String, String> values : rows) {
+      addRow(versionId, new RowInput(null, values));
+    }
   }
 
   private void validateExcelCell(String value, FieldDto field, int rowNumber, int columnNumber) {

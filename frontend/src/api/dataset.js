@@ -21,9 +21,6 @@ export const datasetApi = {
     addRow(versionId, values) {
         return unwrap(http.post(`/datasets/versions/${versionId}/items`, { values }));
     },
-    addRows(versionId, rows) {
-        return unwrap(http.post(`/datasets/versions/${versionId}/items/batch`, { rows }));
-    },
     importRows(versionId, file) {
         const formData = new FormData();
         formData.append('file', file);

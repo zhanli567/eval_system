@@ -2,7 +2,6 @@ package com.agentnexus.backend.dataset.api;
 
 import com.agentnexus.backend.common.ApiResponse;
 import com.agentnexus.backend.common.PageResponse;
-import com.agentnexus.backend.dataset.api.dto.request.BatchRowsRequest;
 import com.agentnexus.backend.dataset.api.dto.request.CreateDatasetRequest;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetSummary;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetVersionDto;
@@ -107,12 +106,6 @@ public class DatasetController {
   @Path("/versions/{versionId}/items")
   public ApiResponse<RowDto> addRow(@PathParam("versionId") String versionId, RowInput request) {
     return ApiResponse.ok(datasetService.addRow(versionId, request));
-  }
-
-  @POST
-  @Path("/versions/{versionId}/items/batch")
-  public ApiResponse<List<RowDto>> addRows(@PathParam("versionId") String versionId, BatchRowsRequest request) {
-    return ApiResponse.ok(datasetService.addRows(versionId, request));
   }
 
   @POST
