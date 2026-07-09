@@ -269,6 +269,9 @@ public class DatasetService {
     if (fields == null || fields.isEmpty()) {
       throw new IllegalArgumentException("请维护表头");
     }
+    if (fields.size() > 10) {
+      throw new IllegalArgumentException("评测集最多支持10列");
+    }
     Set<String> names = new HashSet<>();
     for (FieldInput field : fields) {
       if (!StringUtils.hasText(field.fieldName())) {

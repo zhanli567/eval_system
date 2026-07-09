@@ -93,6 +93,10 @@ export function useDatasetDetail(datasetId) {
         router.push({ name: 'datasets' });
     }
     function addField(target) {
+        if (target.length >= 10) {
+            ElMessage.warning('评测集最多支持10列');
+            return;
+        }
         target.push({ fieldName: '', fieldType: 'string', required: false, description: '' });
     }
     function removeField(target, index) {
