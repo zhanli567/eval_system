@@ -468,6 +468,7 @@ public class DatasetRepository {
         versionNo == 0 ? "\u8349\u7a3f" : "V" + versionNo,
         version.getItemCount(),
         versionNo == 0,
+        version.getCreatedByName(),
         version.getCreatedDate(),
         version.getLastUpdatedDate());
   }

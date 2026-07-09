@@ -5,7 +5,7 @@ import { ArrowDown, Back, Delete, Plus, Refresh } from '@element-plus/icons-vue'
 import { useDatasetDetail } from '../modules/dataset/composables/useDatasetDetail';
 const route = useRoute();
 const datasetId = computed(() => String(route.params.datasetId ?? ''));
-const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tableSize, searchFieldId, searchKeyword, fieldVisible, rowVisible, rowEditingId, excelInput, coverExcelInput, draggedFieldIndex, dragOverFieldIndex, fieldForm, rowForm, activeVersion, isDraft, tableRows, tableTotal, fields, dataTableKey, loadDataset, selectVersion, loadDetail, changeTableSize, backToList, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, openFieldDialog, submitFields, openRowDialog, submitRow, removeRow, handleAddDataCommand, importExcel, coverExcel, publishDraft, removeVersion, coverDraft } = useDatasetDetail(datasetId);
+const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tableSize, searchFieldId, searchKeyword, fieldVisible, rowVisible, rowEditingId, excelInput, coverExcelInput, draggedFieldIndex, dragOverFieldIndex, fieldForm, rowForm, activeVersion, isDraft, tableRows, tableTotal, fields, dataTableKey, loadDataset, selectVersion, loadDetail, changeTableSize, backToList, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, openFieldDialog, submitFields, openRowDialog, submitRow, removeRow, handleAddDataCommand, importExcel, coverExcel, publishDraft, removeVersion, coverDraft, formatTime } = useDatasetDetail(datasetId);
 </script>
 
 <template>
@@ -20,7 +20,7 @@ const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tab
   </header>
 
   <section v-if="versions.length" class="detail-panel standalone-detail-panel fill-workspace">
-    <aside class="version-rail">
+    <aside class="version-rail dataset-version-rail">
       <div class="rail-title">
         <span>评测集版本</span>
         <strong>{{ versions.length }}</strong>
@@ -32,8 +32,11 @@ const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tab
         :class="{ active: activeVersionId === version.id }"
         @click="selectVersion(version.id)"
       >
-        <span>{{ version.versionName }}</span>
-        <small>{{ version.itemCount }} 条</small>
+        <span class="version-item-title">{{ version.versionName }}</span>
+        <span class="version-item-meta">
+          <small>{{ version.createdByName || '-' }}</small>
+          <small>{{ formatTime(version.createdDate) }}</small>
+        </span>
       </button>
     </aside>
 

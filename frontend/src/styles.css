@@ -621,6 +621,7 @@ h2 {
   border-radius: var(--radius);
 }
 
+.dataset-version-rail .version-item,
 .evaluator-version-rail .version-item {
   flex-direction: column;
   align-items: stretch;
@@ -628,19 +629,12 @@ h2 {
   text-align: left;
 }
 
-.evaluator-version-title {
+.version-item-title {
   font-weight: 700;
   white-space: nowrap;
 }
 
-.evaluator-version-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.evaluator-version-meta {
+.version-item-meta {
   display: grid;
   gap: 2px;
 }
@@ -664,8 +658,20 @@ h2 {
   padding: 22px;
 }
 
-.evaluator-editor-shell.is-create .editor-form-panel {
-  padding: 1% 15% 5%;
+.evaluator-create-main {
+  width: 100%;
+  margin: 0;
+  padding: 1% 15% 96px;
+}
+
+.evaluator-create-panel,
+.evaluator-create-panel .evaluator-form {
+  display: grid;
+  gap: 16px;
+}
+
+.evaluator-create-panel .evaluator-form {
+  margin-top: 0;
 }
 
 .evaluator-form {
