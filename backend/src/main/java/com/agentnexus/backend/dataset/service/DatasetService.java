@@ -13,6 +13,7 @@ import com.agentnexus.backend.dataset.api.dto.request.RowInput;
 import com.agentnexus.backend.dataset.api.dto.response.VersionDetail;
 import com.agentnexus.backend.dataset.repository.DatasetRepository;
 import com.agentnexus.backend.dataset.repository.DatasetRowRecord;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -334,7 +335,9 @@ public class DatasetService {
         }
         Map<String, String> values = new LinkedHashMap<>();
         for (Map.Entry<Integer, FieldDto> entry : matchedColumns.entrySet()) {
-          values.put(entry.getValue().id(), getCellText(sheet, rowIndex, entry.getKey(), formatter, mergedCellTextMap));
+          String value = getCellText(sheet, rowIndex, entry.getKey(), formatter, mergedCellTextMap);
+          validateExcelCell(value, entry.getValue(), rowIndex + 1, entry.getKey() + 1);
+          values.put(entry.getValue().id(), value);
         }
         String rowKey = excelRowDuplicateKey(fields, values);
         if (rowKeys.add(rowKey)) {
@@ -413,6 +416,28 @@ public class DatasetService {
       }
     }
     return true;
+  }
+
+  private void validateExcelCell(String value, FieldDto field, int rowNumber, int columnNumber) {
+    String position = "Excel第" + rowNumber + "行，第" + columnNumber + "列（" + field.fieldName() + "）";
+    if (!StringUtils.hasText(value)) {
+      if (Boolean.TRUE.equals(field.required())) {
+        throw new IllegalArgumentException(position + "不能为空");
+      }
+      return;
+    }
+    if ("number".equals(field.fieldType())) {
+      try {
+        new BigDecimal(value);
+      } catch (NumberFormatException exception) {
+        throw new IllegalArgumentException(position + "应为数字");
+      }
+    }
+    if ("boolean".equals(field.fieldType())
+        && !"true".equalsIgnoreCase(value)
+        && !"false".equalsIgnoreCase(value)) {
+      throw new IllegalArgumentException(position + "应为布尔值true或false");
+    }
   }
 
   private Map<CellPosition, String> buildMergedCellTextMap(Sheet sheet, DataFormatter formatter) {
