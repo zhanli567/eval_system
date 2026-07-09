@@ -614,6 +614,9 @@ public class TaskService {
       } else {
         evaluatorVersionId = requireText(input.evaluatorVersionId(), "请选择自定义评估器版本");
         EvaluatorConfig config = evaluatorService.getVersion(evaluatorVersionId);
+        if (Boolean.TRUE.equals(config.draft())) {
+          throw new IllegalArgumentException("评测任务请选择已发布的自定义评估器版本");
+        }
         modelId = config.modelId();
         modelName = config.modelName();
         if ("code".equals(config.evaluatorType())) {

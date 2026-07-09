@@ -355,7 +355,8 @@ export function useTaskCreate() {
                 fillFromPreset(block, detail);
             }
             else {
-                block.versions = await evaluatorApi.listVersions(block.evaluatorId);
+                block.versions = (await evaluatorApi.listVersions(block.evaluatorId))
+                    .filter((version) => !version.draft);
                 const latest = [...block.versions].sort((a, b) => b.versionNo - a.versionNo)[0];
                 block.evaluatorVersionId = latest?.id || '';
                 if (block.evaluatorVersionId) {
