@@ -20,7 +20,7 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
     </div>
   </header>
 
-  <section class="evaluator-editor-shell" v-loading="loading">
+  <section class="evaluator-editor-shell" :class="{ 'is-create': !isEdit }" v-loading="loading">
     <aside v-if="isEdit" class="version-rail evaluator-version-rail">
       <div class="rail-title">
         <span>版本管理</span>

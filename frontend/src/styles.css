@@ -640,6 +640,10 @@ h2 {
   padding: 22px;
 }
 
+.evaluator-editor-shell.is-create .editor-form-panel {
+  padding: 1% 15% 5%;
+}
+
 .evaluator-form {
   margin-top: 18px;
 }
