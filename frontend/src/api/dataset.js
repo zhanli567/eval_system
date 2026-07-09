@@ -27,12 +27,16 @@ export const datasetApi = {
     importRows(versionId, file) {
         const formData = new FormData();
         formData.append('file', file);
-        return unwrap(http.post(`/datasets/versions/${versionId}/items/import`, formData));
+        return unwrap(http.post(`/datasets/versions/${versionId}/items/import`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        }));
     },
     coverRowsByExcel(versionId, file) {
         const formData = new FormData();
         formData.append('file', file);
-        return unwrap(http.post(`/datasets/versions/${versionId}/items/import-cover`, formData));
+        return unwrap(http.post(`/datasets/versions/${versionId}/items/import-cover`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        }));
     },
     updateRow(versionId, itemId, values) {
         return unwrap(http.post(`/datasets/versions/${versionId}/items/${itemId}`, { values }));
