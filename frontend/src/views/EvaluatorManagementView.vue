@@ -60,7 +60,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         class="evaluator-table"
         @header-dragend="handleColumnResize"
       >
-        <el-table-column prop="evaluatorName" label="评估器名称" :width="columnWidths.evaluatorName" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="evaluatorName" label="评估器名称" :width="columnWidths.evaluatorName" min-width="160" fixed="left" :resizable="false" show-overflow-tooltip />
         <el-table-column prop="evaluatorType" label="类型" :width="columnWidths.evaluatorType" min-width="100">
           <template #default="{ row }">
             <el-tag size="small" effect="plain">{{ typeLabel(row.evaluatorType) }}</el-tag>

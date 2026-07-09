@@ -46,6 +46,14 @@ function formatEvaluatorDimension(evaluator) {
 function formatTagDimension(tag) {
     return `${tag.tagName || '-'}（${tagTypeLabel(tag.tagType)}）`;
 }
+const dimensionSummary = computed(() => {
+    const evaluatorText = evaluators.value.map(formatEvaluatorDimension);
+    const tagText = tags.value.map(formatTagDimension);
+    return [
+        evaluatorText.length ? `评估器：${evaluatorText.join('；')}` : '',
+        tagText.length ? `标签：${tagText.join('；')}` : ''
+    ].filter(Boolean).join('；') || '暂无评测维度';
+});
 function isScoredEvaluatorResult(result) {
     return Boolean(result && (result.status === 'completed' || result.score != null || result.passResult));
 }
@@ -87,43 +95,45 @@ function evaluatorResultLabel(result) {
   <section class="task-detail-shell" v-loading="loading">
     <section class="task-basic-band">
       <h2>基础信息</h2>
-      <div class="task-basic-grid task-detail-info-grid">
-        <div class="task-info-item">
-          <span>评测集</span>
-          <strong>{{ formatNameVersion(base?.datasetName, base?.datasetVersionName) }}</strong>
+      <div class="task-detail-info-grid">
+        <div class="task-info-row task-info-row-primary">
+          <div class="task-info-item">
+            <span>评测集</span>
+            <el-tooltip :content="formatNameVersion(base?.datasetName, base?.datasetVersionName)" placement="top">
+              <strong>{{ formatNameVersion(base?.datasetName, base?.datasetVersionName) }}</strong>
+            </el-tooltip>
+          </div>
+          <div class="task-info-item">
+            <span>创建人</span>
+            <el-tooltip :content="base?.createdByName || '-'" placement="top">
+              <strong>{{ base?.createdByName || '-' }}</strong>
+            </el-tooltip>
+          </div>
+          <div class="task-info-item">
+            <span>创建时间</span>
+            <el-tooltip :content="formatTime(base?.createdDate)" placement="top">
+              <strong>{{ formatTime(base?.createdDate) }}</strong>
+            </el-tooltip>
+          </div>
+          <div class="task-info-item">
+            <span>描述</span>
+            <el-tooltip :content="base?.description || '暂无描述'" placement="top">
+              <strong>{{ base?.description || '暂无描述' }}</strong>
+            </el-tooltip>
+          </div>
         </div>
-        <div class="task-info-item">
-          <span>评测应用</span>
-          <strong>{{ formatAppBinding(base) }}</strong>
-        </div>
-        <div class="task-info-item">
-          <span>创建人</span>
-          <strong>{{ base?.createdByName || '-' }}</strong>
-        </div>
-        <div class="task-info-item">
-          <span>创建时间</span>
-          <strong>{{ formatTime(base?.createdDate) }}</strong>
-        </div>
-        <div class="task-info-item task-info-full">
-          <span>描述</span>
-          <strong>{{ base?.description || '暂无描述' }}</strong>
-        </div>
-        <div class="task-info-item task-info-full">
-          <span>评测维度</span>
-          <div class="dimension-summary-row task-dimension-summary">
-            <div v-if="evaluators.length" class="dimension-summary-group">
-              <strong>评估器</strong>
-              <el-tag v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" class="dimension-summary-pill" type="info" effect="light">
-                {{ formatEvaluatorDimension(evaluator) }}
-              </el-tag>
-            </div>
-            <div v-if="tags.length" class="dimension-summary-group">
-              <strong>标签</strong>
-              <el-tag v-for="tag in tags" :key="tag.taskTagId" class="dimension-summary-pill" type="info" effect="light">
-                {{ formatTagDimension(tag) }}
-              </el-tag>
-            </div>
-            <span v-if="!evaluators.length && !tags.length" class="dimension-summary-empty">暂无评测维度</span>
+        <div class="task-info-row task-info-row-secondary">
+          <div class="task-info-item">
+            <span>评测应用</span>
+            <el-tooltip :content="formatAppBinding(base)" placement="top">
+              <strong>{{ formatAppBinding(base) }}</strong>
+            </el-tooltip>
+          </div>
+          <div class="task-info-item">
+            <span>评测维度</span>
+            <el-tooltip :content="dimensionSummary" placement="top">
+              <strong>{{ dimensionSummary }}</strong>
+            </el-tooltip>
           </div>
         </div>
       </div>
@@ -135,7 +145,7 @@ function evaluatorResultLabel(result) {
       </div>
 
       <el-table :data="rows" row-key="id" border height="100%" tooltip-effect="light" class="task-detail-table">
-        <el-table-column label="状态" width="120" fixed="left">
+        <el-table-column label="状态" width="120" fixed="left" :resizable="false">
           <template #default="{ row }">
             <el-tooltip :content="statusLabel(row.status)" placement="top">
               <el-icon class="task-status-icon" :class="statusIconClass(row.status)">

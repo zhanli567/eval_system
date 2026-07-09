@@ -91,7 +91,7 @@ function formatNameList(items, picker) {
       class="task-table"
       @header-dragend="handleColumnResize"
     >
-      <el-table-column prop="status" label="评测状态" :width="columnWidths.status" min-width="76" align="center">
+      <el-table-column prop="status" label="评测状态" :width="columnWidths.status" min-width="76" fixed="left" :resizable="false" align="center">
         <template #default="{ row }">
           <el-tooltip :content="statusLabel(row.base.status)" placement="top">
             <el-icon class="task-status-icon" :class="statusIconClass(row.base.status)">

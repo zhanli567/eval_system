@@ -55,7 +55,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
       class="tag-table"
       @header-dragend="handleColumnResize"
     >
-      <el-table-column prop="tagName" label="标签名称" :width="columnWidths.tagName" min-width="160" show-overflow-tooltip>
+      <el-table-column prop="tagName" label="标签名称" :width="columnWidths.tagName" min-width="160" fixed="left" :resizable="false" show-overflow-tooltip>
         <template #default="{ row }">
           <span
             class="linkish"

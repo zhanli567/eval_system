@@ -1649,28 +1649,43 @@ h2 {
   white-space: nowrap;
 }
 
+.task-detail-info-grid,
+.task-info-row {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
 .task-detail-info-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.task-info-row {
+  height: 72px;
+}
+
+.task-info-row-primary {
+  grid-template-columns: 1.2fr 0.8fr 1fr 1.5fr;
+}
+
+.task-info-row-secondary {
+  grid-template-columns: 1fr 2fr;
 }
 
 .task-detail-info-grid .task-info-item {
   min-width: 0;
-  padding: 12px 14px;
+  overflow: hidden;
+  padding: 10px 14px;
   border: 1px solid #edf0f7;
   border-radius: 7px;
   background: #fbfcff;
 }
 
-.task-detail-info-grid .task-info-full {
-  grid-column: 1 / -1;
-}
-
 .task-detail-info-grid strong {
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
-  word-break: break-word;
-  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.5;
 }
 
 .dimension-summary-row {

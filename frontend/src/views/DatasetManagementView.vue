@@ -51,7 +51,7 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
       class="dataset-table"
       @header-dragend="handleColumnResize"
     >
-      <el-table-column prop="name" label="评测集名称" :width="columnWidths.name" min-width="180" show-overflow-tooltip>
+      <el-table-column prop="name" label="评测集名称" :width="columnWidths.name" min-width="180" fixed="left" :resizable="false" show-overflow-tooltip>
         <template #default="{ row }">
           <button class="table-link" type="button" @click.stop="openDataset(row)">{{ row.name }}</button>
         </template>

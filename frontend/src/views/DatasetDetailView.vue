@@ -79,7 +79,7 @@ const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tab
       </div>
 
       <el-table :key="dataTableKey" :data="tableRows" row-key="id" border height="100%" tooltip-effect="light" class="data-table">
-        <el-table-column label="序号" width="90">
+        <el-table-column label="序号" width="90" fixed="left" :resizable="false">
           <template #default="{ row }"># {{ row.rowNo }}</template>
         </el-table-column>
         <el-table-column
