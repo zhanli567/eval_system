@@ -174,12 +174,12 @@ export function useTagManagement() {
         tagForm.failOptions = failOptions.length ? failOptions : [''];
     }
     function addCategoryOption(group) {
-        if (group === 'pass') {
-            tagForm.passOptions.push('');
+        const target = group === 'pass' ? tagForm.passOptions : tagForm.failOptions;
+        if (target.length >= 5) {
+            ElMessage.warning('Pass和Fail选项每组最多支持5个');
+            return;
         }
-        else {
-            tagForm.failOptions.push('');
-        }
+        target.push('');
     }
     function removeCategoryOption(group, index) {
         const target = group === 'pass' ? tagForm.passOptions : tagForm.failOptions;

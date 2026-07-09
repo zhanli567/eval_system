@@ -196,6 +196,8 @@ public class TagService {
     Set<String> optionNames = new HashSet<>();
     boolean hasPass = false;
     boolean hasFail = false;
+    int passCount = 0;
+    int failCount = 0;
     for (TagOptionInput option : options) {
       if (option == null || !StringUtils.hasText(option.optionName())) {
         continue;
@@ -210,10 +212,15 @@ public class TagService {
       String optionGroup = normalizeOptionGroup(option.optionGroup());
       hasPass = hasPass || "pass".equals(optionGroup);
       hasFail = hasFail || "fail".equals(optionGroup);
+      passCount += "pass".equals(optionGroup) ? 1 : 0;
+      failCount += "fail".equals(optionGroup) ? 1 : 0;
       normalized.add(new TagOptionInput(option.id(), optionName, optionGroup));
     }
     if (!hasPass || !hasFail) {
       throw new IllegalArgumentException("分类标签请至少配置一个Pass选项和一个Fail选项");
+    }
+    if (passCount > 5 || failCount > 5) {
+      throw new IllegalArgumentException("Pass和Fail选项每组最多支持5个");
     }
     return normalized;
   }
