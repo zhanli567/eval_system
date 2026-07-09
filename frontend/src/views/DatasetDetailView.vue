@@ -173,7 +173,27 @@ const { detailLoading, datasetHeading, versions, activeVersionId, tablePage, tab
         <template #label>
           {{ field.fieldName }} <span v-if="field.required" class="required-mark">*</span>
         </template>
-        <el-input v-model="rowForm[field.id || '']" type="textarea" :autosize="{ minRows: 2, maxRows: 5 }" />
+        <el-input
+          v-if="field.fieldType === 'string'"
+          v-model="rowForm[field.id || '']"
+          type="textarea"
+          :autosize="{ minRows: 2, maxRows: 5 }"
+        />
+        <el-input
+          v-else-if="field.fieldType === 'number'"
+          v-model="rowForm[field.id || '']"
+          type="number"
+          placeholder="请输入数字"
+        />
+        <el-select
+          v-else-if="field.fieldType === 'boolean'"
+          v-model="rowForm[field.id || '']"
+          clearable
+          placeholder="请选择布尔值"
+        >
+          <el-option label="true" value="true" />
+          <el-option label="false" value="false" />
+        </el-select>
       </el-form-item>
     </el-form>
     <template #footer>
