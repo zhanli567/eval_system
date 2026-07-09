@@ -59,10 +59,16 @@ export function useEvaluatorEditor() {
     const pageTitle = computed(() => (isEdit.value ? form.evaluatorName || '编辑评估器' : '创建评估器'));
     const activeVersion = computed(() => versions.value.find((item) => item.id === activeVersionId.value));
     const promptParams = computed(() => (form.evaluatorType === 'llm' ? form.params : []));
-    const modelOptions = computed(() => models.value.map((model) => ({
-        label: model.name || model.modelName || model.modelId,
-        value: model.modelId
-    })));
+    const modelOptions = computed(() => {
+        const options = models.value.map((model) => ({
+            label: model.name || model.modelName || model.modelId,
+            value: model.modelId
+        }));
+        if (form.modelId && !options.some((option) => option.value === form.modelId)) {
+            options.unshift({ label: form.modelName || form.modelId, value: form.modelId });
+        }
+        return options;
+    });
     onMounted(async () => {
         if (isEdit.value) {
             await loadVersions();
