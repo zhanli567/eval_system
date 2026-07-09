@@ -33,8 +33,11 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
         :class="{ active: activeVersionId === version.id }"
         @click="selectVersion(version.id)"
       >
-        <span>{{ version.versionName }}</span>
-        <small>{{ formatTime(version.lastUpdatedDate) }}</small>
+        <span class="evaluator-version-title">{{ version.versionName }}</span>
+        <span class="evaluator-version-meta">
+          <small>{{ version.createdByName || '-' }}</small>
+          <small>{{ formatTime(version.lastUpdatedDate) }}</small>
+        </span>
       </button>
     </aside>
 

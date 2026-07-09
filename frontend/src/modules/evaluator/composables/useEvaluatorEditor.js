@@ -3,6 +3,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { evaluatorApi } from '../../../api/evaluator';
 import { remoteCallApi } from '../../../api/remoteCall';
+import { formatDateTime } from '../../../utils/formatters';
 const DEFAULT_PROMPT = `你是一位专业的AI评估员。
 请根据评分标准评估回复质量。
 
@@ -209,6 +210,7 @@ export function useEvaluatorEditor() {
                         versionNo: created.versionNo,
                         versionName: created.versionName,
                         draft: created.draft,
+                        createdByName: created.createdByName,
                         createdDate: created.createdDate,
                         lastUpdatedDate: created.lastUpdatedDate
                     }];
@@ -369,14 +371,7 @@ export function useEvaluatorEditor() {
         }
         return result;
     }
-    function formatTime(value) {
-        if (!value)
-            return '-';
-        const numberValue = Number(value);
-        if (Number.isNaN(numberValue))
-            return value;
-        return new Date(numberValue).toLocaleString();
-    }
+    const formatTime = formatDateTime;
     function errorMessage(error, fallback) {
         return error instanceof Error && error.message ? error.message : fallback;
     }
