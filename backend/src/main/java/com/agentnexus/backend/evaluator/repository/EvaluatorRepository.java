@@ -203,6 +203,17 @@ public class EvaluatorRepository {
         .toList();
   }
 
+  public long countVersionTaskBindings(String versionId) {
+    return versionMapper.countTaskBindings(currentSpaceId(), versionId);
+  }
+
+  public void deleteVersion(String versionId) {
+    deleteParams("version", versionId);
+    versionMapper.delete(new LambdaQueryWrapper<EvalEvaluatorVersion>()
+        .eq(EvalEvaluatorVersion::getSpaceId, currentSpaceId())
+        .eq(EvalEvaluatorVersion::getId, versionId));
+  }
+
   public EvaluatorConfigBase findVersionConfig(String versionId) {
     return CurrentSpaceHolder.callWithSpace(currentSpaceId(), () ->
         evaluatorMapper.findVersionConfig(currentSpaceId(), versionId));

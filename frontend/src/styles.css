@@ -633,6 +633,13 @@ h2 {
   white-space: nowrap;
 }
 
+.evaluator-version-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .evaluator-version-meta {
   display: grid;
   gap: 2px;

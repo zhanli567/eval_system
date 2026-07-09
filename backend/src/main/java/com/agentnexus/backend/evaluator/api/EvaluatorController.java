@@ -102,4 +102,11 @@ public class EvaluatorController {
   public ApiResponse<EvaluatorConfig> updateDraft(@PathParam("versionId") String versionId, EvaluatorInput request) {
     return ApiResponse.ok(evaluatorService.updateDraft(versionId, request));
   }
+
+  @POST
+  @Path("/versions/{versionId}/delete")
+  public ApiResponse<Void> deleteVersion(@PathParam("versionId") String versionId) {
+    evaluatorService.deleteVersion(versionId);
+    return ApiResponse.ok(null);
+  }
 }

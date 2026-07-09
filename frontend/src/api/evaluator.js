@@ -29,5 +29,8 @@ export const evaluatorApi = {
     },
     updateDraft(versionId, data) {
         return unwrap(http.post(`/evaluators/versions/${versionId}`, data));
+    },
+    deleteVersion(versionId) {
+        return unwrap(http.post(`/evaluators/versions/${versionId}/delete`));
     }
 };

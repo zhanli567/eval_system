@@ -256,6 +256,12 @@ export function useEvaluatorEditor() {
             publishing.value = false;
         }
     }
+    async function removeVersion(version) {
+        await ElMessageBox.confirm(`确定删除 ${version.versionName} 吗？`, '删除版本', { type: 'warning' });
+        await evaluatorApi.deleteVersion(version.id);
+        ElMessage.success('版本已删除');
+        await loadVersions();
+    }
     function payload() {
         const params = form.evaluatorType === 'llm' ? syncPromptParams() : form.params;
         return {
@@ -403,6 +409,7 @@ export function useEvaluatorEditor() {
         selectVersion,
         submit,
         publishDraft,
+        removeVersion,
         switchType,
         addParam,
         removeParam,

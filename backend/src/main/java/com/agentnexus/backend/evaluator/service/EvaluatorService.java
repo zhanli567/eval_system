@@ -178,6 +178,25 @@ public class EvaluatorService {
     evaluatorRepository.deleteEvaluator(evaluatorId);
   }
 
+  @Transactional
+  public void deleteVersion(String versionId) {
+    EvaluatorConfig version = getVersion(versionId);
+    if (Boolean.TRUE.equals(version.draft())) {
+      throw new IllegalArgumentException("草稿版本不能删除");
+    }
+    if (evaluatorRepository.countVersionTaskBindings(versionId) > 0) {
+      throw new IllegalArgumentException("评估器版本已被评测任务使用，不能删除");
+    }
+    evaluatorRepository.deleteVersion(versionId);
+    List<EvaluatorVersionDto> remainingVersions = evaluatorRepository.listVersions(version.evaluatorId());
+    if (!remainingVersions.isEmpty()) {
+      evaluatorRepository.updateLatestVersion(
+          version.evaluatorId(),
+          remainingVersions.get(remainingVersions.size() - 1).id(),
+          now());
+    }
+  }
+
   private EvaluatorConfig attachParams(EvaluatorConfigBase base) {
     return new EvaluatorConfig(
         base.evaluatorId(),

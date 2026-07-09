@@ -1,7 +1,7 @@
 <script setup>
 import { Back, Plus, Promotion, Refresh, Delete } from '@element-plus/icons-vue';
 import { useEvaluatorEditor } from '../modules/evaluator/composables/useEvaluatorEditor';
-const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, switchType, addParam, removeParam, backToList, formatTime } = useEvaluatorEditor();
+const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, removeVersion, switchType, addParam, removeParam, backToList, formatTime } = useEvaluatorEditor();
 </script>
 
 <template>
@@ -26,19 +26,26 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
         <span>版本管理</span>
         <strong>{{ versions.length }}</strong>
       </div>
-      <button
+      <div
         v-for="version in versions"
         :key="version.id"
         class="version-item"
         :class="{ active: activeVersionId === version.id }"
+        role="button"
+        tabindex="0"
         @click="selectVersion(version.id)"
+        @keyup.enter.self="selectVersion(version.id)"
+        @keyup.space.self.prevent="selectVersion(version.id)"
       >
-        <span class="evaluator-version-title">{{ version.versionName }}</span>
+        <span class="evaluator-version-title-row">
+          <span class="evaluator-version-title">{{ version.versionName }}</span>
+          <el-button v-if="!version.draft" link type="danger" @click.stop="removeVersion(version)">删除</el-button>
+        </span>
         <span class="evaluator-version-meta">
           <small>{{ version.createdByName || '-' }}</small>
           <small>{{ formatTime(version.lastUpdatedDate) }}</small>
         </span>
-      </button>
+      </div>
     </aside>
 
     <main class="editor-main">
