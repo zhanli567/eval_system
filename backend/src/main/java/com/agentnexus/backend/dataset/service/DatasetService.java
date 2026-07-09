@@ -119,6 +119,10 @@ public class DatasetService {
     ensureDraft(versionId);
     validateFields(fields);
     List<String> existingIds = datasetRepository.listFieldIds(versionId);
+    Map<String, FieldDto> existingFields = new HashMap<>();
+    for (FieldDto existingField : listFields(versionId)) {
+      existingFields.put(existingField.id(), existingField);
+    }
     List<String> keptIds = new ArrayList<>();
     int order = 1;
     String now = now();
@@ -126,7 +130,8 @@ public class DatasetService {
       String fieldId = StringUtils.hasText(field.id()) && existingIds.contains(field.id()) ? field.id() : id();
       keptIds.add(fieldId);
       if (existingIds.contains(fieldId)) {
-        datasetRepository.updateField(fieldId, field.fieldName(), field.fieldType(), bool(field.required()), field.description(), order++, now);
+        FieldDto existingField = existingFields.get(fieldId);
+        datasetRepository.updateField(fieldId, field.fieldName(), existingField.fieldType(), bool(existingField.required()), field.description(), order++, now);
       } else {
         datasetRepository.insertField(fieldId, versionId, field.fieldName(), field.fieldType(), bool(field.required()), field.description(), order++, now);
         addBlankCellsForNewField(versionId, fieldId);
