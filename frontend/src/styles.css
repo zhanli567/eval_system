@@ -932,6 +932,8 @@ h2 {
 }
 
 .version-rail {
+  min-height: 0;
+  overflow-y: auto;
   border-right: 1px solid var(--line);
   background: var(--surface-soft);
   padding: 18px 12px;
