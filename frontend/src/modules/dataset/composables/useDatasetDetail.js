@@ -175,7 +175,7 @@ export function useDatasetDetail(datasetId) {
     async function removeRow(row) {
         if (!activeVersionId.value)
             return;
-        await ElMessageBox.confirm(`确定删除第 ${row.rowNo} 行吗？`, '删除数据', { type: 'warning' });
+        await ElMessageBox.confirm('确定删除该条数据吗？', '删除数据', { type: 'warning' });
         await datasetApi.deleteRow(activeVersionId.value, row.id);
         ElMessage.success('已删除');
         await loadDetail();

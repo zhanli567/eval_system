@@ -160,9 +160,7 @@ function evaluatorResultLabel(result) {
             </el-tooltip>
           </template>
         </el-table-column>
-        <el-table-column label="序号" width="90" fixed="left">
-          <template #default="{ row }"># {{ row.rowNo }}</template>
-        </el-table-column>
+        <el-table-column type="index" label="序号" width="90" fixed="left" />
         <el-table-column v-for="field in fields" :key="field.id" :label="field.fieldName" min-width="220" show-overflow-tooltip>
           <template #default="{ row }">{{ row.values[field.id || ''] || '-' }}</template>
         </el-table-column>
