@@ -247,8 +247,15 @@ public class DatasetService {
     List<FieldDto> fields = listFields(versionId);
     String now = now();
     Map<String, String> safeValues = values == null ? Map.of() : values;
+    validateRowValues(fields, safeValues);
     for (FieldDto field : fields) {
       datasetRepository.insertCell(id(), versionId, itemId, field.id(), safeValues.getOrDefault(field.id(), ""), now);
+    }
+  }
+
+  private void validateRowValues(List<FieldDto> fields, Map<String, String> values) {
+    for (FieldDto field : fields) {
+      validateCellValue(values.get(field.id()), field, "字段“" + field.fieldName() + "”");
     }
   }
 
@@ -416,7 +423,12 @@ public class DatasetService {
 
   private void validateExcelCell(String value, FieldDto field, int rowNumber, int columnNumber) {
     String position = "Excel第" + rowNumber + "行，第" + columnNumber + "列（" + field.fieldName() + "）";
-    if (!StringUtils.hasText(value)) {
+    validateCellValue(value, field, position);
+  }
+
+  private void validateCellValue(String value, FieldDto field, String position) {
+    String text = value == null ? "" : value.trim();
+    if (!StringUtils.hasText(text)) {
       if (Boolean.TRUE.equals(field.required())) {
         throw new IllegalArgumentException(position + "不能为空");
       }
@@ -424,14 +436,14 @@ public class DatasetService {
     }
     if ("number".equals(field.fieldType())) {
       try {
-        new BigDecimal(value);
+        new BigDecimal(text);
       } catch (NumberFormatException exception) {
         throw new IllegalArgumentException(position + "应为数字");
       }
     }
     if ("boolean".equals(field.fieldType())
-        && !"true".equalsIgnoreCase(value)
-        && !"false".equalsIgnoreCase(value)) {
+        && !"true".equalsIgnoreCase(text)
+        && !"false".equalsIgnoreCase(text)) {
       throw new IllegalArgumentException(position + "应为布尔值true或false");
     }
   }

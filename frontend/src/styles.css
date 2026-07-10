@@ -221,6 +221,10 @@ body {
   align-items: flex-end;
 }
 
+.detail-topbar > div:first-child {
+  min-width: 0;
+}
+
 .back-link {
   margin: 0 0 8px -4px;
   padding-left: 0;
@@ -234,6 +238,42 @@ h2 {
 
 h1 {
   font-size: 26px;
+}
+
+.dataset-detail-heading {
+  display: flex;
+  align-items: baseline;
+  max-width: min(760px, 100%);
+  min-width: 0;
+  gap: 8px;
+}
+
+.dataset-detail-name,
+.dataset-detail-description {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dataset-detail-name {
+  flex: 0 1 auto;
+  max-width: 55%;
+}
+
+.dataset-detail-heading:not(:has(.dataset-detail-description)) .dataset-detail-name {
+  max-width: 100%;
+}
+
+.dataset-detail-separator,
+.dataset-detail-description {
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.dataset-detail-description {
+  flex: 1 1 auto;
 }
 
 h2 {

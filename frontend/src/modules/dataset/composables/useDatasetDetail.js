@@ -24,11 +24,6 @@ export function useDatasetDetail(datasetId) {
     const fieldForm = ref([]);
     const rowForm = reactive({});
     const datasetTitle = computed(() => datasetSummary.value?.name || '评测集详情');
-    const datasetHeading = computed(() => {
-        const name = datasetSummary.value?.name || '评测集详情';
-        const description = datasetSummary.value?.description?.trim();
-        return description ? `${name} - ${description}` : name;
-    });
     const activeVersion = computed(() => detail.value?.version);
     const isDraft = computed(() => activeVersion.value?.draft === true);
     const tableRows = computed(() => detail.value?.rows.records ?? []);
@@ -160,6 +155,11 @@ export function useDatasetDetail(datasetId) {
     async function submitRow() {
         if (!activeVersionId.value)
             return;
+        const missingField = fields.value.find((field) => field.required && !String(rowForm[field.id || ''] ?? '').trim());
+        if (missingField) {
+            ElMessage.warning(`请填写${missingField.fieldName}`);
+            return;
+        }
         if (rowEditingId.value) {
             await datasetApi.updateRow(activeVersionId.value, rowEditingId.value, { ...rowForm });
             ElMessage.success('数据已更新');
@@ -290,7 +290,6 @@ export function useDatasetDetail(datasetId) {
         detailLoading,
         datasetSummary,
         datasetTitle,
-        datasetHeading,
         versions,
         activeVersionId,
         tablePage,
