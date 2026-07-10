@@ -2,6 +2,124 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { taskApi } from '../../../api/task';
+import { getErrorMessage } from '../../../utils/composableHelpers';
+import { passTagType, tagTypeLabel } from '../../../utils/taskLabels';
+
+function formValueByTag(tag) {
+    if (tag.tagType === 'number') {
+        return tag.result?.valueNumber;
+    }
+    if (tag.tagType === 'category' || tag.tagType === 'boolean') {
+        return tag.result?.tagOptionId || '';
+    }
+    return tag.result?.valueText || '';
+}
+
+function annotationPayload(tag, form) {
+    const value = form[tag.taskTagId];
+    return {
+        taskTagId: tag.taskTagId,
+        valueText: tag.tagType === 'text' ? String(value ?? '') : undefined,
+        valueNumber: tag.tagType === 'number' && value !== undefined && value !== '' ? Number(value) : undefined,
+        tagOptionId: tag.tagType === 'category' || tag.tagType === 'boolean' ? String(value ?? '') : undefined
+    };
+}
+
+function hasTagValue(tag, form) {
+    const value = form[tag.taskTagId];
+    return tag.tagType === 'number' ? value !== undefined && value !== '' : Boolean(String(value ?? '').trim());
+}
+
+function optionLabel(tag) {
+    if (tag.tagType === 'number') {
+        return `范围 ${tag.minValue ?? '-'}-${tag.maxValue ?? '-'}，通过阈值 ${tag.passThreshold ?? '-'}`;
+    }
+    return tag.description || '暂无描述';
+}
+
+function appOutputEmptyDescription(task, item) {
+    if (!task) {
+        return '标注数据加载后展示应用输出';
+    }
+    if (task.appType !== 'agent') {
+        return '当前任务未关联应用，无应用输出';
+    }
+    if (item?.appOutputStatus === 'failed') {
+        return '应用调用失败，暂无应用输出';
+    }
+    return item?.appOutputStatus === 'pending' ? '应用输出待生成' : '暂无应用输出';
+}
+
+function createAnnotationActions(ctx, router) {
+    async function loadAnnotation() {
+        if (!ctx.taskId.value || !ctx.taskItemId.value)
+            return;
+        ctx.loading.value = true;
+        ctx.loadError.value = '';
+        try {
+            ctx.detail.value = await taskApi.getAnnotation(ctx.taskId.value, ctx.taskItemId.value);
+            fillForm();
+        }
+        catch (error) {
+            ctx.detail.value = undefined;
+            ctx.loadError.value = getErrorMessage(error, '加载标注数据失败');
+            ElMessage.error(ctx.loadError.value);
+        }
+        finally {
+            ctx.loading.value = false;
+        }
+    }
+    function fillForm() {
+        Object.keys(ctx.form).forEach((key) => delete ctx.form[key]);
+        ctx.tags.value.forEach((tag) => {
+            ctx.form[tag.taskTagId] = formValueByTag(tag);
+        });
+    }
+    async function saveAnnotation() {
+        if (!ctx.taskId.value || !ctx.taskItemId.value || !validate())
+            return;
+        ctx.saving.value = true;
+        try {
+            ctx.detail.value = await taskApi.saveAnnotation(ctx.taskId.value, ctx.taskItemId.value, {
+                tags: ctx.tags.value.map((tag) => annotationPayload(tag, ctx.form))
+            });
+            fillForm();
+            ElMessage.success('标注已保存');
+        }
+        catch (error) {
+            ElMessage.error(getErrorMessage(error, '保存标注失败'));
+        }
+        finally {
+            ctx.saving.value = false;
+        }
+    }
+    function validate() {
+        const missingTag = ctx.tags.value.find((tag) => !hasTagValue(tag, ctx.form));
+        if (missingTag) {
+            ElMessage.warning(`请完成${missingTag.tagName}`);
+            return false;
+        }
+        return true;
+    }
+    function backToDetail() {
+        router.push({ name: 'task-detail', params: { taskId: ctx.taskId.value } });
+    }
+    function goItem(targetItemId) {
+        if (targetItemId) {
+            router.push({ name: 'task-annotation', params: { taskId: ctx.taskId.value, taskItemId: targetItemId } });
+        }
+    }
+    return { loadAnnotation, saveAnnotation, backToDetail, goItem };
+}
+
+const annotationTask = (detail) => detail?.task;
+const annotationItem = (detail) => detail?.item;
+const annotationFields = (detail) => detail?.fields ?? [];
+const annotationTags = (detail) => detail?.tags ?? [];
+const annotationEvaluators = (detail) => detail?.evaluators ?? [];
+const previousItemId = (detail) => detail?.previousItemId || '';
+const nextItemId = (detail) => detail?.nextItemId || '';
+
 export function useTaskAnnotation(taskId, taskItemId) {
     const router = useRouter();
     const loading = ref(false);
@@ -9,139 +127,19 @@ export function useTaskAnnotation(taskId, taskItemId) {
     const loadError = ref('');
     const detail = ref();
     const form = reactive({});
-    const task = computed(() => detail.value?.task);
-    const item = computed(() => detail.value?.item);
-    const fields = computed(() => detail.value?.fields ?? []);
-    const tags = computed(() => detail.value?.tags ?? []);
-    const evaluators = computed(() => detail.value?.evaluators ?? []);
-    const previousItemId = computed(() => detail.value?.previousItemId || '');
-    const nextItemId = computed(() => detail.value?.nextItemId || '');
+    const task = computed(() => annotationTask(detail.value));
+    const item = computed(() => annotationItem(detail.value));
+    const fields = computed(() => annotationFields(detail.value));
+    const tags = computed(() => annotationTags(detail.value));
+    const evaluators = computed(() => annotationEvaluators(detail.value));
+    const previousItem = computed(() => previousItemId(detail.value));
+    const nextItem = computed(() => nextItemId(detail.value));
+    const ctx = { taskId, taskItemId, loading, saving, loadError, detail, form, tags };
+    const actions = createAnnotationActions(ctx, router);
     watch(() => [taskId.value, taskItemId.value], async () => {
-        await loadAnnotation();
+        await actions.loadAnnotation();
     }, { immediate: true });
-    async function loadAnnotation() {
-        if (!taskId.value || !taskItemId.value)
-            return;
-        loading.value = true;
-        loadError.value = '';
-        try {
-            detail.value = await taskApi.getAnnotation(taskId.value, taskItemId.value);
-            fillForm();
-        }
-        catch (error) {
-            detail.value = undefined;
-            loadError.value = error instanceof Error ? error.message : '加载标注数据失败';
-            ElMessage.error(loadError.value);
-        }
-        finally {
-            loading.value = false;
-        }
-    }
-    function fillForm() {
-        for (const key of Object.keys(form)) {
-            delete form[key];
-        }
-        for (const tag of tags.value) {
-            if (tag.tagType === 'number') {
-                form[tag.taskTagId] = tag.result?.valueNumber;
-            }
-            else if (tag.tagType === 'category' || tag.tagType === 'boolean') {
-                form[tag.taskTagId] = tag.result?.tagOptionId || '';
-            }
-            else {
-                form[tag.taskTagId] = tag.result?.valueText || '';
-            }
-        }
-    }
-    async function saveAnnotation() {
-        if (!taskId.value || !taskItemId.value)
-            return;
-        if (!validate())
-            return;
-        saving.value = true;
-        try {
-            detail.value = await taskApi.saveAnnotation(taskId.value, taskItemId.value, {
-                tags: tags.value.map((tag) => {
-                    const value = form[tag.taskTagId];
-                    return {
-                        taskTagId: tag.taskTagId,
-                        valueText: tag.tagType === 'text' ? String(value ?? '') : undefined,
-                        valueNumber: tag.tagType === 'number' && value !== undefined && value !== '' ? Number(value) : undefined,
-                        tagOptionId: tag.tagType === 'category' || tag.tagType === 'boolean' ? String(value ?? '') : undefined
-                    };
-                })
-            });
-            fillForm();
-            ElMessage.success('标注已保存');
-        }
-        catch (error) {
-            ElMessage.error(error instanceof Error ? error.message : '保存标注失败');
-        }
-        finally {
-            saving.value = false;
-        }
-    }
-    function validate() {
-        for (const tag of tags.value) {
-            const value = form[tag.taskTagId];
-            if (tag.tagType === 'number') {
-                if (value === undefined || value === '') {
-                    ElMessage.warning(`请输入${tag.tagName}`);
-                    return false;
-                }
-            }
-            else if (!String(value ?? '').trim()) {
-                ElMessage.warning(`请完成${tag.tagName}`);
-                return false;
-            }
-        }
-        return true;
-    }
-    function backToDetail() {
-        router.push({ name: 'task-detail', params: { taskId: taskId.value } });
-    }
-    function goItem(targetItemId) {
-        if (!targetItemId)
-            return;
-        router.push({ name: 'task-annotation', params: { taskId: taskId.value, taskItemId: targetItemId } });
-    }
-    function passTagType(value) {
-        if (value === 'pass')
-            return 'success';
-        if (value === 'fail')
-            return 'danger';
-        return 'info';
-    }
-    function tagTypeLabel(value) {
-        const map = {
-            category: '分类',
-            boolean: '布尔',
-            number: '数字',
-            text: '文本'
-        };
-        return value ? map[value] || value : '-';
-    }
-    function optionLabel(tag) {
-        if (tag.tagType === 'number') {
-            return `范围 ${tag.minValue ?? '-'}-${tag.maxValue ?? '-'}，通过阈值 ${tag.passThreshold ?? '-'}`;
-        }
-        return tag.description || '暂无描述';
-    }
-    function appOutputEmptyDescription() {
-        if (!task.value) {
-            return '标注数据加载后展示应用输出';
-        }
-        if (task.value.appType !== 'agent') {
-            return '当前任务未关联应用，无应用输出';
-        }
-        if (item.value?.appOutputStatus === 'failed') {
-            return '应用调用失败，暂无应用输出';
-        }
-        if (item.value?.appOutputStatus === 'pending') {
-            return '应用输出待生成';
-        }
-        return '暂无应用输出';
-    }
+
     return {
         loading,
         saving,
@@ -153,15 +151,15 @@ export function useTaskAnnotation(taskId, taskItemId) {
         fields,
         tags,
         evaluators,
-        previousItemId,
-        nextItemId,
-        loadAnnotation,
-        saveAnnotation,
-        backToDetail,
-        goItem,
+        previousItemId: previousItem,
+        nextItemId: nextItem,
+        loadAnnotation: actions.loadAnnotation,
+        saveAnnotation: actions.saveAnnotation,
+        backToDetail: actions.backToDetail,
+        goItem: actions.goItem,
         passTagType,
         tagTypeLabel,
         optionLabel,
-        appOutputEmptyDescription
+        appOutputEmptyDescription: () => appOutputEmptyDescription(task.value, item.value)
     };
 }

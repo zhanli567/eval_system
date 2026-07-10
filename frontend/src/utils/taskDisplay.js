@@ -14,21 +14,19 @@ function pickAppOutputText(value) {
     const trimmed = value.trim();
     if (!trimmed)
         return '';
-    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-        try {
-            const parsed = JSON.parse(trimmed);
-            for (const key of APP_OUTPUT_KEYS) {
-                const item = parsed[key];
-                if (typeof item === 'string' && item.trim()) {
-                    return item;
-                }
-            }
-        }
-        catch {
-            return trimmed;
-        }
+    return looksLikeJsonObject(trimmed) ? pickJsonOutputText(trimmed) || trimmed : trimmed;
+}
+function looksLikeJsonObject(value) {
+    return value.startsWith('{') && value.endsWith('}');
+}
+function pickJsonOutputText(value) {
+    try {
+        const parsed = JSON.parse(value);
+        return APP_OUTPUT_KEYS.map((key) => parsed[key]).find((item) => typeof item === 'string' && item.trim());
     }
-    return trimmed;
+    catch {
+        return '';
+    }
 }
 function cleanupDisplayText(value) {
     const normalized = value

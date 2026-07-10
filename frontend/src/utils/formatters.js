@@ -12,12 +12,20 @@ export function formatDateTime(value) {
 
 function toDate(value) {
     if (Array.isArray(value)) {
-        const [year, month, day, hour = 0, minute = 0, second = 0] = value;
-        return new Date(year, month - 1, day, hour, minute, second);
+        return arrayToDate(value);
     }
     if (typeof value === 'number' || /^\d+$/.test(String(value))) {
         return new Date(Number(value));
     }
+    return parseDateString(value);
+}
+
+function arrayToDate(value) {
+    const [year, month, day, hour = 0, minute = 0, second = 0] = value;
+    return new Date(year, month - 1, day, hour, minute, second);
+}
+
+function parseDateString(value) {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
 }

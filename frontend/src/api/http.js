@@ -1,5 +1,6 @@
 import Aurora from './aurora';
 import { SPACE_STORAGE_KEY } from '../utils/spaceSelection';
+import { getErrorMessage } from '../utils/composableHelpers';
 
 function apiPath(path) {
     const { hostname, port } = window.location;
@@ -27,16 +28,15 @@ export const http = {
     }
 };
 
-export function unwrap(request) {
-    return request
-        .then((res) => {
-            if (res.data.code !== 0) {
-                throw new Error(res.data.msg);
-            }
+export async function unwrap(request) {
+    try {
+        const res = await request;
+        if (res.data.code === 0) {
             return res.data.data;
-        })
-        .catch((error) => {
-            const message = error?.response?.data?.msg || error?.message || 'request failed';
-            throw new Error(message);
-        });
+        }
+        throw new Error(res.data.msg);
+    }
+    catch (error) {
+        throw new Error(getErrorMessage(error, 'request failed'));
+    }
 }

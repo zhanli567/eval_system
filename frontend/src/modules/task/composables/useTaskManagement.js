@@ -3,28 +3,15 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { taskApi } from '../../../api/task';
 import { formatDateTime } from '../../../utils/formatters';
+import { movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
+import { TASK_STATUS_OPTIONS, statusLabel } from '../../../utils/taskLabels';
 import { useColumnWidths } from '../../../utils/tableColumns';
-export function useTaskManagement() {
-    const router = useRouter();
-    const loading = ref(false);
-    const tasks = ref([]);
-    const startingTaskIds = ref(new Set());
-    const total = ref(0);
-    const page = ref(1);
-    const size = ref(10);
-    const keyword = ref('');
-    const status = ref('');
-    const sortBy = ref('lastUpdatedDate');
-    const sortOrder = ref('desc');
-    let pollTimer;
-    const statusOptions = [
-        { label: '全部状态', value: '' },
-        { label: '待执行', value: 'pending' },
-        { label: '进行中', value: 'running' },
-        { label: '评测完成', value: 'completed' },
-        { label: '评测失败', value: 'failed' }
-    ];
-    const { columnWidths, handleColumnResize } = useColumnWidths({
+
+const DELETABLE_STATUSES = ['pending', 'completed', 'failed'];
+const STARTABLE_STATUSES = ['pending', 'failed'];
+
+function taskColumns() {
+    return useColumnWidths({
         status: { width: 90, min: 76, max: 120 },
         taskName: { width: 220, min: 160, max: 380 },
         datasetName: { width: 210, min: 160, max: 360 },
@@ -36,54 +23,58 @@ export function useTaskManagement() {
         createdDate: { width: 190, min: 160, max: 240 },
         actions: { width: 190, min: 160, max: 230 }
     });
-    onMounted(async () => {
-        await loadTasks();
-        startPolling();
-    });
-    onBeforeUnmount(stopPolling);
-    async function loadTasks(options = {}) {
+}
+
+async function loadTaskPage(state, options = {}) {
+    if (!options.silent) {
+        state.loading.value = true;
+    }
+    try {
+        const result = await taskApi.listTasks({
+            page: state.page.value,
+            size: state.size.value,
+            keyword: state.keyword.value,
+            status: state.status.value,
+            sortBy: state.sortBy.value,
+            sortOrder: state.sortOrder.value
+        });
+        state.tasks.value = result.records;
+        state.total.value = result.total;
+    }
+    finally {
         if (!options.silent) {
-            loading.value = true;
-        }
-        try {
-            const result = await taskApi.listTasks({
-                page: page.value,
-                size: size.value,
-                keyword: keyword.value,
-                status: status.value,
-                sortBy: sortBy.value,
-                sortOrder: sortOrder.value
-            });
-            tasks.value = result.records;
-            total.value = result.total;
-        }
-        finally {
-            if (!options.silent) {
-                loading.value = false;
-            }
+            state.loading.value = false;
         }
     }
-    function startPolling() {
-        if (pollTimer !== undefined)
-            return;
-        pollTimer = window.setInterval(() => {
-            if (!loading.value) {
-                loadTasks({ silent: true });
-            }
-        }, 3000);
-    }
-    function stopPolling() {
-        if (pollTimer === undefined)
-            return;
-        window.clearInterval(pollTimer);
-        pollTimer = undefined;
+}
+
+function startListPolling(ctx) {
+    if (ctx.pollTimer !== undefined)
+        return;
+    ctx.pollTimer = window.setInterval(() => {
+        if (!ctx.loading.value) {
+            ctx.loadTasks({ silent: true });
+        }
+    }, 3000);
+}
+
+function stopListPolling(ctx) {
+    if (ctx.pollTimer === undefined)
+        return;
+    window.clearInterval(ctx.pollTimer);
+    ctx.pollTimer = undefined;
+}
+
+function createTaskManagementActions(ctx, router) {
+    async function loadTasks(options = {}) {
+        await loadTaskPage(ctx.state, options);
     }
     async function searchTasks() {
-        page.value = 1;
+        ctx.state.page.value = 1;
         await loadTasks();
     }
     async function changeSize() {
-        page.value = 1;
+        ctx.state.page.value = 1;
         await loadTasks();
     }
     function openCreate() {
@@ -104,17 +95,12 @@ export function useTaskManagement() {
         }
     }
     function setStarting(taskId, value) {
-        const next = new Set(startingTaskIds.value);
-        if (value) {
-            next.add(taskId);
-        }
-        else {
-            next.delete(taskId);
-        }
-        startingTaskIds.value = next;
+        const next = new Set(ctx.startingTaskIds.value);
+        value ? next.add(taskId) : next.delete(taskId);
+        ctx.startingTaskIds.value = next;
     }
     function isStartingTask(taskId) {
-        return startingTaskIds.value.has(taskId);
+        return ctx.startingTaskIds.value.has(taskId);
     }
     async function removeTask(row) {
         if (!canDeleteTask(row)) {
@@ -124,31 +110,52 @@ export function useTaskManagement() {
         await ElMessageBox.confirm(`确定删除评测任务“${row.base.taskName}”吗？`, '删除评测任务', { type: 'warning' });
         await taskApi.deleteTask(row.base.id);
         ElMessage.success('已删除');
-        if (tasks.value.length === 1 && page.value > 1) {
-            page.value -= 1;
-        }
+        movePreviousPageIfLastRow(ctx.state.tasks, ctx.state.page);
         await loadTasks();
     }
     function toggleSort(field) {
-        if (sortBy.value === field) {
-            sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc';
-        }
-        else {
-            sortBy.value = field;
-            sortOrder.value = 'desc';
-        }
-        page.value = 1;
+        toggleDescSort(ctx.state.sortBy, ctx.state.sortOrder, field);
+        ctx.state.page.value = 1;
         loadTasks();
     }
-    function statusLabel(value) {
-        return statusOptions.find((item) => item.value === value)?.label || value || '-';
+    function startPolling() {
+        startListPolling(ctx);
+    }
+    function stopPolling() {
+        stopListPolling(ctx);
     }
     function canStartTask(row) {
-        return row.base.status === 'pending' || row.base.status === 'failed';
+        return STARTABLE_STATUSES.includes(row.base.status);
     }
     function canDeleteTask(row) {
-        return row.base.status === 'pending' || row.base.status === 'completed' || row.base.status === 'failed';
+        return DELETABLE_STATUSES.includes(row.base.status);
     }
+    return { loadTasks, searchTasks, changeSize, openCreate, openDetail, startTask, isStartingTask, removeTask, canStartTask, canDeleteTask, toggleSort, startPolling, stopPolling };
+}
+
+export function useTaskManagement() {
+    const router = useRouter();
+    const loading = ref(false);
+    const tasks = ref([]);
+    const startingTaskIds = ref(new Set());
+    const total = ref(0);
+    const page = ref(1);
+    const size = ref(10);
+    const keyword = ref('');
+    const status = ref('');
+    const sortBy = ref('lastUpdatedDate');
+    const sortOrder = ref('desc');
+    const columns = taskColumns();
+    const state = { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder };
+    const ctx = { state, loading, pollTimer: undefined, startingTaskIds };
+    const actions = createTaskManagementActions(ctx, router);
+    ctx.loadTasks = actions.loadTasks;
+    onMounted(async () => {
+        await actions.loadTasks();
+        actions.startPolling();
+    });
+    onBeforeUnmount(actions.stopPolling);
+
     const formatTime = formatDateTime;
     return {
         loading,
@@ -161,20 +168,20 @@ export function useTaskManagement() {
         status,
         sortBy,
         sortOrder,
-        columnWidths,
-        statusOptions,
-        loadTasks,
-        searchTasks,
-        changeSize,
-        openCreate,
-        openDetail,
-        startTask,
-        isStartingTask,
-        removeTask,
-        canStartTask,
-        canDeleteTask,
-        toggleSort,
-        handleColumnResize,
+        columnWidths: columns.columnWidths,
+        statusOptions: TASK_STATUS_OPTIONS,
+        loadTasks: actions.loadTasks,
+        searchTasks: actions.searchTasks,
+        changeSize: actions.changeSize,
+        openCreate: actions.openCreate,
+        openDetail: actions.openDetail,
+        startTask: actions.startTask,
+        isStartingTask: actions.isStartingTask,
+        removeTask: actions.removeTask,
+        canStartTask: actions.canStartTask,
+        canDeleteTask: actions.canDeleteTask,
+        toggleSort: actions.toggleSort,
+        handleColumnResize: columns.handleColumnResize,
         statusLabel,
         formatTime
     };

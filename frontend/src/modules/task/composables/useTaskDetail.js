@@ -3,6 +3,89 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { taskApi } from '../../../api/task';
 import { formatDateTime } from '../../../utils/formatters';
+import { passTagType, statusLabel, tagTypeLabel } from '../../../utils/taskLabels';
+
+async function loadTaskDetail(ctx, options = {}) {
+    if (!ctx.taskId.value)
+        return;
+    const silent = Boolean(options.silent);
+    if (!silent) {
+        ctx.loading.value = true;
+    }
+    try {
+        ctx.detail.value = await taskApi.getTask(ctx.taskId.value, { page: ctx.page.value, size: ctx.size.value });
+    }
+    finally {
+        if (!silent) {
+            ctx.loading.value = false;
+        }
+    }
+}
+
+function startTaskPolling(ctx) {
+    if (ctx.pollTimer !== undefined)
+        return;
+    ctx.pollTimer = window.setInterval(() => {
+        if (!ctx.loading.value && !ctx.starting.value) {
+            ctx.loadDetail({ silent: true });
+        }
+    }, 3000);
+}
+
+function stopTaskPolling(ctx) {
+    if (ctx.pollTimer === undefined)
+        return;
+    window.clearInterval(ctx.pollTimer);
+    ctx.pollTimer = undefined;
+}
+
+function createTaskDetailActions(ctx, router) {
+    async function loadDetail(options = {}) {
+        await loadTaskDetail(ctx, options);
+    }
+    async function changeSize() {
+        ctx.page.value = 1;
+        await loadDetail();
+    }
+    function backToList() {
+        router.push({ name: 'tasks' });
+    }
+    async function startTask() {
+        if (!ctx.taskId.value)
+            return;
+        ctx.starting.value = true;
+        try {
+            ctx.detail.value = await taskApi.startTask(ctx.taskId.value);
+            ElMessage.success('评测任务已开始');
+            startPolling();
+        }
+        finally {
+            ctx.starting.value = false;
+        }
+    }
+    function startPolling() {
+        startTaskPolling(ctx);
+    }
+    function stopPolling() {
+        stopTaskPolling(ctx);
+    }
+    function openAnnotation(row) {
+        router.push({ name: 'task-annotation', params: { taskId: ctx.taskId.value, taskItemId: row.id } });
+    }
+    return { loadDetail, changeSize, backToList, startTask, startPolling, stopPolling, openAnnotation };
+}
+
+const taskBase = (detail) => detail?.base;
+const taskFields = (detail) => detail?.fields ?? [];
+const taskEvaluators = (detail) => detail?.evaluators ?? [];
+const taskTags = (detail) => detail?.tags ?? [];
+const taskRows = (detail) => detail?.items.records ?? [];
+const taskTotal = (detail) => detail?.items.total ?? 0;
+
+function syncPollingByStatus(status, actions) {
+    status === 'running' ? actions.startPolling() : actions.stopPolling();
+}
+
 export function useTaskDetail(taskId) {
     const router = useRouter();
     const loading = ref(false);
@@ -10,107 +93,23 @@ export function useTaskDetail(taskId) {
     const detail = ref();
     const page = ref(1);
     const size = ref(10);
-    let pollTimer;
-    const base = computed(() => detail.value?.base);
-    const fields = computed(() => detail.value?.fields ?? []);
-    const evaluators = computed(() => detail.value?.evaluators ?? []);
-    const tags = computed(() => detail.value?.tags ?? []);
-    const rows = computed(() => detail.value?.items.records ?? []);
-    const total = computed(() => detail.value?.items.total ?? 0);
+    const ctx = { taskId, loading, starting, detail, page, size, pollTimer: undefined };
+    const actions = createTaskDetailActions(ctx, router);
+    ctx.loadDetail = actions.loadDetail;
+    const base = computed(() => taskBase(detail.value));
+    const fields = computed(() => taskFields(detail.value));
+    const evaluators = computed(() => taskEvaluators(detail.value));
+    const tags = computed(() => taskTags(detail.value));
+    const rows = computed(() => taskRows(detail.value));
+    const total = computed(() => taskTotal(detail.value));
     watch(taskId, async () => {
-        await loadDetail();
+        await actions.loadDetail();
     }, { immediate: true });
     watch(() => base.value?.status, (status) => {
-        if (status === 'running') {
-            startPolling();
-        }
-        else {
-            stopPolling();
-        }
+        syncPollingByStatus(status, actions);
     });
-    onBeforeUnmount(stopPolling);
-    async function loadDetail(options = {}) {
-        if (!taskId.value)
-            return;
-        const silent = typeof options === 'object' && Boolean(options.silent);
-        if (!silent) {
-            loading.value = true;
-        }
-        try {
-            detail.value = await taskApi.getTask(taskId.value, { page: page.value, size: size.value });
-        }
-        finally {
-            if (!silent) {
-                loading.value = false;
-            }
-        }
-    }
-    async function changeSize() {
-        page.value = 1;
-        await loadDetail();
-    }
-    function backToList() {
-        router.push({ name: 'tasks' });
-    }
-    async function startTask() {
-        if (!taskId.value)
-            return;
-        starting.value = true;
-        try {
-            detail.value = await taskApi.startTask(taskId.value);
-            ElMessage.success('评测任务已开始');
-            startPolling();
-        }
-        finally {
-            starting.value = false;
-        }
-    }
-    function startPolling() {
-        if (pollTimer !== undefined)
-            return;
-        pollTimer = window.setInterval(() => {
-            if (!loading.value && !starting.value) {
-                loadDetail({ silent: true });
-            }
-        }, 3000);
-    }
-    function stopPolling() {
-        if (pollTimer === undefined)
-            return;
-        window.clearInterval(pollTimer);
-        pollTimer = undefined;
-    }
-    function openAnnotation(row) {
-        router.push({ name: 'task-annotation', params: { taskId: taskId.value, taskItemId: row.id } });
-    }
-    function statusLabel(value) {
-        const map = {
-            pending: '待执行',
-            running: '进行中',
-            completed: '评测完成',
-            failed: '评测失败',
-            annotation_pending: '待标注',
-            annotating: '标注中',
-            skipped: '跳过'
-        };
-        return value ? map[value] || value : '-';
-    }
-    function passTagType(value) {
-        if (value === 'pass')
-            return 'success';
-        if (value === 'fail')
-            return 'danger';
-        return 'info';
-    }
-    function tagTypeLabel(value) {
-        const map = {
-            category: '分类',
-            boolean: '布尔',
-            number: '数字',
-            text: '文本'
-        };
-        return value ? map[value] || value : '-';
-    }
+    onBeforeUnmount(actions.stopPolling);
+
     const formatTime = formatDateTime;
     return {
         loading,
@@ -124,11 +123,11 @@ export function useTaskDetail(taskId) {
         tags,
         rows,
         total,
-        loadDetail,
-        backToList,
-        startTask,
-        openAnnotation,
-        changeSize,
+        loadDetail: actions.loadDetail,
+        backToList: actions.backToList,
+        startTask: actions.startTask,
+        openAnnotation: actions.openAnnotation,
+        changeSize: actions.changeSize,
         statusLabel,
         passTagType,
         tagTypeLabel,
