@@ -1,5 +1,5 @@
 import Aurora from './aurora';
-import { SPACE_STORAGE_KEY } from '../utils/spaceSelection';
+import { getCurrentSpaceId } from '../utils/spaceSelection';
 import { getErrorMessage } from '../utils/composableHelpers';
 
 function apiPath(path) {
@@ -9,7 +9,7 @@ function apiPath(path) {
 }
 
 function withSpace(config = {}) {
-    const spaceId = localStorage.getItem(SPACE_STORAGE_KEY);
+    const spaceId = getCurrentSpaceId();
     return {
         ...config,
         headers: {

@@ -4,7 +4,7 @@ import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { Collection, DataAnalysis, Finished, PriceTag } from '@element-plus/icons-vue';
 import { remoteCallApi } from '../api/remoteCall';
 import { appModules } from '../config/appModules';
-import { activeSpaces, findSelectedSpace, resolveSpaceSelection, SPACE_STORAGE_KEY } from '../utils/spaceSelection';
+import { activeSpaces, currentSpaceId, findSelectedSpace, getCurrentSpaceId, resolveSpaceSelection, setCurrentSpaceId } from '../utils/spaceSelection';
 
 const route = useRoute();
 const activeModuleKey = computed(() => String(route.meta.moduleKey ?? 'datasets'));
@@ -18,7 +18,6 @@ const moduleIcons = {
 const spaces = ref([]);
 const spacesReady = ref(false);
 const spaceLoading = ref(false);
-const currentSpaceId = ref(localStorage.getItem(SPACE_STORAGE_KEY) || '');
 
 const spaceOptions = computed(() => activeSpaces(spaces.value));
 const selectedSpace = computed(() => findSelectedSpace(spaces.value, currentSpaceId.value));
@@ -29,7 +28,7 @@ async function loadSpaces() {
     spaceLoading.value = true;
     try {
         spaces.value = await remoteCallApi.listSpaces(20, 1);
-        persistSpaceId(resolveSpaceSelection(spaces.value, localStorage.getItem(SPACE_STORAGE_KEY) || ''));
+        persistSpaceId(resolveSpaceSelection(spaces.value, getCurrentSpaceId()));
     } catch (error) {
         spaces.value = [];
     } finally {
@@ -40,16 +39,10 @@ async function loadSpaces() {
 
 function handleSpaceChange(spaceId) {
     persistSpaceId(spaceId);
-    window.location.reload();
 }
 
 function persistSpaceId(spaceId) {
-    currentSpaceId.value = spaceId || '';
-    if (currentSpaceId.value) {
-        localStorage.setItem(SPACE_STORAGE_KEY, currentSpaceId.value);
-    } else {
-        localStorage.removeItem(SPACE_STORAGE_KEY);
-    }
+    setCurrentSpaceId(spaceId);
 }
 </script>
 
@@ -106,7 +99,7 @@ function persistSpaceId(spaceId) {
       </aside>
 
       <section class="workspace">
-        <RouterView v-if="spacesReady" />
+        <RouterView v-if="spacesReady" :key="currentSpaceId" />
         <div v-else class="workspace-loading">正在加载空间信息...</div>
       </section>
     </div>
