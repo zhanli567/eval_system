@@ -1,4 +1,6 @@
-export const SPACE_STORAGE_KEY = 'agentnexus.currentSpaceId';
+import { ref } from 'vue';
+
+export const currentSpaceId = ref('');
 
 export function activeSpaces(spaces) {
     return Array.isArray(spaces)
@@ -6,14 +8,15 @@ export function activeSpaces(spaces) {
         : [];
 }
 
-export function resolveSpaceSelection(spaces, storedSpaceId) {
+export function resolveSpaceSelection(spaces, selectedSpaceId) {
     const availableSpaces = activeSpaces(spaces);
     if (!availableSpaces.length) {
         return '';
+    } else {
+        return availableSpaces.some((space) => space.id === selectedSpaceId)
+            ? selectedSpaceId
+            : availableSpaces[0].id;
     }
-    return availableSpaces.some((space) => space.id === storedSpaceId)
-        ? storedSpaceId
-        : availableSpaces[0].id;
 }
 
 export function findSelectedSpace(spaces, spaceId) {
