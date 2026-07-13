@@ -1,14 +1,4 @@
-import { ref } from 'vue';
-
-export const currentSpaceId = ref('');
-
-export function getCurrentSpaceId() {
-    return currentSpaceId.value;
-}
-
-export function setCurrentSpaceId(spaceId) {
-    currentSpaceId.value = spaceId || '';
-}
+export const SPACE_STORAGE_KEY = 'agentnexus.currentSpaceId';
 
 export function activeSpaces(spaces) {
     return Array.isArray(spaces)
