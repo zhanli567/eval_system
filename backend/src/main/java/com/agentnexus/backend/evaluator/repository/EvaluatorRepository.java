@@ -53,6 +53,12 @@ public class EvaluatorRepository {
         .like(hasLikeText(like), EvalEvaluator::getEvaluatorName, likeText(like)));
   }
 
+  public boolean existsEvaluatorName(String evaluatorName) {
+    return evaluatorMapper.selectCount(new LambdaQueryWrapper<EvalEvaluator>()
+        .eq(EvalEvaluator::getSpaceId, currentSpaceId())
+        .eq(EvalEvaluator::getEvaluatorName, evaluatorName)) > 0;
+  }
+
   public void insertEvaluator(
       String evaluatorId,
       String evaluatorName,

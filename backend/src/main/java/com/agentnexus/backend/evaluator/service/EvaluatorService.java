@@ -82,7 +82,11 @@ public class EvaluatorService {
     String evaluatorId = id();
     String versionId = id();
     String now = now();
-    evaluatorRepository.insertEvaluator(evaluatorId, normalized.evaluatorName(), normalized.evaluatorType(), normalized.description(), versionId, now);
+    if (evaluatorRepository.existsEvaluatorName(normalized.evaluatorName())) {
+      throw new IllegalArgumentException("当前空间已存在同名评估器");
+    } else {
+      evaluatorRepository.insertEvaluator(evaluatorId, normalized.evaluatorName(), normalized.evaluatorType(), normalized.description(), versionId, now);
+    }
     evaluatorRepository.insertVersion(
         versionId,
         evaluatorId,

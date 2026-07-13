@@ -83,6 +83,12 @@ public class TaskRepository {
     return taskMapper.selectCount(taskQuery(status, like));
   }
 
+  public boolean existsTaskName(String taskName) {
+    return taskMapper.selectCount(new LambdaQueryWrapper<EvalTask>()
+        .eq(EvalTask::getSpaceId, currentSpaceId())
+        .eq(EvalTask::getTaskName, taskName)) > 0;
+  }
+
   public TaskBase findTaskBase(String taskId) {
     return CurrentSpaceHolder.callWithSpace(currentSpaceId(), () -> taskMapper.findTaskBase(currentSpaceId(), taskId));
   }

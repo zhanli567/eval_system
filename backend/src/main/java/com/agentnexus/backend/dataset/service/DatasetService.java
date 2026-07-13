@@ -65,7 +65,11 @@ public class DatasetService {
     String datasetId = id();
     String draftVersionId = id();
     String now = now();
-    datasetRepository.insertDataset(datasetId, name, description, now);
+    if (datasetRepository.existsDatasetName(name)) {
+      throw new IllegalArgumentException("当前空间已存在同名评测集");
+    } else {
+      datasetRepository.insertDataset(datasetId, name, description, now);
+    }
     datasetRepository.insertVersion(draftVersionId, datasetId, 0, 0, now);
     replaceFields(draftVersionId, request.fields() == null ? List.of() : request.fields());
     return getDatasetSummary(datasetId);

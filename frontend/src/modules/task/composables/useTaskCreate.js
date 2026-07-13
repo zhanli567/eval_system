@@ -615,19 +615,27 @@ function createTagActions(ctx, loadActions) {
 
 function createSubmitActions(ctx) {
     async function submit() {
-        if (!validate(ctx))
+        if (!validate(ctx)) {
             return;
-        ctx.state.saving.value = true;
-        try {
-            const created = await taskApi.createTask(taskPayload(ctx));
-            ElMessage.success('评测任务已创建');
-            await ctx.router.replace({ name: 'task-detail', params: { taskId: created.base.id } });
-        }
-        catch (error) {
-            ElMessage.error(getErrorMessage(error, '创建评测任务失败'));
-        }
-        finally {
-            ctx.state.saving.value = false;
+        } else {
+            ctx.state.saving.value = true;
+            try {
+                const name = ctx.state.form.taskName.trim();
+                const page = await taskApi.listTasks({ page: 1, size: 100, keyword: name });
+                if (page.records.some((task) => task.base.taskName === name)) {
+                    throw new Error('当前空间已存在同名评测任务');
+                } else {
+                    const created = await taskApi.createTask(taskPayload(ctx));
+                    ElMessage.success('评测任务已创建');
+                    await ctx.router.replace({ name: 'task-detail', params: { taskId: created.base.id } });
+                }
+            }
+            catch (error) {
+                ElMessage.error(getErrorMessage(error, '创建评测任务失败'));
+            }
+            finally {
+                ctx.state.saving.value = false;
+            }
         }
     }
     return { submit };

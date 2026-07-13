@@ -62,6 +62,12 @@ public class DatasetRepository {
         .like(hasLikeText(like), EvalDataset::getName, likeText(like)));
   }
 
+  public boolean existsDatasetName(String name) {
+    return datasetMapper.selectCount(new LambdaQueryWrapper<EvalDataset>()
+        .eq(EvalDataset::getSpaceId, currentSpaceId())
+        .eq(EvalDataset::getName, name)) > 0;
+  }
+
   public void insertDataset(String datasetId, String name, String description, String now) {
     EvalDataset dataset = new EvalDataset();
     dataset.setId(datasetId);

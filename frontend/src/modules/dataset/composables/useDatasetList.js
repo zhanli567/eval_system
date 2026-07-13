@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { datasetApi } from '../../../api/dataset';
 import { formatDateTime } from '../../../utils/formatters';
-import { movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
+import { getErrorMessage, movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
 import { useColumnWidths } from '../../../utils/tableColumns';
 
 function defaultFields() {
@@ -107,16 +107,28 @@ function createDatasetActions(ctx) {
         loadDatasets();
     }
     async function submitCreate() {
-        if (!validateCreateForm(ctx.createForm))
+        if (!validateCreateForm(ctx.createForm)) {
             return;
-        const created = await datasetApi.createDataset({
-            name: ctx.createForm.name,
-            description: ctx.createForm.description,
-            fields: ctx.createForm.fields
-        });
-        ctx.createVisible.value = false;
-        ElMessage.success('评测集已创建');
-        await ctx.router.push({ name: 'dataset-detail', params: { datasetId: created.id } });
+        } else {
+            try {
+                const name = ctx.createForm.name.trim();
+                const page = await datasetApi.listDatasets({ page: 1, size: 100, keyword: name });
+                if (page.records.some((dataset) => dataset.name === name)) {
+                    ElMessage.warning('当前空间已存在同名评测集');
+                } else {
+                    const created = await datasetApi.createDataset({
+                        name,
+                        description: ctx.createForm.description,
+                        fields: ctx.createForm.fields
+                    });
+                    ctx.createVisible.value = false;
+                    ElMessage.success('评测集已创建');
+                    await ctx.router.push({ name: 'dataset-detail', params: { datasetId: created.id } });
+                }
+            } catch (error) {
+                ElMessage.error(getErrorMessage(error, '创建评测集失败'));
+            }
+        }
     }
     async function removeDataset(row) {
         await ElMessageBox.confirm(`确定删除评测集“${row.name}”吗？`, '删除评测集', { type: 'warning' });

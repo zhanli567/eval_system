@@ -174,19 +174,6 @@ function pickVersion(list, preferredVersionId) {
         ?? list[list.length - 1];
 }
 
-function toVersionItem(created) {
-    return {
-        id: created.versionId,
-        evaluatorId: created.evaluatorId,
-        versionNo: created.versionNo,
-        versionName: created.versionName,
-        draft: created.draft,
-        createdByName: created.createdByName,
-        createdDate: created.createdDate,
-        lastUpdatedDate: created.lastUpdatedDate
-    };
-}
-
 function createEvaluatorEditorActions(ctx, router) {
     const modelActions = createModelActions(ctx);
     const versionActions = createVersionActions(ctx);
@@ -287,12 +274,16 @@ function createSaveActions(ctx, router, versionActions) {
         await versionActions.loadVersions(saved.versionId);
     }
     async function createEvaluator() {
-        const created = await evaluatorApi.createEvaluator(payload(ctx.form, ctx.models));
-        ElMessage.success('评估器已创建');
-        await router.replace({ name: 'evaluator-edit', params: { evaluatorId: created.evaluatorId } });
-        ctx.versions.value = [toVersionItem(created)];
-        ctx.activeVersionId.value = created.versionId;
-        ctx.activeDetail.value = created;
+        const name = ctx.form.evaluatorName.trim();
+        const page = await evaluatorApi.listEvaluators({ page: 1, size: 100, keyword: name });
+        if (page.records.some((evaluator) => evaluator.evaluatorName === name)) {
+            throw new Error('当前空间已存在同名评估器');
+        } else {
+            const created = await evaluatorApi.createEvaluator(payload(ctx.form, ctx.models));
+            ElMessage.success('评估器已创建');
+            await router.replace({ name: 'evaluator-edit', params: { evaluatorId: created.evaluatorId } });
+            await versionActions.loadVersions(created.versionId);
+        }
     }
     async function publishDraft() {
         if (!ctx.isEdit.value || !ctx.evaluatorId.value)

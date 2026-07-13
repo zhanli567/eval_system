@@ -166,10 +166,18 @@ function createTagActions(ctx) {
     async function submitTag() {
         try {
             validateForm(ctx.tagForm);
-            ctx.saving.value = true;
-            await saveTag();
-            ctx.dialogVisible.value = false;
-            await loadTags();
+            const name = ctx.tagForm.tagName.trim();
+            const page = ctx.editingId.value
+                ? null
+                : await tagApi.listTags({ page: 1, size: 100, keyword: name });
+            if (page?.records.some((tag) => tag.tagName === name)) {
+                throw new Error('当前空间已存在同名标签');
+            } else {
+                ctx.saving.value = true;
+                await saveTag();
+                ctx.dialogVisible.value = false;
+                await loadTags();
+            }
         }
         catch (error) {
             ElMessage.error(getErrorMessage(error, '保存失败'));

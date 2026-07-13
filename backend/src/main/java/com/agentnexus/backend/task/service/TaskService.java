@@ -133,19 +133,23 @@ public class TaskService {
     NormalizedTask normalized = normalizeCreateRequest(request);
     String taskId = id();
     String now = now();
-    taskRepository.insertTask(
-        taskId,
-        normalized.taskName(),
-        STATUS_PENDING,
-        normalized.description(),
-        normalized.datasetId(),
-        normalized.datasetVersionId(),
-        normalized.rows().size(),
-        normalized.appType(),
-        normalized.appId(),
-        normalized.appVersionId(),
-        normalized.appAgentAlias(),
-        now);
+    if (taskRepository.existsTaskName(normalized.taskName())) {
+      throw new IllegalArgumentException("当前空间已存在同名评测任务");
+    } else {
+      taskRepository.insertTask(
+          taskId,
+          normalized.taskName(),
+          STATUS_PENDING,
+          normalized.description(),
+          normalized.datasetId(),
+          normalized.datasetVersionId(),
+          normalized.rows().size(),
+          normalized.appType(),
+          normalized.appId(),
+          normalized.appVersionId(),
+          normalized.appAgentAlias(),
+          now);
+    }
 
     saveAppMappings(taskId, normalized, now);
     List<String> taskEvaluatorIds = saveEvaluators(taskId, normalized, now);

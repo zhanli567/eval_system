@@ -1,8 +1,8 @@
 export function getErrorMessage(error, fallback) {
-    if (error instanceof Error && error.message) {
-        return error.message;
-    }
-    return error?.response?.data?.msg || error?.response?.data?.message || fallback;
+    return error?.response?.data?.msg
+        || error?.response?.data?.message
+        || (error instanceof Error && error.message)
+        || fallback;
 }
 
 export function toggleDescSort(sortBy, sortOrder, field) {

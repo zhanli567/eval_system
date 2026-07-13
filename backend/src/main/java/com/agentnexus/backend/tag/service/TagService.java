@@ -47,20 +47,21 @@ public class TagService {
   @Transactional
   public TagDetail createTag(TagInput request) {
     NormalizedTag normalized = normalizeTagInput(request, null);
-    if (tagRepository.countSameName(normalized.tagName()) > 0) {
-      throw new IllegalArgumentException("标签名称不能重复");
-    }
     String tagId = id();
     String now = now();
-    tagRepository.insertTag(
-        tagId,
-        normalized.tagName(),
-        normalized.tagType(),
-        normalized.description(),
-        normalized.minValue(),
-        normalized.maxValue(),
-        normalized.passThreshold(),
-        now);
+    if (tagRepository.countSameName(normalized.tagName()) > 0) {
+      throw new IllegalArgumentException("当前空间已存在同名标签");
+    } else {
+      tagRepository.insertTag(
+          tagId,
+          normalized.tagName(),
+          normalized.tagType(),
+          normalized.description(),
+          normalized.minValue(),
+          normalized.maxValue(),
+          normalized.passThreshold(),
+          now);
+    }
     saveOptions(tagId, normalized.tagType(), normalized.options(), now);
     return getTag(tagId);
   }
