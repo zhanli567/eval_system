@@ -14,8 +14,9 @@ async function loadTaskDetail(ctx, options = {}) {
         ctx.loading.value = true;
     }
     try {
-        ctx.detail.value = await taskApi.getTask(ctx.taskId.value, { page: ctx.page.value, size: ctx.size.value });
-        void ctx.appDisplay.load([ctx.detail.value?.base]);
+        const detail = await taskApi.getTask(ctx.taskId.value, { page: ctx.page.value, size: ctx.size.value });
+        await ctx.appDisplay.load([detail?.base]);
+        ctx.detail.value = detail;
     }
     finally {
         if (!silent) {

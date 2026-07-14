@@ -39,9 +39,9 @@ async function loadTaskPage(state, options = {}) {
             sortBy: state.sortBy.value,
             sortOrder: state.sortOrder.value
         });
+        await state.appDisplay.load(result.records.map((row) => row.base));
         state.tasks.value = result.records;
         state.total.value = result.total;
-        void state.appDisplay.load(result.records.map((row) => row.base));
     }
     finally {
         if (!options.silent) {
