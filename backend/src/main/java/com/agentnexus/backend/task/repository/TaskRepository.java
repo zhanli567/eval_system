@@ -89,6 +89,73 @@ public class TaskRepository {
         .eq(EvalTask::getTaskName, taskName)) > 0;
   }
 
+  public boolean isTaskCreatedByCurrentUser(String taskId) {
+    return taskMapper.selectCount(new LambdaQueryWrapper<EvalTask>()
+        .eq(EvalTask::getSpaceId, currentSpaceId())
+        .eq(EvalTask::getId, taskId)
+        .eq(EvalTask::getCreatedBy, currentUserId())) > 0;
+  }
+
+  public List<String> listTaskNamesByDatasetId(String datasetId) {
+    return taskMapper.selectList(new LambdaQueryWrapper<EvalTask>()
+            .select(EvalTask::getTaskName)
+            .eq(EvalTask::getSpaceId, currentSpaceId())
+            .eq(EvalTask::getDatasetId, datasetId)
+            .orderByAsc(EvalTask::getTaskName))
+        .stream()
+        .map(EvalTask::getTaskName)
+        .toList();
+  }
+
+  public List<String> listTaskNamesByDatasetVersionId(String versionId) {
+    return taskMapper.selectList(new LambdaQueryWrapper<EvalTask>()
+            .select(EvalTask::getTaskName)
+            .eq(EvalTask::getSpaceId, currentSpaceId())
+            .eq(EvalTask::getDatasetVersionId, versionId)
+            .orderByAsc(EvalTask::getTaskName))
+        .stream()
+        .map(EvalTask::getTaskName)
+        .toList();
+  }
+
+  public List<String> listTaskNamesByEvaluatorId(String evaluatorId) {
+    List<String> taskIds = taskEvaluatorMapper.selectList(new LambdaQueryWrapper<EvalTaskEvaluator>()
+            .select(EvalTaskEvaluator::getTaskId)
+            .eq(EvalTaskEvaluator::getSpaceId, currentSpaceId())
+            .eq(EvalTaskEvaluator::getEvaluatorSource, "custom")
+            .eq(EvalTaskEvaluator::getEvaluatorId, evaluatorId))
+        .stream()
+        .map(EvalTaskEvaluator::getTaskId)
+        .distinct()
+        .toList();
+    return listTaskNames(taskIds);
+  }
+
+  public List<String> listTaskNamesByEvaluatorVersionId(String versionId) {
+    List<String> taskIds = taskEvaluatorMapper.selectList(new LambdaQueryWrapper<EvalTaskEvaluator>()
+            .select(EvalTaskEvaluator::getTaskId)
+            .eq(EvalTaskEvaluator::getSpaceId, currentSpaceId())
+            .eq(EvalTaskEvaluator::getEvaluatorSource, "custom")
+            .eq(EvalTaskEvaluator::getEvaluatorVersionId, versionId))
+        .stream()
+        .map(EvalTaskEvaluator::getTaskId)
+        .distinct()
+        .toList();
+    return listTaskNames(taskIds);
+  }
+
+  public List<String> listTaskNamesByTagId(String tagId) {
+    List<String> taskIds = taskTagMapper.selectList(new LambdaQueryWrapper<EvalTaskTag>()
+            .select(EvalTaskTag::getTaskId)
+            .eq(EvalTaskTag::getSpaceId, currentSpaceId())
+            .eq(EvalTaskTag::getTagId, tagId))
+        .stream()
+        .map(EvalTaskTag::getTaskId)
+        .distinct()
+        .toList();
+    return listTaskNames(taskIds);
+  }
+
   public TaskBase findTaskBase(String taskId) {
     return CurrentSpaceHolder.callWithSpace(currentSpaceId(), () -> taskMapper.findTaskBase(currentSpaceId(), taskId));
   }
@@ -679,6 +746,21 @@ public class TaskRepository {
         .eq(EvalTask::getSpaceId, currentSpaceId())
         .eq(StringUtils.hasText(status), EvalTask::getStatus, status)
         .like(hasLikeText(like), EvalTask::getTaskName, likeText(like));
+  }
+
+  private List<String> listTaskNames(List<String> taskIds) {
+    if (taskIds.isEmpty()) {
+      return List.of();
+    } else {
+      return taskMapper.selectList(new LambdaQueryWrapper<EvalTask>()
+              .select(EvalTask::getTaskName)
+              .eq(EvalTask::getSpaceId, currentSpaceId())
+              .in(EvalTask::getId, taskIds)
+              .orderByAsc(EvalTask::getTaskName))
+          .stream()
+          .map(EvalTask::getTaskName)
+          .toList();
+    }
   }
 
   private TaskItemRecord toTaskItemRecord(EvalTaskItem item) {

@@ -13,6 +13,7 @@ import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorDetail;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorSummary;
 import com.agentnexus.backend.evaluator.preset.PresetEvaluatorStore;
 import com.agentnexus.backend.evaluator.repository.EvaluatorRepository;
+import com.agentnexus.backend.task.repository.TaskRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -45,10 +46,16 @@ public class EvaluatorService {
 
   private final EvaluatorRepository evaluatorRepository;
   private final PresetEvaluatorStore presetEvaluatorStore;
+  private final TaskRepository taskRepository;
 
-  public EvaluatorService(EvaluatorRepository evaluatorRepository, PresetEvaluatorStore presetEvaluatorStore) {
+  public EvaluatorService(
+      EvaluatorRepository evaluatorRepository,
+      PresetEvaluatorStore presetEvaluatorStore,
+      TaskRepository taskRepository
+  ) {
     this.evaluatorRepository = evaluatorRepository;
     this.presetEvaluatorStore = presetEvaluatorStore;
+    this.taskRepository = taskRepository;
   }
 
   public PageResponse<EvaluatorSummary> listEvaluators(int page, int size, String evaluatorType, String keyword, String sortBy, String sortOrder) {
@@ -179,25 +186,39 @@ public class EvaluatorService {
 
   @Transactional
   public void deleteEvaluator(String evaluatorId) {
-    evaluatorRepository.deleteEvaluator(evaluatorId);
+    String evaluatorType = evaluatorRepository.findEvaluatorType(evaluatorId);
+    if (!StringUtils.hasText(evaluatorType)) {
+      throw new IllegalArgumentException("评估器不存在");
+    } else if (!evaluatorRepository.isEvaluatorCreatedByCurrentUser(evaluatorId)) {
+      throw new IllegalArgumentException("仅创建人可以删除评估器");
+    } else {
+      List<String> taskNames = taskRepository.listTaskNamesByEvaluatorId(evaluatorId);
+      if (!taskNames.isEmpty()) {
+        throw new IllegalArgumentException("评估器已被评测任务“" + String.join("、", taskNames) + "”使用，不能删除");
+      } else {
+        evaluatorRepository.deleteEvaluator(evaluatorId);
+      }
+    }
   }
 
   @Transactional
   public void deleteVersion(String versionId) {
     EvaluatorConfig version = getVersion(versionId);
-    if (Boolean.TRUE.equals(version.draft())) {
+    if (!evaluatorRepository.isVersionCreatedByCurrentUser(versionId)) {
+      throw new IllegalArgumentException("仅创建人可以删除评估器版本");
+    } else if (Boolean.TRUE.equals(version.draft())) {
       throw new IllegalArgumentException("草稿版本不能删除");
-    }
-    if (evaluatorRepository.countVersionTaskBindings(versionId) > 0) {
-      throw new IllegalArgumentException("评估器版本已被评测任务使用，不能删除");
-    }
-    evaluatorRepository.deleteVersion(versionId);
-    List<EvaluatorVersionDto> remainingVersions = evaluatorRepository.listVersions(version.evaluatorId());
-    if (!remainingVersions.isEmpty()) {
-      evaluatorRepository.updateLatestVersion(
-          version.evaluatorId(),
-          remainingVersions.get(remainingVersions.size() - 1).id(),
-          now());
+    } else {
+      List<String> taskNames = taskRepository.listTaskNamesByEvaluatorVersionId(versionId);
+      if (!taskNames.isEmpty()) {
+        throw new IllegalArgumentException("评估器版本已被评测任务“" + String.join("、", taskNames) + "”使用，不能删除");
+      } else {
+        evaluatorRepository.deleteVersion(versionId);
+        List<EvaluatorVersionDto> remainingVersions = evaluatorRepository.listVersions(version.evaluatorId());
+        remainingVersions.stream()
+            .reduce((previous, current) -> current)
+            .ifPresent(latest -> evaluatorRepository.updateLatestVersion(version.evaluatorId(), latest.id(), now()));
+      }
     }
   }
 

@@ -12,8 +12,6 @@ import com.agentnexus.backend.tag.mapper.TagMapper;
 import com.agentnexus.backend.tag.mapper.TagOptionMapper;
 import com.agentnexus.backend.tag.entity.EvalTag;
 import com.agentnexus.backend.tag.entity.EvalTagOption;
-import com.agentnexus.backend.task.entity.EvalTaskTag;
-import com.agentnexus.backend.task.mapper.TaskTagMapper;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -26,12 +24,10 @@ import org.springframework.util.StringUtils;
 public class TagRepository {
   private final TagMapper tagMapper;
   private final TagOptionMapper optionMapper;
-  private final TaskTagMapper taskTagMapper;
 
-  public TagRepository(TagMapper tagMapper, TagOptionMapper optionMapper, TaskTagMapper taskTagMapper) {
+  public TagRepository(TagMapper tagMapper, TagOptionMapper optionMapper) {
     this.tagMapper = tagMapper;
     this.optionMapper = optionMapper;
-    this.taskTagMapper = taskTagMapper;
   }
 
   public List<TagSummary> listTags(String tagType, String like, String sortBy, String sortOrder, int size, int offset) {
@@ -92,6 +88,13 @@ public class TagRepository {
         .eq(EvalTag::getTagName, tagName)));
   }
 
+  public boolean isTagCreatedByCurrentUser(String tagId) {
+    return tagMapper.selectCount(new LambdaQueryWrapper<EvalTag>()
+        .eq(EvalTag::getSpaceId, currentSpaceId())
+        .eq(EvalTag::getId, tagId)
+        .eq(EvalTag::getCreatedBy, currentUserId())) > 0;
+  }
+
   public void insertTag(
       String tagId,
       String tagName,
@@ -141,12 +144,6 @@ public class TagRepository {
     optionMapper.delete(new LambdaQueryWrapper<EvalTagOption>()
         .eq(EvalTagOption::getSpaceId, currentSpaceId())
         .eq(EvalTagOption::getTagId, tagId));
-  }
-
-  public int countTaskBindings(String tagId) {
-    return Math.toIntExact(taskTagMapper.selectCount(new LambdaQueryWrapper<EvalTaskTag>()
-        .eq(EvalTaskTag::getSpaceId, currentSpaceId())
-        .eq(EvalTaskTag::getTagId, tagId)));
   }
 
   public void deleteTag(String tagId) {

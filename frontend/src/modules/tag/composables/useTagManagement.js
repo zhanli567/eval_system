@@ -210,10 +210,14 @@ function createTagActions(ctx) {
     }
     async function removeTag(row) {
         await ElMessageBox.confirm(`确定删除标签“${row.tagName}”吗？`, '删除标签', { type: 'warning' });
-        await tagApi.deleteTag(row.id);
-        ElMessage.success('已删除');
-        movePreviousPageIfLastRow(ctx.tags, ctx.tagPage);
-        await loadTags();
+        try {
+            await tagApi.deleteTag(row.id);
+            ElMessage.success('已删除');
+            movePreviousPageIfLastRow(ctx.tags, ctx.tagPage);
+            await loadTags();
+        } catch (error) {
+            ElMessage.error(getErrorMessage(error, '删除标签失败'));
+        }
     }
     function addCategoryOption(group) {
         const target = group === 'pass' ? ctx.tagForm.passOptions : ctx.tagForm.failOptions;

@@ -68,6 +68,20 @@ public class DatasetRepository {
         .eq(EvalDataset::getName, name)) > 0;
   }
 
+  public boolean isDatasetCreatedByCurrentUser(String datasetId) {
+    return datasetMapper.selectCount(new LambdaQueryWrapper<EvalDataset>()
+        .eq(EvalDataset::getSpaceId, currentSpaceId())
+        .eq(EvalDataset::getId, datasetId)
+        .eq(EvalDataset::getCreatedBy, currentUserId())) > 0;
+  }
+
+  public boolean isVersionCreatedByCurrentUser(String versionId) {
+    return versionMapper.selectCount(new LambdaQueryWrapper<EvalDatasetVersion>()
+        .eq(EvalDatasetVersion::getSpaceId, currentSpaceId())
+        .eq(EvalDatasetVersion::getId, versionId)
+        .eq(EvalDatasetVersion::getCreatedBy, currentUserId())) > 0;
+  }
+
   public void insertDataset(String datasetId, String name, String description, String now) {
     EvalDataset dataset = new EvalDataset();
     dataset.setId(datasetId);

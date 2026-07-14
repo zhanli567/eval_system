@@ -411,10 +411,13 @@ public class TaskService {
   @Transactional
   public void deleteTask(String taskId) {
     TaskBase task = findTask(taskId);
-    if (!List.of(STATUS_PENDING, STATUS_COMPLETED, STATUS_FAILED).contains(task.status())) {
+    if (!taskRepository.isTaskCreatedByCurrentUser(taskId)) {
+      throw new IllegalArgumentException("仅创建人可以删除评测任务");
+    } else if (!List.of(STATUS_PENDING, STATUS_COMPLETED, STATUS_FAILED).contains(task.status())) {
       throw new IllegalArgumentException("Only pending, completed or failed tasks can be deleted");
+    } else {
+      taskRepository.deleteTask(taskId);
     }
-    taskRepository.deleteTask(taskId);
   }
 
   public AnnotationDetail getAnnotation(String taskId, String taskItemId) {

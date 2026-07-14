@@ -8,6 +8,7 @@ import com.agentnexus.backend.tag.api.dto.response.TagOptionDto;
 import com.agentnexus.backend.tag.api.dto.request.TagOptionInput;
 import com.agentnexus.backend.tag.api.dto.response.TagSummary;
 import com.agentnexus.backend.tag.repository.TagRepository;
+import com.agentnexus.backend.task.repository.TaskRepository;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -23,9 +24,11 @@ public class TagService {
   private static final List<String> SUPPORTED_OPTION_GROUPS = List.of("pass", "fail");
 
   private final TagRepository tagRepository;
+  private final TaskRepository taskRepository;
 
-  public TagService(TagRepository tagRepository) {
+  public TagService(TagRepository tagRepository, TaskRepository taskRepository) {
     this.tagRepository = tagRepository;
+    this.taskRepository = taskRepository;
   }
 
   public PageResponse<TagSummary> listTags(int page, int size, String tagType, String keyword, String sortBy, String sortOrder) {
@@ -94,10 +97,16 @@ public class TagService {
   @Transactional
   public void deleteTag(String tagId) {
     findExistingTag(tagId);
-    if (tagRepository.countTaskBindings(tagId) > 0) {
-      throw new IllegalArgumentException("标签已被评测任务使用，不能删除");
+    if (!tagRepository.isTagCreatedByCurrentUser(tagId)) {
+      throw new IllegalArgumentException("仅创建人可以删除标签");
+    } else {
+      List<String> taskNames = taskRepository.listTaskNamesByTagId(tagId);
+      if (!taskNames.isEmpty()) {
+        throw new IllegalArgumentException("标签已被评测任务“" + String.join("、", taskNames) + "”使用，不能删除");
+      } else {
+        tagRepository.deleteTag(tagId);
+      }
     }
-    tagRepository.deleteTag(tagId);
   }
 
   private TagDetail toDetail(TagConfig config) {

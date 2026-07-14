@@ -59,6 +59,20 @@ public class EvaluatorRepository {
         .eq(EvalEvaluator::getEvaluatorName, evaluatorName)) > 0;
   }
 
+  public boolean isEvaluatorCreatedByCurrentUser(String evaluatorId) {
+    return evaluatorMapper.selectCount(new LambdaQueryWrapper<EvalEvaluator>()
+        .eq(EvalEvaluator::getSpaceId, currentSpaceId())
+        .eq(EvalEvaluator::getId, evaluatorId)
+        .eq(EvalEvaluator::getCreatedBy, currentUserId())) > 0;
+  }
+
+  public boolean isVersionCreatedByCurrentUser(String versionId) {
+    return versionMapper.selectCount(new LambdaQueryWrapper<EvalEvaluatorVersion>()
+        .eq(EvalEvaluatorVersion::getSpaceId, currentSpaceId())
+        .eq(EvalEvaluatorVersion::getId, versionId)
+        .eq(EvalEvaluatorVersion::getCreatedBy, currentUserId())) > 0;
+  }
+
   public void insertEvaluator(
       String evaluatorId,
       String evaluatorName,
@@ -207,10 +221,6 @@ public class EvaluatorRepository {
         .stream()
         .map(this::toVersionDto)
         .toList();
-  }
-
-  public long countVersionTaskBindings(String versionId) {
-    return versionMapper.countTaskBindings(currentSpaceId(), versionId);
   }
 
   public void deleteVersion(String versionId) {

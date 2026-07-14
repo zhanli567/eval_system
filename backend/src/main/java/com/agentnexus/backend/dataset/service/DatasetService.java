@@ -12,6 +12,7 @@ import com.agentnexus.backend.dataset.api.dto.request.RowInput;
 import com.agentnexus.backend.dataset.api.dto.response.VersionDetail;
 import com.agentnexus.backend.dataset.repository.DatasetRepository;
 import com.agentnexus.backend.dataset.repository.DatasetRowRecord;
+import com.agentnexus.backend.task.repository.TaskRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,9 +39,11 @@ public class DatasetService {
   private static final List<String> SUPPORTED_FIELD_TYPES = List.of("string", "number", "boolean");
 
   private final DatasetRepository datasetRepository;
+  private final TaskRepository taskRepository;
 
-  public DatasetService(DatasetRepository datasetRepository) {
+  public DatasetService(DatasetRepository datasetRepository, TaskRepository taskRepository) {
     this.datasetRepository = datasetRepository;
+    this.taskRepository = taskRepository;
   }
 
   public PageResponse<DatasetSummary> listDatasets(int page, int size, String keyword, String sortBy, String sortOrder) {
@@ -79,8 +82,21 @@ public class DatasetService {
     return datasetRepository.findDatasetSummary(datasetId);
   }
 
+  @Transactional
   public void deleteDataset(String datasetId) {
-    datasetRepository.deleteDataset(datasetId);
+    DatasetSummary dataset = datasetRepository.findDatasetSummary(datasetId);
+    if (dataset == null) {
+      throw new IllegalArgumentException("评测集不存在");
+    } else if (!datasetRepository.isDatasetCreatedByCurrentUser(datasetId)) {
+      throw new IllegalArgumentException("仅创建人可以删除评测集");
+    } else {
+      List<String> taskNames = taskRepository.listTaskNamesByDatasetId(datasetId);
+      if (!taskNames.isEmpty()) {
+        throw new IllegalArgumentException("评测集已被评测任务“" + String.join("、", taskNames) + "”使用，不能删除");
+      } else {
+        datasetRepository.deleteDataset(datasetId);
+      }
+    }
   }
 
   public List<DatasetVersionDto> listVersions(String datasetId) {
@@ -227,11 +243,21 @@ public class DatasetService {
   @Transactional
   public void deleteVersion(String versionId) {
     DatasetVersionDto version = datasetRepository.findVersion(versionId);
-    if (version.draft()) {
+    if (version == null) {
+      throw new IllegalArgumentException("评测集版本不存在");
+    } else if (!datasetRepository.isVersionCreatedByCurrentUser(versionId)) {
+      throw new IllegalArgumentException("仅创建人可以删除评测集版本");
+    } else if (version.draft()) {
       throw new IllegalArgumentException("草稿版本不能删除");
+    } else {
+      List<String> taskNames = taskRepository.listTaskNamesByDatasetVersionId(versionId);
+      if (!taskNames.isEmpty()) {
+        throw new IllegalArgumentException("评测集版本已被评测任务“" + String.join("、", taskNames) + "”使用，不能删除");
+      } else {
+        datasetRepository.deleteVersion(versionId);
+        datasetRepository.refreshDatasetVersionStats(version.datasetId(), now());
+      }
     }
-    datasetRepository.deleteVersion(versionId);
-    datasetRepository.refreshDatasetVersionStats(version.datasetId(), now());
   }
 
   @Transactional

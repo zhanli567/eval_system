@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { taskApi } from '../../../api/task';
 import { formatDateTime } from '../../../utils/formatters';
-import { movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
+import { getErrorMessage, movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
 import { TASK_STATUS_OPTIONS, statusLabel } from '../../../utils/taskLabels';
 import { useColumnWidths } from '../../../utils/tableColumns';
 
@@ -108,10 +108,14 @@ function createTaskManagementActions(ctx, router) {
             return;
         }
         await ElMessageBox.confirm(`确定删除评测任务“${row.base.taskName}”吗？`, '删除评测任务', { type: 'warning' });
-        await taskApi.deleteTask(row.base.id);
-        ElMessage.success('已删除');
-        movePreviousPageIfLastRow(ctx.state.tasks, ctx.state.page);
-        await loadTasks();
+        try {
+            await taskApi.deleteTask(row.base.id);
+            ElMessage.success('已删除');
+            movePreviousPageIfLastRow(ctx.state.tasks, ctx.state.page);
+            await loadTasks();
+        } catch (error) {
+            ElMessage.error(getErrorMessage(error, '删除评测任务失败'));
+        }
     }
     function toggleSort(field) {
         toggleDescSort(ctx.state.sortBy, ctx.state.sortOrder, field);
