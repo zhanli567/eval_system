@@ -27,7 +27,7 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
     <aside v-if="isEdit" class="version-rail evaluator-version-rail">
       <div class="rail-title">
         <span>版本管理</span>
-        <strong>{{ versions.length }}</strong>
+        <strong>{{ versions.filter((version) => !version.draft).length }}</strong>
       </div>
       <div
         v-for="version in versions"

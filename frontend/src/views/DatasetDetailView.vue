@@ -29,7 +29,7 @@ const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, 
     <aside class="version-rail dataset-version-rail">
       <div class="rail-title">
         <span>评测集版本</span>
-        <strong>{{ versions.length }}</strong>
+        <strong>{{ versions.filter((version) => !version.draft).length }}</strong>
       </div>
       <button
         v-for="version in versions"
