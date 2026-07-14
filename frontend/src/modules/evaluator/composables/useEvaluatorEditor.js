@@ -311,13 +311,9 @@ function createSaveActions(ctx, router, versionActions) {
     }
     async function removeVersion(version) {
         await ElMessageBox.confirm(`确定删除 ${version.versionName} 吗？`, '删除版本', { type: 'warning' });
-        try {
-            await evaluatorApi.deleteVersion(version.id);
-            ElMessage.success('版本已删除');
-            await versionActions.loadVersions();
-        } catch (error) {
-            ElMessage.error(getErrorMessage(error, '删除评估器版本失败'));
-        }
+        await evaluatorApi.deleteVersion(version.id);
+        ElMessage.success('版本已删除');
+        await versionActions.loadVersions();
     }
     return { submit, publishDraft, removeVersion };
 }

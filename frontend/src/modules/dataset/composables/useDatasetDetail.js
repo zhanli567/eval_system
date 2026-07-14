@@ -118,14 +118,10 @@ function createVersionActions(ctx) {
     }
     async function removeVersion(version) {
         await ElMessageBox.confirm(`确定删除 ${version.versionName} 吗？`, '删除版本', { type: 'warning' });
-        try {
-            await datasetApi.deleteVersion(version.id);
-            ElMessage.success('版本已删除');
-            await loadDatasetSummary();
-            await loadVersions();
-        } catch (error) {
-            ElMessage.error(getErrorMessage(error, '删除评测集版本失败'));
-        }
+        await datasetApi.deleteVersion(version.id);
+        ElMessage.success('版本已删除');
+        await loadDatasetSummary();
+        await loadVersions();
     }
     async function coverDraft(version) {
         await ElMessageBox.confirm(`确定用 ${version.versionName} 全量覆盖草稿吗？`, '覆盖草稿', { type: 'warning' });

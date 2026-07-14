@@ -132,14 +132,10 @@ function createDatasetActions(ctx) {
     }
     async function removeDataset(row) {
         await ElMessageBox.confirm(`确定删除评测集“${row.name}”吗？`, '删除评测集', { type: 'warning' });
-        try {
-            await datasetApi.deleteDataset(row.id);
-            ElMessage.success('已删除');
-            movePreviousPageIfLastRow(ctx.datasets, ctx.datasetPage);
-            await loadDatasets();
-        } catch (error) {
-            ElMessage.error(getErrorMessage(error, '删除评测集失败'));
-        }
+        await datasetApi.deleteDataset(row.id);
+        ElMessage.success('已删除');
+        movePreviousPageIfLastRow(ctx.datasets, ctx.datasetPage);
+        await loadDatasets();
     }
     return { loadDatasets, searchDatasets, changeDatasetSize, toggleSort, openDataset, openCreateDialog, submitCreate, removeDataset };
 }

@@ -2,7 +2,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { evaluatorApi } from '../../../api/evaluator';
-import { getErrorMessage, movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
+import { movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
 import { useColumnWidths } from '../../../utils/tableColumns';
 
@@ -169,14 +169,10 @@ function createEvaluatorNavigationActions(ctx) {
     }
     async function removeEvaluator(row) {
         await ElMessageBox.confirm(`确定删除评估器“${row.evaluatorName}”吗？`, '删除评估器', { type: 'warning' });
-        try {
-            await evaluatorApi.deleteEvaluator(row.id);
-            ElMessage.success('已删除');
-            movePreviousPageIfLastRow(ctx.customEvaluators, ctx.customPage);
-            await loadCustomEvaluators();
-        } catch (error) {
-            ElMessage.error(getErrorMessage(error, '删除评估器失败'));
-        }
+        await evaluatorApi.deleteEvaluator(row.id);
+        ElMessage.success('已删除');
+        movePreviousPageIfLastRow(ctx.customEvaluators, ctx.customPage);
+        await loadCustomEvaluators();
     }
     async function loadCustomEvaluators() {
         const customActions = createCustomActions(ctx);
