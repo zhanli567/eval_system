@@ -31,7 +31,7 @@ function startTaskPolling(ctx) {
         if (!ctx.loading.value && !ctx.starting.value) {
             ctx.loadDetail({ silent: true });
         }
-    }, 3000);
+    }, 60000);
 }
 
 function stopTaskPolling(ctx) {

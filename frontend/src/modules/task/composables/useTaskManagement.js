@@ -57,7 +57,7 @@ function startListPolling(ctx) {
         if (!ctx.loading.value) {
             ctx.loadTasks({ silent: true });
         }
-    }, 3000);
+    }, 60000);
 }
 
 function stopListPolling(ctx) {
