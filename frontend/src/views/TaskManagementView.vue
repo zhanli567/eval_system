@@ -1,7 +1,7 @@
 <script setup>
 import { CircleCheck, CircleClose, Clock, Loading, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useTaskManagement } from '../modules/task/composables/useTaskManagement';
-const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, columnWidths, statusOptions, loadTasks, searchTasks, changeSize, openCreate, openDetail, startTask, isStartingTask, removeTask, canStartTask, canDeleteTask, toggleSort, handleColumnResize, statusLabel, formatTime } = useTaskManagement();
+const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, columnWidths, statusOptions, loadTasks, searchTasks, changeSize, openCreate, openDetail, startTask, isStartingTask, removeTask, canStartTask, canDeleteTask, toggleSort, handleColumnResize, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -16,11 +16,6 @@ function statusIconClass(value) {
 }
 function formatNameVersion(name, version) {
     return `${name || '-'} / ${version || '-'}`;
-}
-function formatAppBinding(base) {
-    if (base.appType !== 'agent' || !base.appId)
-        return '-';
-    return [base.appId || '-', base.appVersionId || '-', base.appAgentAlias || '-'].join(' / ');
 }
 function formatEvaluatorList(evaluators) {
     return formatNameList(evaluators, (item) => {

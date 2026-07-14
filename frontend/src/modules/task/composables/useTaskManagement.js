@@ -6,6 +6,7 @@ import { formatDateTime } from '../../../utils/formatters';
 import { movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
 import { TASK_STATUS_OPTIONS, statusLabel } from '../../../utils/taskLabels';
 import { useColumnWidths } from '../../../utils/tableColumns';
+import { useTaskAppDisplay } from './useTaskAppDisplay';
 
 const DELETABLE_STATUSES = ['pending', 'completed', 'failed'];
 const STARTABLE_STATUSES = ['pending', 'failed'];
@@ -40,6 +41,7 @@ async function loadTaskPage(state, options = {}) {
         });
         state.tasks.value = result.records;
         state.total.value = result.total;
+        void state.appDisplay.load(result.records.map((row) => row.base));
     }
     finally {
         if (!options.silent) {
@@ -146,7 +148,8 @@ export function useTaskManagement() {
     const sortBy = ref('lastUpdatedDate');
     const sortOrder = ref('desc');
     const columns = taskColumns();
-    const state = { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder };
+    const appDisplay = useTaskAppDisplay();
+    const state = { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, appDisplay };
     const ctx = { state, loading, pollTimer: undefined, startingTaskIds };
     const actions = createTaskManagementActions(ctx, router);
     ctx.loadTasks = actions.loadTasks;
@@ -182,6 +185,7 @@ export function useTaskManagement() {
         canDeleteTask: actions.canDeleteTask,
         toggleSort: actions.toggleSort,
         handleColumnResize: columns.handleColumnResize,
+        formatAppBinding: appDisplay.format,
         statusLabel,
         formatTime
     };

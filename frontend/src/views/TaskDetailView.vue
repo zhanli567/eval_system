@@ -6,7 +6,7 @@ import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
 import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
-const { loading, starting, page, size, base, fields, evaluators, tags, rows, total, loadDetail, backToList, startTask, openAnnotation, changeSize, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
+const { loading, starting, page, size, base, fields, evaluators, tags, rows, total, loadDetail, backToList, startTask, openAnnotation, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -30,11 +30,6 @@ function findEvaluatorResult(row, taskEvaluatorId) {
 }
 function formatNameVersion(name, version) {
     return `${name || '-'} / ${version || '-'}`;
-}
-function formatAppBinding(task) {
-    if (!task || task.appType !== 'agent' || !task.appId)
-        return '-';
-    return [task.appId || '-', task.appVersionId || '-', task.appAgentAlias || '-'].join(' / ');
 }
 function formatPassRate(value) {
     return value === undefined || value === null ? '-' : `${value}%`;

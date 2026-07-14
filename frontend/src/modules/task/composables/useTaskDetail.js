@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus';
 import { taskApi } from '../../../api/task';
 import { formatDateTime } from '../../../utils/formatters';
 import { passTagType, statusLabel, tagTypeLabel } from '../../../utils/taskLabels';
+import { useTaskAppDisplay } from './useTaskAppDisplay';
 
 async function loadTaskDetail(ctx, options = {}) {
     if (!ctx.taskId.value)
@@ -14,6 +15,7 @@ async function loadTaskDetail(ctx, options = {}) {
     }
     try {
         ctx.detail.value = await taskApi.getTask(ctx.taskId.value, { page: ctx.page.value, size: ctx.size.value });
+        void ctx.appDisplay.load([ctx.detail.value?.base]);
     }
     finally {
         if (!silent) {
@@ -93,7 +95,8 @@ export function useTaskDetail(taskId) {
     const detail = ref();
     const page = ref(1);
     const size = ref(10);
-    const ctx = { taskId, loading, starting, detail, page, size, pollTimer: undefined };
+    const appDisplay = useTaskAppDisplay();
+    const ctx = { taskId, loading, starting, detail, page, size, pollTimer: undefined, appDisplay };
     const actions = createTaskDetailActions(ctx, router);
     ctx.loadDetail = actions.loadDetail;
     const base = computed(() => taskBase(detail.value));
@@ -128,6 +131,7 @@ export function useTaskDetail(taskId) {
         startTask: actions.startTask,
         openAnnotation: actions.openAnnotation,
         changeSize: actions.changeSize,
+        formatAppBinding: appDisplay.format,
         statusLabel,
         passTagType,
         tagTypeLabel,
