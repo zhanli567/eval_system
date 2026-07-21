@@ -174,6 +174,55 @@ public class TaskService {
         new PageResponse<>(buildItems(itemRecords), total, safePage, safeSize));
   }
 
+  public CreateTaskRequest getTaskCopyConfig(String taskId) {
+    TaskBase base = findTask(taskId);
+    Map<String, List<TaskEvaluatorParamMappingRecord>> mappingsByEvaluator = taskRepository.listAllParamMappings(taskId)
+        .stream()
+        .collect(Collectors.groupingBy(TaskEvaluatorParamMappingRecord::taskEvaluatorId));
+    List<AppFieldMappingInput> appFieldMappings = taskRepository.listAppFieldMappings(taskId)
+        .stream()
+        .map(mapping -> new AppFieldMappingInput(
+            mapping.appInputId(),
+            mapping.appInputName(),
+            mapping.appInputType(),
+            mapping.datasetFieldId()))
+        .toList();
+    List<TaskEvaluatorInput> evaluators = taskRepository.listTaskEvaluatorBindings(taskId)
+        .stream()
+        .map(evaluator -> new TaskEvaluatorInput(
+            evaluator.evaluatorSource(),
+            evaluator.evaluatorId(),
+            evaluator.evaluatorVersionId(),
+            evaluator.modelId(),
+            evaluator.modelName(),
+            mappingsByEvaluator.getOrDefault(evaluator.id(), List.of())
+                .stream()
+                .map(mapping -> new TaskEvaluatorParamMappingInput(
+                    mapping.paramId(),
+                    mapping.paramName(),
+                    mapping.sourceType(),
+                    mapping.datasetFieldId(),
+                    mapping.appOutputName()))
+                .toList()))
+        .toList();
+    List<String> tagIds = taskRepository.listTaskTagBindings(taskId)
+        .stream()
+        .map(TaskTagBindingRecord::tagId)
+        .toList();
+    return new CreateTaskRequest(
+        base.taskName() + "-副本",
+        base.description(),
+        base.datasetId(),
+        base.datasetVersionId(),
+        base.appType(),
+        base.appId(),
+        base.appVersionId(),
+        base.appAgentAlias(),
+        appFieldMappings,
+        evaluators,
+        tagIds);
+  }
+
   @Transactional
   public TaskDetail startTask(String taskId) {
     return startTask(taskId, "");

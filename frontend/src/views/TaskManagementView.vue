@@ -1,7 +1,7 @@
 <script setup>
-import { CircleCheck, CircleClose, Clock, Loading, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
+import { CircleCheck, CircleClose, Clock, CopyDocument, Loading, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useTaskManagement } from '../modules/task/composables/useTaskManagement';
-const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, columnWidths, statusOptions, loadTasks, searchTasks, changeSize, openCreate, openDetail, startTask, isStartingTask, removeTask, canStartTask, canDeleteTask, toggleSort, handleColumnResize, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
+const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, columnWidths, statusOptions, loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, isStartingTask, removeTask, canStartTask, canDeleteTask, toggleSort, handleColumnResize, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -132,6 +132,7 @@ function formatNameList(items, picker) {
       <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="160" fixed="right" :resizable="false">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDetail(row)">详情</el-button>
+          <el-button link type="primary" :icon="CopyDocument" @click.stop="copyTask(row)">复制</el-button>
           <el-button
             v-if="canStartTask(row)"
             link

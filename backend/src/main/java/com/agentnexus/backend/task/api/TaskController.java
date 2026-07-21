@@ -57,6 +57,12 @@ public class TaskController {
     return ApiResponse.ok(taskService.getTask(taskId, page, size));
   }
 
+  @GET
+  @Path("/{taskId}/copy-config")
+  public ApiResponse<CreateTaskRequest> getTaskCopyConfig(@PathParam("taskId") String taskId) {
+    return ApiResponse.ok(taskService.getTaskCopyConfig(taskId));
+  }
+
   @POST
   @Path("/{taskId}/start")
   public ApiResponse<TaskDetail> startTask(@PathParam("taskId") String taskId, @HeaderParam("Cookie") String cookie) {

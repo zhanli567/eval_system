@@ -22,7 +22,7 @@ function taskColumns() {
         tags: { width: 190, min: 140, max: 320 },
         createdByName: { width: 140, min: 100, max: 220 },
         createdDate: { width: 190, min: 160, max: 240 },
-        actions: { width: 190, min: 160, max: 230 }
+        actions: { width: 230, min: 210, max: 280 }
     });
 }
 
@@ -85,6 +85,9 @@ function createTaskManagementActions(ctx, router) {
     function openDetail(row) {
         router.push({ name: 'task-detail', params: { taskId: row.base.id } });
     }
+    function copyTask(row) {
+        router.push({ name: 'task-create', query: { copyFrom: row.base.id } });
+    }
     async function startTask(row) {
         setStarting(row.base.id, true);
         try {
@@ -132,7 +135,7 @@ function createTaskManagementActions(ctx, router) {
     function canDeleteTask(row) {
         return DELETABLE_STATUSES.includes(row.base.status);
     }
-    return { loadTasks, searchTasks, changeSize, openCreate, openDetail, startTask, isStartingTask, removeTask, canStartTask, canDeleteTask, toggleSort, startPolling, stopPolling };
+    return { loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, isStartingTask, removeTask, canStartTask, canDeleteTask, toggleSort, startPolling, stopPolling };
 }
 
 export function useTaskManagement() {
@@ -178,6 +181,7 @@ export function useTaskManagement() {
         changeSize: actions.changeSize,
         openCreate: actions.openCreate,
         openDetail: actions.openDetail,
+        copyTask: actions.copyTask,
         startTask: actions.startTask,
         isStartingTask: actions.isStartingTask,
         removeTask: actions.removeTask,

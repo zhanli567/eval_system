@@ -1,4 +1,4 @@
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { datasetApi } from '../../../api/dataset';
@@ -613,6 +613,122 @@ function createTagActions(ctx, loadActions) {
     return { openTagDrawer, addTag, removeTag, isTagSelected };
 }
 
+function createCopyActions(ctx, loadActions, appActions) {
+    async function loadTaskCopy(taskId) {
+        ctx.copying = true;
+        ctx.state.loading.value = true;
+        try {
+            const config = await taskApi.getTaskCopyConfig(taskId);
+            ctx.state.form.taskName = config.taskName;
+            ctx.state.form.description = config.description || '';
+            await restoreCopyDataset(ctx, loadActions, config);
+            await restoreCopyApplication(ctx, loadActions, appActions, config);
+            await restoreCopyEvaluators(ctx, loadActions, config.evaluators || []);
+            await loadActions.loadTags();
+            ctx.state.tagsLoaded.value = true;
+            ctx.state.selectedTagIds.value = config.tagIds || [];
+        }
+        finally {
+            ctx.copying = false;
+            ctx.state.loading.value = false;
+        }
+    }
+    return { loadTaskCopy };
+}
+
+async function restoreCopyDataset(ctx, loadActions, config) {
+    await loadActions.loadDatasets();
+    ctx.state.datasetsLoaded.value = true;
+    ctx.state.form.datasetId = config.datasetId;
+    await loadActions.loadVersions();
+    ctx.state.form.datasetVersionId = config.datasetVersionId;
+    await loadActions.loadFields();
+}
+
+async function restoreCopyApplication(ctx, loadActions, appActions, config) {
+    ctx.state.form.appType = config.appType || 'none';
+    if (ctx.state.form.appType !== 'agent') {
+        return;
+    }
+    await loadActions.loadAgents();
+    ctx.state.agentsLoaded.value = true;
+    if (!ctx.state.agents.value.some((agent) => agent.id === config.appId)) {
+        ctx.state.form.appId = '';
+        ctx.state.form.appVersionId = '';
+        ctx.state.form.appAgentAlias = '';
+        return;
+    }
+    ctx.state.form.appId = config.appId;
+    await appActions.selectAgent(config.appId);
+    ctx.state.form.appVersionId = ctx.computed.agentVersions.value.some((version) => version.id === config.appVersionId)
+        ? config.appVersionId
+        : '';
+    ctx.state.form.appAgentAlias = config.appAgentAlias || '';
+    (config.appFieldMappings || []).forEach((mapping) => {
+        ctx.state.appFieldMappings[mapping.appInputId] = mapping.datasetFieldId;
+    });
+}
+
+async function restoreCopyEvaluators(ctx, loadActions, evaluators) {
+    ctx.state.evaluatorBlocks.value = [];
+    if (evaluators.some((evaluator) => evaluator.evaluatorSource === 'custom')) {
+        await loadActions.loadCustomEvaluators();
+        ctx.state.customEvaluatorsLoaded.value = true;
+    }
+    if (evaluators.some((evaluator) => evaluator.evaluatorSource === 'preset')) {
+        await loadActions.loadPresetCategories();
+        ctx.state.presetCategoriesLoaded.value = true;
+        await loadActions.ensureModelsLoaded();
+    }
+    for (const evaluator of evaluators) {
+        const block = createEvaluatorBlock();
+        block.evaluatorSource = evaluator.evaluatorSource;
+        block.evaluatorId = evaluator.evaluatorId;
+        if (block.evaluatorSource === 'preset') {
+            await restorePresetEvaluator(ctx, loadActions, block, evaluator);
+        }
+        else {
+            await restoreCustomEvaluator(ctx, block, evaluator);
+        }
+        restoreEvaluatorMappings(block, evaluator.paramMappings || []);
+        ctx.state.evaluatorBlocks.value.push(block);
+    }
+}
+
+async function restorePresetEvaluator(ctx, loadActions, block, evaluator) {
+    const detail = await evaluatorApi.getPresetEvaluator(block.evaluatorId);
+    block.presetCategoryId = detail.categoryId || '';
+    await loadActions.ensurePresetOptionsLoaded(block, true);
+    if (!rejectCodeEvaluator(block, detail)) {
+        fillFromPreset(ctx, block, detail);
+        block.modelId = ctx.state.models.value.some((model) => model.modelId === evaluator.modelId)
+            ? evaluator.modelId
+            : '';
+    }
+}
+
+async function restoreCustomEvaluator(ctx, block, evaluator) {
+    block.versions = (await evaluatorApi.listVersions(block.evaluatorId)).filter((version) => !version.draft);
+    block.evaluatorVersionId = evaluator.evaluatorVersionId;
+    const detail = await evaluatorApi.getVersion(block.evaluatorVersionId);
+    if (!rejectCodeEvaluator(block, detail)) {
+        fillFromCustom(ctx, block, detail);
+    }
+}
+
+function restoreEvaluatorMappings(block, mappings) {
+    mappings.forEach((mapping) => {
+        const key = mapping.paramId ? `id:${mapping.paramId}` : `name:${mapping.paramName}`;
+        if (block.paramMappings[key]) {
+            block.paramMappings[key] = {
+                sourceType: mapping.sourceType,
+                datasetFieldId: mapping.datasetFieldId || '',
+                appOutputName: mapping.appOutputName || ''
+            };
+        }
+    });
+}
+
 function createSubmitActions(ctx) {
     async function submit() {
         if (!validate(ctx)) {
@@ -835,19 +951,39 @@ export function useTaskCreate() {
     const evaluatorActions = createEvaluatorActions(ctx, loadActions);
     const appActions = createAppActions(ctx, loadActions);
     const tagActions = createTagActions(ctx, loadActions);
+    const copyActions = createCopyActions(ctx, loadActions, appActions);
     const submitActions = createSubmitActions(ctx);
 
     watch(() => state.form.datasetId, async () => {
+        if (ctx.copying) {
+            return;
+        }
         await loadActions.loadVersions();
     });
     watch(() => state.form.datasetVersionId, async () => {
+        if (ctx.copying) {
+            return;
+        }
         await loadActions.loadFields();
     });
     watch(() => state.form.appType, async () => {
+        if (ctx.copying) {
+            return;
+        }
         await handleAppTypeChanged(ctx, loadActions);
     });
     watch(() => state.form.appId, async (agentId) => {
+        if (ctx.copying) {
+            return;
+        }
         await appActions.selectAgent(agentId);
+    });
+
+    onMounted(async () => {
+        const taskId = router.currentRoute.value.query.copyFrom;
+        if (typeof taskId === 'string' && taskId) {
+            await copyActions.loadTaskCopy(taskId);
+        }
     });
 
     function backToList() {

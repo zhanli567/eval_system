@@ -156,6 +156,12 @@ public class TaskRepository {
     return listTaskNames(taskIds);
   }
 
+  /**
+   * 根据任务ID查询用于复制的评测任务基础信息。
+   *
+   * @param taskId 评测任务ID
+   * @return 评测任务基础信息，不存在时返回null
+   */
   public TaskBase findTaskBase(String taskId) {
     return CurrentSpaceHolder.callWithSpace(currentSpaceId(), () -> taskMapper.findTaskBase(currentSpaceId(), taskId));
   }
@@ -618,6 +624,12 @@ public class TaskRepository {
         taskMapper.listTagResultsByTaskItemIds(currentSpaceId(), taskItemIds));
   }
 
+  /**
+   * 查询复制评测任务所需的应用字段映射。
+   *
+   * @param taskId 评测任务ID
+   * @return 应用字段映射列表
+   */
   public List<TaskAppFieldMappingRecord> listAppFieldMappings(String taskId) {
     return appFieldMappingMapper.selectList(new LambdaQueryWrapper<EvalTaskAppFieldMapping>()
             .eq(EvalTaskAppFieldMapping::getSpaceId, currentSpaceId())
@@ -628,6 +640,12 @@ public class TaskRepository {
         .toList();
   }
 
+  /**
+   * 查询复制评测任务所需的评估器绑定。
+   *
+   * @param taskId 评测任务ID
+   * @return 任务评估器绑定列表
+   */
   public List<TaskEvaluatorBindingRecord> listTaskEvaluatorBindings(String taskId) {
     return taskEvaluatorMapper.selectList(new LambdaQueryWrapper<EvalTaskEvaluator>()
             .eq(EvalTaskEvaluator::getSpaceId, currentSpaceId())
@@ -648,6 +666,12 @@ public class TaskRepository {
         .toList();
   }
 
+  /**
+   * 查询复制评测任务所需的全部评估器参数映射。
+   *
+   * @param taskId 评测任务ID
+   * @return 评估器参数映射列表
+   */
   public List<TaskEvaluatorParamMappingRecord> listAllParamMappings(String taskId) {
     return paramMappingMapper.selectList(new LambdaQueryWrapper<EvalTaskEvaluatorParamMapping>()
             .eq(EvalTaskEvaluatorParamMapping::getSpaceId, currentSpaceId())
@@ -658,6 +682,12 @@ public class TaskRepository {
         .toList();
   }
 
+  /**
+   * 查询复制评测任务所需的标签绑定。
+   *
+   * @param taskId 评测任务ID
+   * @return 任务标签绑定列表
+   */
   public List<TaskTagBindingRecord> listTaskTagBindings(String taskId) {
     return CurrentSpaceHolder.callWithSpace(currentSpaceId(), () ->
         taskMapper.listTaskTagBindings(currentSpaceId(), taskId));
