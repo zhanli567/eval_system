@@ -3,12 +3,25 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { ArrowLeft, ArrowRight, Back } from '@element-plus/icons-vue';
 import { useTaskAnnotation } from '../modules/task/composables/useTaskAnnotation';
-import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
+import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
 const taskItemId = computed(() => String(route.params.taskItemId ?? ''));
 const { loading, saving, loadError, form, task, item, fields, tags, evaluators, previousItemId, nextItemId, saveAnnotation, backToDetail, goItem, passTagType, tagTypeLabel, optionLabel, appOutputEmptyDescription } = useTaskAnnotation(taskId, taskItemId);
 const formattedAppOutput = computed(() => formatAppOutput(item.value?.appOutput || ''));
+function formatNameVersion(name, version) {
+    return `${name || '-'} / ${version || '-'}`;
+}
+function evaluatorResultLabel(result) {
+    return result.passResult || result.status || '-';
+}
+function evaluatorReason(result) {
+    return formatEvaluatorReason(result.resultValue || '') || result.errorMessage || '';
+}
+function evaluatorParamSource(param) {
+    const sourceType = param.sourceType === 'dataset_field' ? '评测集字段' : '应用输出';
+    return `${sourceType}：${param.sourceName || '-'}`;
+}
 </script>
 
 <template>
@@ -51,25 +64,39 @@ const formattedAppOutput = computed(() => formatAppOutput(item.value?.appOutput 
     </aside>
 
     <main class="annotation-output">
-      <h2>应用输出</h2>
-      <div class="app-output-box">
-        <p v-if="formattedAppOutput">{{ formattedAppOutput }}</p>
-        <el-empty v-else :description="appOutputEmptyDescription()" :image-size="80" />
-      </div>
+      <h2>评估器及其数据</h2>
+      <section class="annotation-subsection">
+        <h3>应用输出</h3>
+        <div class="app-output-box">
+          <p v-if="formattedAppOutput">{{ formattedAppOutput }}</p>
+          <el-empty v-else :description="appOutputEmptyDescription()" :image-size="80" />
+        </div>
+      </section>
 
-      <h2>评估器（自动）</h2>
-      <div class="auto-result-list">
-        <div v-for="result in evaluators" :key="result.id" class="auto-result-item">
-          <div>
-            <strong>{{ result.evaluatorName }}</strong>
-            <span>{{ result.versionName }}</span>
+      <div class="auto-result-list evaluator-data-list">
+        <div v-for="result in evaluators" :key="result.id" class="auto-result-item evaluator-data-item">
+          <div class="evaluator-data-head">
+            <div>
+              <strong>{{ formatNameVersion(result.evaluatorName, result.versionName) }}</strong>
+              <span>{{ result.evaluatorType || '-' }}</span>
+            </div>
+            <el-tag :type="passTagType(result.passResult)" effect="plain">
+              {{ evaluatorResultLabel(result) }}
+            </el-tag>
+            <span class="result-value">得分 {{ result.score ?? '-' }}</span>
           </div>
-          <el-tag :type="passTagType(result.passResult)" effect="plain">
-            {{ result.passResult || result.status }}
-          </el-tag>
-          <span class="result-value">得分 {{ result.score ?? '-' }}</span>
-          <p v-if="formatEvaluatorReason(result.resultValue)" class="auto-result-reason">
-            {{ formatEvaluatorReason(result.resultValue) }}
+          <div v-if="result.params?.length" class="evaluator-param-list">
+            <div v-for="param in result.params" :key="`${param.paramId || ''}:${param.paramName || ''}`" class="evaluator-param-row">
+              <span>
+                {{ param.paramName }}
+                <em>{{ evaluatorParamSource(param) }}</em>
+              </span>
+              <p>{{ param.value || '-' }}</p>
+            </div>
+          </div>
+          <el-empty v-else description="暂无参数映射" :image-size="64" />
+          <p v-if="evaluatorReason(result)" class="auto-result-reason">
+            {{ compactText(evaluatorReason(result), 360) }}
           </p>
         </div>
         <el-empty v-if="!evaluators.length" description="暂无自动评估结果" :image-size="72" />
@@ -77,7 +104,7 @@ const formattedAppOutput = computed(() => formatAppOutput(item.value?.appOutput 
     </main>
 
     <aside class="annotation-column annotation-form-column">
-      <h2>标签（人工标注）</h2>
+      <h2>标注区域</h2>
       <el-form label-position="top">
         <div v-for="tag in tags" :key="tag.taskTagId" class="annotation-tag-editor">
           <div class="annotation-tag-head">

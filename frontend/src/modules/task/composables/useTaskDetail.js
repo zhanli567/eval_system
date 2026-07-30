@@ -1,10 +1,13 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { taskApi } from '../../../api/task';
 import { formatDateTime } from '../../../utils/formatters';
 import { passTagType, statusLabel, tagTypeLabel } from '../../../utils/taskLabels';
-import { useTaskAppDisplay } from './useTaskAppDisplay';
+import { formatTaskAppBinding } from '../../../utils/taskAppBinding';
+
+const STARTABLE_STATUSES = ['pending', 'failed', 'stopped'];
+const STOPPABLE_STATUSES = ['running'];
 
 async function loadTaskDetail(ctx, options = {}) {
     if (!ctx.taskId.value)
@@ -14,9 +17,7 @@ async function loadTaskDetail(ctx, options = {}) {
         ctx.loading.value = true;
     }
     try {
-        const detail = await taskApi.getTask(ctx.taskId.value, { page: ctx.page.value, size: ctx.size.value });
-        await ctx.appDisplay.load([detail?.base]);
-        ctx.detail.value = detail;
+        ctx.detail.value = await taskApi.getTask(ctx.taskId.value, { page: ctx.page.value, size: ctx.size.value });
     }
     finally {
         if (!silent) {
@@ -66,6 +67,25 @@ function createTaskDetailActions(ctx, router) {
             ctx.starting.value = false;
         }
     }
+    async function stopTask() {
+        if (!ctx.taskId.value) {
+            return;
+        }
+        await ElMessageBox.confirm(
+            '停止后将保留已完成结果，未执行或未完成的数据会标记为已中止。已中止任务可重新开始，重新开始会从头重跑。确定停止吗？',
+            '停止评测任务',
+            { type: 'warning' }
+        );
+        ctx.stopping.value = true;
+        try {
+            ctx.detail.value = await taskApi.stopTask(ctx.taskId.value);
+            ElMessage.success('评测任务已停止');
+            stopPolling();
+        }
+        finally {
+            ctx.stopping.value = false;
+        }
+    }
     function startPolling() {
         startTaskPolling(ctx);
     }
@@ -75,7 +95,7 @@ function createTaskDetailActions(ctx, router) {
     function openAnnotation(row) {
         router.push({ name: 'task-annotation', params: { taskId: ctx.taskId.value, taskItemId: row.id } });
     }
-    return { loadDetail, changeSize, backToList, startTask, startPolling, stopPolling, openAnnotation };
+    return { loadDetail, changeSize, backToList, startTask, stopTask, startPolling, stopPolling, openAnnotation };
 }
 
 const taskBase = (detail) => detail?.base;
@@ -93,11 +113,11 @@ export function useTaskDetail(taskId) {
     const router = useRouter();
     const loading = ref(false);
     const starting = ref(false);
+    const stopping = ref(false);
     const detail = ref();
     const page = ref(1);
     const size = ref(10);
-    const appDisplay = useTaskAppDisplay();
-    const ctx = { taskId, loading, starting, detail, page, size, pollTimer: undefined, appDisplay };
+    const ctx = { taskId, loading, starting, stopping, detail, page, size, pollTimer: undefined };
     const actions = createTaskDetailActions(ctx, router);
     ctx.loadDetail = actions.loadDetail;
     const base = computed(() => taskBase(detail.value));
@@ -106,6 +126,8 @@ export function useTaskDetail(taskId) {
     const tags = computed(() => taskTags(detail.value));
     const rows = computed(() => taskRows(detail.value));
     const total = computed(() => taskTotal(detail.value));
+    const canStartTask = computed(() => STARTABLE_STATUSES.includes(base.value?.status));
+    const canStopTask = computed(() => STOPPABLE_STATUSES.includes(base.value?.status));
     watch(taskId, async () => {
         await actions.loadDetail();
     }, { immediate: true });
@@ -118,6 +140,7 @@ export function useTaskDetail(taskId) {
     return {
         loading,
         starting,
+        stopping,
         detail,
         page,
         size,
@@ -127,12 +150,15 @@ export function useTaskDetail(taskId) {
         tags,
         rows,
         total,
+        canStartTask,
+        canStopTask,
         loadDetail: actions.loadDetail,
         backToList: actions.backToList,
         startTask: actions.startTask,
+        stopTask: actions.stopTask,
         openAnnotation: actions.openAnnotation,
         changeSize: actions.changeSize,
-        formatAppBinding: appDisplay.format,
+        formatAppBinding: formatTaskAppBinding,
         statusLabel,
         passTagType,
         tagTypeLabel,

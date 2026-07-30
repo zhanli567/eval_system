@@ -5,14 +5,16 @@ export const TASK_STATUS_OPTIONS = [
     { label: '待执行', value: 'pending' },
     { label: '进行中', value: 'running' },
     { label: '评测完成', value: 'completed' },
-    { label: '评测失败', value: 'failed' }
+    { label: '评测失败', value: 'failed' },
+    { label: '已中止', value: 'stopped' }
 ];
 
 const TASK_STATUS_LABELS = {
     ...Object.fromEntries(TASK_STATUS_OPTIONS.map((item) => [item.value, item.label])),
     annotation_pending: '待标注',
     annotating: '标注中',
-    skipped: '跳过'
+    skipped: '跳过',
+    stopped: '已中止'
 };
 const TAG_TYPE_LABELS = {
     category: '分类',

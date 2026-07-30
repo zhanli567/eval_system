@@ -1,12 +1,13 @@
 <script setup>
 import { CircleCheck, CircleClose, Clock, CopyDocument, Loading, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useTaskManagement } from '../modules/task/composables/useTaskManagement';
-const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, columnWidths, statusOptions, loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, isStartingTask, removeTask, canStartTask, canDeleteTask, toggleSort, handleColumnResize, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
+const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, columnWidths, statusOptions, loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, stopTask, isStartingTask, isStoppingTask, removeTask, canStartTask, canStopTask, canDeleteTask, toggleSort, handleColumnResize, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
 const statusIcons = {
     pending: Clock,
     running: Loading,
     completed: CircleCheck,
-    failed: CircleClose
+    failed: CircleClose,
+    stopped: CircleClose
 };
 function statusIcon(value) {
     return statusIcons[value] || Clock;
@@ -142,6 +143,16 @@ function formatNameList(items, picker) {
             @click.stop="startTask(row)"
           >
             开始
+          </el-button>
+          <el-button
+            v-if="canStopTask(row)"
+            link
+            type="danger"
+            :loading="isStoppingTask(row.base.id)"
+            :disabled="isStoppingTask(row.base.id)"
+            @click.stop="stopTask(row)"
+          >
+            停止
           </el-button>
           <el-button v-if="canDeleteTask(row)" link type="danger" @click.stop="removeTask(row)">删除</el-button>
         </template>

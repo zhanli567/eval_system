@@ -96,6 +96,19 @@ public class TaskRepository {
         .eq(EvalTask::getCreatedBy, currentUserId())) > 0;
   }
 
+  /**
+   * 返回评测任务是否正在运行。
+   *
+   * @param taskId 评测任务ID
+   * @return 返回评测任务是否正在运行
+   */
+  public boolean isTaskRunning(String taskId) {
+    return taskMapper.selectCount(new LambdaQueryWrapper<EvalTask>()
+        .eq(EvalTask::getSpaceId, currentSpaceId())
+        .eq(EvalTask::getId, taskId)
+        .eq(EvalTask::getStatus, "running")) > 0;
+  }
+
   public List<String> listTaskNamesByDatasetId(String datasetId) {
     return taskMapper.selectList(new LambdaQueryWrapper<EvalTask>()
             .select(EvalTask::getTaskName)
@@ -176,34 +189,13 @@ public class TaskRepository {
         taskMapper.listTagDimensions(currentSpaceId(), taskId));
   }
 
-  public void insertTask(
-      String taskId,
-      String taskName,
-      String status,
-      String description,
-      String datasetId,
-      String datasetVersionId,
-      int itemCount,
-      String appType,
-      String appId,
-      String appVersionId,
-      String appAgentAlias,
-      String now
-  ) {
-    EvalTask task = new EvalTask();
-    task.setId(taskId);
-    task.setTaskName(taskName);
-    task.setStatus(status);
-    task.setDescription(description);
-    task.setDatasetId(datasetId);
-    task.setDatasetVersionId(datasetVersionId);
-    task.setItemCount(itemCount);
-    task.setAppType(appType);
-    task.setAppId(appId);
-    task.setAppVersionId(appVersionId);
-    task.setAppAgentAlias(appAgentAlias);
-    task.setStartedAt("");
-    task.setFinishedAt("");
+  /**
+   * 保存评测任务基础信息。
+   *
+   * @param task 评测任务实体
+   * @param now 当前时间戳
+   */
+  public void insertTask(EvalTask task, String now) {
     task.setLastUpdatedDate(toLastUpdatedDate(now));
     fillCreated(task);
     taskMapper.insert(task);
@@ -478,6 +470,90 @@ public class TaskRepository {
         .set(EvalTaskTagResult::getAnnotatorId, "")
         .set(EvalTaskTagResult::getAnnotatorName, "")
         .set(EvalTaskTagResult::getAnnotatedAt, "")
+        .set(EvalTaskTagResult::getLastUpdatedBy, currentUserId())
+        .set(EvalTaskTagResult::getLastUpdatedByName, currentUserName())
+        .set(EvalTaskTagResult::getLastUpdatedDate, toLastUpdatedDate(now)));
+  }
+
+  /**
+   * 将评测任务下仍未结束的子记录标记为已中止。
+   *
+   * @param taskId 评测任务ID
+   * @param stoppedStatus 已中止状态值
+   * @param now 当前时间戳
+   */
+  public void markTaskStoppedChildren(String taskId, String stoppedStatus, String now) {
+    markTaskItemsStopped(taskId, stoppedStatus, now);
+    markTaskItemAppOutputsStopped(taskId, stoppedStatus, now);
+    markTaskEvaluatorsStopped(taskId, stoppedStatus, now);
+    markTaskEvaluatorResultsStopped(taskId, stoppedStatus, now);
+    markTaskTagsStopped(taskId, stoppedStatus, now);
+    markTaskTagResultsStopped(taskId, stoppedStatus, now);
+  }
+
+  private void markTaskItemsStopped(String taskId, String stoppedStatus, String now) {
+    taskItemMapper.update(null, new LambdaUpdateWrapper<EvalTaskItem>()
+        .eq(EvalTaskItem::getSpaceId, currentSpaceId())
+        .eq(EvalTaskItem::getTaskId, taskId)
+        .notIn(EvalTaskItem::getStatus, List.of("completed", "failed", stoppedStatus))
+        .set(EvalTaskItem::getStatus, stoppedStatus)
+        .set(EvalTaskItem::getFinishedAt, now)
+        .set(EvalTaskItem::getLastUpdatedBy, currentUserId())
+        .set(EvalTaskItem::getLastUpdatedByName, currentUserName())
+        .set(EvalTaskItem::getLastUpdatedDate, toLastUpdatedDate(now)));
+  }
+
+  private void markTaskItemAppOutputsStopped(String taskId, String stoppedStatus, String now) {
+    taskItemMapper.update(null, new LambdaUpdateWrapper<EvalTaskItem>()
+        .eq(EvalTaskItem::getSpaceId, currentSpaceId())
+        .eq(EvalTaskItem::getTaskId, taskId)
+        .in(EvalTaskItem::getAppOutputStatus, List.of("pending", "running"))
+        .set(EvalTaskItem::getAppOutputStatus, stoppedStatus)
+        .set(EvalTaskItem::getLastUpdatedBy, currentUserId())
+        .set(EvalTaskItem::getLastUpdatedByName, currentUserName())
+        .set(EvalTaskItem::getLastUpdatedDate, toLastUpdatedDate(now)));
+  }
+
+  private void markTaskEvaluatorsStopped(String taskId, String stoppedStatus, String now) {
+    taskEvaluatorMapper.update(null, new LambdaUpdateWrapper<EvalTaskEvaluator>()
+        .eq(EvalTaskEvaluator::getSpaceId, currentSpaceId())
+        .eq(EvalTaskEvaluator::getTaskId, taskId)
+        .in(EvalTaskEvaluator::getStatus, List.of("pending", "running"))
+        .set(EvalTaskEvaluator::getStatus, stoppedStatus)
+        .set(EvalTaskEvaluator::getLastUpdatedBy, currentUserId())
+        .set(EvalTaskEvaluator::getLastUpdatedByName, currentUserName())
+        .set(EvalTaskEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
+  }
+
+  private void markTaskEvaluatorResultsStopped(String taskId, String stoppedStatus, String now) {
+    evaluatorResultMapper.update(null, new LambdaUpdateWrapper<EvalTaskEvaluatorResult>()
+        .eq(EvalTaskEvaluatorResult::getSpaceId, currentSpaceId())
+        .eq(EvalTaskEvaluatorResult::getTaskId, taskId)
+        .in(EvalTaskEvaluatorResult::getStatus, List.of("pending", "running"))
+        .set(EvalTaskEvaluatorResult::getStatus, stoppedStatus)
+        .set(EvalTaskEvaluatorResult::getFinishedAt, now)
+        .set(EvalTaskEvaluatorResult::getLastUpdatedBy, currentUserId())
+        .set(EvalTaskEvaluatorResult::getLastUpdatedByName, currentUserName())
+        .set(EvalTaskEvaluatorResult::getLastUpdatedDate, toLastUpdatedDate(now)));
+  }
+
+  private void markTaskTagsStopped(String taskId, String stoppedStatus, String now) {
+    taskTagMapper.update(null, new LambdaUpdateWrapper<EvalTaskTag>()
+        .eq(EvalTaskTag::getSpaceId, currentSpaceId())
+        .eq(EvalTaskTag::getTaskId, taskId)
+        .in(EvalTaskTag::getStatus, List.of("pending", "annotating"))
+        .set(EvalTaskTag::getStatus, stoppedStatus)
+        .set(EvalTaskTag::getLastUpdatedBy, currentUserId())
+        .set(EvalTaskTag::getLastUpdatedByName, currentUserName())
+        .set(EvalTaskTag::getLastUpdatedDate, toLastUpdatedDate(now)));
+  }
+
+  private void markTaskTagResultsStopped(String taskId, String stoppedStatus, String now) {
+    tagResultMapper.update(null, new LambdaUpdateWrapper<EvalTaskTagResult>()
+        .eq(EvalTaskTagResult::getSpaceId, currentSpaceId())
+        .eq(EvalTaskTagResult::getTaskId, taskId)
+        .eq(EvalTaskTagResult::getStatus, "pending")
+        .set(EvalTaskTagResult::getStatus, stoppedStatus)
         .set(EvalTaskTagResult::getLastUpdatedBy, currentUserId())
         .set(EvalTaskTagResult::getLastUpdatedByName, currentUserName())
         .set(EvalTaskTagResult::getLastUpdatedDate, toLastUpdatedDate(now)));

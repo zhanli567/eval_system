@@ -765,7 +765,9 @@ function taskPayload(ctx) {
         datasetVersionId: ctx.state.form.datasetVersionId,
         appType: ctx.state.form.appType,
         appId: ctx.state.form.appType === 'agent' ? ctx.state.form.appId : '',
+        appName: ctx.state.form.appType === 'agent' ? selectedAgentName(ctx) : '',
         appVersionId: ctx.state.form.appType === 'agent' ? ctx.state.form.appVersionId : '',
+        appVersionName: ctx.state.form.appType === 'agent' ? selectedAgentVersionName(ctx) : '',
         appAgentAlias: ctx.state.form.appType === 'agent' ? ctx.state.form.appAgentAlias : '',
         appFieldMappings: toAppFieldMappingPayload(ctx),
         evaluators: ctx.state.evaluatorBlocks.value.map((block) => toEvaluatorPayload(ctx, block)),
@@ -812,6 +814,16 @@ function toParamMappingPayload(ctx, block, param) {
 
 function selectedModelName(ctx, modelId) {
     return ctx.state.models.value.find((model) => model.modelId === modelId)?.modelName || '';
+}
+
+function selectedAgentName(ctx) {
+    return ctx.computed.selectedAgent.value?.agentName || ctx.state.form.appId || '';
+}
+
+function selectedAgentVersionName(ctx) {
+    return ctx.computed.agentVersions.value.find((version) => version.id === ctx.state.form.appVersionId)?.versionName
+        || ctx.state.form.appVersionId
+        || '';
 }
 
 function shouldSubmitParamMapping(ctx, param, mapping) {

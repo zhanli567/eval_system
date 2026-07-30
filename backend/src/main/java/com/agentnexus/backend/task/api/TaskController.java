@@ -69,6 +69,18 @@ public class TaskController {
     return ApiResponse.ok(taskService.startTask(taskId, cookie));
   }
 
+  /**
+   * 停止正在执行的评测任务。
+   *
+   * @param taskId 评测任务ID
+   * @return 停止后的评测任务详情
+   */
+  @POST
+  @Path("/{taskId}/stop")
+  public ApiResponse<TaskDetail> stopTask(@PathParam("taskId") String taskId) {
+    return ApiResponse.ok(taskService.stopTask(taskId));
+  }
+
   @POST
   @Path("/{taskId}/delete")
   public ApiResponse<Void> deleteTask(@PathParam("taskId") String taskId) {

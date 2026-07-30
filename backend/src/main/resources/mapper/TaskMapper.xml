@@ -18,7 +18,9 @@
       <arg column="itemCount" javaType="java.lang.Integer"/>
       <arg column="appType" javaType="java.lang.String"/>
       <arg column="appId" javaType="java.lang.String"/>
+      <arg column="appName" javaType="java.lang.String"/>
       <arg column="appVersionId" javaType="java.lang.String"/>
+      <arg column="appVersionName" javaType="java.lang.String"/>
       <arg column="appAgentAlias" javaType="java.lang.String"/>
       <arg column="startedAt" javaType="java.lang.String"/>
       <arg column="finishedAt" javaType="java.lang.String"/>
@@ -126,7 +128,9 @@
     t.item_count AS itemCount,
     t.app_type AS appType,
     t.app_id AS appId,
+    COALESCE(t.app_name, '') AS appName,
     t.app_version_id AS appVersionId,
+    COALESCE(t.app_version_name, '') AS appVersionName,
     COALESCE(t.app_agent_alias, '') AS appAgentAlias,
     t.started_at AS startedAt,
     t.finished_at AS finishedAt,

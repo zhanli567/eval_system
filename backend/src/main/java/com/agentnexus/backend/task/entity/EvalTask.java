@@ -29,7 +29,9 @@ public class EvalTask {
   private Integer itemCount;
   private String appType;
   private String appId;
+  private String appName;
   private String appVersionId;
+  private String appVersionName;
   private String appAgentAlias;
   private String startedAt;
   private String finishedAt;

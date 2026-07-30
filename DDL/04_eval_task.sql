@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS t_eval_task (
   item_count INT NOT NULL DEFAULT 0,
   app_type VARCHAR(16) NOT NULL DEFAULT 'none',
   app_id VARCHAR(64) NOT NULL DEFAULT '',
+  app_name VARCHAR(128) NOT NULL DEFAULT '',
   app_version_id VARCHAR(64) NOT NULL DEFAULT '',
+  app_version_name VARCHAR(128) NOT NULL DEFAULT '',
   app_agent_alias VARCHAR(128) NOT NULL DEFAULT '',
   started_at VARCHAR(32) NOT NULL DEFAULT '',
   finished_at VARCHAR(32) NOT NULL DEFAULT '',
@@ -20,7 +22,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task (
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
   last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   CONSTRAINT uq_t_eval_task_space_name UNIQUE (space_id, task_name),
-  CONSTRAINT ck_t_eval_task_status CHECK (status IN ('pending', 'running', 'completed', 'failed')),
+  CONSTRAINT ck_t_eval_task_status CHECK (status IN ('pending', 'running', 'completed', 'failed', 'stopped')),
   CONSTRAINT ck_t_eval_task_app_type CHECK (app_type IN ('none', 'agent')),
   CONSTRAINT ck_t_eval_task_item_count CHECK (item_count >= 0)
 );
@@ -35,14 +37,16 @@ COMMENT ON COLUMN t_eval_task.last_updated_by IS '最后更新人ID';
 COMMENT ON COLUMN t_eval_task.last_updated_by_name IS '最后更新人名称';
 COMMENT ON COLUMN t_eval_task.last_updated_date IS '最后更新时间';
 COMMENT ON COLUMN t_eval_task.task_name IS '任务名称';
-COMMENT ON COLUMN t_eval_task.status IS '评测状态：pending待执行，running进行中，completed评测完成，failed评测失败';
+COMMENT ON COLUMN t_eval_task.status IS '评测状态：pending待执行，running进行中，completed评测完成，failed评测失败，stopped已中止';
 COMMENT ON COLUMN t_eval_task.description IS '描述';
 COMMENT ON COLUMN t_eval_task.dataset_id IS '评测集ID';
 COMMENT ON COLUMN t_eval_task.dataset_version_id IS '评测集版本ID';
 COMMENT ON COLUMN t_eval_task.item_count IS '评测数据总行数';
 COMMENT ON COLUMN t_eval_task.app_type IS '应用类型：none不关联应用，agent智能体';
 COMMENT ON COLUMN t_eval_task.app_id IS '智能体应用ID，未关联应用时为空';
+COMMENT ON COLUMN t_eval_task.app_name IS '智能体应用名称，任务创建时保存';
 COMMENT ON COLUMN t_eval_task.app_version_id IS '智能体应用版本ID，未关联应用时为空';
+COMMENT ON COLUMN t_eval_task.app_version_name IS '智能体应用版本名称，任务创建时保存';
 COMMENT ON COLUMN t_eval_task.app_agent_alias IS '子智能体ID/alias，未指定子智能体时为空';
 COMMENT ON COLUMN t_eval_task.started_at IS '开始执行时间';
 COMMENT ON COLUMN t_eval_task.finished_at IS '结束执行时间';
@@ -106,7 +110,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task_evaluator (
   CONSTRAINT uq_t_eval_task_evaluator_binding UNIQUE (task_id, evaluator_source, evaluator_id, evaluator_version_id),
   CONSTRAINT uq_t_eval_task_evaluator_order UNIQUE (task_id, display_order),
   CONSTRAINT ck_t_eval_task_evaluator_source CHECK (evaluator_source IN ('preset', 'custom')),
-  CONSTRAINT ck_t_eval_task_evaluator_status CHECK (status IN ('pending', 'running', 'completed', 'failed')),
+  CONSTRAINT ck_t_eval_task_evaluator_status CHECK (status IN ('pending', 'running', 'completed', 'failed', 'stopped')),
   CONSTRAINT ck_t_eval_task_evaluator_order CHECK (display_order > 0)
 );
 
@@ -125,7 +129,7 @@ COMMENT ON COLUMN t_eval_task_evaluator.evaluator_id IS '评估器ID：预置评
 COMMENT ON COLUMN t_eval_task_evaluator.evaluator_version_id IS '自定义评估器版本ID，预置评估器为空';
 COMMENT ON COLUMN t_eval_task_evaluator.model_id IS 'LLM评估器在任务中绑定的模型ID快照';
 COMMENT ON COLUMN t_eval_task_evaluator.model_name IS 'LLM评估器在任务中绑定的模型名称快照';
-COMMENT ON COLUMN t_eval_task_evaluator.status IS '评估器执行状态：pending待执行，running进行中，completed完成，failed失败';
+COMMENT ON COLUMN t_eval_task_evaluator.status IS '评估器执行状态：pending待执行，running进行中，completed完成，failed失败，stopped已中止';
 COMMENT ON COLUMN t_eval_task_evaluator.display_order IS '展示顺序';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_evaluator_param_mapping (
@@ -186,7 +190,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task_tag (
   last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   CONSTRAINT uq_t_eval_task_tag_binding UNIQUE (task_id, tag_id),
   CONSTRAINT uq_t_eval_task_tag_order UNIQUE (task_id, display_order),
-  CONSTRAINT ck_t_eval_task_tag_status CHECK (status IN ('pending', 'annotating', 'completed')),
+  CONSTRAINT ck_t_eval_task_tag_status CHECK (status IN ('pending', 'annotating', 'completed', 'stopped')),
   CONSTRAINT ck_t_eval_task_tag_order CHECK (display_order > 0)
 );
 
@@ -201,7 +205,7 @@ COMMENT ON COLUMN t_eval_task_tag.last_updated_by_name IS '最后更新人名称
 COMMENT ON COLUMN t_eval_task_tag.last_updated_date IS '最后更新时间';
 COMMENT ON COLUMN t_eval_task_tag.task_id IS '评测任务ID';
 COMMENT ON COLUMN t_eval_task_tag.tag_id IS '标签ID';
-COMMENT ON COLUMN t_eval_task_tag.status IS '人工标注状态：pending待标注，annotating标注中，completed标注完成';
+COMMENT ON COLUMN t_eval_task_tag.status IS '人工标注状态：pending待标注，annotating标注中，completed标注完成，stopped已中止';
 COMMENT ON COLUMN t_eval_task_tag.display_order IS '展示顺序';
 
 CREATE TABLE IF NOT EXISTS t_eval_task_item (
@@ -226,8 +230,8 @@ CREATE TABLE IF NOT EXISTS t_eval_task_item (
   CONSTRAINT uq_t_eval_task_item_dataset_item UNIQUE (task_id, dataset_item_id),
   CONSTRAINT uq_t_eval_task_item_row UNIQUE (task_id, row_no),
   CONSTRAINT ck_t_eval_task_item_row_no CHECK (row_no > 0),
-  CONSTRAINT ck_t_eval_task_item_status CHECK (status IN ('pending', 'running', 'annotation_pending', 'completed', 'failed')),
-  CONSTRAINT ck_t_eval_task_item_app_status CHECK (app_output_status IN ('pending', 'running', 'completed', 'failed', 'skipped'))
+  CONSTRAINT ck_t_eval_task_item_status CHECK (status IN ('pending', 'running', 'annotation_pending', 'completed', 'failed', 'stopped')),
+  CONSTRAINT ck_t_eval_task_item_app_status CHECK (app_output_status IN ('pending', 'running', 'completed', 'failed', 'skipped', 'stopped'))
 );
 
 COMMENT ON TABLE t_eval_task_item IS '评测任务数据行结果表';
@@ -243,9 +247,9 @@ COMMENT ON COLUMN t_eval_task_item.task_id IS '评测任务ID';
 COMMENT ON COLUMN t_eval_task_item.dataset_version_id IS '评测集版本ID';
 COMMENT ON COLUMN t_eval_task_item.dataset_item_id IS '评测集数据行ID';
 COMMENT ON COLUMN t_eval_task_item.row_no IS '评测集行号';
-COMMENT ON COLUMN t_eval_task_item.status IS '数据评测状态：pending待评测，running评测中，annotation_pending待人工标注，completed完成，failed失败';
+COMMENT ON COLUMN t_eval_task_item.status IS '数据评测状态：pending待评测，running评测中，annotation_pending待人工标注，completed完成，failed失败，stopped已中止';
 COMMENT ON COLUMN t_eval_task_item.app_output IS '应用输出内容，未关联应用时为空';
-COMMENT ON COLUMN t_eval_task_item.app_output_status IS '应用调用状态：pending待调用，running调用中，completed完成，failed失败，skipped跳过';
+COMMENT ON COLUMN t_eval_task_item.app_output_status IS '应用调用状态：pending待调用，running调用中，completed完成，failed失败，skipped跳过，stopped已中止';
 COMMENT ON COLUMN t_eval_task_item.app_error_message IS '应用调用错误信息';
 COMMENT ON COLUMN t_eval_task_item.started_at IS '单行评测开始时间';
 COMMENT ON COLUMN t_eval_task_item.finished_at IS '单行评测结束时间';
@@ -270,7 +274,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task_evaluator_result (
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
   last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   CONSTRAINT uq_t_eval_task_evaluator_result_item UNIQUE (task_item_id, task_evaluator_id),
-  CONSTRAINT ck_t_eval_task_evaluator_result_status CHECK (status IN ('pending', 'running', 'completed', 'failed', 'skipped')),
+  CONSTRAINT ck_t_eval_task_evaluator_result_status CHECK (status IN ('pending', 'running', 'completed', 'failed', 'skipped', 'stopped')),
   CONSTRAINT ck_t_eval_task_evaluator_result_pass CHECK (pass_result IN ('', 'pass', 'fail'))
 );
 
@@ -286,7 +290,7 @@ COMMENT ON COLUMN t_eval_task_evaluator_result.last_updated_date IS '最后更�
 COMMENT ON COLUMN t_eval_task_evaluator_result.task_id IS '评测任务ID';
 COMMENT ON COLUMN t_eval_task_evaluator_result.task_item_id IS '任务数据行ID';
 COMMENT ON COLUMN t_eval_task_evaluator_result.task_evaluator_id IS '任务评估器ID';
-COMMENT ON COLUMN t_eval_task_evaluator_result.status IS '评估状态：pending待评估，running评估中，completed完成，failed失败，skipped跳过';
+COMMENT ON COLUMN t_eval_task_evaluator_result.status IS '评估状态：pending待评估，running评估中，completed完成，failed失败，skipped跳过，stopped已中止';
 COMMENT ON COLUMN t_eval_task_evaluator_result.score IS '评估得分';
 COMMENT ON COLUMN t_eval_task_evaluator_result.pass_result IS '通过结果：pass通过，fail失败';
 COMMENT ON COLUMN t_eval_task_evaluator_result.result_value IS '评估器输出结果或解释';
@@ -315,7 +319,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task_tag_result (
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
   last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   CONSTRAINT uq_t_eval_task_tag_result_item UNIQUE (task_item_id, task_tag_id),
-  CONSTRAINT ck_t_eval_task_tag_result_status CHECK (status IN ('pending', 'completed')),
+  CONSTRAINT ck_t_eval_task_tag_result_status CHECK (status IN ('pending', 'completed', 'stopped')),
   CONSTRAINT ck_t_eval_task_tag_result_pass CHECK (pass_result IN ('', 'pass', 'fail'))
 );
 
@@ -331,7 +335,7 @@ COMMENT ON COLUMN t_eval_task_tag_result.last_updated_date IS '最后更新时�
 COMMENT ON COLUMN t_eval_task_tag_result.task_id IS '评测任务ID';
 COMMENT ON COLUMN t_eval_task_tag_result.task_item_id IS '任务数据行ID';
 COMMENT ON COLUMN t_eval_task_tag_result.task_tag_id IS '任务标签ID';
-COMMENT ON COLUMN t_eval_task_tag_result.status IS '标注状态：pending待标注，completed已标注';
+COMMENT ON COLUMN t_eval_task_tag_result.status IS '标注状态：pending待标注，completed已标注，stopped已中止';
 COMMENT ON COLUMN t_eval_task_tag_result.value_text IS '文本、分类或布尔标签标注值';
 COMMENT ON COLUMN t_eval_task_tag_result.value_number IS '数字标签标注值';
 COMMENT ON COLUMN t_eval_task_tag_result.tag_option_id IS '分类或布尔标签选中的原标签选项ID';

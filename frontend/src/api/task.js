@@ -15,6 +15,9 @@ export const taskApi = {
     startTask(taskId) {
         return unwrap(http.post(`/tasks/${taskId}/start`));
     },
+    stopTask(taskId) {
+        return unwrap(http.post(`/tasks/${taskId}/stop`));
+    },
     deleteTask(taskId) {
         return unwrap(http.post(`/tasks/${taskId}/delete`));
     },

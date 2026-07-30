@@ -6,10 +6,11 @@ import { formatDateTime } from '../../../utils/formatters';
 import { movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
 import { TASK_STATUS_OPTIONS, statusLabel } from '../../../utils/taskLabels';
 import { useColumnWidths } from '../../../utils/tableColumns';
-import { useTaskAppDisplay } from './useTaskAppDisplay';
+import { formatTaskAppBinding } from '../../../utils/taskAppBinding';
 
-const DELETABLE_STATUSES = ['pending', 'completed', 'failed'];
-const STARTABLE_STATUSES = ['pending', 'failed'];
+const DELETABLE_STATUSES = ['pending', 'completed', 'failed', 'stopped'];
+const STARTABLE_STATUSES = ['pending', 'failed', 'stopped'];
+const STOPPABLE_STATUSES = ['running'];
 
 function taskColumns() {
     return useColumnWidths({
@@ -22,7 +23,7 @@ function taskColumns() {
         tags: { width: 190, min: 140, max: 320 },
         createdByName: { width: 140, min: 100, max: 220 },
         createdDate: { width: 190, min: 160, max: 240 },
-        actions: { width: 230, min: 210, max: 280 }
+        actions: { width: 260, min: 230, max: 320 }
     });
 }
 
@@ -39,7 +40,6 @@ async function loadTaskPage(state, options = {}) {
             sortBy: state.sortBy.value,
             sortOrder: state.sortOrder.value
         });
-        await state.appDisplay.load(result.records.map((row) => row.base));
         state.tasks.value = result.records;
         state.total.value = result.total;
     }
@@ -99,13 +99,41 @@ function createTaskManagementActions(ctx, router) {
             setStarting(row.base.id, false);
         }
     }
+    async function stopTask(row) {
+        if (!canStopTask(row)) {
+            ElMessage.warning('仅进行中的评测任务可以停止');
+            return;
+        }
+        await ElMessageBox.confirm(
+            '停止后将保留已完成结果，未执行或未完成的数据会标记为已中止。已中止任务可重新开始，重新开始会从头重跑。确定停止吗？',
+            '停止评测任务',
+            { type: 'warning' }
+        );
+        setStopping(row.base.id, true);
+        try {
+            await taskApi.stopTask(row.base.id);
+            ElMessage.success('评测任务已停止');
+            await loadTasks();
+        }
+        finally {
+            setStopping(row.base.id, false);
+        }
+    }
     function setStarting(taskId, value) {
         const next = new Set(ctx.startingTaskIds.value);
         value ? next.add(taskId) : next.delete(taskId);
         ctx.startingTaskIds.value = next;
     }
+    function setStopping(taskId, value) {
+        const next = new Set(ctx.stoppingTaskIds.value);
+        value ? next.add(taskId) : next.delete(taskId);
+        ctx.stoppingTaskIds.value = next;
+    }
     function isStartingTask(taskId) {
         return ctx.startingTaskIds.value.has(taskId);
+    }
+    function isStoppingTask(taskId) {
+        return ctx.stoppingTaskIds.value.has(taskId);
     }
     async function removeTask(row) {
         if (!canDeleteTask(row)) {
@@ -132,10 +160,13 @@ function createTaskManagementActions(ctx, router) {
     function canStartTask(row) {
         return STARTABLE_STATUSES.includes(row.base.status);
     }
+    function canStopTask(row) {
+        return STOPPABLE_STATUSES.includes(row.base.status);
+    }
     function canDeleteTask(row) {
         return DELETABLE_STATUSES.includes(row.base.status);
     }
-    return { loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, isStartingTask, removeTask, canStartTask, canDeleteTask, toggleSort, startPolling, stopPolling };
+    return { loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, stopTask, isStartingTask, isStoppingTask, removeTask, canStartTask, canStopTask, canDeleteTask, toggleSort, startPolling, stopPolling };
 }
 
 export function useTaskManagement() {
@@ -143,6 +174,7 @@ export function useTaskManagement() {
     const loading = ref(false);
     const tasks = ref([]);
     const startingTaskIds = ref(new Set());
+    const stoppingTaskIds = ref(new Set());
     const total = ref(0);
     const page = ref(1);
     const size = ref(10);
@@ -151,9 +183,8 @@ export function useTaskManagement() {
     const sortBy = ref('lastUpdatedDate');
     const sortOrder = ref('desc');
     const columns = taskColumns();
-    const appDisplay = useTaskAppDisplay();
-    const state = { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, appDisplay };
-    const ctx = { state, loading, pollTimer: undefined, startingTaskIds };
+    const state = { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder };
+    const ctx = { state, loading, pollTimer: undefined, startingTaskIds, stoppingTaskIds };
     const actions = createTaskManagementActions(ctx, router);
     ctx.loadTasks = actions.loadTasks;
     onMounted(async () => {
@@ -167,6 +198,7 @@ export function useTaskManagement() {
         loading,
         tasks,
         startingTaskIds,
+        stoppingTaskIds,
         total,
         page,
         size,
@@ -183,13 +215,16 @@ export function useTaskManagement() {
         openDetail: actions.openDetail,
         copyTask: actions.copyTask,
         startTask: actions.startTask,
+        stopTask: actions.stopTask,
         isStartingTask: actions.isStartingTask,
+        isStoppingTask: actions.isStoppingTask,
         removeTask: actions.removeTask,
         canStartTask: actions.canStartTask,
+        canStopTask: actions.canStopTask,
         canDeleteTask: actions.canDeleteTask,
         toggleSort: actions.toggleSort,
         handleColumnResize: columns.handleColumnResize,
-        formatAppBinding: appDisplay.format,
+        formatAppBinding: formatTaskAppBinding,
         statusLabel,
         formatTime
     };

@@ -6,7 +6,7 @@ import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
 import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
-const { loading, starting, page, size, base, fields, evaluators, tags, rows, total, loadDetail, backToList, startTask, openAnnotation, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
+const { loading, starting, stopping, page, size, base, fields, evaluators, tags, rows, total, canStartTask, canStopTask, loadDetail, backToList, startTask, stopTask, openAnnotation, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -14,7 +14,8 @@ const statusIcons = {
     failed: CircleClose,
     annotation_pending: Clock,
     annotating: Loading,
-    skipped: Clock
+    skipped: Clock,
+    stopped: CircleClose
 };
 function statusIcon(value) {
     return statusIcons[value] || Clock;
@@ -49,6 +50,34 @@ function evaluatorResultLabel(result) {
         return '-';
     return result.passResult || (result.score != null ? '已评分' : '-');
 }
+function evaluatorColumnLabel(evaluator) {
+    return formatNameVersion(evaluator.evaluatorName, evaluator.versionName);
+}
+function evaluatorParamKey(param) {
+    return `${param.paramId || ''}:${param.paramName || ''}`;
+}
+function findEvaluatorParam(row, evaluator, param) {
+    const result = findEvaluatorResult(row, evaluator.taskEvaluatorId);
+    if (!result?.params?.length) {
+        return undefined;
+    } else {
+        return result.params.find((item) => evaluatorParamKey(item) === evaluatorParamKey(param));
+    }
+}
+function evaluatorParamValue(row, evaluator, param) {
+    return findEvaluatorParam(row, evaluator, param)?.value || '-';
+}
+function evaluatorParamSource(param) {
+    const sourceType = param.sourceType === 'dataset_field' ? '评测集字段' : '应用输出';
+    return `${sourceType}：${param.sourceName || '-'}`;
+}
+function evaluatorMessage(result) {
+    if (!result) {
+        return '';
+    } else {
+        return formatEvaluatorReason(result.resultValue || '') || result.errorMessage || '';
+    }
+}
 </script>
 
 <template>
@@ -67,7 +96,7 @@ function evaluatorResultLabel(result) {
     <div class="top-actions">
       <el-button :icon="Refresh" @click="loadDetail">刷新</el-button>
       <el-button
-        v-if="base?.status === 'pending' || base?.status === 'failed'"
+        v-if="canStartTask"
         type="primary"
         :icon="VideoPlay"
         :loading="starting"
@@ -75,6 +104,16 @@ function evaluatorResultLabel(result) {
         @click="startTask"
       >
         开始
+      </el-button>
+      <el-button
+        v-if="canStopTask"
+        type="danger"
+        :icon="CircleClose"
+        :loading="stopping"
+        :disabled="stopping"
+        @click="stopTask"
+      >
+        停止任务
       </el-button>
     </div>
   </header>
@@ -156,8 +195,10 @@ function evaluatorResultLabel(result) {
           </template>
         </el-table-column>
         <el-table-column type="index" label="序号" width="90" fixed="left" />
-        <el-table-column v-for="field in fields" :key="field.id" :label="field.fieldName" min-width="220" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.values[field.id || ''] || '-' }}</template>
+        <el-table-column :label="formatNameVersion(base?.datasetName, base?.datasetVersionName)" align="center">
+          <el-table-column v-for="field in fields" :key="field.id" :label="field.fieldName" min-width="220" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.values[field.id || ''] || '-' }}</template>
+          </el-table-column>
         </el-table-column>
         <el-table-column label="应用输出" min-width="260" show-overflow-tooltip>
           <template #default="{ row }">
@@ -167,50 +208,61 @@ function evaluatorResultLabel(result) {
             </p>
           </template>
         </el-table-column>
-        <el-table-column v-for="tag in tags" :key="tag.taskTagId" :label="tag.tagName" min-width="190">
-          <template #default="{ row }">
-            <template v-if="findTagResult(row, tag.taskTagId)?.status === 'completed'">
-              <el-tag :type="passTagType(findTagResult(row, tag.taskTagId)?.passResult)" effect="plain">
-                {{ findTagResult(row, tag.taskTagId)?.passResult || '-' }}
-              </el-tag>
-              <span class="result-value">
-                {{
-                  findTagResult(row, tag.taskTagId)?.optionName ||
-                  findTagResult(row, tag.taskTagId)?.valueText ||
-                  findTagResult(row, tag.taskTagId)?.valueNumber ||
-                  '-'
-                }}
-              </span>
+        <el-table-column v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" :label="evaluatorColumnLabel(evaluator)" align="center">
+          <el-table-column v-for="param in evaluator.params || []" :key="evaluatorParamKey(param)" :label="param.paramName" min-width="180" show-overflow-tooltip>
+            <template #default="{ row }">
+              <el-tooltip :content="evaluatorParamSource(param)" placement="top">
+                <span class="param-value-preview">{{ compactText(evaluatorParamValue(row, evaluator, param), 120) }}</span>
+              </el-tooltip>
             </template>
-            <el-tag v-else type="info" effect="plain">未标注</el-tag>
-          </template>
+          </el-table-column>
+          <el-table-column label="结果" width="120">
+            <template #default="{ row }">
+              <template v-if="isScoredEvaluatorResult(findEvaluatorResult(row, evaluator.taskEvaluatorId))">
+                <el-tag :type="passTagType(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.passResult)" effect="plain">
+                  {{ evaluatorResultLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)) }}
+                </el-tag>
+              </template>
+              <el-tooltip v-else :content="statusLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" placement="top">
+                <el-icon class="task-status-icon" :class="statusIconClass(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)">
+                  <component :is="statusIcon(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" />
+                </el-icon>
+              </el-tooltip>
+            </template>
+          </el-table-column>
+          <el-table-column label="得分" width="110">
+            <template #default="{ row }">{{ findEvaluatorResult(row, evaluator.taskEvaluatorId)?.score ?? '-' }}</template>
+          </el-table-column>
+          <el-table-column label="原因" min-width="240" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span>{{ compactText(evaluatorMessage(findEvaluatorResult(row, evaluator.taskEvaluatorId)), 120) || '-' }}</span>
+            </template>
+          </el-table-column>
         </el-table-column>
-        <el-table-column v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" :label="evaluator.evaluatorName" min-width="190">
-          <template #default="{ row }">
-            <template v-if="isScoredEvaluatorResult(findEvaluatorResult(row, evaluator.taskEvaluatorId))">
-              <el-tag :type="passTagType(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.passResult)" effect="plain">
-                {{ evaluatorResultLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)) }}
-              </el-tag>
-              <span class="result-value">
-                {{ findEvaluatorResult(row, evaluator.taskEvaluatorId)?.score ?? '-' }}
-              </span>
-              <p v-if="formatEvaluatorReason(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.resultValue)" class="result-reason-preview">
-                {{ compactText(formatEvaluatorReason(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.resultValue), 96) }}
-              </p>
+        <el-table-column v-if="tags.length" label="标签" align="center">
+          <el-table-column v-for="tag in tags" :key="tag.taskTagId" :label="tag.tagName" min-width="190">
+            <template #default="{ row }">
+              <template v-if="findTagResult(row, tag.taskTagId)?.status === 'completed'">
+                <el-tag :type="passTagType(findTagResult(row, tag.taskTagId)?.passResult)" effect="plain">
+                  {{ findTagResult(row, tag.taskTagId)?.passResult || '-' }}
+                </el-tag>
+                <span class="result-value">
+                  {{
+                    findTagResult(row, tag.taskTagId)?.optionName ||
+                    findTagResult(row, tag.taskTagId)?.valueText ||
+                    findTagResult(row, tag.taskTagId)?.valueNumber ||
+                    '-'
+                  }}
+                </span>
+              </template>
+              <el-tag v-else-if="findTagResult(row, tag.taskTagId)?.status === 'stopped'" type="info" effect="plain">已中止</el-tag>
+              <el-tag v-else type="info" effect="plain">未标注</el-tag>
             </template>
-            <el-tooltip v-else :content="statusLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" placement="top">
-              <el-icon class="task-status-icon" :class="statusIconClass(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)">
-                <component :is="statusIcon(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" />
-              </el-icon>
-            </el-tooltip>
-            <p v-if="findEvaluatorResult(row, evaluator.taskEvaluatorId)?.errorMessage" class="task-error-preview">
-              {{ compactText(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.errorMessage, 120) }}
-            </p>
-          </template>
+          </el-table-column>
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right" :resizable="false">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openAnnotation(row)">标注</el-button>
+            <el-button link type="primary" :disabled="base?.status === 'stopped' || row.status === 'stopped'" @click="openAnnotation(row)">标注</el-button>
           </template>
         </el-table-column>
       </el-table>
