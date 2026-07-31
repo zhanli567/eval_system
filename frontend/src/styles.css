@@ -1806,8 +1806,12 @@ h2 {
 .dimension-summary-pill .el-tag__content {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   min-width: 0;
+}
+
+.dimension-summary-pill-text {
+  display: inline-block;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { Back, CircleCheck, CircleClose, Clock, Loading, Refresh, VideoPlay } from '@element-plus/icons-vue';
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
@@ -7,6 +7,15 @@ import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/ta
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
 const { loading, starting, stopping, page, size, base, fields, evaluators, tags, rows, total, canStartTask, canStopTask, loadDetail, backToList, startTask, stopTask, openAnnotation, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
+const overflowState = reactive({});
+const vOverflowMark = {
+    mounted(el, binding) {
+        updateOverflowState(el, binding);
+    },
+    updated(el, binding) {
+        updateOverflowState(el, binding);
+    }
+};
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -22,6 +31,16 @@ function statusIcon(value) {
 }
 function statusIconClass(value) {
     return `is-${value || 'pending'}`;
+}
+function updateOverflowState(el, binding) {
+    const key = binding.value;
+    overflowState[key] = Boolean(key) && el.scrollWidth > el.clientWidth;
+}
+function isTextOverflow(key) {
+    return Boolean(overflowState[key]);
+}
+function dimensionOverflowKey(type, id) {
+    return `${type}:${id || ''}`;
 }
 function findTagResult(row, taskTagId) {
     return row.tagResults.find((item) => item.taskTagId === taskTagId);
@@ -121,32 +140,32 @@ function evaluatorMessage(result) {
         <div class="task-info-row task-info-row-primary">
           <div class="task-info-item">
             <span>评测集</span>
-            <el-tooltip :content="formatNameVersion(base?.datasetName, base?.datasetVersionName)" placement="top">
-              <strong>{{ formatNameVersion(base?.datasetName, base?.datasetVersionName) }}</strong>
+            <el-tooltip :content="formatNameVersion(base?.datasetName, base?.datasetVersionName)" placement="top" :disabled="!isTextOverflow('dataset')">
+              <strong v-overflow-mark="'dataset'">{{ formatNameVersion(base?.datasetName, base?.datasetVersionName) }}</strong>
             </el-tooltip>
           </div>
           <div class="task-info-item">
             <span>评测应用</span>
-            <el-tooltip :content="formatAppBinding(base)" placement="top">
-              <strong>{{ formatAppBinding(base) }}</strong>
+            <el-tooltip :content="formatAppBinding(base)" placement="top" :disabled="!isTextOverflow('app')">
+              <strong v-overflow-mark="'app'">{{ formatAppBinding(base) }}</strong>
             </el-tooltip>
           </div>
           <div class="task-info-item">
             <span>创建人</span>
-            <el-tooltip :content="base?.createdByName || '-'" placement="top">
-              <strong>{{ base?.createdByName || '-' }}</strong>
+            <el-tooltip :content="base?.createdByName || '-'" placement="top" :disabled="!isTextOverflow('creator')">
+              <strong v-overflow-mark="'creator'">{{ base?.createdByName || '-' }}</strong>
             </el-tooltip>
           </div>
           <div class="task-info-item">
             <span>创建时间</span>
-            <el-tooltip :content="formatTime(base?.createdDate)" placement="top">
-              <strong>{{ formatTime(base?.createdDate) }}</strong>
+            <el-tooltip :content="formatTime(base?.createdDate)" placement="top" :disabled="!isTextOverflow('createdDate')">
+              <strong v-overflow-mark="'createdDate'">{{ formatTime(base?.createdDate) }}</strong>
             </el-tooltip>
           </div>
           <div class="task-info-item">
             <span>描述</span>
-            <el-tooltip :content="base?.description || '暂无描述'" placement="top">
-              <strong>{{ base?.description || '暂无描述' }}</strong>
+            <el-tooltip :content="base?.description || '暂无描述'" placement="top" :disabled="!isTextOverflow('description')">
+              <strong v-overflow-mark="'description'">{{ base?.description || '暂无描述' }}</strong>
             </el-tooltip>
           </div>
         </div>
@@ -155,17 +174,39 @@ function evaluatorMessage(result) {
           <div class="dimension-summary-row task-dimension-summary">
             <div v-if="evaluators.length" class="dimension-summary-group">
               <span class="dimension-summary-group-label">评估器</span>
-              <el-tooltip v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" :content="formatEvaluatorDimension(evaluator)" placement="top">
+              <el-tooltip
+                v-for="evaluator in evaluators"
+                :key="evaluator.taskEvaluatorId"
+                :content="formatEvaluatorDimension(evaluator)"
+                placement="top"
+                :disabled="!isTextOverflow(dimensionOverflowKey('evaluator', evaluator.taskEvaluatorId))"
+              >
                 <el-tag class="dimension-summary-pill" type="info" effect="light">
-                  {{ formatEvaluatorDimension(evaluator) }}
+                  <span
+                    v-overflow-mark="dimensionOverflowKey('evaluator', evaluator.taskEvaluatorId)"
+                    class="dimension-summary-pill-text"
+                  >
+                    {{ formatEvaluatorDimension(evaluator) }}
+                  </span>
                 </el-tag>
               </el-tooltip>
             </div>
             <div v-if="tags.length" class="dimension-summary-group">
               <span class="dimension-summary-group-label">标签</span>
-              <el-tooltip v-for="tag in tags" :key="tag.taskTagId" :content="formatTagDimension(tag)" placement="top">
+              <el-tooltip
+                v-for="tag in tags"
+                :key="tag.taskTagId"
+                :content="formatTagDimension(tag)"
+                placement="top"
+                :disabled="!isTextOverflow(dimensionOverflowKey('tag', tag.taskTagId))"
+              >
                 <el-tag class="dimension-summary-pill" type="info" effect="light">
-                  {{ formatTagDimension(tag) }}
+                  <span
+                    v-overflow-mark="dimensionOverflowKey('tag', tag.taskTagId)"
+                    class="dimension-summary-pill-text"
+                  >
+                    {{ formatTagDimension(tag) }}
+                  </span>
                 </el-tag>
               </el-tooltip>
             </div>
@@ -183,7 +224,7 @@ function evaluatorMessage(result) {
       <el-table :data="rows" row-key="id" border height="100%" tooltip-effect="light" class="task-detail-table">
         <el-table-column label="状态" width="120" fixed="left" :resizable="false" align="center">
           <template #default="{ row }">
-            <el-tooltip :content="statusLabel(row.status)" placement="top">
+            <el-tooltip :content="statusLabel(row.status)" placement="top" effect="light">
               <el-icon class="task-status-icon" :class="statusIconClass(row.status)">
                 <component :is="statusIcon(row.status)" />
               </el-icon>
@@ -217,7 +258,7 @@ function evaluatorMessage(result) {
                   {{ evaluatorResultLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)) }}
                 </el-tag>
               </template>
-              <el-tooltip v-else :content="statusLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" placement="top">
+              <el-tooltip v-else :content="statusLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" placement="top" effect="light">
                 <el-icon class="task-status-icon" :class="statusIconClass(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)">
                   <component :is="statusIcon(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" />
                 </el-icon>

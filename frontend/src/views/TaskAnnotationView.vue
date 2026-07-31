@@ -28,7 +28,7 @@ function evaluatorParamSource(param) {
   <header class="topbar detail-topbar">
     <div>
       <el-button link type="primary" :icon="Back" class="back-link" @click="backToDetail">返回评测任务详情</el-button>
-      <h1>{{ task?.taskName || '标注' }} · #{{ item?.rowNo || '-' }}</h1>
+      <h1>{{ task?.taskName || '标注' }} · 第 {{ item?.rowNo || '-' }} 条</h1>
     </div>
     <div class="top-actions">
       <el-button :disabled="!previousItemId" :icon="ArrowLeft" @click="goItem(previousItemId)">上一条</el-button>

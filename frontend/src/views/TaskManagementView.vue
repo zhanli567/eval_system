@@ -49,7 +49,7 @@ function formatNameList(items, picker) {
 
   <section class="task-panel">
     <div class="panel-toolbar task-toolbar">
-      <el-select v-model="status" clearable class="field-select" @change="searchTasks">
+      <el-select v-model="status" clearable placeholder="全部状态" class="field-select" @change="searchTasks">
         <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
       </el-select>
       <el-input
@@ -89,7 +89,7 @@ function formatNameList(items, picker) {
     >
       <el-table-column prop="status" label="评测状态" :width="columnWidths.status" min-width="76" fixed="left" :resizable="false" align="center">
         <template #default="{ row }">
-          <el-tooltip :content="statusLabel(row.base.status)" placement="top">
+          <el-tooltip :content="statusLabel(row.base.status)" placement="top" effect="light">
             <el-icon class="task-status-icon" :class="statusIconClass(row.base.status)">
               <component :is="statusIcon(row.base.status)" />
             </el-icon>

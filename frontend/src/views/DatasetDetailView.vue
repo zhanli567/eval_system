@@ -80,7 +80,7 @@ const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, 
       </div>
 
       <div class="panel-toolbar">
-        <el-select v-model="searchFieldId" clearable placeholder="选择搜索列" class="field-select">
+        <el-select v-model="searchFieldId" clearable placeholder="全部" class="field-select">
           <el-option v-for="field in fields" :key="field.id" :label="field.fieldName" :value="field.id" />
         </el-select>
         <el-input v-model="searchKeyword" clearable placeholder="请输入关键词" class="search-input" @keyup.enter="loadDetail" />
