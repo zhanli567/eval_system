@@ -38,21 +38,12 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -69,7 +60,6 @@ public class RemoteCallService {
   private static final int DEFAULT_PAGE_SIZE = 10;
   private static final int DEFAULT_CUR_PAGE = 1;
   private static final String RESPONSE_OBJECT = "com.agentnexus.backend.remoteCall.api.dto.response.AgentChatResponse";
-  private static final HostnameVerifier TRUST_ALL_HOSTNAME_VERIFIER = (hostname, session) -> true;
   private static final TypeReference<List<AgentToolCallDelta>> TOOL_CALLS_TYPE = new TypeReference<>() {
   };
   private static final TypeReference<List<AgentReferenceItem>> REFERENCES_TYPE = new TypeReference<>() {
@@ -82,7 +72,6 @@ public class RemoteCallService {
   private final RemoteCallServiceClient remoteCallServiceClient;
   private final SsoCookieRenewalService ssoCookieRenewalService;
   private final IamTokenService iamTokenService;
-  private static volatile SSLSocketFactory trustAllSocketFactory;
 
   @Autowired
   public RemoteCallService(
@@ -391,43 +380,7 @@ public class RemoteCallService {
     if (!properties.isTrustAllSsl()) {
       return;
     }
-    connection.setSSLSocketFactory(trustAllSocketFactory());
-    connection.setHostnameVerifier(TRUST_ALL_HOSTNAME_VERIFIER);
-  }
-
-  private SSLSocketFactory trustAllSocketFactory() {
-    SSLSocketFactory current = trustAllSocketFactory;
-    if (current != null) {
-      return current;
-    }
-    synchronized (RemoteCallService.class) {
-      if (trustAllSocketFactory == null) {
-        try {
-          TrustManager[] trustManagers = new TrustManager[] {
-              new X509TrustManager() {
-                @Override
-                public void checkClientTrusted(X509Certificate[] chain, String authType) {
-                }
-
-                @Override
-                public void checkServerTrusted(X509Certificate[] chain, String authType) {
-                }
-
-                @Override
-                public X509Certificate[] getAcceptedIssuers() {
-                  return new X509Certificate[0];
-                }
-              }
-          };
-          SSLContext context = SSLContext.getInstance("TLS");
-          context.init(null, trustManagers, new SecureRandom());
-          trustAllSocketFactory = context.getSocketFactory();
-        } catch (NoSuchAlgorithmException | KeyManagementException e) {
-          throw new IllegalStateException("初始化HTTPS证书信任配置失败：" + e.getMessage(), e);
-        }
-      }
-      return trustAllSocketFactory;
-    }
+    TrustAllSslSupport.configure(connection);
   }
 
   private void writeJson(HttpURLConnection connection, Object body) throws IOException {

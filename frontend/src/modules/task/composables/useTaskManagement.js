@@ -51,8 +51,9 @@ async function loadTaskPage(state, options = {}) {
 }
 
 function startListPolling(ctx) {
-    if (ctx.pollTimer !== undefined)
+    if (ctx.pollTimer !== undefined) {
         return;
+    }
     ctx.pollTimer = window.setInterval(() => {
         if (!ctx.loading.value) {
             ctx.loadTasks({ silent: true });
@@ -61,16 +62,41 @@ function startListPolling(ctx) {
 }
 
 function stopListPolling(ctx) {
-    if (ctx.pollTimer === undefined)
+    if (ctx.pollTimer === undefined) {
         return;
+    }
     window.clearInterval(ctx.pollTimer);
     ctx.pollTimer = undefined;
+}
+
+function canStartTask(row) {
+    return STARTABLE_STATUSES.includes(row.base.status);
+}
+
+function canStopTask(row) {
+    return STOPPABLE_STATUSES.includes(row.base.status);
+}
+
+function canDeleteTask(row) {
+    return DELETABLE_STATUSES.includes(row.base.status);
 }
 
 function createTaskManagementActions(ctx, router) {
     async function loadTasks(options = {}) {
         await loadTaskPage(ctx.state, options);
     }
+    return {
+        loadTasks,
+        ...createTaskQueryActions(ctx, loadTasks),
+        ...createTaskRouteActions(router),
+        ...createTaskRunActions(ctx, loadTasks),
+        ...createTaskRemoveActions(ctx, loadTasks),
+        ...createTaskPollingActions(ctx),
+        ...createTaskStatusGuards()
+    };
+}
+
+function createTaskQueryActions(ctx, loadTasks) {
     async function searchTasks() {
         ctx.state.page.value = 1;
         await loadTasks();
@@ -79,6 +105,15 @@ function createTaskManagementActions(ctx, router) {
         ctx.state.page.value = 1;
         await loadTasks();
     }
+    function toggleSort(field) {
+        toggleDescSort(ctx.state.sortBy, ctx.state.sortOrder, field);
+        ctx.state.page.value = 1;
+        loadTasks();
+    }
+    return { searchTasks, changeSize, toggleSort };
+}
+
+function createTaskRouteActions(router) {
     function openCreate() {
         router.push({ name: 'task-create' });
     }
@@ -88,6 +123,10 @@ function createTaskManagementActions(ctx, router) {
     function copyTask(row) {
         router.push({ name: 'task-create', query: { copyFrom: row.base.id } });
     }
+    return { openCreate, openDetail, copyTask };
+}
+
+function createTaskRunActions(ctx, loadTasks) {
     async function startTask(row) {
         setStarting(row.base.id, true);
         try {
@@ -135,6 +174,10 @@ function createTaskManagementActions(ctx, router) {
     function isStoppingTask(taskId) {
         return ctx.stoppingTaskIds.value.has(taskId);
     }
+    return { startTask, stopTask, isStartingTask, isStoppingTask };
+}
+
+function createTaskRemoveActions(ctx, loadTasks) {
     async function removeTask(row) {
         if (!canDeleteTask(row)) {
             ElMessage.warning('仅待执行、评测完成和评测失败的任务可删除');
@@ -146,27 +189,21 @@ function createTaskManagementActions(ctx, router) {
         movePreviousPageIfLastRow(ctx.state.tasks, ctx.state.page);
         await loadTasks();
     }
-    function toggleSort(field) {
-        toggleDescSort(ctx.state.sortBy, ctx.state.sortOrder, field);
-        ctx.state.page.value = 1;
-        loadTasks();
-    }
+    return { removeTask };
+}
+
+function createTaskPollingActions(ctx) {
     function startPolling() {
         startListPolling(ctx);
     }
     function stopPolling() {
         stopListPolling(ctx);
     }
-    function canStartTask(row) {
-        return STARTABLE_STATUSES.includes(row.base.status);
-    }
-    function canStopTask(row) {
-        return STOPPABLE_STATUSES.includes(row.base.status);
-    }
-    function canDeleteTask(row) {
-        return DELETABLE_STATUSES.includes(row.base.status);
-    }
-    return { loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, stopTask, isStartingTask, isStoppingTask, removeTask, canStartTask, canStopTask, canDeleteTask, toggleSort, startPolling, stopPolling };
+    return { startPolling, stopPolling };
+}
+
+function createTaskStatusGuards() {
+    return { canStartTask, canStopTask, canDeleteTask };
 }
 
 export function useTaskManagement() {

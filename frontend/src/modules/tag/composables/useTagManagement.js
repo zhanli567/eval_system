@@ -137,6 +137,16 @@ function createTagActions(ctx) {
             ctx.tagLoading.value = false;
         }
     }
+    return {
+        loadTags,
+        ...createTagDialogActions(ctx),
+        ...createTagSubmitActions(ctx, loadTags),
+        ...createTagListActions(ctx, loadTags),
+        ...createTagOptionActions(ctx)
+    };
+}
+
+function createTagDialogActions(ctx) {
     function openCreateDialog() {
         ctx.editingId.value = '';
         resetForm(ctx.tagForm);
@@ -163,6 +173,10 @@ function createTagActions(ctx) {
             ctx.detailLoading.value = false;
         }
     }
+    return { openCreateDialog, openEditDialog, openDetailDialog };
+}
+
+function createTagSubmitActions(ctx, loadTags) {
     async function submitTag() {
         try {
             validateForm(ctx.tagForm);
@@ -195,6 +209,10 @@ function createTagActions(ctx) {
         await tagApi.createTag(buildPayload(ctx.tagForm));
         ElMessage.success('标签已创建');
     }
+    return { submitTag };
+}
+
+function createTagListActions(ctx, loadTags) {
     function searchTags() {
         ctx.tagPage.value = 1;
         return loadTags();
@@ -215,6 +233,10 @@ function createTagActions(ctx) {
         movePreviousPageIfLastRow(ctx.tags, ctx.tagPage);
         await loadTags();
     }
+    return { searchTags, changeTagSize, toggleSort, removeTag };
+}
+
+function createTagOptionActions(ctx) {
     function addCategoryOption(group) {
         const target = group === 'pass' ? ctx.tagForm.passOptions : ctx.tagForm.failOptions;
         if (target.length >= 5) {
@@ -227,7 +249,7 @@ function createTagActions(ctx) {
         const target = group === 'pass' ? ctx.tagForm.passOptions : ctx.tagForm.failOptions;
         target.length === 1 ? target[0] = '' : target.splice(index, 1);
     }
-    return { loadTags, searchTags, changeTagSize, toggleSort, openCreateDialog, openEditDialog, openDetailDialog, submitTag, removeTag, addCategoryOption, removeCategoryOption };
+    return { addCategoryOption, removeCategoryOption };
 }
 
 function getTagTypeLabel(value) {

@@ -4,10 +4,6 @@ import com.agentnexus.backend.remoteCall.config.RemoteCallProperties;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URI;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -15,12 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -32,8 +23,6 @@ public class SsoCookieRenewalService {
   private static final long EXPIRE_AFTER_MINUTES = 30;
   private static final String DEFAULT_RENEWAL_PATH = "/only4ssoTimeUpdate.do";
   private static final Pattern SSO_COOKIE_PATTERN = Pattern.compile("(hwssot3|hwssotinter3)=([^;,\\s]+)");
-  private static final HostnameVerifier TRUST_ALL_HOSTNAME_VERIFIER = (hostname, session) -> true;
-  private static volatile SSLSocketFactory trustAllSocketFactory;
 
   private final RemoteCallProperties properties;
   private final Clock clock;
@@ -120,43 +109,7 @@ public class SsoCookieRenewalService {
     if (!properties.isTrustAllSsl()) {
       return;
     }
-    connection.setSSLSocketFactory(trustAllSocketFactory());
-    connection.setHostnameVerifier(TRUST_ALL_HOSTNAME_VERIFIER);
-  }
-
-  private SSLSocketFactory trustAllSocketFactory() {
-    SSLSocketFactory current = trustAllSocketFactory;
-    if (current != null) {
-      return current;
-    }
-    synchronized (SsoCookieRenewalService.class) {
-      if (trustAllSocketFactory == null) {
-        try {
-          TrustManager[] trustManagers = new TrustManager[] {
-              new X509TrustManager() {
-                @Override
-                public void checkClientTrusted(X509Certificate[] chain, String authType) {
-                }
-
-                @Override
-                public void checkServerTrusted(X509Certificate[] chain, String authType) {
-                }
-
-                @Override
-                public X509Certificate[] getAcceptedIssuers() {
-                  return new X509Certificate[0];
-                }
-              }
-          };
-          SSLContext context = SSLContext.getInstance("TLS");
-          context.init(null, trustManagers, new SecureRandom());
-          trustAllSocketFactory = context.getSocketFactory();
-        } catch (NoSuchAlgorithmException | KeyManagementException e) {
-          throw new IllegalStateException("初始化HTTPS证书信任配置失败：" + e.getMessage(), e);
-        }
-      }
-      return trustAllSocketFactory;
-    }
+    TrustAllSslSupport.configure(connection);
   }
 
   private Map<String, String> extractRenewedCookies(Map<String, List<String>> headers) {
