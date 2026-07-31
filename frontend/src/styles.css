@@ -1939,12 +1939,19 @@ h2 {
 }
 
 .evaluator-data-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .annotation-evaluator-card {
   display: grid;
+  flex: 0 0 auto;
   gap: 12px;
+  align-self: stretch;
   min-width: 0;
   overflow: hidden;
   padding: 14px;
@@ -2091,14 +2098,19 @@ h2 {
 }
 
 .annotation-form-column .el-form {
+  display: grid;
+  align-content: start;
   flex: 1 1 auto;
+  gap: 0;
   min-height: 0;
   overflow-y: auto;
 }
 
 .annotation-tag-editor {
   display: grid;
+  flex: 0 0 auto;
   gap: 10px;
+  min-height: 0;
   padding: 14px 0;
   border-bottom: 1px solid var(--line);
 }
