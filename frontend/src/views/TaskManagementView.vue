@@ -98,7 +98,16 @@ function formatNameList(items, picker) {
       </el-table-column>
       <el-table-column prop="taskName" label="任务名称" :width="columnWidths.taskName" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">
-          <button class="table-link" type="button" @click="openDetail(row)">{{ row.base.taskName }}</button>
+          <span
+            class="linkish"
+            role="button"
+            tabindex="0"
+            @click="openDetail(row)"
+            @keyup.enter="openDetail(row)"
+            @keyup.space.prevent="openDetail(row)"
+          >
+            {{ row.base.taskName }}
+          </span>
         </template>
       </el-table-column>
       <el-table-column prop="datasetName" label="评测集名称" :width="columnWidths.datasetName" min-width="160" show-overflow-tooltip>

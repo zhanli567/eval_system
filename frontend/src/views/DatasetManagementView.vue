@@ -53,7 +53,16 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
     >
       <el-table-column prop="name" label="评测集名称" :width="columnWidths.name" min-width="180" fixed="left" :resizable="false" show-overflow-tooltip>
         <template #default="{ row }">
-          <button class="table-link" type="button" @click.stop="openDataset(row)">{{ row.name }}</button>
+          <span
+            class="linkish"
+            role="button"
+            tabindex="0"
+            @click="openDataset(row)"
+            @keyup.enter="openDataset(row)"
+            @keyup.space.prevent="openDataset(row)"
+          >
+            {{ row.name }}
+          </span>
         </template>
       </el-table-column>
       <el-table-column prop="publishedVersionCount" label="版本数量" :width="columnWidths.publishedVersionCount" min-width="100" />
