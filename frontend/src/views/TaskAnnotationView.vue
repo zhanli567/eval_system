@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { ArrowLeft, ArrowRight, Back } from '@element-plus/icons-vue';
 import { useTaskAnnotation } from '../modules/task/composables/useTaskAnnotation';
@@ -9,6 +9,16 @@ const taskId = computed(() => String(route.params.taskId ?? ''));
 const taskItemId = computed(() => String(route.params.taskItemId ?? ''));
 const { loading, saving, loadError, form, task, item, fields, tags, evaluators, previousItemId, nextItemId, saveAnnotation, backToDetail, goItem, passTagType, tagTypeLabel, optionLabel, appOutputEmptyDescription } = useTaskAnnotation(taskId, taskItemId);
 const formattedAppOutput = computed(() => formatAppOutput(item.value?.appOutput || ''));
+const hasAppOutput = computed(() => task.value?.appType === 'agent' && Boolean(task.value?.appId));
+const overflowState = reactive({});
+const vOverflowMark = {
+    mounted(el, binding) {
+        updateOverflowState(el, binding);
+    },
+    updated(el, binding) {
+        updateOverflowState(el, binding);
+    }
+};
 function formatNameVersion(name, version) {
     return `${name || '-'} / ${version || '-'}`;
 }
@@ -21,9 +31,6 @@ function evaluatorReason(result) {
 function evaluatorParamValue(value) {
     return value === undefined || value === null || value === '' ? '-' : value;
 }
-function evaluatorParamTitle(param) {
-    return `${param.paramName || '-'}：${evaluatorParamValue(param.value)}`;
-}
 function evaluatorScoreLabel(result) {
     return result.score === undefined || result.score === null ? '-' : result.score;
 }
@@ -35,6 +42,22 @@ function evaluatorTypeLabel(value) {
     } else {
         return value || '-';
     }
+}
+function evaluatorParamKey(param) {
+    return `${param.paramId || ''}:${param.paramName || ''}`;
+}
+function evaluatorParamOverflowKey(result, param) {
+    return `param:${result.id || result.taskEvaluatorId || ''}:${evaluatorParamKey(param)}`;
+}
+function evaluatorReasonOverflowKey(result) {
+    return `reason:${result.id || result.taskEvaluatorId || ''}`;
+}
+function updateOverflowState(el, binding) {
+    const key = binding.value;
+    overflowState[key] = Boolean(key) && (el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight);
+}
+function isTextOverflow(key) {
+    return Boolean(overflowState[key]);
 }
 </script>
 
@@ -79,7 +102,7 @@ function evaluatorTypeLabel(value) {
 
     <main class="annotation-output">
       <h2>评估器及其数据</h2>
-      <section class="annotation-subsection">
+      <section v-if="hasAppOutput" class="annotation-subsection">
         <h3>应用输出</h3>
         <div class="app-output-box">
           <p v-if="formattedAppOutput">{{ formattedAppOutput }}</p>
@@ -108,22 +131,47 @@ function evaluatorTypeLabel(value) {
             </div>
           </header>
 
-          <div v-if="result.params?.length" class="annotation-evaluator-param-cards">
+          <div v-if="result.params?.length" class="annotation-evaluator-param-table">
             <div
               v-for="param in result.params"
-              :key="`${param.paramId || ''}:${param.paramName || ''}`"
-              class="annotation-evaluator-param-cell"
-              :title="evaluatorParamTitle(param)"
+              :key="evaluatorParamKey(param)"
+              class="annotation-evaluator-param-row"
             >
               <span class="annotation-evaluator-param-name">{{ param.paramName || '-' }}</span>
-              <p class="annotation-evaluator-param-value">{{ evaluatorParamValue(param.value) }}</p>
+              <div class="annotation-evaluator-param-value-cell">
+                <el-tooltip
+                  :content="evaluatorParamValue(param.value)"
+                  placement="top"
+                  effect="light"
+                  :disabled="!isTextOverflow(evaluatorParamOverflowKey(result, param))"
+                >
+                  <p
+                    v-overflow-mark="evaluatorParamOverflowKey(result, param)"
+                    class="annotation-evaluator-param-value"
+                  >
+                    {{ evaluatorParamValue(param.value) }}
+                  </p>
+                </el-tooltip>
+              </div>
             </div>
           </div>
           <el-empty v-else description="暂无参数数据" :image-size="64" />
 
           <section v-if="evaluatorReason(result)" class="annotation-evaluator-reason">
             <span class="annotation-evaluator-reason-label">原因</span>
-            <p class="annotation-evaluator-reason-text" :title="evaluatorReason(result)">{{ evaluatorReason(result) }}</p>
+            <el-tooltip
+              :content="evaluatorReason(result)"
+              placement="top"
+              effect="light"
+              :disabled="!isTextOverflow(evaluatorReasonOverflowKey(result))"
+            >
+              <p
+                v-overflow-mark="evaluatorReasonOverflowKey(result)"
+                class="annotation-evaluator-reason-text"
+              >
+                {{ evaluatorReason(result) }}
+              </p>
+            </el-tooltip>
           </section>
         </article>
         <el-empty v-if="!evaluators.length" description="暂无自动评估结果" :image-size="72" />

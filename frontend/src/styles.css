@@ -2005,27 +2005,33 @@ h2 {
   font-size: 14px;
 }
 
-.annotation-evaluator-param-cards {
+.annotation-evaluator-param-table {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 8px;
   min-width: 0;
-  max-height: 188px;
+  max-height: 170px;
   overflow-y: auto;
-}
-
-.annotation-evaluator-param-cell {
-  min-width: 0;
-  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: #fbfcff;
+}
+
+.annotation-evaluator-param-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.32fr) minmax(0, 1fr);
+  min-width: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.annotation-evaluator-param-row:last-child {
+  border-bottom: 0;
 }
 
 .annotation-evaluator-param-name {
   display: block;
   overflow: hidden;
-  margin-bottom: 6px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-right: 1px solid var(--line);
+  background: #f8fafc;
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
@@ -2034,18 +2040,19 @@ h2 {
 }
 
 .annotation-evaluator-param-value {
-  display: -webkit-box;
-  min-height: 44px;
+  display: block;
   margin: 0;
   overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
   color: var(--ink);
   font-size: 13px;
   line-height: 1.6;
-  white-space: pre-line;
-  word-break: break-word;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.annotation-evaluator-param-value-cell {
+  min-width: 0;
+  padding: 8px 10px;
 }
 
 .annotation-evaluator-reason {
@@ -2064,13 +2071,16 @@ h2 {
 }
 
 .annotation-evaluator-reason-text {
-  max-height: 72px;
+  display: -webkit-box;
+  max-height: 44px;
   margin: 0;
-  overflow: auto;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   color: var(--ink);
   font-size: 13px;
   line-height: 1.65;
-  white-space: pre-wrap;
+  white-space: pre-line;
   word-break: break-word;
   overflow-wrap: anywhere;
 }
