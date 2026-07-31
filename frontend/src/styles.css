@@ -1037,6 +1037,10 @@ h2 {
   width: 100%;
 }
 
+.el-table th.el-table__cell > .cell {
+  text-align: center;
+}
+
 .hidden-file {
   display: none;
 }

@@ -181,7 +181,7 @@ function evaluatorMessage(result) {
       </div>
 
       <el-table :data="rows" row-key="id" border height="100%" tooltip-effect="light" class="task-detail-table">
-        <el-table-column label="状态" width="120" fixed="left" :resizable="false">
+        <el-table-column label="状态" width="120" fixed="left" :resizable="false" align="center">
           <template #default="{ row }">
             <el-tooltip :content="statusLabel(row.status)" placement="top">
               <el-icon class="task-status-icon" :class="statusIconClass(row.status)">
@@ -190,7 +190,7 @@ function evaluatorMessage(result) {
             </el-tooltip>
           </template>
         </el-table-column>
-        <el-table-column type="index" label="序号" width="90" fixed="left" />
+        <el-table-column type="index" label="序号" width="90" fixed="left" align="center" />
         <el-table-column :label="formatNameVersion(base?.datasetName, base?.datasetVersionName)" align="center">
           <el-table-column v-for="field in fields" :key="field.id" :label="field.fieldName" min-width="220" show-overflow-tooltip>
             <template #default="{ row }">{{ row.values[field.id || ''] || '-' }}</template>

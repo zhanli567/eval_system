@@ -88,7 +88,7 @@ const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, 
       </div>
 
       <el-table :key="dataTableKey" :data="tableRows" row-key="id" border height="100%" tooltip-effect="light" class="data-table">
-        <el-table-column type="index" label="序号" width="90" fixed="left" :resizable="false" />
+        <el-table-column type="index" label="序号" width="90" fixed="left" :resizable="false" align="center" />
         <el-table-column
           v-for="field in fields"
           :key="`${field.id}:${field.fieldName}:${field.required}:${field.displayOrder}`"
