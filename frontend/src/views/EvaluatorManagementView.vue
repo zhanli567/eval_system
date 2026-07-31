@@ -1,6 +1,7 @@
 <script setup>
 import { Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useEvaluatorManagement } from '../modules/evaluator/composables/useEvaluatorManagement';
+import { formatPromptBlock } from '../utils/textBlocks';
 const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, columnWidths, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, loadCustomEvaluators, searchCustom, changeCustomSize, toggleCustomSort, loadPresetEvaluators, searchPreset, changePresetSize, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, changePickerSize, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, handleColumnResize, typeLabel, formatTime } = useEvaluatorManagement();
 </script>
 
@@ -262,7 +263,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             <el-table-column prop="description" label="描述" />
           </el-table>
           <h3>Prompt</h3>
-          <pre class="code-block">{{ selectedPreset.prompt }}</pre>
+          <pre class="code-block">{{ formatPromptBlock(selectedPreset.prompt) }}</pre>
         </template>
         <template v-else>
           <h3>代码入参设置</h3>

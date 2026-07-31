@@ -11,6 +11,7 @@ import { formatTaskAppBinding } from '../../../utils/taskAppBinding';
 const DELETABLE_STATUSES = ['pending', 'completed', 'failed', 'stopped'];
 const STARTABLE_STATUSES = ['pending', 'failed', 'stopped'];
 const STOPPABLE_STATUSES = ['running'];
+const APP_TYPE_AGENT = 'agent';
 
 function taskColumns() {
     return useColumnWidths({
@@ -70,7 +71,12 @@ function stopListPolling(ctx) {
 }
 
 function canStartTask(row) {
-    return STARTABLE_STATUSES.includes(row.base.status);
+    return STARTABLE_STATUSES.includes(row?.base?.status) && hasRunnableBinding(row);
+}
+
+function hasRunnableBinding(row) {
+    const base = row?.base ?? {};
+    return (base.appType === APP_TYPE_AGENT && Boolean(base.appId)) || Boolean(row?.evaluators?.length);
 }
 
 function canStopTask(row) {

@@ -1,6 +1,7 @@
 <script setup>
 import { Back, Delete, Plus } from '@element-plus/icons-vue';
 import { useTaskCreate } from '../modules/task/composables/useTaskCreate';
+import { formatPromptBlock } from '../utils/textBlocks';
 const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, publishedVersions, fields, selectedTags, filteredTags, tagTypeOptions, customEvaluators, categoryOptions, evaluatorBlocks, agents, models, agentDetailLoading, agentVersionLoading, modelLoading, agentVersions, agentChildAgents, agentInputs, agentOutputs, appFieldMappings, form, handleDatasetVisible, handleAgentVisible, handleCustomEvaluatorVisible, handlePresetCategoryVisible, handlePresetEvaluatorVisible, handleModelVisible, changePresetCategory, changeEvaluatorSource, selectEvaluator, selectCustomVersion, addEvaluator, removeEvaluator, openTagDrawer, addTag, removeTag, isTagSelected, submit, paramKey, fieldTypeLabel, tagTypeLabel, backToList } = useTaskCreate();
 </script>
 
@@ -227,7 +228,7 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
                 <span>评分范围：{{ block.scoreMin ?? '-' }} - {{ block.scoreMax ?? '-' }}</span>
                 <span>通过阈值：{{ block.passThreshold ?? '-' }}</span>
               </div>
-              <pre v-if="block.evaluatorType === 'llm'" class="code-block">{{ block.prompt }}</pre>
+              <pre v-if="block.evaluatorType === 'llm'" class="code-block">{{ formatPromptBlock(block.prompt) }}</pre>
               <pre v-else class="code-block">{{ block.executeCode }}</pre>
             </div>
           </article>
