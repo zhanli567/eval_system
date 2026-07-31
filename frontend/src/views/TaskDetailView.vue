@@ -67,10 +67,6 @@ function findEvaluatorParam(row, evaluator, param) {
 function evaluatorParamValue(row, evaluator, param) {
     return findEvaluatorParam(row, evaluator, param)?.value || '-';
 }
-function evaluatorParamSource(param) {
-    const sourceType = param.sourceType === 'dataset_field' ? '评测集字段' : '应用输出';
-    return `${sourceType}：${param.sourceName || '-'}`;
-}
 function evaluatorMessage(result) {
     if (!result) {
         return '';
@@ -211,9 +207,7 @@ function evaluatorMessage(result) {
         <el-table-column v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" :label="evaluatorColumnLabel(evaluator)" align="center">
           <el-table-column v-for="param in evaluator.params || []" :key="evaluatorParamKey(param)" :label="param.paramName" min-width="180" show-overflow-tooltip>
             <template #default="{ row }">
-              <el-tooltip :content="evaluatorParamSource(param)" placement="top">
-                <span class="param-value-preview">{{ compactText(evaluatorParamValue(row, evaluator, param), 120) }}</span>
-              </el-tooltip>
+              <span class="param-value-preview">{{ evaluatorParamValue(row, evaluator, param) }}</span>
             </template>
           </el-table-column>
           <el-table-column label="结果" width="120">

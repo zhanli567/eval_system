@@ -1841,8 +1841,11 @@ h2 {
 }
 
 .param-value-preview {
-  display: inline-block;
+  display: block;
   max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   vertical-align: middle;
 }
 
