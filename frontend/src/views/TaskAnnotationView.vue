@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { ArrowLeft, ArrowRight, Back } from '@element-plus/icons-vue';
 import { useTaskAnnotation } from '../modules/task/composables/useTaskAnnotation';
-import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
+import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
 const taskItemId = computed(() => String(route.params.taskItemId ?? ''));
@@ -18,9 +18,23 @@ function evaluatorResultLabel(result) {
 function evaluatorReason(result) {
     return formatEvaluatorReason(result.resultValue || '') || result.errorMessage || '';
 }
-function evaluatorParamSource(param) {
-    const sourceType = param.sourceType === 'dataset_field' ? '评测集字段' : '应用输出';
-    return `${sourceType}：${param.sourceName || '-'}`;
+function evaluatorParamValue(value) {
+    return value === undefined || value === null || value === '' ? '-' : value;
+}
+function evaluatorParamTitle(param) {
+    return `${param.paramName || '-'}：${evaluatorParamValue(param.value)}`;
+}
+function evaluatorScoreLabel(result) {
+    return result.score === undefined || result.score === null ? '-' : result.score;
+}
+function evaluatorTypeLabel(value) {
+    if (value === 'llm') {
+        return 'LLM';
+    } else if (value === 'code') {
+        return 'Code';
+    } else {
+        return value || '-';
+    }
 }
 </script>
 
@@ -74,31 +88,44 @@ function evaluatorParamSource(param) {
       </section>
 
       <div class="auto-result-list evaluator-data-list">
-        <div v-for="result in evaluators" :key="result.id" class="auto-result-item evaluator-data-item">
-          <div class="evaluator-data-head">
-            <div>
+        <article v-for="result in evaluators" :key="result.id" class="annotation-evaluator-card">
+          <header class="annotation-evaluator-head">
+            <div class="annotation-evaluator-title">
               <strong>{{ formatNameVersion(result.evaluatorName, result.versionName) }}</strong>
-              <span>{{ result.evaluatorType || '-' }}</span>
+              <span>{{ evaluatorTypeLabel(result.evaluatorType) }}</span>
             </div>
-            <el-tag :type="passTagType(result.passResult)" effect="plain">
-              {{ evaluatorResultLabel(result) }}
-            </el-tag>
-            <span class="result-value">得分 {{ result.score ?? '-' }}</span>
-          </div>
-          <div v-if="result.params?.length" class="evaluator-param-list">
-            <div v-for="param in result.params" :key="`${param.paramId || ''}:${param.paramName || ''}`" class="evaluator-param-row">
-              <span>
-                {{ param.paramName }}
-                <em>{{ evaluatorParamSource(param) }}</em>
-              </span>
-              <p>{{ param.value || '-' }}</p>
+            <div class="annotation-evaluator-summary">
+              <div class="annotation-evaluator-metric">
+                <span>结果</span>
+                <el-tag :type="passTagType(result.passResult)" effect="plain">
+                  {{ evaluatorResultLabel(result) }}
+                </el-tag>
+              </div>
+              <div class="annotation-evaluator-metric">
+                <span>得分</span>
+                <strong>{{ evaluatorScoreLabel(result) }}</strong>
+              </div>
+            </div>
+          </header>
+
+          <div v-if="result.params?.length" class="annotation-evaluator-param-cards">
+            <div
+              v-for="param in result.params"
+              :key="`${param.paramId || ''}:${param.paramName || ''}`"
+              class="annotation-evaluator-param-cell"
+              :title="evaluatorParamTitle(param)"
+            >
+              <span class="annotation-evaluator-param-name">{{ param.paramName || '-' }}</span>
+              <p class="annotation-evaluator-param-value">{{ evaluatorParamValue(param.value) }}</p>
             </div>
           </div>
-          <el-empty v-else description="暂无参数映射" :image-size="64" />
-          <p v-if="evaluatorReason(result)" class="auto-result-reason">
-            {{ compactText(evaluatorReason(result), 360) }}
-          </p>
-        </div>
+          <el-empty v-else description="暂无参数数据" :image-size="64" />
+
+          <section v-if="evaluatorReason(result)" class="annotation-evaluator-reason">
+            <span class="annotation-evaluator-reason-label">原因</span>
+            <p class="annotation-evaluator-reason-text" :title="evaluatorReason(result)">{{ evaluatorReason(result) }}</p>
+          </section>
+        </article>
         <el-empty v-if="!evaluators.length" description="暂无自动评估结果" :image-size="72" />
       </div>
     </main>

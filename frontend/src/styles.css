@@ -1447,8 +1447,7 @@ h2 {
 .section-head,
 .inline-controls,
 .evaluator-config-head,
-.annotation-tag-head,
-.auto-result-item {
+.annotation-tag-head {
   display: flex;
   align-items: center;
 }
@@ -1939,89 +1938,141 @@ h2 {
   margin: 10px 0 0;
 }
 
-.auto-result-item {
+.evaluator-data-list {
+  gap: 14px;
+}
+
+.annotation-evaluator-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px;
-  min-height: 56px;
-  padding: 10px 12px;
+  gap: 12px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: #fff;
 }
 
-.evaluator-data-item {
-  grid-template-columns: minmax(0, 1fr);
-  align-content: start;
-}
-
-.evaluator-data-head {
+.annotation-evaluator-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: center;
 }
 
-.auto-result-item div {
+.annotation-evaluator-title {
   min-width: 0;
 }
 
-.evaluator-param-list {
-  display: grid;
-  border-top: 1px solid var(--line);
-}
-
-.evaluator-param-row {
-  display: grid;
-  grid-template-columns: minmax(130px, 0.34fr) minmax(0, 1fr);
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.evaluator-param-row span {
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.evaluator-param-row em {
+.annotation-evaluator-title strong,
+.annotation-evaluator-title span {
   display: block;
+}
+
+.annotation-evaluator-title strong {
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.annotation-evaluator-title span {
   margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
-  font-style: normal;
-  font-weight: 400;
 }
 
-.evaluator-param-row p {
-  margin: 0;
+.annotation-evaluator-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.annotation-evaluator-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.annotation-evaluator-metric strong {
   color: var(--ink);
-  line-height: 1.65;
-  white-space: pre-wrap;
+  font-size: 14px;
+}
+
+.annotation-evaluator-param-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  min-width: 0;
+  max-height: 188px;
+  overflow-y: auto;
+}
+
+.annotation-evaluator-param-cell {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcff;
+}
+
+.annotation-evaluator-param-name {
+  display: block;
+  overflow: hidden;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.annotation-evaluator-param-value {
+  display: -webkit-box;
+  min-height: 44px;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-line;
   word-break: break-word;
   overflow-wrap: anywhere;
 }
 
-.auto-result-reason {
-  grid-column: 1 / -1;
-  max-height: 96px;
+.annotation-evaluator-reason {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: #fbfcff;
+}
+
+.annotation-evaluator-reason-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.annotation-evaluator-reason-text {
+  max-height: 72px;
   margin: 0;
   overflow: auto;
-  color: var(--muted);
+  color: var(--ink);
   font-size: 13px;
   line-height: 1.65;
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-.auto-result-item strong,
-.auto-result-item span {
-  display: block;
-}
-
-.auto-result-item div span {
-  color: var(--muted);
-  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .annotation-form-column {
@@ -2117,8 +2168,7 @@ h2 {
     grid-column: auto;
   }
 
-  .evaluator-data-head,
-  .evaluator-param-row {
+  .annotation-evaluator-head {
     grid-template-columns: 1fr;
   }
 }
