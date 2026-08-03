@@ -43,7 +43,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.net.ssl.HttpsURLConnection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -70,7 +69,6 @@ public class RemoteCallService {
   private final RemoteCallProperties properties;
   private final ObjectMapper objectMapper;
   private final RemoteCallServiceClient remoteCallServiceClient;
-  private final SsoCookieRenewalService ssoCookieRenewalService;
   private final IamTokenService iamTokenService;
 
   @Autowired
@@ -78,13 +76,11 @@ public class RemoteCallService {
       RemoteCallProperties properties,
       ObjectMapper objectMapper,
       RemoteCallServiceClient remoteCallServiceClient,
-      SsoCookieRenewalService ssoCookieRenewalService,
       IamTokenService iamTokenService
   ) {
     this.properties = properties;
     this.objectMapper = objectMapper;
     this.remoteCallServiceClient = remoteCallServiceClient;
-    this.ssoCookieRenewalService = ssoCookieRenewalService;
     this.iamTokenService = iamTokenService;
   }
 
@@ -355,18 +351,13 @@ public class RemoteCallService {
     headers.put("x-space-id", firstNonBlank(CurrentSpaceHolder.get()));
     String taskCookie = TaskCookieHolder.get();
     if (StringUtils.hasText(taskCookie)) {
-      String renewedCookie = ssoCookieRenewalService.ensureCookiesValid(taskCookie.trim());
-      TaskCookieHolder.set(renewedCookie);
-      headers.put("Cookie", renewedCookie);
+      headers.put("Cookie", taskCookie.trim());
     }
     return headers;
   }
 
   private HttpURLConnection openConnection(String url, String method) throws IOException {
-    HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
-    if (connection instanceof HttpsURLConnection httpsConnection) {
-      configureHttps(httpsConnection);
-    }
+    HttpURLConnection connection = (HttpURLConnection) httpUri(url).toURL().openConnection();
     connection.setRequestMethod(method);
     connection.setConnectTimeout(Math.max(properties.getConnectTimeoutMs(), 1));
     connection.setReadTimeout(Math.max(properties.getReadTimeoutMs(), 1));
@@ -376,11 +367,13 @@ public class RemoteCallService {
     return connection;
   }
 
-  private void configureHttps(HttpsURLConnection connection) {
-    if (!properties.isTrustAllSsl()) {
-      return;
+  private URI httpUri(String url) {
+    String safeUrl = requireText(url, "远程调用地址不能为空");
+    URI uri = URI.create(safeUrl);
+    if ("http".equalsIgnoreCase(uri.getScheme())) {
+      return uri;
     }
-    TrustAllSslSupport.configure(connection);
+    throw new IllegalStateException("远程调用地址必须使用HTTP：" + safeUrl);
   }
 
   private void writeJson(HttpURLConnection connection, Object body) throws IOException {
