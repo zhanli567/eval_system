@@ -357,7 +357,7 @@ public class RemoteCallService {
   }
 
   private HttpURLConnection openConnection(String url, String method) throws IOException {
-    HttpURLConnection connection = (HttpURLConnection) httpUri(url).toURL().openConnection();
+    HttpURLConnection connection = (HttpURLConnection) remoteUri(url).toURL().openConnection();
     connection.setRequestMethod(method);
     connection.setConnectTimeout(Math.max(properties.getConnectTimeoutMs(), 1));
     connection.setReadTimeout(Math.max(properties.getReadTimeoutMs(), 1));
@@ -367,13 +367,14 @@ public class RemoteCallService {
     return connection;
   }
 
-  private URI httpUri(String url) {
+  private URI remoteUri(String url) {
     String safeUrl = requireText(url, "远程调用地址不能为空");
     URI uri = URI.create(safeUrl);
-    if ("http".equalsIgnoreCase(uri.getScheme())) {
+    if ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme())) {
       return uri;
+    } else {
+      throw new IllegalStateException("远程调用地址仅支持HTTP或HTTPS：" + safeUrl);
     }
-    throw new IllegalStateException("远程调用地址必须使用HTTP：" + safeUrl);
   }
 
   private void writeJson(HttpURLConnection connection, Object body) throws IOException {
