@@ -14,7 +14,7 @@ import lombok.Data;
 @JsonSubTypes({
     @JsonSubTypes.Type(value = LinkJSUICardComponentDefinition.class, name = "LinkJS")
 })
-public abstract class UICardComponentDefiniton {
+public abstract class UICardComponentDefinition {
   private String id;
   private String type;
   private String componentKey;

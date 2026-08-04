@@ -597,7 +597,7 @@ public class RemoteCallService {
           appendContentPart(parts, content);
         }
       }
-      appendToolCalls(parts.toolCallParts, choice.getDelta().getToolCalls());
+      appendToolCalls(parts.toolCallParts, choice.getDelta().getTool_calls());
     }
     Map<String, String> outputs = new LinkedHashMap<>();
     putIfText(outputs, "debug", joinStreamParts(parts.debugParts));

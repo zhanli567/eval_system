@@ -14,5 +14,5 @@ public class UICardDefinition {
   private String version;
   private String displayName;
   private UICardLocation location;
-  private List<UICardComponentDefiniton> body;
+  private List<UICardComponentDefinition> body;
 }
