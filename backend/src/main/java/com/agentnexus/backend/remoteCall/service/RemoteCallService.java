@@ -9,24 +9,33 @@ import com.agentnexus.backend.remoteCall.api.dto.response.AgentChild;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentBundleItem;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentBundleListResult;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentChatResponse;
-import com.agentnexus.backend.remoteCall.api.dto.response.AgentChoice;
-import com.agentnexus.backend.remoteCall.api.dto.response.AgentContentBlock;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentDefinition;
-import com.agentnexus.backend.remoteCall.api.dto.response.AgentDelta;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentField;
-import com.agentnexus.backend.remoteCall.api.dto.response.AgentReferenceItem;
 import com.agentnexus.backend.remoteCall.api.dto.request.AgentMessage;
-import com.agentnexus.backend.remoteCall.api.dto.response.AgentToolCallDelta;
-import com.agentnexus.backend.remoteCall.api.dto.response.AgentUiCardDefinition;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentVersion;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.Choice;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.DebugContent;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.Delta;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.DeltaContent;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ErrorContent;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.GenUIContent;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ReasoningContent;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ReferencesContent;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.SkillTriggerContent;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.TextContent;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ToolCallContent;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ToolCallDelta;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ToolResponseContent;
 import com.agentnexus.backend.remoteCall.api.dto.response.LoadedAgent;
 import com.agentnexus.backend.remoteCall.api.dto.response.ListResult;
 import com.agentnexus.backend.remoteCall.api.dto.response.ModelChatResult;
 import com.agentnexus.backend.remoteCall.api.dto.response.ModelInfo;
+import com.agentnexus.backend.remoteCall.api.dto.response.ReferenceItem;
 import com.agentnexus.backend.remoteCall.api.dto.response.RemoteResponse;
 import com.agentnexus.backend.remoteCall.api.dto.response.SpaceInfo;
 import com.agentnexus.backend.remoteCall.api.dto.response.SuperAgentDetail;
 import com.agentnexus.backend.remoteCall.api.dto.response.SuperAgentInfo;
+import com.agentnexus.backend.remoteCall.api.dto.response.UICardDefinition;
 import com.agentnexus.backend.remoteCall.client.RemoteCallServiceClient;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -58,10 +67,10 @@ public class RemoteCallService {
   private static final String DEFAULT_AGENT_ALIAS = "router-agent";
   private static final int DEFAULT_PAGE_SIZE = 10;
   private static final int DEFAULT_CUR_PAGE = 1;
-  private static final String RESPONSE_OBJECT = "com.agentnexus.backend.remoteCall.api.dto.response.AgentChatResponse";
-  private static final TypeReference<List<AgentToolCallDelta>> TOOL_CALLS_TYPE = new TypeReference<>() {
+  private static final String RESPONSE_OBJECT = "com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk";
+  private static final TypeReference<List<ToolCallDelta>> TOOL_CALLS_TYPE = new TypeReference<>() {
   };
-  private static final TypeReference<List<AgentReferenceItem>> REFERENCES_TYPE = new TypeReference<>() {
+  private static final TypeReference<List<ReferenceItem>> REFERENCES_TYPE = new TypeReference<>() {
   };
   private static final TypeReference<Map<String, Object>> EXTRA_TYPE = new TypeReference<>() {
   };
@@ -445,7 +454,7 @@ public class RemoteCallService {
   }
 
   private AgentChatResponse agentFailure(String agentAlias, String conversationId, long startedAt, String errorMessage) {
-    List<AgentChoice> choices = List.of(choice(0, errorBlock(errorMessage)));
+    List<Choice> choices = List.of(choice(0, errorBlock(errorMessage)));
     Map<String, String> outputs = buildAgentOutputs(choices);
     return new AgentChatResponse(
         UUID.randomUUID().toString().replace("-", ""),
@@ -468,8 +477,8 @@ public class RemoteCallService {
     JsonNode root = objectMapper.readTree(payload);
     aggregate.id = firstNonBlank(textValue(root, "id"), aggregate.id);
     aggregate.conversationId = firstNonBlank(textValue(root, "conversationId"), aggregate.conversationId);
-    aggregate.masterAgent = objectValue(root, "masterAgent", aggregate.masterAgent);
-    aggregate.metaAgent = objectValue(root, "metaAgent", aggregate.metaAgent);
+    aggregate.masterAgent = firstNonBlank(textValue(root, "masterAgent"), aggregate.masterAgent);
+    aggregate.metaAgent = firstNonBlank(textValue(root, "metaAgent"), aggregate.metaAgent);
     aggregate.userId = firstNonBlank(textValue(root, "userId"), aggregate.userId);
     aggregate.object = firstNonBlank(textValue(root, "object"), aggregate.object);
     aggregate.model = firstNonBlank(textValue(root, "model"), aggregate.model);
@@ -484,13 +493,13 @@ public class RemoteCallService {
     }
   }
 
-  private AgentChoice parseChoice(JsonNode choiceNode, int fallbackIndex) {
+  private Choice parseChoice(JsonNode choiceNode, int fallbackIndex) {
     Integer index = choiceNode != null && choiceNode.hasNonNull("index") ? choiceNode.get("index").asInt() : fallbackIndex;
     String finishReason = textValue(choiceNode, "finish_reason");
     JsonNode deltaNode = choiceNode == null ? null : choiceNode.get("delta");
     String role = firstNonBlank(textValue(deltaNode, "role"), ROLE_ASSISTANT);
-    List<AgentContentBlock> contents = parseDeltaContents(deltaNode == null ? null : deltaNode.get("content"));
-    List<AgentToolCallDelta> toolCalls = null;
+    List<DeltaContent> contents = parseDeltaContents(deltaNode == null ? null : deltaNode.get("content"));
+    List<ToolCallDelta> toolCalls = null;
     JsonNode toolCallsNode = deltaNode == null ? null : deltaNode.get("tool_calls");
     if (toolCallsNode != null && !toolCallsNode.isNull()) {
       toolCalls = objectMapper.convertValue(toolCallsNode, TOOL_CALLS_TYPE);
@@ -500,14 +509,14 @@ public class RemoteCallService {
     if (extraNode != null && !extraNode.isNull()) {
       extra = objectMapper.convertValue(extraNode, EXTRA_TYPE);
     }
-    return new AgentChoice(index, new AgentDelta(role, contents, toolCalls, extra), finishReason);
+    return new Choice(index, new Delta(role, contents, toolCalls, extra), finishReason);
   }
 
-  private List<AgentContentBlock> parseDeltaContents(JsonNode contentNode) {
+  private List<DeltaContent> parseDeltaContents(JsonNode contentNode) {
     if (contentNode == null || contentNode.isNull()) {
       return List.of();
     }
-    List<AgentContentBlock> contents = new ArrayList<>();
+    List<DeltaContent> contents = new ArrayList<>();
     if (contentNode.isArray()) {
       for (JsonNode item : contentNode) {
         contents.add(parseDeltaContent(item));
@@ -518,119 +527,88 @@ public class RemoteCallService {
     return contents;
   }
 
-  private AgentContentBlock parseDeltaContent(JsonNode item) {
+  private DeltaContent parseDeltaContent(JsonNode item) {
     if (item == null || item.isNull()) {
-      return new AgentContentBlock("text", "", null, null);
+      return new TextContent("");
     }
     if (item.isTextual()) {
-      return new AgentContentBlock("text", item.asText(), null, null);
+      return new TextContent(item.asText());
     }
     String type = firstNonBlank(textValue(item, "type"), "text");
     String text = textValue(item, "text");
     String reasoning = textValue(item, "reasoning");
     String error = textValue(item, "error");
-    String skillName = textValue(item, "skillName");
-    String skillDesc = textValue(item, "skillDesc");
-    String toolCallId = textValue(item, "toolCallId");
-    String toolName = textValue(item, "toolName");
+    String title = textValue(item, "title");
+    String skillName = firstNonBlank(textValue(item, "skillName"), textValue(item, "skill_name"));
+    String skillDesc = firstNonBlank(textValue(item, "skillDesc"), textValue(item, "skill_desc"));
+    String toolCallId = firstNonBlank(textValue(item, "toolCallId"), textValue(item, "tool_call_id"));
+    String toolName = firstNonBlank(textValue(item, "toolName"), textValue(item, "tool_name"));
     String arguments = textValue(item, "arguments");
     String response = textValue(item, "response");
-    List<AgentReferenceItem> references = parseReferences(item.get("references"));
-    AgentUiCardDefinition uiCardDefinition = parseUiCardDefinition(item);
-    Map<String, Object> extra = objectMapper.convertValue(item, EXTRA_TYPE);
-    String normalizedType = type.trim();
+    List<ReferenceItem> references = parseReferences(item.get("references"));
+    UICardDefinition uiCardDefinition = parseUiCardDefinition(item);
+    String normalizedType = normalizeAgentContentType(type.trim());
     String fallbackValue = firstNonEmpty(text, reasoning, error, firstNonTypeFieldValue(item));
-    if ("reasoning".equals(normalizedType)) {
-      return new AgentContentBlock(normalizedType, null, firstNonEmpty(reasoning, text, fallbackValue), null,
-          null, null, null, null, null, null, null, null, extra);
-    }
-    if ("error".equals(normalizedType)) {
-      return new AgentContentBlock(normalizedType, null, null, firstNonEmpty(error, text, fallbackValue),
-          null, null, null, null, null, null, null, null, extra);
-    }
-    if ("skill_trigger".equals(normalizedType)) {
-      return new AgentContentBlock(normalizedType, null, null, null,
-          skillName, skillDesc, null, null, null, null, null, null, extra);
-    }
-    if ("references".equals(normalizedType)) {
-      return new AgentContentBlock(normalizedType, null, null, null,
-          null, null, references, null, null, null, null, null, extra);
-    }
-    if ("tool_call".equals(normalizedType)) {
-      return new AgentContentBlock(normalizedType, null, null, null,
-          null, null, null, toolCallId, toolName, arguments, null, null, extra);
-    }
-    if ("tool_response".equals(normalizedType)) {
-      return new AgentContentBlock(normalizedType, null, null, null,
-          null, null, null, toolCallId, toolName, null, response, null, extra);
-    }
-    if ("gen_ui".equals(normalizedType)) {
-      return new AgentContentBlock(normalizedType, null, null, null,
-          null, null, null, null, null, null, null, uiCardDefinition, extra);
-    }
-    return new AgentContentBlock(normalizedType, firstNonEmpty(text, fallbackValue), null, null,
-        null, null, null, null, null, null, null, null, extra);
+    return switch (normalizedType) {
+      case "reasoning" -> new ReasoningContent(firstNonEmpty(reasoning, text, fallbackValue));
+      case "debug" -> new DebugContent(title, firstNonEmpty(text, fallbackValue));
+      case "error" -> new ErrorContent(firstNonEmpty(error, text, fallbackValue));
+      case "skill_trigger" -> new SkillTriggerContent(skillName, skillDesc);
+      case "references" -> new ReferencesContent(references);
+      case "tool_call" -> new ToolCallContent(toolCallId, toolName, arguments);
+      case "tool_response" -> new ToolResponseContent(toolCallId, toolName, response);
+      case "gen_ui" -> new GenUIContent(uiCardDefinition);
+      default -> new TextContent(firstNonEmpty(text, fallbackValue));
+    };
   }
 
-  private List<AgentReferenceItem> parseReferences(JsonNode referencesNode) {
+  private List<ReferenceItem> parseReferences(JsonNode referencesNode) {
     if (referencesNode == null || referencesNode.isNull()) {
       return List.of();
     }
     if (!referencesNode.isArray()) {
-      return List.of(objectMapper.convertValue(referencesNode, AgentReferenceItem.class));
+      return List.of(objectMapper.convertValue(referencesNode, ReferenceItem.class));
     }
     return objectMapper.convertValue(referencesNode, REFERENCES_TYPE);
   }
 
-  private AgentUiCardDefinition parseUiCardDefinition(JsonNode item) {
+  private UICardDefinition parseUiCardDefinition(JsonNode item) {
     JsonNode uiCardNode = item == null ? null : item.get("uicardDefinition");
     if (uiCardNode == null || uiCardNode.isNull()) {
       uiCardNode = item == null ? null : item.get("uiCardDefinition");
     }
     if (uiCardNode == null || uiCardNode.isNull()) {
+      uiCardNode = item == null ? null : item.get("ui_card_definition");
+    }
+    if (uiCardNode == null || uiCardNode.isNull()) {
       return null;
     }
-    return objectMapper.convertValue(uiCardNode, AgentUiCardDefinition.class);
+    return objectMapper.convertValue(uiCardNode, UICardDefinition.class);
   }
 
-  private Map<String, String> buildAgentOutputs(List<AgentChoice> choices) {
-    List<String> debugParts = new ArrayList<>();
-    List<String> reasoningParts = new ArrayList<>();
-    List<String> textParts = new ArrayList<>();
-    List<String> errorParts = new ArrayList<>();
-    List<String> skillTriggerParts = new ArrayList<>();
-    List<String> referenceParts = new ArrayList<>();
-    List<String> toolCallParts = new ArrayList<>();
-    List<String> toolResponseParts = new ArrayList<>();
-    List<String> genUiParts = new ArrayList<>();
-    for (AgentChoice choice : choices) {
-      if (choice == null || choice.delta() == null || choice.delta().content() == null) {
+  private Map<String, String> buildAgentOutputs(List<Choice> choices) {
+    AgentOutputParts parts = new AgentOutputParts();
+    for (Choice choice : choices) {
+      if (choice == null || choice.getDelta() == null) {
         continue;
       }
-      for (AgentContentBlock content : choice.delta().content()) {
-        appendContentPart(
-            debugParts,
-            reasoningParts,
-            textParts,
-            errorParts,
-            skillTriggerParts,
-            referenceParts,
-            toolCallParts,
-            toolResponseParts,
-            genUiParts,
-            content);
+      if (choice.getDelta().getContent() != null) {
+        for (DeltaContent content : choice.getDelta().getContent()) {
+          appendContentPart(parts, content);
+        }
       }
+      appendToolCalls(parts.toolCallParts, choice.getDelta().getTool_calls());
     }
     Map<String, String> outputs = new LinkedHashMap<>();
-    putIfText(outputs, "debug", joinStreamParts(debugParts));
-    putIfText(outputs, "reasoning", joinStreamParts(reasoningParts));
-    putIfText(outputs, "text", joinStreamParts(textParts));
-    putIfText(outputs, "error", joinStreamParts(errorParts));
-    putIfText(outputs, "skillTrigger", joinNonBlank("\n", skillTriggerParts.toArray(String[]::new)));
-    putIfText(outputs, "references", joinNonBlank("\n", referenceParts.toArray(String[]::new)));
-    putIfText(outputs, "toolCall", joinNonBlank("\n", toolCallParts.toArray(String[]::new)));
-    putIfText(outputs, "toolResponse", joinNonBlank("\n", toolResponseParts.toArray(String[]::new)));
-    putIfText(outputs, "genUi", joinNonBlank("\n", genUiParts.toArray(String[]::new)));
+    putIfText(outputs, "debug", joinStreamParts(parts.debugParts));
+    putIfText(outputs, "reasoning", joinStreamParts(parts.reasoningParts));
+    putIfText(outputs, "text", joinStreamParts(parts.textParts));
+    putIfText(outputs, "error", joinStreamParts(parts.errorParts));
+    putIfText(outputs, "skillTrigger", joinNonBlank("\n", parts.skillTriggerParts.toArray(String[]::new)));
+    putIfText(outputs, "references", joinNonBlank("\n", parts.referenceParts.toArray(String[]::new)));
+    putIfText(outputs, "toolCall", joinNonBlank("\n", parts.toolCallParts.toArray(String[]::new)));
+    putIfText(outputs, "toolResponse", joinNonBlank("\n", parts.toolResponseParts.toArray(String[]::new)));
+    putIfText(outputs, "genUi", joinNonBlank("\n", parts.genUiParts.toArray(String[]::new)));
     putIfText(outputs, "answer", firstNonBlank(outputs.get("text")));
     putIfText(outputs, "content", firstNonBlank(outputs.get("text")));
     putIfText(outputs, "rawText", joinNonBlank(
@@ -647,73 +625,78 @@ public class RemoteCallService {
     return outputs;
   }
 
-  private void appendContentPart(
-      List<String> debugParts,
-      List<String> reasoningParts,
-      List<String> textParts,
-      List<String> errorParts,
-      List<String> skillTriggerParts,
-      List<String> referenceParts,
-      List<String> toolCallParts,
-      List<String> toolResponseParts,
-      List<String> genUiParts,
-      AgentContentBlock content
-  ) {
-    if (content == null || !StringUtils.hasText(content.type())) {
+  private void appendContentPart(AgentOutputParts parts, DeltaContent content) {
+    if (content == null || !StringUtils.hasText(content.getType())) {
       return;
     }
-    String type = content.type().trim();
+    String type = content.getType().trim();
     String value = contentDisplayValue(content);
     if (value.isEmpty()) {
       return;
     }
     if ("debug".equals(type)) {
-      debugParts.add(value);
+      parts.debugParts.add(value);
     } else if ("reasoning".equals(type)) {
-      reasoningParts.add(value);
+      parts.reasoningParts.add(value);
     } else if ("text".equals(type)) {
-      textParts.add(value);
+      parts.textParts.add(value);
     } else if ("error".equals(type)) {
-      errorParts.add(value);
+      parts.errorParts.add(value);
     } else if ("skill_trigger".equals(type)) {
-      skillTriggerParts.add(value);
+      parts.skillTriggerParts.add(value);
     } else if ("references".equals(type)) {
-      referenceParts.add(value);
+      parts.referenceParts.add(value);
     } else if ("tool_call".equals(type)) {
-      toolCallParts.add(value);
+      parts.toolCallParts.add(value);
     } else if ("tool_response".equals(type)) {
-      toolResponseParts.add(value);
+      parts.toolResponseParts.add(value);
     } else if ("gen_ui".equals(type)) {
-      genUiParts.add(value);
+      parts.genUiParts.add(value);
     } else {
-      textParts.add(value);
+      parts.textParts.add(value);
     }
   }
 
-  private String contentDisplayValue(AgentContentBlock content) {
-    String type = content.type().trim();
-    if ("skill_trigger".equals(type)) {
-      return joinNonBlank(" - ", content.skillName(), content.skillDesc());
-    }
-    if ("references".equals(type)) {
-      return toJson(content.references());
-    }
-    if ("tool_call".equals(type)) {
+  private String contentDisplayValue(DeltaContent content) {
+    if (content instanceof SkillTriggerContent skillTriggerContent) {
+      return joinNonBlank(" - ", skillTriggerContent.getSkillName(), skillTriggerContent.getSkillDesc());
+    } else if (content instanceof ReferencesContent referencesContent) {
+      return toJson(referencesContent.getReferences());
+    } else if (content instanceof ToolCallContent toolCallContent) {
       return toJson(Map.of(
-          "toolCallId", firstNonBlank(content.toolCallId()),
-          "toolName", firstNonBlank(content.toolName()),
-          "arguments", firstNonBlank(content.arguments())));
-    }
-    if ("tool_response".equals(type)) {
+          "toolCallId", firstNonBlank(toolCallContent.getToolCallId()),
+          "toolName", firstNonBlank(toolCallContent.getToolName()),
+          "arguments", firstNonBlank(toolCallContent.getArguments())));
+    } else if (content instanceof ToolResponseContent toolResponseContent) {
       return toJson(Map.of(
-          "toolCallId", firstNonBlank(content.toolCallId()),
-          "toolName", firstNonBlank(content.toolName()),
-          "response", firstNonBlank(content.response())));
+          "toolCallId", firstNonBlank(toolResponseContent.getToolCallId()),
+          "toolName", firstNonBlank(toolResponseContent.getToolName()),
+          "response", firstNonBlank(toolResponseContent.getResponse())));
+    } else if (content instanceof GenUIContent genUIContent) {
+      return toJson(genUIContent.getUiCardDefinition());
+    } else if (content instanceof DebugContent debugContent) {
+      return joinNonBlank(" - ", debugContent.getTitle(), debugContent.getText());
+    } else if (content instanceof ReasoningContent reasoningContent) {
+      return firstNonEmpty(reasoningContent.getReasoning());
+    } else if (content instanceof ErrorContent errorContent) {
+      return firstNonEmpty(errorContent.getError());
+    } else if (content instanceof TextContent textContent) {
+      return firstNonEmpty(textContent.getText());
+    } else {
+      return toJson(content);
     }
-    if ("gen_ui".equals(type)) {
-      return toJson(content.uiCardDefinition());
+  }
+
+  private void appendToolCalls(List<String> toolCallParts, List<ToolCallDelta> toolCalls) {
+    if (toolCalls == null || toolCalls.isEmpty()) {
+      return;
     }
-    return firstNonEmpty(content.text(), content.reasoning(), content.error(), toJson(content.extra()));
+    for (ToolCallDelta toolCall : toolCalls) {
+      String value = toJson(toolCall);
+      if (StringUtils.hasText(value)) {
+        toolCallParts.add(value);
+      }
+    }
   }
 
   private String toJson(Object value) {
@@ -727,19 +710,41 @@ public class RemoteCallService {
     }
   }
 
-  private AgentChoice choice(Integer index, AgentContentBlock content) {
-    return new AgentChoice(
+  private Choice choice(Integer index, DeltaContent content) {
+    return new Choice(
         index,
-        new AgentDelta(ROLE_ASSISTANT, content == null ? List.of() : List.of(content), null, null),
+        new Delta(ROLE_ASSISTANT, content == null ? List.of() : List.of(content), null, null),
         null);
   }
 
-  private AgentContentBlock contentBlock(String type, String text) {
-    return new AgentContentBlock(type, text, null, null);
+  private DeltaContent contentBlock(String type, String text) {
+    if ("error".equals(type)) {
+      return new ErrorContent(text);
+    } else {
+      return new TextContent(text);
+    }
   }
 
-  private AgentContentBlock errorBlock(String error) {
-    return new AgentContentBlock("error", null, null, error);
+  private DeltaContent errorBlock(String error) {
+    return new ErrorContent(error);
+  }
+
+  private String normalizeAgentContentType(String type) {
+    if (isContentType(type, "skill_trigger", "skillTrigger")) {
+      return "skill_trigger";
+    } else if (isContentType(type, "tool_call", "toolCall")) {
+      return "tool_call";
+    } else if (isContentType(type, "tool_response", "toolResponse")) {
+      return "tool_response";
+    } else if (isContentType(type, "gen_ui", "genUi")) {
+      return "gen_ui";
+    } else {
+      return type;
+    }
+  }
+
+  private boolean isContentType(String actualType, String snakeCaseType, String camelCaseType) {
+    return snakeCaseType.equals(actualType) || camelCaseType.equals(actualType);
   }
 
   private String normalizeSsePayload(String line) {
@@ -754,20 +759,6 @@ public class RemoteCallService {
       return trimmed.substring("data:".length()).trim();
     }
     return trimmed;
-  }
-
-  private Object objectValue(JsonNode node, String fieldName, Object fallback) {
-    if (node == null || !node.has(fieldName) || node.get(fieldName).isNull()) {
-      return fallback;
-    }
-    JsonNode value = node.get(fieldName);
-    if (value.isTextual()) {
-      return value.asText();
-    }
-    if (value.isNumber() || value.isBoolean()) {
-      return value.asText();
-    }
-    return objectMapper.convertValue(value, Object.class);
   }
 
   private String textValue(JsonNode node, String fieldName) {
@@ -885,16 +876,28 @@ public class RemoteCallService {
     return value.substring(0, maxLength);
   }
 
+  private static final class AgentOutputParts {
+    private final List<String> debugParts = new ArrayList<>();
+    private final List<String> reasoningParts = new ArrayList<>();
+    private final List<String> textParts = new ArrayList<>();
+    private final List<String> errorParts = new ArrayList<>();
+    private final List<String> skillTriggerParts = new ArrayList<>();
+    private final List<String> referenceParts = new ArrayList<>();
+    private final List<String> toolCallParts = new ArrayList<>();
+    private final List<String> toolResponseParts = new ArrayList<>();
+    private final List<String> genUiParts = new ArrayList<>();
+  }
+
   private static class RemoteAgentAggregate {
     private String id = "";
     private String conversationId;
-    private Object masterAgent;
-    private Object metaAgent;
+    private String masterAgent = "";
+    private String metaAgent = "";
     private String userId = "";
     private String object = "";
     private Long created;
     private String model = "";
-    private final List<AgentChoice> choices = new ArrayList<>();
+    private final List<Choice> choices = new ArrayList<>();
     private final List<String> rawPayloads = new ArrayList<>();
 
     private RemoteAgentAggregate(String conversationId) {

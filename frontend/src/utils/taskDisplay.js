@@ -1,4 +1,17 @@
-const APP_OUTPUT_KEYS = ['text', 'content', 'answer', 'error', 'rawText', 'reasoning', 'debug'];
+const APP_OUTPUT_KEYS = [
+    'text',
+    'content',
+    'answer',
+    'error',
+    'rawText',
+    'reasoning',
+    'debug',
+    'toolCall',
+    'toolResponse',
+    'skillTrigger',
+    'references',
+    'genUi'
+];
 export function formatAppOutput(value) {
     const text = pickAppOutputText(value || '');
     return cleanupDisplayText(text);

@@ -16,8 +16,6 @@ import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorDetail;
 import com.agentnexus.backend.evaluator.service.EvaluatorService;
 import com.agentnexus.backend.remoteCall.api.dto.request.AgentChatRequest;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentChatResponse;
-import com.agentnexus.backend.remoteCall.api.dto.response.AgentChoice;
-import com.agentnexus.backend.remoteCall.api.dto.response.AgentContentBlock;
 import com.agentnexus.backend.remoteCall.api.dto.request.AgentMessage;
 import com.agentnexus.backend.remoteCall.api.dto.response.ModelChatResult;
 import com.agentnexus.backend.remoteCall.service.RemoteCallService;
@@ -1214,25 +1212,28 @@ public class TaskService {
       return Map.of();
     } else {
       Map<String, String> outputs = new LinkedHashMap<>();
-      putStoredJsonOutputs(outputs, appOutput);
-      putIfText(outputs, "rawText", appOutput);
-      putIfText(outputs, "text", firstNonBlank(outputs.get("text"), outputs.get("content"), outputs.get("answer"), appOutput));
+      boolean parsedJson = putStoredJsonOutputs(outputs, appOutput);
+      if (!parsedJson) {
+        putIfText(outputs, "rawText", appOutput);
+        putIfText(outputs, "text", appOutput);
+      }
       putIfText(outputs, "answer", firstNonBlank(outputs.get("answer"), outputs.get("text"), outputs.get("content")));
       putIfText(outputs, "content", firstNonBlank(outputs.get("content"), outputs.get("text"), outputs.get("answer")));
       return outputs;
     }
   }
 
-  private void putStoredJsonOutputs(Map<String, String> outputs, String appOutput) {
+  private boolean putStoredJsonOutputs(Map<String, String> outputs, String appOutput) {
     try {
       JsonNode root = objectMapper.readTree(appOutput);
       if (root != null && root.isObject()) {
         root.fields().forEachRemaining(entry -> putIfText(outputs, entry.getKey(), jsonNodeDisplayValue(entry.getValue())));
+        return true;
       } else {
-        return;
+        return false;
       }
     } catch (Exception e) {
-      return;
+      return false;
     }
   }
 
@@ -1306,7 +1307,8 @@ public class TaskService {
 
   private AgentInvocationResult failedAgentResult(String message) {
     String error = StringUtils.hasText(message) ? message : "Agent execution failed";
-    return new AgentInvocationResult(error, STATUS_FAILED, error, Map.of("error", error, "rawText", error));
+    Map<String, String> outputs = Map.of("error", error, "rawText", error);
+    return new AgentInvocationResult(serializeAgentOutputs(outputs), STATUS_FAILED, error, outputs);
   }
 
   private EvaluationSimulationResult failedEvaluationResult(String message) {
@@ -1337,25 +1339,26 @@ public class TaskService {
             List.of(new AgentMessage("user", content)),
             true));
     if (response == null) {
-      return new AgentInvocationResult("", STATUS_FAILED, "Super智能体未返回结果", Map.of());
+      return failedAgentResult("Super智能体未返回结果");
     }
     Map<String, String> outputs = extractAgentOutputs(response);
+    String storedContent = serializeAgentOutputs(outputs);
     if (STATUS_FAILED.equals(response.status())) {
       return new AgentInvocationResult(
-          formatAgentOutputs(outputs),
+          storedContent,
           STATUS_FAILED,
           firstNonBlank(response.errorMessage(), outputs.get("error"), outputs.get("rawText")),
           outputs);
     }
     if (StringUtils.hasText(outputs.get("error"))) {
       return new AgentInvocationResult(
-          formatAgentOutputs(outputs),
+          storedContent,
           STATUS_FAILED,
           outputs.get("error"),
           outputs);
     }
     return new AgentInvocationResult(
-        formatAgentOutputs(outputs),
+        storedContent,
         STATUS_COMPLETED,
         "",
         outputs);
@@ -1523,120 +1526,49 @@ public class TaskService {
       return "";
     }
     if (SOURCE_APP_OUTPUT.equals(mapping.sourceType())) {
-      if (StringUtils.hasText(mapping.appOutputName()) && appOutputs.containsKey(mapping.appOutputName())) {
-        return appOutputs.get(mapping.appOutputName());
+      if (!StringUtils.hasText(mapping.appOutputName())) {
+        return "";
+      } else {
+        return appOutputs.getOrDefault(mapping.appOutputName(), "");
       }
-      if (appOutputs.containsKey("text")) {
-        return appOutputs.get("text");
-      }
-      if (appOutputs.containsKey("answer")) {
-        return appOutputs.get("answer");
-      }
-      if (appOutputs.containsKey("content")) {
-        return appOutputs.get("content");
-      }
-      return appOutputs.getOrDefault("rawText", "");
     }
     return values.getOrDefault(mapping.datasetFieldId(), "");
   }
 
   private Map<String, String> extractAgentOutputs(AgentChatResponse response) {
     Map<String, String> outputs = new LinkedHashMap<>();
-    List<String> debugParts = new ArrayList<>();
-    List<String> reasoningParts = new ArrayList<>();
-    List<String> textParts = new ArrayList<>();
-    List<String> errorParts = new ArrayList<>();
-    if (response.choices() != null) {
-      for (AgentChoice choice : response.choices()) {
-        if (choice == null || choice.delta() == null || choice.delta().content() == null) {
-          continue;
-        }
-        for (AgentContentBlock content : choice.delta().content()) {
-          appendAgentContent(debugParts, reasoningParts, textParts, errorParts, content);
-        }
-      }
-    }
-
-    putIfText(outputs, "debug", joinStreamParts(debugParts));
-    putIfText(outputs, "reasoning", joinStreamParts(reasoningParts));
-    putIfText(outputs, "text", joinStreamParts(textParts));
-    putIfText(outputs, "error", joinStreamParts(errorParts));
     if (response.outputs() != null) {
       response.outputs().forEach((key, value) -> {
-        if (StringUtils.hasText(key) && !outputs.containsKey(key)) {
+        if (StringUtils.hasText(key)) {
           outputs.put(key, value == null ? "" : value);
         }
       });
     }
-    putIfText(outputs, "rawText", firstNonBlank(
-        outputs.get("rawText"),
-        joinLines(List.of(
-            outputs.getOrDefault("debug", ""),
-            outputs.getOrDefault("reasoning", ""),
-            outputs.getOrDefault("text", ""),
-            outputs.getOrDefault("error", ""))),
-        response.rawOutput()));
+    putIfText(outputs, "rawText", firstNonBlank(outputs.get("rawText"), response.rawOutput()));
     putIfText(outputs, "answer", firstNonBlank(outputs.get("answer"), outputs.get("text"), outputs.get("content")));
     putIfText(outputs, "content", firstNonBlank(outputs.get("content"), outputs.get("text"), outputs.get("answer")));
     return outputs;
-  }
-
-  private void appendAgentContent(
-      List<String> debugParts,
-      List<String> reasoningParts,
-      List<String> textParts,
-      List<String> errorParts,
-      AgentContentBlock content
-  ) {
-    if (content == null || !StringUtils.hasText(content.type())) {
-      return;
-    }
-    String type = content.type().trim();
-    String value = firstNonEmpty(content.text(), content.reasoning(), content.error());
-    if (value.isEmpty()) {
-      return;
-    }
-    if ("debug".equals(type)) {
-      debugParts.add(value);
-    } else if ("reasoning".equals(type)) {
-      reasoningParts.add(value);
-    } else if ("text".equals(type)) {
-      textParts.add(value);
-    } else if ("error".equals(type)) {
-      errorParts.add(value);
-    }
   }
 
   private String formatAgentOutputs(Map<String, String> outputs) {
     return AgentOutputFormatter.toDisplayText(outputs);
   }
 
+  private String serializeAgentOutputs(Map<String, String> outputs) {
+    if (outputs == null || outputs.isEmpty()) {
+      return "";
+    }
+    try {
+      return objectMapper.writeValueAsString(outputs);
+    } catch (Exception e) {
+      return formatAgentOutputs(outputs);
+    }
+  }
+
   private void putIfText(Map<String, String> outputs, String key, String value) {
     if (StringUtils.hasText(value)) {
       outputs.put(key, value);
     }
-  }
-
-  private String joinLines(List<String> parts) {
-    if (parts == null || parts.isEmpty()) {
-      return "";
-    }
-    return parts.stream()
-        .filter(StringUtils::hasText)
-        .collect(Collectors.joining("\n"));
-  }
-
-  private String joinStreamParts(List<String> parts) {
-    if (parts == null || parts.isEmpty()) {
-      return "";
-    }
-    StringBuilder result = new StringBuilder();
-    for (String part : parts) {
-      if (part != null && !part.isEmpty()) {
-        result.append(part);
-      }
-    }
-    return result.toString();
   }
 
   private String firstNonBlank(String... values) {

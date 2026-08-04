@@ -16,6 +16,19 @@ const TASK_TAG_TYPE_OPTIONS = [
     { value: 'text', label: '文本' }
 ];
 
+const AGENT_OUTPUT_DESCRIPTIONS = {
+    text: '返回给用户的信息',
+    reasoning: '智能体思考过程',
+    debug: '智能体调试信息',
+    error: '智能体错误信息',
+    rawText: '合并后的原始文本',
+    skillTrigger: '触发技能信息',
+    references: '引用来源列表',
+    toolCall: '工具调用信息',
+    toolResponse: '工具响应信息',
+    genUi: '生成式UI信息'
+};
+
 function createEvaluatorBlock() {
     return {
         key: `${Date.now()}-${Math.random()}`,
@@ -953,6 +966,12 @@ function fieldTypeLabel(value) {
     return '文本';
 }
 
+function agentOutputLabel(output) {
+    const fieldName = output?.fieldName || '';
+    const description = AGENT_OUTPUT_DESCRIPTIONS[fieldName] || output?.description || fieldTypeLabel(output?.fieldType);
+    return `${fieldName} · ${description}`;
+}
+
 export function useTaskCreate() {
     const router = useRouter();
     const state = createState();
@@ -1012,6 +1031,7 @@ export function useTaskCreate() {
         ...submitActions,
         paramKey,
         fieldTypeLabel,
+        agentOutputLabel,
         tagTypeLabel,
         backToList
     };

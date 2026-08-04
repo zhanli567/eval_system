@@ -18,7 +18,12 @@ final class AgentOutputFormatter {
         outputs.get("error"),
         outputs.get("rawText"),
         outputs.get("reasoning"),
-        outputs.get("debug")));
+        outputs.get("debug"),
+        outputs.get("toolCall"),
+        outputs.get("toolResponse"),
+        outputs.get("skillTrigger"),
+        outputs.get("references"),
+        outputs.get("genUi")));
   }
 
   private static String cleanup(String value) {

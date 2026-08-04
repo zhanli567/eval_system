@@ -2,7 +2,7 @@
 import { Back, Delete, Plus } from '@element-plus/icons-vue';
 import { useTaskCreate } from '../modules/task/composables/useTaskCreate';
 import { formatPromptBlock } from '../utils/textBlocks';
-const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, publishedVersions, fields, selectedTags, filteredTags, tagTypeOptions, customEvaluators, categoryOptions, evaluatorBlocks, agents, models, agentDetailLoading, agentVersionLoading, modelLoading, agentVersions, agentChildAgents, agentInputs, agentOutputs, appFieldMappings, form, handleDatasetVisible, handleAgentVisible, handleCustomEvaluatorVisible, handlePresetCategoryVisible, handlePresetEvaluatorVisible, handleModelVisible, changePresetCategory, changeEvaluatorSource, selectEvaluator, selectCustomVersion, addEvaluator, removeEvaluator, openTagDrawer, addTag, removeTag, isTagSelected, submit, paramKey, fieldTypeLabel, tagTypeLabel, backToList } = useTaskCreate();
+const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, publishedVersions, fields, selectedTags, filteredTags, tagTypeOptions, customEvaluators, categoryOptions, evaluatorBlocks, agents, models, agentDetailLoading, agentVersionLoading, modelLoading, agentVersions, agentChildAgents, agentInputs, agentOutputs, appFieldMappings, form, handleDatasetVisible, handleAgentVisible, handleCustomEvaluatorVisible, handlePresetCategoryVisible, handlePresetEvaluatorVisible, handleModelVisible, changePresetCategory, changeEvaluatorSource, selectEvaluator, selectCustomVersion, addEvaluator, removeEvaluator, openTagDrawer, addTag, removeTag, isTagSelected, submit, paramKey, fieldTypeLabel, agentOutputLabel, tagTypeLabel, backToList } = useTaskCreate();
 </script>
 
 <template>
@@ -211,7 +211,7 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
                   <el-option
                     v-for="output in agentOutputs"
                     :key="output.id"
-                    :label="`${output.fieldName} · ${output.description || fieldTypeLabel(output.fieldType)}`"
+                    :label="agentOutputLabel(output)"
                     :value="output.fieldName"
                   />
                 </el-select>
