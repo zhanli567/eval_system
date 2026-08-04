@@ -1,5 +1,6 @@
 package com.agentnexus.backend.remoteCall.api.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,9 @@ public class ChatCompletionChunk {
   public static class Choice {
     private Integer index;
     private Delta delta;
-    private String finish_reason;
+
+    @JsonProperty("finish_reason")
+    private String finishReason;
   }
 
   /**
@@ -52,7 +55,10 @@ public class ChatCompletionChunk {
   public static class Delta {
     private String role;
     private List<? extends DeltaContent> content;
-    private List<ToolCallDelta> tool_calls;
+
+    @JsonProperty("tool_calls")
+    private List<ToolCallDelta> toolCalls;
+
     private Map<String, Object> extra;
   }
 
@@ -76,9 +82,9 @@ public class ChatCompletionChunk {
   /**
    * Reasoning content block.
    */
+  @Getter
+  @Setter
   public static class ReasoningContent extends DeltaContent {
-    @Getter
-    @Setter
     private String reasoning;
 
     /**
@@ -127,7 +133,7 @@ public class ChatCompletionChunk {
      */
     public ReferencesContent(List<ReferenceItem> references) {
       super("references");
-      this.references = Collections.unmodifiableList(references);
+      this.references = Collections.unmodifiableList(references == null ? List.of() : references);
     }
   }
 

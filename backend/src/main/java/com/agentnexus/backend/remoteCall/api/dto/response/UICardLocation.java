@@ -9,9 +9,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
  */
 @JsonFormat(shape = JsonFormat.Shape.STRING)
 public enum UICardLocation {
-  @JsonPropertyDescription("UI卡片生成到对话框(ChatUI)")
+  @JsonPropertyDescription("UI card generated in ChatUI")
   CHAT_UI,
 
-  @JsonPropertyDescription("UI卡片生成到WebUI")
+  @JsonPropertyDescription("UI card generated in WebUI")
   WEB_UI
 }

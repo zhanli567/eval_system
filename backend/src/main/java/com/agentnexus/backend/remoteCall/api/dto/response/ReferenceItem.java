@@ -1,5 +1,6 @@
 package com.agentnexus.backend.remoteCall.api.dto.response;
 
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,4 +22,5 @@ public class ReferenceItem {
   private String sourceName;
   private String summary;
   private String snippet;
+  private Map<String, Object> extra;
 }
