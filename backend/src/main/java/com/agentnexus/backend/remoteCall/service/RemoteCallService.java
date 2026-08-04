@@ -67,7 +67,6 @@ public class RemoteCallService {
   private static final String DEFAULT_AGENT_ALIAS = "router-agent";
   private static final int DEFAULT_PAGE_SIZE = 10;
   private static final int DEFAULT_CUR_PAGE = 1;
-  private static final String RESPONSE_OBJECT = "com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk";
   private static final TypeReference<List<ToolCallDelta>> TOOL_CALLS_TYPE = new TypeReference<>() {
   };
   private static final TypeReference<List<ReferenceItem>> REFERENCES_TYPE = new TypeReference<>() {
@@ -442,7 +441,7 @@ public class RemoteCallService {
         aggregate.masterAgent,
         aggregate.metaAgent,
         firstNonBlank(aggregate.userId, ""),
-        firstNonBlank(aggregate.object, RESPONSE_OBJECT),
+        firstNonBlank(aggregate.object, ""),
         aggregate.created == null ? System.currentTimeMillis() : aggregate.created,
         firstNonBlank(aggregate.model, ""),
         aggregate.choices,
@@ -462,7 +461,7 @@ public class RemoteCallService {
         agentAlias,
         null,
         "",
-        RESPONSE_OBJECT,
+        "",
         System.currentTimeMillis(),
         "",
         choices,
@@ -538,7 +537,6 @@ public class RemoteCallService {
     String text = textValue(item, "text");
     String reasoning = textValue(item, "reasoning");
     String error = textValue(item, "error");
-    String title = textValue(item, "title");
     String skillName = firstNonBlank(textValue(item, "skillName"), textValue(item, "skill_name"));
     String skillDesc = firstNonBlank(textValue(item, "skillDesc"), textValue(item, "skill_desc"));
     String toolCallId = firstNonBlank(textValue(item, "toolCallId"), textValue(item, "tool_call_id"));
@@ -551,7 +549,7 @@ public class RemoteCallService {
     String fallbackValue = firstNonEmpty(text, reasoning, error, firstNonTypeFieldValue(item));
     return switch (normalizedType) {
       case "reasoning" -> new ReasoningContent(firstNonEmpty(reasoning, text, fallbackValue));
-      case "debug" -> new DebugContent(title, firstNonEmpty(text, fallbackValue));
+      case "debug" -> new DebugContent(firstNonEmpty(text, fallbackValue));
       case "error" -> new ErrorContent(firstNonEmpty(error, text, fallbackValue));
       case "skill_trigger" -> new SkillTriggerContent(skillName, skillDesc);
       case "references" -> new ReferencesContent(references);
@@ -675,7 +673,7 @@ public class RemoteCallService {
     } else if (content instanceof GenUIContent genUIContent) {
       return toJson(genUIContent.getUiCardDefinition());
     } else if (content instanceof DebugContent debugContent) {
-      return joinNonBlank(" - ", debugContent.getTitle(), debugContent.getText());
+      return firstNonEmpty(debugContent.getText());
     } else if (content instanceof ReasoningContent reasoningContent) {
       return firstNonEmpty(reasoningContent.getReasoning());
     } else if (content instanceof ErrorContent errorContent) {

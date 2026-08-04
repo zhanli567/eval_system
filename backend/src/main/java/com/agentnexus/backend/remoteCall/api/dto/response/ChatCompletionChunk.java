@@ -155,18 +155,15 @@ public class ChatCompletionChunk {
   @Getter
   @Setter
   public static class DebugContent extends DeltaContent {
-    private String title;
     private String text;
 
     /**
      * Creates a debug content block.
      *
-     * @param title debug title
      * @param text debug text
      */
-    public DebugContent(String title, String text) {
+    public DebugContent(String text) {
       super("debug");
-      this.title = title;
       this.text = text;
     }
   }
