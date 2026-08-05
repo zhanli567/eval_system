@@ -7,7 +7,9 @@ import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
 const taskItemId = computed(() => String(route.params.taskItemId ?? ''));
-const { loading, saving, loadError, form, task, item, fields, tags, evaluators, previousItemId, nextItemId, saveAnnotation, backToDetail, goItem, passTagType, tagTypeLabel, optionLabel, appOutputEmptyDescription } = useTaskAnnotation(taskId, taskItemId);
+const readonlyMode = computed(() => route.query.mode === 'detail');
+const formTitle = computed(() => (readonlyMode.value ? '标签结果' : '标注区域'));
+const { loading, saving, loadError, form, task, item, fields, tags, evaluators, previousItemId, nextItemId, saveAnnotation, backToDetail, goItem, passTagType, tagTypeLabel, optionLabel, appOutputEmptyDescription } = useTaskAnnotation(taskId, taskItemId, readonlyMode);
 const formattedAppOutput = computed(() => formatAppOutput(item.value?.appOutput || ''));
 const hasAppOutput = computed(() => task.value?.appType === 'agent' && Boolean(task.value?.appId));
 const overflowState = reactive({});
@@ -73,7 +75,7 @@ function isTextOverflow(key) {
         下一条
         <el-icon class="el-icon--right"><ArrowRight /></el-icon>
       </el-button>
-      <el-button type="primary" :loading="saving" :disabled="!!loadError || !item || !tags.length" @click="saveAnnotation">保存标注</el-button>
+      <el-button v-if="!readonlyMode" type="primary" :loading="saving" :disabled="!!loadError || !item || !tags.length" @click="saveAnnotation">保存标注</el-button>
     </div>
   </header>
 
@@ -179,8 +181,8 @@ function isTextOverflow(key) {
     </main>
 
     <aside class="annotation-column annotation-form-column">
-      <h2>标注区域</h2>
-      <el-form label-position="top">
+      <h2>{{ formTitle }}</h2>
+      <el-form label-position="top" :disabled="readonlyMode">
         <div v-for="tag in tags" :key="tag.taskTagId" class="annotation-tag-editor">
           <div class="annotation-tag-head">
             <strong>{{ tag.tagName }}</strong>

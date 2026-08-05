@@ -12,7 +12,10 @@ const VIEWPORT_MARGIN = 24;
 export const tableOverflowTooltipOptions = {
     effect: 'light',
     enterable: true,
-    hideAfter: 1200,
+    hideAfter: 5000,
+    persistent: true,
+    appendTo: 'body',
+    zIndex: 4200,
     popperClass: TABLE_OVERFLOW_TOOLTIP_CLASS
 };
 
@@ -65,16 +68,17 @@ function isInResizeZone(event, tooltip) {
 function createResizeState(event, tooltip) {
     const rect = tooltip.getBoundingClientRect();
     const placement = tooltip.getAttribute('data-popper-placement') || '';
-    const translate = readTranslate(tooltip);
+    freezeTooltipPosition(tooltip, rect);
     return {
         tooltip,
         isTopPlacement: placement.startsWith('top'),
         startX: event.clientX,
         startY: event.clientY,
+        startLeft: rect.left,
+        startTop: rect.top,
+        startBottom: rect.bottom,
         startWidth: rect.width,
         startHeight: rect.height,
-        startTranslateX: translate.x,
-        startTranslateY: translate.y,
         maxWidth: Math.max(MIN_WIDTH, document.documentElement.clientWidth - rect.left - VIEWPORT_MARGIN),
         maxHeight: resolveMaxHeight(rect, placement)
     };
@@ -88,12 +92,15 @@ function handleResizeMove(event, state) {
         MIN_HEIGHT,
         state.maxHeight
     );
+    state.tooltip.style.left = `${Math.round(state.startLeft)}px`;
     state.tooltip.style.width = `${Math.round(nextWidth)}px`;
     state.tooltip.style.height = `${Math.round(nextHeight)}px`;
     if (state.isTopPlacement) {
-        const heightDelta = nextHeight - state.startHeight;
-        state.tooltip.style.transform = `translate(${state.startTranslateX}px, ${state.startTranslateY - heightDelta}px)`;
+        state.tooltip.style.top = `${Math.round(state.startBottom - nextHeight)}px`;
+    } else {
+        state.tooltip.style.top = `${Math.round(state.startTop)}px`;
     }
+    state.tooltip.style.transform = 'none';
 }
 
 function finishResize(tooltip, handleMove, handleEnd) {
@@ -126,13 +133,14 @@ function resolveMaxHeight(rect, placement) {
     return Math.max(MIN_HEIGHT, viewportHeight - rect.top - VIEWPORT_MARGIN);
 }
 
-function readTranslate(element) {
-    const transform = element.style.transform || window.getComputedStyle(element).transform;
-    if (!transform || transform === 'none') {
-        return { x: 0, y: 0 };
-    }
-    const matrix = new DOMMatrixReadOnly(transform);
-    return { x: matrix.m41, y: matrix.m42 };
+function freezeTooltipPosition(tooltip, rect) {
+    tooltip.style.position = 'fixed';
+    tooltip.style.inset = 'auto';
+    tooltip.style.left = `${Math.round(rect.left)}px`;
+    tooltip.style.top = `${Math.round(rect.top)}px`;
+    tooltip.style.right = 'auto';
+    tooltip.style.bottom = 'auto';
+    tooltip.style.transform = 'none';
 }
 
 function clamp(value, min, max) {

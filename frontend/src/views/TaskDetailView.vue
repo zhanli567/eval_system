@@ -3,10 +3,10 @@ import { computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { Back, CircleCheck, CircleClose, Clock, Loading, Refresh, VideoPlay } from '@element-plus/icons-vue';
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
-import { compactText, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
+import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
-const { loading, starting, stopping, page, size, base, fields, evaluators, tags, rows, total, canStartTask, canStopTask, loadDetail, backToList, startTask, stopTask, openAnnotation, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
+const { loading, starting, stopping, page, size, base, fields, evaluators, tags, rows, total, canStartTask, canStopTask, loadDetail, backToList, startTask, stopTask, openItemDetail, openAnnotation, canAnnotateItem, annotationDisabledReason, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
 const overflowState = reactive({});
 const vOverflowMark = {
     mounted(el, binding) {
@@ -65,8 +65,9 @@ function isScoredEvaluatorResult(result) {
     return Boolean(result && (result.status === 'completed' || result.score != null || result.passResult));
 }
 function evaluatorResultLabel(result) {
-    if (!result)
+    if (!result) {
         return '-';
+    }
     return result.passResult || (result.score != null ? '已评分' : '-');
 }
 function evaluatorColumnLabel(evaluator) {
@@ -239,9 +240,9 @@ function evaluatorMessage(result) {
         </el-table-column>
         <el-table-column label="应用输出" min-width="260" show-overflow-tooltip>
           <template #default="{ row }">
-            <div class="app-output-preview">{{ compactText(formatAppOutput(row.appOutput)) || '-' }}</div>
+            <div class="app-output-preview">{{ formatAppOutput(row.appOutput) || '-' }}</div>
             <p v-if="row.appErrorMessage" class="task-error-preview">
-              {{ compactText(row.appErrorMessage, 120) }}
+              {{ row.appErrorMessage }}
             </p>
           </template>
         </el-table-column>
@@ -270,7 +271,7 @@ function evaluatorMessage(result) {
           </el-table-column>
           <el-table-column label="原因" min-width="240" show-overflow-tooltip>
             <template #default="{ row }">
-              <span>{{ compactText(evaluatorMessage(findEvaluatorResult(row, evaluator.taskEvaluatorId)), 120) || '-' }}</span>
+              <span class="result-reason-preview">{{ evaluatorMessage(findEvaluatorResult(row, evaluator.taskEvaluatorId)) || '-' }}</span>
             </template>
           </el-table-column>
         </el-table-column>
@@ -295,9 +296,19 @@ function evaluatorMessage(result) {
             </template>
           </el-table-column>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right" :resizable="false">
+        <el-table-column label="操作" width="150" fixed="right" :resizable="false">
           <template #default="{ row }">
-            <el-button link type="primary" :disabled="base?.status === 'stopped' || row.status === 'stopped'" @click="openAnnotation(row)">标注</el-button>
+            <el-button link type="primary" @click="openItemDetail(row)">详情</el-button>
+            <el-tooltip
+              :content="annotationDisabledReason(row)"
+              placement="top"
+              effect="light"
+              :disabled="canAnnotateItem(row)"
+            >
+              <span class="task-action-button-wrap">
+                <el-button link type="primary" :disabled="!canAnnotateItem(row)" @click="openAnnotation(row)">标注</el-button>
+              </span>
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>

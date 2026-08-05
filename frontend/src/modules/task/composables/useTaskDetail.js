@@ -10,8 +10,9 @@ const STARTABLE_STATUSES = ['pending', 'failed', 'stopped'];
 const STOPPABLE_STATUSES = ['running'];
 
 async function loadTaskDetail(ctx, options = {}) {
-    if (!ctx.taskId.value)
+    if (!ctx.taskId.value) {
         return;
+    }
     const silent = Boolean(options.silent);
     if (!silent) {
         ctx.loading.value = true;
@@ -27,8 +28,9 @@ async function loadTaskDetail(ctx, options = {}) {
 }
 
 function startTaskPolling(ctx) {
-    if (ctx.pollTimer !== undefined)
+    if (ctx.pollTimer !== undefined) {
         return;
+    }
     ctx.pollTimer = window.setInterval(() => {
         if (!ctx.loading.value && !ctx.starting.value) {
             ctx.loadDetail({ silent: true });
@@ -37,8 +39,9 @@ function startTaskPolling(ctx) {
 }
 
 function stopTaskPolling(ctx) {
-    if (ctx.pollTimer === undefined)
+    if (ctx.pollTimer === undefined) {
         return;
+    }
     window.clearInterval(ctx.pollTimer);
     ctx.pollTimer = undefined;
 }
@@ -55,8 +58,9 @@ function createTaskDetailActions(ctx, router) {
         router.push({ name: 'tasks' });
     }
     async function startTask() {
-        if (!ctx.taskId.value)
+        if (!ctx.taskId.value) {
             return;
+        }
         ctx.starting.value = true;
         try {
             ctx.detail.value = await taskApi.startTask(ctx.taskId.value);
@@ -92,10 +96,44 @@ function createTaskDetailActions(ctx, router) {
     function stopPolling() {
         stopTaskPolling(ctx);
     }
-    function openAnnotation(row) {
-        router.push({ name: 'task-annotation', params: { taskId: ctx.taskId.value, taskItemId: row.id } });
+    function openItemDetail(row) {
+        openTaskItem(row, 'detail');
     }
-    return { loadDetail, changeSize, backToList, startTask, stopTask, startPolling, stopPolling, openAnnotation };
+    function openAnnotation(row) {
+        if (canAnnotateItem(ctx, row)) {
+            openTaskItem(row, 'annotate');
+        }
+    }
+    function openTaskItem(row, mode) {
+        router.push({
+            name: 'task-annotation',
+            params: { taskId: ctx.taskId.value, taskItemId: row.id },
+            query: { mode }
+        });
+    }
+    return { loadDetail, changeSize, backToList, startTask, stopTask, startPolling, stopPolling, openItemDetail, openAnnotation };
+}
+
+function hasTagBindings(ctx) {
+    return Boolean(ctx.detail.value?.tags?.length);
+}
+
+function isStoppedForAnnotation(ctx, row) {
+    return ctx.detail.value?.base?.status === 'stopped' || row?.status === 'stopped';
+}
+
+function canAnnotateItem(ctx, row) {
+    return hasTagBindings(ctx) && !isStoppedForAnnotation(ctx, row);
+}
+
+function annotationDisabledReason(ctx, row) {
+    if (!hasTagBindings(ctx)) {
+        return '当前任务未绑定标签，无法标注';
+    } else if (isStoppedForAnnotation(ctx, row)) {
+        return '当前任务已中止，无法标注';
+    } else {
+        return '';
+    }
 }
 
 const taskBase = (detail) => detail?.base;
@@ -156,7 +194,10 @@ export function useTaskDetail(taskId) {
         backToList: actions.backToList,
         startTask: actions.startTask,
         stopTask: actions.stopTask,
+        openItemDetail: actions.openItemDetail,
         openAnnotation: actions.openAnnotation,
+        canAnnotateItem: (row) => canAnnotateItem(ctx, row),
+        annotationDisabledReason: (row) => annotationDisabledReason(ctx, row),
         changeSize: actions.changeSize,
         formatAppBinding: formatTaskAppBinding,
         statusLabel,

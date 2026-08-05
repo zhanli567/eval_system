@@ -52,8 +52,9 @@ function appOutputEmptyDescription(task, item) {
 
 function createAnnotationActions(ctx, router) {
     async function loadAnnotation() {
-        if (!ctx.taskId.value || !ctx.taskItemId.value)
+        if (!ctx.taskId.value || !ctx.taskItemId.value) {
             return;
+        }
         ctx.loading.value = true;
         ctx.loadError.value = '';
         try {
@@ -76,8 +77,12 @@ function createAnnotationActions(ctx, router) {
         });
     }
     async function saveAnnotation() {
-        if (!ctx.taskId.value || !ctx.taskItemId.value || !validate())
+        if (ctx.readonlyMode.value) {
             return;
+        }
+        if (!ctx.taskId.value || !ctx.taskItemId.value || !validate()) {
+            return;
+        }
         ctx.saving.value = true;
         try {
             ctx.detail.value = await taskApi.saveAnnotation(ctx.taskId.value, ctx.taskItemId.value, {
@@ -106,10 +111,18 @@ function createAnnotationActions(ctx, router) {
     }
     function goItem(targetItemId) {
         if (targetItemId) {
-            router.push({ name: 'task-annotation', params: { taskId: ctx.taskId.value, taskItemId: targetItemId } });
+            router.push({
+                name: 'task-annotation',
+                params: { taskId: ctx.taskId.value, taskItemId: targetItemId },
+                query: annotationModeQuery(ctx)
+            });
         }
     }
     return { loadAnnotation, saveAnnotation, backToDetail, goItem };
+}
+
+function annotationModeQuery(ctx) {
+    return { mode: ctx.readonlyMode.value ? 'detail' : 'annotate' };
 }
 
 const annotationTask = (detail) => detail?.task;
@@ -120,7 +133,7 @@ const annotationEvaluators = (detail) => detail?.evaluators ?? [];
 const previousItemId = (detail) => detail?.previousItemId || '';
 const nextItemId = (detail) => detail?.nextItemId || '';
 
-export function useTaskAnnotation(taskId, taskItemId) {
+export function useTaskAnnotation(taskId, taskItemId, readonlyMode = ref(false)) {
     const router = useRouter();
     const loading = ref(false);
     const saving = ref(false);
@@ -134,7 +147,7 @@ export function useTaskAnnotation(taskId, taskItemId) {
     const evaluators = computed(() => annotationEvaluators(detail.value));
     const previousItem = computed(() => previousItemId(detail.value));
     const nextItem = computed(() => nextItemId(detail.value));
-    const ctx = { taskId, taskItemId, loading, saving, loadError, detail, form, tags };
+    const ctx = { taskId, taskItemId, loading, saving, loadError, detail, form, tags, readonlyMode };
     const actions = createAnnotationActions(ctx, router);
     watch(() => [taskId.value, taskItemId.value], async () => {
         await actions.loadAnnotation();
