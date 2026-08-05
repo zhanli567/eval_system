@@ -1242,7 +1242,17 @@ public class TaskService {
       return "";
     } else if (node.isTextual()) {
       return node.asText();
+    } else if (node.isNumber() || node.isBoolean()) {
+      return node.asText();
     } else {
+      return prettyJson(node);
+    }
+  }
+
+  private String prettyJson(JsonNode node) {
+    try {
+      return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(node);
+    } catch (Exception e) {
       return node.toString();
     }
   }

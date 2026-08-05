@@ -3,7 +3,7 @@ import { computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { ArrowLeft, ArrowRight, Back } from '@element-plus/icons-vue';
 import { useTaskAnnotation } from '../modules/task/composables/useTaskAnnotation';
-import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
+import { formatAgentOutputValue, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 import { TABLE_OVERFLOW_TOOLTIP_CLASS } from '../utils/tableOverflowTooltip';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
@@ -32,7 +32,7 @@ function evaluatorReason(result) {
     return formatEvaluatorReason(result.resultValue || '') || result.errorMessage || '';
 }
 function evaluatorParamValue(value) {
-    return value === undefined || value === null || value === '' ? '-' : value;
+    return formatAgentOutputValue(value) || '-';
 }
 function evaluatorScoreLabel(result) {
     return result.score === undefined || result.score === null ? '-' : result.score;

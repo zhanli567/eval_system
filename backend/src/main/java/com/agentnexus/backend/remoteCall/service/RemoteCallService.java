@@ -702,7 +702,7 @@ public class RemoteCallService {
       return "";
     }
     try {
-      return objectMapper.writeValueAsString(value);
+      return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(value);
     } catch (Exception e) {
       return String.valueOf(value);
     }

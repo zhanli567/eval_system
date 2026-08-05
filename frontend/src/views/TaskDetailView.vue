@@ -3,7 +3,7 @@ import { computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { Back, CircleCheck, CircleClose, Clock, Loading, Refresh, VideoPlay } from '@element-plus/icons-vue';
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
-import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
+import { formatAgentOutputValue, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 import { TABLE_OVERFLOW_TOOLTIP_CLASS } from '../utils/tableOverflowTooltip';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
@@ -86,7 +86,7 @@ function findEvaluatorParam(row, evaluator, param) {
     }
 }
 function evaluatorParamValue(row, evaluator, param) {
-    return findEvaluatorParam(row, evaluator, param)?.value || '-';
+    return formatAgentOutputValue(findEvaluatorParam(row, evaluator, param)?.value) || '-';
 }
 function evaluatorMessage(result) {
     if (!result) {
@@ -103,7 +103,7 @@ function evaluatorMessage(result) {
       <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评测任务列表</el-button>
       <h1>
         {{ base?.taskName || '评测任务详情' }}
-        <el-tooltip v-if="base" :content="statusLabel(base.status)" placement="top">
+        <el-tooltip v-if="base" :content="statusLabel(base.status)" placement="top" effect="light">
           <el-icon class="task-status-icon task-title-status" :class="statusIconClass(base.status)">
             <component :is="statusIcon(base.status)" />
           </el-icon>
@@ -145,6 +145,7 @@ function evaluatorMessage(result) {
             <el-tooltip
               :content="formatNameVersion(base?.datasetName, base?.datasetVersionName)"
               placement="top"
+              effect="light"
               :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
               :disabled="!isTextOverflow('dataset')"
             >
@@ -156,6 +157,7 @@ function evaluatorMessage(result) {
             <el-tooltip
               :content="formatAppBinding(base)"
               placement="top"
+              effect="light"
               :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
               :disabled="!isTextOverflow('app')"
             >
@@ -167,6 +169,7 @@ function evaluatorMessage(result) {
             <el-tooltip
               :content="base?.createdByName || '-'"
               placement="top"
+              effect="light"
               :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
               :disabled="!isTextOverflow('creator')"
             >
@@ -178,6 +181,7 @@ function evaluatorMessage(result) {
             <el-tooltip
               :content="formatTime(base?.createdDate)"
               placement="top"
+              effect="light"
               :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
               :disabled="!isTextOverflow('createdDate')"
             >
@@ -189,6 +193,7 @@ function evaluatorMessage(result) {
             <el-tooltip
               :content="base?.description || '暂无描述'"
               placement="top"
+              effect="light"
               :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
               :disabled="!isTextOverflow('description')"
             >
@@ -206,6 +211,7 @@ function evaluatorMessage(result) {
                 :key="evaluator.taskEvaluatorId"
                 :content="formatEvaluatorDimension(evaluator)"
                 placement="top"
+                effect="light"
                 :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
                 :disabled="!isTextOverflow(dimensionOverflowKey('evaluator', evaluator.taskEvaluatorId))"
               >
@@ -226,6 +232,7 @@ function evaluatorMessage(result) {
                 :key="tag.taskTagId"
                 :content="formatTagDimension(tag)"
                 placement="top"
+                effect="light"
                 :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
                 :disabled="!isTextOverflow(dimensionOverflowKey('tag', tag.taskTagId))"
               >
