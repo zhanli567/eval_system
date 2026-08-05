@@ -127,7 +127,7 @@ const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, 
 
   <el-empty v-else v-loading="detailLoading" description="暂无版本数据" />
 
-  <el-dialog v-model="fieldVisible" title="编辑表头" width="860px" class="dataset-field-dialog fixed-dialog" :close-on-click-modal="true">
+  <el-dialog v-model="fieldVisible" title="编辑表头" class="dataset-field-dialog fixed-dialog" style="--fixed-dialog-width: min(860px, 86vw); --fixed-dialog-height: min(640px, 86vh)" :close-on-click-modal="true">
     <div class="dialog-subtitle">
       <span>草稿表结构</span>
       <el-button link type="primary" :icon="Plus" @click="addField(fieldForm)">添加列</el-button>
@@ -173,7 +173,7 @@ const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, 
     </template>
   </el-dialog>
 
-  <el-dialog v-model="rowVisible" :title="rowEditingId ? '编辑数据' : '新增数据'" width="780px" class="dataset-row-dialog fixed-dialog" :close-on-click-modal="true">
+  <el-dialog v-model="rowVisible" :title="rowEditingId ? '编辑数据' : '新增数据'" class="dataset-row-dialog fixed-dialog" style="--fixed-dialog-width: min(780px, 86vw); --fixed-dialog-height: min(620px, 86vh)" :close-on-click-modal="true">
     <el-form label-position="top">
       <el-form-item v-for="field in fields" :key="field.id">
         <template #label>

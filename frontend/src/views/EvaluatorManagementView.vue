@@ -183,7 +183,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
     </template>
   </section>
 
-  <el-dialog v-model="pickerVisible" title="创建评估器" width="1180px" class="evaluator-picker-dialog fixed-dialog" :close-on-click-modal="true">
+  <el-dialog v-model="pickerVisible" title="创建评估器" class="evaluator-picker-dialog fixed-dialog" style="--fixed-dialog-width: min(1180px, 92vw); --fixed-dialog-height: min(720px, 84vh)" :close-on-click-modal="true">
     <div class="preset-layout picker-layout">
       <aside class="preset-category-rail">
         <span class="rail-caption">预置评估器分类</span>
@@ -249,7 +249,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
     </div>
   </el-dialog>
 
-  <el-dialog v-model="detailVisible" :title="selectedPreset?.evaluatorName || '预置评估器详情'" width="900px" class="preset-detail-dialog fixed-dialog" :close-on-click-modal="true">
+  <el-dialog v-model="detailVisible" :title="selectedPreset?.evaluatorName || '预置评估器详情'" class="preset-detail-dialog fixed-dialog" style="--fixed-dialog-width: min(900px, 86vw); --fixed-dialog-height: min(640px, 86vh)" :close-on-click-modal="true">
     <div v-loading="detailLoading" class="preset-detail">
       <template v-if="selectedPreset">
         <div class="detail-header-line">

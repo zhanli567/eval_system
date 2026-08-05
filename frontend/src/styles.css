@@ -905,8 +905,9 @@ h2 {
   padding-top: 14px;
 }
 
-.fixed-dialog.el-dialog {
-  height: min(660px, 86vh);
+.fixed-dialog {
+  width: var(--fixed-dialog-width, min(900px, 86vw)) !important;
+  height: var(--fixed-dialog-height, min(660px, 86vh));
   margin: 6vh auto 0 !important;
   min-width: 640px;
   min-height: 420px;
@@ -934,39 +935,8 @@ h2 {
   overflow-y: auto;
 }
 
-.dataset-create-dialog.fixed-dialog.el-dialog,
-.dataset-field-dialog.fixed-dialog.el-dialog {
-  width: min(860px, 86vw) !important;
-  height: min(640px, 86vh);
-}
-
-.dataset-row-dialog.fixed-dialog.el-dialog {
-  width: min(780px, 86vw) !important;
-  height: min(620px, 86vh);
-}
-
-.tag-dialog.fixed-dialog.el-dialog {
-  width: min(900px, 86vw) !important;
-  height: min(660px, 86vh);
-}
-
-.tag-detail-dialog.fixed-dialog.el-dialog {
-  width: min(760px, 86vw) !important;
-  height: min(560px, 82vh);
-}
-
-.evaluator-picker-dialog.fixed-dialog.el-dialog {
-  width: min(1180px, 92vw) !important;
-  height: min(720px, 84vh);
-}
-
-.evaluator-picker-dialog.fixed-dialog .el-dialog__body {
+.evaluator-picker-dialog .el-dialog__body {
   overflow: hidden;
-}
-
-.preset-detail-dialog.fixed-dialog.el-dialog {
-  width: min(900px, 86vw) !important;
-  height: min(640px, 86vh);
 }
 
 .detail-panel {
