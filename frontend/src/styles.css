@@ -1,13 +1,11 @@
 :root {
   --bg: #f6f8fc;
-  --surface: #ffffff;
   --surface-soft: #f9fbff;
   --line: #e6ebf3;
   --ink: #1f2942;
   --muted: #7b8498;
   --accent: #2563eb;
   --accent-soft: #eff6ff;
-  --success: #20b486;
   --radius: 8px;
   --sidebar-width: 236px;
   --scrollbar-size: 8px;
@@ -223,11 +221,7 @@ body {
   color: var(--muted);
 }
 
-.workspace:has(.task-panel),
-.workspace:has(.fill-workspace),
-.workspace:has(.task-create-shell),
-.workspace:has(.task-detail-shell),
-.workspace:has(.annotation-shell) {
+.workspace--fixed {
   overflow: hidden;
 }
 
@@ -290,11 +284,11 @@ h1 {
 
 .dataset-detail-name {
   flex: 0 1 auto;
-  max-width: 55%;
+  max-width: 100%;
 }
 
-.dataset-detail-heading:not(:has(.dataset-detail-description)) .dataset-detail-name {
-  max-width: 100%;
+.dataset-detail-heading.has-description .dataset-detail-name {
+  max-width: 55%;
 }
 
 .dataset-detail-separator,
@@ -681,7 +675,7 @@ h2 {
   overflow: hidden;
 }
 
-.evaluator-editor-shell:has(.evaluator-version-rail) {
+.evaluator-editor-shell.is-edit {
   grid-template-columns: 220px minmax(0, 1fr);
 }
 
@@ -924,7 +918,7 @@ h2 {
   resize: none;
 }
 
-.el-overlay-dialog:has(.fixed-dialog) {
+.el-overlay-dialog {
   overflow: hidden;
 }
 
@@ -1351,41 +1345,6 @@ h2 {
   }
 }
 
-.dimension-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.dimension-chip {
-  max-width: 190px;
-  min-height: 42px;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: #fff;
-}
-
-.dimension-chip strong,
-.dimension-chip span,
-.time-stack span {
-  display: block;
-}
-
-.dimension-chip strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dimension-chip span,
-.time-stack {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
 .task-create-shell,
 .task-detail-shell {
   display: grid;
@@ -1524,27 +1483,6 @@ h2 {
 
 .inline-controls .el-select {
   flex: 1;
-}
-
-.mapping-placeholder {
-  min-height: 68px;
-  display: flex;
-  align-items: center;
-  padding: 14px 16px;
-  border: 1px dashed #dce2ee;
-  border-radius: var(--radius);
-  background: #fbfcff;
-  color: var(--muted);
-}
-
-.mapping-summary {
-  display: grid;
-  gap: 4px;
-  color: var(--muted);
-}
-
-.mapping-summary strong {
-  color: var(--text);
 }
 
 .evaluator-config-card {
@@ -1722,37 +1660,12 @@ h2 {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(248, 250, 255, 0.94);
-  backdrop-filter: blur(12px);
   box-shadow: 0 -12px 30px rgba(31, 41, 66, 0.06);
 }
 
 .task-basic-band {
   display: grid;
   gap: 24px;
-}
-
-.task-basic-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.task-basic-grid div {
-  min-width: 0;
-}
-
-.task-basic-grid span {
-  display: block;
-  color: var(--muted);
-  font-size: 13px;
-  margin-bottom: 7px;
-}
-
-.task-basic-grid strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .task-detail-info-grid,
@@ -2277,8 +2190,7 @@ h2 {
   .evaluator-config-grid,
   .param-mapping-row,
   .tag-picker-toolbar,
-  .tag-picker-card,
-  .task-basic-grid {
+  .tag-picker-card {
     grid-template-columns: 1fr;
   }
 

@@ -12,7 +12,7 @@ const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, 
   <header class="topbar detail-topbar">
     <div>
       <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评测集列表</el-button>
-      <h1 class="dataset-detail-heading">
+      <h1 class="dataset-detail-heading" :class="{ 'has-description': datasetSummary?.description }">
         <span class="dataset-detail-name" :title="datasetTitle">{{ datasetTitle }}</span>
         <template v-if="datasetSummary?.description">
           <span class="dataset-detail-separator">-</span>

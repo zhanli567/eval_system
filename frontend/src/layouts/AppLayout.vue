@@ -8,6 +8,19 @@ import { activeSpaces, currentSpaceId, findSelectedSpace, resolveSpaceSelection 
 
 const route = useRoute();
 const activeModuleKey = computed(() => String(route.meta.moduleKey ?? 'datasets'));
+const fixedWorkspaceRoutes = new Set([
+    'datasets',
+    'dataset-detail',
+    'tags',
+    'evaluators',
+    'evaluator-create',
+    'evaluator-edit',
+    'tasks',
+    'task-create',
+    'task-detail',
+    'task-annotation'
+]);
+const workspaceFixed = computed(() => fixedWorkspaceRoutes.has(String(route.name ?? '')));
 const brandLogoUrl = '';
 const moduleIcons = {
     datasets: Collection,
@@ -88,7 +101,7 @@ async function loadSpaces() {
         </nav>
       </aside>
 
-      <section class="workspace">
+      <section class="workspace" :class="{ 'workspace--fixed': workspaceFixed }">
         <RouterView v-if="spacesReady" :key="currentSpaceId" />
         <div v-else class="workspace-loading">正在加载空间信息...</div>
       </section>
