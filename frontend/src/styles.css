@@ -10,6 +10,10 @@
   --success: #20b486;
   --radius: 8px;
   --sidebar-width: 236px;
+  --scrollbar-size: 8px;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
+  --scrollbar-track: transparent;
   color: var(--ink);
   font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   background: var(--bg);
@@ -17,6 +21,34 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 32px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--scrollbar-thumb);
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 body {
@@ -2190,6 +2222,23 @@ h2 {
 .el-table {
   --el-table-header-bg-color: #f7f9fd;
   --el-table-row-hover-bg-color: #f8f9ff;
+}
+
+.el-scrollbar__bar.is-vertical {
+  width: var(--scrollbar-size);
+}
+
+.el-scrollbar__bar.is-horizontal {
+  height: var(--scrollbar-size);
+}
+
+.el-scrollbar__thumb {
+  background: var(--scrollbar-thumb);
+  opacity: 1;
+}
+
+.el-scrollbar__thumb:hover {
+  background: var(--scrollbar-thumb-hover);
 }
 
 .el-popper.is-light {
