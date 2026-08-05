@@ -4,21 +4,6 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { evaluatorApi } from '../../../api/evaluator';
 import { movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
-import { useColumnWidths } from '../../../utils/tableColumns';
-
-function evaluatorColumns() {
-    return useColumnWidths({
-        evaluatorName: { width: 220, min: 160, max: 380 },
-        evaluatorType: { width: 130, min: 100, max: 170 },
-        latestVersionName: { width: 130, min: 110, max: 180 },
-        description: { width: 280, min: 180, max: 520 },
-        createdByName: { width: 140, min: 100, max: 220 },
-        createdDate: { width: 190, min: 160, max: 240 },
-        lastUpdatedByName: { width: 140, min: 100, max: 220 },
-        lastUpdatedDate: { width: 190, min: 160, max: 240 },
-        actions: { width: 140, min: 120, max: 180 }
-    });
-}
 
 function presetParams(page, size, categoryId, keyword) {
     return { page: page.value, size: size.value, categoryId: categoryId.value, keyword: keyword.value };
@@ -222,7 +207,6 @@ export function useEvaluatorManagement() {
     const detailVisible = ref(false);
     const detailLoading = ref(false);
     const selectedPreset = ref(null);
-    const columns = evaluatorColumns();
     const categoryOptions = computed(() => [
         { id: '', categoryName: '全部分类', displayOrder: 0 },
         ...categories.value
@@ -246,7 +230,6 @@ export function useEvaluatorManagement() {
         customSortBy,
         customSortOrder,
         categories,
-        columnWidths: columns.columnWidths,
         categoryOptions,
         activeCategoryId,
         presetLoading,
@@ -267,7 +250,6 @@ export function useEvaluatorManagement() {
         detailLoading,
         selectedPreset,
         ...actions,
-        handleColumnResize: columns.handleColumnResize,
         typeLabel,
         formatTime: formatDateTime
     };

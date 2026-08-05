@@ -1,7 +1,7 @@
 <script setup>
 import { CircleCheck, CircleClose, Clock, CopyDocument, Loading, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useTaskManagement } from '../modules/task/composables/useTaskManagement';
-const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, columnWidths, statusOptions, loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, stopTask, isStartingTask, isStoppingTask, removeTask, canStartTask, canStopTask, canDeleteTask, toggleSort, handleColumnResize, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
+const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, statusOptions, loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, stopTask, isStartingTask, isStoppingTask, removeTask, canStartTask, canStopTask, canDeleteTask, toggleSort, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -83,11 +83,11 @@ function formatNameList(items, picker) {
       row-key="base.id"
       border
       height="100%"
+      :fit="false"
       tooltip-effect="light"
       class="task-table"
-      @header-dragend="handleColumnResize"
     >
-      <el-table-column prop="status" label="评测状态" :width="columnWidths.status" min-width="76" fixed="left" :resizable="false" align="center">
+      <el-table-column prop="status" label="评测状态" width="90" fixed="left" :resizable="false" align="center">
         <template #default="{ row }">
           <el-tooltip :content="statusLabel(row.base.status)" placement="top" effect="light">
             <el-icon class="task-status-icon" :class="statusIconClass(row.base.status)">
@@ -96,7 +96,7 @@ function formatNameList(items, picker) {
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column prop="taskName" label="任务名称" :width="columnWidths.taskName" min-width="160">
+      <el-table-column prop="taskName" label="任务名称" width="220" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip
             :content="row.base.taskName"
@@ -109,40 +109,42 @@ function formatNameList(items, picker) {
           />
         </template>
       </el-table-column>
-      <el-table-column prop="datasetName" label="评测集名称" :width="columnWidths.datasetName" min-width="160">
+      <el-table-column prop="datasetName" label="评测集名称" width="210" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="formatNameVersion(row.base.datasetName, row.base.datasetVersionName)" />
         </template>
       </el-table-column>
-      <el-table-column column-key="app" label="应用" :width="columnWidths.app" min-width="180">
+      <el-table-column column-key="app" label="应用" width="260" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="formatAppBinding(row.base)" />
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="描述" min-width="180">
+      <el-table-column prop="description" label="描述" width="260" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="row.base.description || '暂无描述'" />
         </template>
       </el-table-column>
-      <el-table-column column-key="evaluators" label="评估器" :width="columnWidths.evaluators" min-width="160">
+      <el-table-column column-key="evaluators" label="评估器" width="220" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="formatEvaluatorList(row.evaluators)" />
         </template>
       </el-table-column>
-      <el-table-column column-key="tags" label="标签" :width="columnWidths.tags" min-width="140" align="center">
+      <el-table-column column-key="tags" label="标签" width="190" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="formatTagList(row.tags)" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100">
+      <el-table-column prop="createdByName" label="创建人" width="140" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="row.base.createdByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdDate" label="创建时间" :width="columnWidths.createdDate" min-width="160">
-        <template #default="{ row }">{{ formatTime(row.base.createdDate) }}</template>
+      <el-table-column prop="createdDate" label="创建时间" width="190" :resizable="false">
+        <template #default="{ row }">
+          <OverflowTooltip :content="formatTime(row.base.createdDate)" />
+        </template>
       </el-table-column>
-      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="160" fixed="right" :resizable="false" align="center">
+      <el-table-column column-key="actions" label="操作" width="260" fixed="right" :resizable="false" align="center">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDetail(row)">详情</el-button>
           <el-button link type="primary" :icon="CopyDocument" @click.stop="copyTask(row)">复制</el-button>

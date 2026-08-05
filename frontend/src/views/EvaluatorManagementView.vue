@@ -2,7 +2,7 @@
 import { Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useEvaluatorManagement } from '../modules/evaluator/composables/useEvaluatorManagement';
 import { formatPromptBlock } from '../utils/textBlocks';
-const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, columnWidths, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, loadCustomEvaluators, searchCustom, changeCustomSize, toggleCustomSort, loadPresetEvaluators, searchPreset, changePresetSize, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, changePickerSize, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, handleColumnResize, typeLabel, formatTime } = useEvaluatorManagement();
+const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, loadCustomEvaluators, searchCustom, changeCustomSize, toggleCustomSort, loadPresetEvaluators, searchPreset, changePresetSize, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, changePickerSize, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, typeLabel, formatTime } = useEvaluatorManagement();
 </script>
 
 <template>
@@ -57,11 +57,11 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         row-key="id"
         border
         height="100%"
+        :fit="false"
         tooltip-effect="light"
         class="evaluator-table"
-        @header-dragend="handleColumnResize"
       >
-        <el-table-column prop="evaluatorName" label="评估器名称" :width="columnWidths.evaluatorName" min-width="160" fixed="left" :resizable="false">
+        <el-table-column prop="evaluatorName" label="评估器名称" width="220" fixed="left" :resizable="false">
           <template #default="{ row }">
             <OverflowTooltip
               :content="row.evaluatorName"
@@ -74,34 +74,44 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             />
           </template>
         </el-table-column>
-        <el-table-column prop="evaluatorType" label="类型" :width="columnWidths.evaluatorType" min-width="100">
+        <el-table-column prop="evaluatorType" label="类型" width="130" :resizable="false">
           <template #default="{ row }">
-            <el-tag size="small" effect="plain">{{ typeLabel(row.evaluatorType) }}</el-tag>
+            <el-tag size="small" effect="plain">
+              <OverflowTooltip :content="typeLabel(row.evaluatorType)" />
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="latestVersionName" label="最新版本" :width="columnWidths.latestVersionName" min-width="110" />
-        <el-table-column prop="description" label="描述" min-width="180">
+        <el-table-column prop="latestVersionName" label="最新版本" width="130" :resizable="false">
+          <template #default="{ row }">
+            <OverflowTooltip :content="row.latestVersionName || '-'" />
+          </template>
+        </el-table-column>
+        <el-table-column prop="description" label="描述" width="280" :resizable="false">
           <template #default="{ row }">
             <OverflowTooltip :content="row.description || '暂无描述'" />
           </template>
         </el-table-column>
-        <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100">
+        <el-table-column prop="createdByName" label="创建人" width="140" :resizable="false">
           <template #default="{ row }">
             <OverflowTooltip :content="row.createdByName || '-'" />
           </template>
         </el-table-column>
-        <el-table-column prop="createdDate" label="创建时间" :width="columnWidths.createdDate" min-width="160">
-          <template #default="{ row }">{{ formatTime(row.createdDate) }}</template>
+        <el-table-column prop="createdDate" label="创建时间" width="190" :resizable="false">
+          <template #default="{ row }">
+            <OverflowTooltip :content="formatTime(row.createdDate)" />
+          </template>
         </el-table-column>
-        <el-table-column prop="lastUpdatedByName" label="更新人" :width="columnWidths.lastUpdatedByName" min-width="100">
+        <el-table-column prop="lastUpdatedByName" label="更新人" width="140" :resizable="false">
           <template #default="{ row }">
             <OverflowTooltip :content="row.lastUpdatedByName || '-'" />
           </template>
         </el-table-column>
-        <el-table-column prop="lastUpdatedDate" label="更新时间" :width="columnWidths.lastUpdatedDate" min-width="160">
-          <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>
+        <el-table-column prop="lastUpdatedDate" label="更新时间" width="190" :resizable="false">
+          <template #default="{ row }">
+            <OverflowTooltip :content="formatTime(row.lastUpdatedDate)" />
+          </template>
         </el-table-column>
-        <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="120" fixed="right" :resizable="false" align="center">
+        <el-table-column column-key="actions" label="操作" width="140" fixed="right" :resizable="false" align="center">
           <template #default="{ row }">
             <el-button link type="primary" @click="editEvaluator(row)">详情</el-button>
             <el-button link type="danger" @click="removeEvaluator(row)">删除</el-button>
@@ -259,27 +269,59 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
 
         <template v-if="selectedPreset.evaluatorType === 'llm'">
           <h3>参数设置</h3>
-          <el-table :data="selectedPreset.params" border>
-            <el-table-column prop="paramName" label="变量名" />
-            <el-table-column prop="dataType" label="数据类型" width="120" />
-            <el-table-column label="是否必填" width="110">
-              <template #default="{ row }">{{ row.required ? '是' : '否' }}</template>
+          <el-table :data="selectedPreset.params" border :fit="false">
+            <el-table-column prop="paramName" label="变量名" width="180" :resizable="false">
+              <template #default="{ row }">
+                <OverflowTooltip :content="row.paramName || '-'" />
+              </template>
             </el-table-column>
-            <el-table-column prop="description" label="描述" />
+            <el-table-column prop="dataType" label="数据类型" width="120" :resizable="false">
+              <template #default="{ row }">
+                <OverflowTooltip :content="row.dataType || '-'" />
+              </template>
+            </el-table-column>
+            <el-table-column label="是否必填" width="110" :resizable="false">
+              <template #default="{ row }">
+                <OverflowTooltip :content="row.required ? '是' : '否'" />
+              </template>
+            </el-table-column>
+            <el-table-column prop="description" label="描述" width="360" :resizable="false">
+              <template #default="{ row }">
+                <OverflowTooltip :content="row.description || '-'" />
+              </template>
+            </el-table-column>
           </el-table>
           <h3>Prompt</h3>
           <pre class="code-block">{{ formatPromptBlock(selectedPreset.prompt) }}</pre>
         </template>
         <template v-else>
           <h3>代码入参设置</h3>
-          <el-table :data="selectedPreset.params" border>
-            <el-table-column prop="paramName" label="变量名" />
-            <el-table-column prop="dataType" label="数据类型" width="120" />
-            <el-table-column label="是否必填" width="110">
-              <template #default="{ row }">{{ row.required ? '是' : '否' }}</template>
+          <el-table :data="selectedPreset.params" border :fit="false">
+            <el-table-column prop="paramName" label="变量名" width="180" :resizable="false">
+              <template #default="{ row }">
+                <OverflowTooltip :content="row.paramName || '-'" />
+              </template>
             </el-table-column>
-            <el-table-column prop="description" label="描述" />
-            <el-table-column prop="defaultValue" label="默认值" />
+            <el-table-column prop="dataType" label="数据类型" width="120" :resizable="false">
+              <template #default="{ row }">
+                <OverflowTooltip :content="row.dataType || '-'" />
+              </template>
+            </el-table-column>
+            <el-table-column label="是否必填" width="110" :resizable="false">
+              <template #default="{ row }">
+                <OverflowTooltip :content="row.required ? '是' : '否'" />
+              </template>
+            </el-table-column>
+            <el-table-column prop="description" label="描述" width="320" :resizable="false">
+              <template #default="{ row }">
+                <OverflowTooltip :content="row.description || '-'" />
+              </template>
+            </el-table-column>
+            <el-table-column prop="defaultValue" label="默认值" width="180" :resizable="false">
+              <template #default="{ row }">
+                <OverflowTooltip :content="row.defaultValue || '-'" />
+              </template>
+            </el-table-column>
           </el-table>
           <h3>执行函数</h3>
           <pre class="code-block">{{ selectedPreset.executeCode }}</pre>

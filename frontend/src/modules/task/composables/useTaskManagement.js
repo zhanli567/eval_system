@@ -5,28 +5,12 @@ import { taskApi } from '../../../api/task';
 import { formatDateTime } from '../../../utils/formatters';
 import { movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
 import { TASK_STATUS_OPTIONS, statusLabel } from '../../../utils/taskLabels';
-import { useColumnWidths } from '../../../utils/tableColumns';
 import { formatTaskAppBinding } from '../../../utils/taskAppBinding';
 
 const DELETABLE_STATUSES = ['pending', 'completed', 'failed', 'stopped'];
 const STARTABLE_STATUSES = ['pending', 'failed', 'stopped'];
 const STOPPABLE_STATUSES = ['running'];
 const APP_TYPE_AGENT = 'agent';
-
-function taskColumns() {
-    return useColumnWidths({
-        status: { width: 90, min: 76, max: 120 },
-        taskName: { width: 220, min: 160, max: 380 },
-        datasetName: { width: 210, min: 160, max: 360 },
-        app: { width: 260, min: 180, max: 460 },
-        description: { width: 260, min: 180, max: 500 },
-        evaluators: { width: 220, min: 160, max: 360 },
-        tags: { width: 190, min: 140, max: 320 },
-        createdByName: { width: 140, min: 100, max: 220 },
-        createdDate: { width: 190, min: 160, max: 240 },
-        actions: { width: 260, min: 230, max: 320 }
-    });
-}
 
 async function loadTaskPage(state, options = {}) {
     if (!options.silent) {
@@ -225,7 +209,6 @@ export function useTaskManagement() {
     const status = ref('');
     const sortBy = ref('lastUpdatedDate');
     const sortOrder = ref('desc');
-    const columns = taskColumns();
     const state = { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder };
     const ctx = { state, loading, pollTimer: undefined, startingTaskIds, stoppingTaskIds };
     const actions = createTaskManagementActions(ctx, router);
@@ -249,7 +232,6 @@ export function useTaskManagement() {
         status,
         sortBy,
         sortOrder,
-        columnWidths: columns.columnWidths,
         statusOptions: TASK_STATUS_OPTIONS,
         loadTasks: actions.loadTasks,
         searchTasks: actions.searchTasks,
@@ -266,7 +248,6 @@ export function useTaskManagement() {
         canStopTask: actions.canStopTask,
         canDeleteTask: actions.canDeleteTask,
         toggleSort: actions.toggleSort,
-        handleColumnResize: columns.handleColumnResize,
         formatAppBinding: formatTaskAppBinding,
         statusLabel,
         formatTime

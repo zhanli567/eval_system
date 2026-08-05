@@ -3,7 +3,6 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { tagApi } from '../../../api/tag';
 import { getErrorMessage, movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
-import { useColumnWidths } from '../../../utils/tableColumns';
 
 export const tagTypeOptions = [
     { label: '分类', value: 'category' },
@@ -16,19 +15,6 @@ const booleanOptions = [
     { optionName: 'True', optionGroup: 'pass' },
     { optionName: 'False', optionGroup: 'fail' }
 ];
-
-function tagColumns() {
-    return useColumnWidths({
-        tagName: { width: 220, min: 160, max: 380 },
-        tagType: { width: 140, min: 110, max: 180 },
-        description: { width: 280, min: 180, max: 520 },
-        createdByName: { width: 140, min: 100, max: 220 },
-        createdDate: { width: 190, min: 160, max: 240 },
-        lastUpdatedByName: { width: 140, min: 100, max: 220 },
-        lastUpdatedDate: { width: 190, min: 160, max: 240 },
-        actions: { width: 180, min: 150, max: 220 }
-    });
-}
 
 function resetForm(form) {
     Object.assign(form, {
@@ -278,7 +264,6 @@ export function useTagManagement() {
     const dialogTitle = computed(() => (editing.value ? '编辑标签' : '创建标签'));
     const detailPassOptions = computed(() => tagDetail.value?.options.filter((option) => option.optionGroup === 'pass') ?? []);
     const detailFailOptions = computed(() => tagDetail.value?.options.filter((option) => option.optionGroup === 'fail') ?? []);
-    const columns = tagColumns();
     const ctx = { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, sortBy, sortOrder, dialogVisible, detailDialogVisible, detailLoading, tagDetail, editingId, tagForm };
     const actions = createTagActions(ctx);
     onMounted(async () => {
@@ -305,11 +290,9 @@ export function useTagManagement() {
         editing,
         dialogTitle,
         tagForm,
-        columnWidths: columns.columnWidths,
         tagTypeOptions,
         booleanOptions,
         ...actions,
-        handleColumnResize: columns.handleColumnResize,
         getTagTypeLabel,
         formatTime: formatDateTime
     };

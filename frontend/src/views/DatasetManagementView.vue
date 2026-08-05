@@ -1,7 +1,7 @@
 <script setup>
 import { Delete, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useDatasetList } from '../modules/dataset/composables/useDatasetList';
-const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datasetKeyword, sortBy, sortOrder, createVisible, draggedFieldIndex, dragOverFieldIndex, createForm, columnWidths, loadDatasets, searchDatasets, changeDatasetSize, toggleSort, openDataset, openCreateDialog, submitCreate, removeDataset, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, handleColumnResize, formatTime } = useDatasetList();
+const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datasetKeyword, sortBy, sortOrder, createVisible, draggedFieldIndex, dragOverFieldIndex, createForm, loadDatasets, searchDatasets, changeDatasetSize, toggleSort, openDataset, openCreateDialog, submitCreate, removeDataset, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, formatTime } = useDatasetList();
 </script>
 
 <template>
@@ -46,12 +46,12 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
       row-key="id"
       border
       height="100%"
+      :fit="false"
       highlight-current-row
       tooltip-effect="light"
       class="dataset-table"
-      @header-dragend="handleColumnResize"
     >
-      <el-table-column prop="name" label="评测集名称" :width="columnWidths.name" min-width="180" fixed="left" :resizable="false">
+      <el-table-column prop="name" label="评测集名称" width="240" fixed="left" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip
             :content="row.name"
@@ -64,30 +64,42 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
           />
         </template>
       </el-table-column>
-      <el-table-column prop="publishedVersionCount" label="版本数量" :width="columnWidths.publishedVersionCount" min-width="100" />
-      <el-table-column prop="latestItemCount" label="数据量" :width="columnWidths.latestItemCount" min-width="90" />
-      <el-table-column prop="description" label="描述" min-width="180">
+      <el-table-column prop="publishedVersionCount" label="版本数量" width="120" :resizable="false">
+        <template #default="{ row }">
+          <OverflowTooltip :content="row.publishedVersionCount" />
+        </template>
+      </el-table-column>
+      <el-table-column prop="latestItemCount" label="数据量" width="110" :resizable="false">
+        <template #default="{ row }">
+          <OverflowTooltip :content="row.latestItemCount" />
+        </template>
+      </el-table-column>
+      <el-table-column prop="description" label="描述" width="280" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="row.description || '暂无描述'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100">
+      <el-table-column prop="createdByName" label="创建人" width="140" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="row.createdByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdDate" label="创建时间" :width="columnWidths.createdDate" min-width="160">
-        <template #default="{ row }">{{ formatTime(row.createdDate) }}</template>
+      <el-table-column prop="createdDate" label="创建时间" width="190" :resizable="false">
+        <template #default="{ row }">
+          <OverflowTooltip :content="formatTime(row.createdDate)" />
+        </template>
       </el-table-column>
-      <el-table-column prop="lastUpdatedByName" label="更新人" :width="columnWidths.lastUpdatedByName" min-width="100">
+      <el-table-column prop="lastUpdatedByName" label="更新人" width="140" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="row.lastUpdatedByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="lastUpdatedDate" label="更新时间" :width="columnWidths.lastUpdatedDate" min-width="160">
-        <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>
+      <el-table-column prop="lastUpdatedDate" label="更新时间" width="190" :resizable="false">
+        <template #default="{ row }">
+          <OverflowTooltip :content="formatTime(row.lastUpdatedDate)" />
+        </template>
       </el-table-column>
-      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="120" fixed="right" :resizable="false" align="center">
+      <el-table-column column-key="actions" label="操作" width="140" fixed="right" :resizable="false" align="center">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDataset(row)">详情</el-button>
           <el-button link type="danger" @click.stop="removeDataset(row)">删除</el-button>

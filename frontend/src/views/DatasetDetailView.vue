@@ -87,13 +87,14 @@ const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, 
         <el-button @click="loadDetail">筛选</el-button>
       </div>
 
-      <el-table :key="dataTableKey" :data="tableRows" row-key="id" border height="100%" tooltip-effect="light" class="data-table">
+      <el-table :key="dataTableKey" :data="tableRows" row-key="id" border height="100%" :fit="false" tooltip-effect="light" class="data-table">
         <el-table-column type="index" label="序号" width="90" fixed="left" :resizable="false" align="center" />
         <el-table-column
           v-for="field in fields"
           :key="`${field.id}:${field.fieldName}:${field.required}:${field.displayOrder}`"
           :label="field.fieldName"
-          min-width="220"
+          width="220"
+          :resizable="false"
         >
           <template #header>
             <span>{{ field.fieldName }}</span>

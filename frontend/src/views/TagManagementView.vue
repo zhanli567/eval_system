@@ -1,7 +1,7 @@
 <script setup>
 import { Delete, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useTagManagement } from '../modules/tag/composables/useTagManagement';
-const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, sortBy, sortOrder, dialogVisible, detailDialogVisible, detailLoading, tagDetail, detailPassOptions, detailFailOptions, editing, dialogTitle, tagForm, columnWidths, tagTypeOptions, booleanOptions, loadTags, searchTags, changeTagSize, toggleSort, openCreateDialog, openDetailDialog, openEditDialog, submitTag, removeTag, addCategoryOption, removeCategoryOption, handleColumnResize, getTagTypeLabel, formatTime } = useTagManagement();
+const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, sortBy, sortOrder, dialogVisible, detailDialogVisible, detailLoading, tagDetail, detailPassOptions, detailFailOptions, editing, dialogTitle, tagForm, tagTypeOptions, booleanOptions, loadTags, searchTags, changeTagSize, toggleSort, openCreateDialog, openDetailDialog, openEditDialog, submitTag, removeTag, addCategoryOption, removeCategoryOption, getTagTypeLabel, formatTime } = useTagManagement();
 </script>
 
 <template>
@@ -51,11 +51,11 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
       row-key="id"
       border
       height="100%"
+      :fit="false"
       tooltip-effect="light"
       class="tag-table"
-      @header-dragend="handleColumnResize"
     >
-      <el-table-column prop="tagName" label="标签名称" :width="columnWidths.tagName" min-width="160" fixed="left" :resizable="false">
+      <el-table-column prop="tagName" label="标签名称" width="220" fixed="left" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip
             :content="row.tagName"
@@ -68,33 +68,39 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
           />
         </template>
       </el-table-column>
-      <el-table-column prop="tagType" label="类型" :width="columnWidths.tagType" min-width="110">
+      <el-table-column prop="tagType" label="类型" width="140" :resizable="false">
         <template #default="{ row }">
-          <el-tag effect="plain">{{ getTagTypeLabel(row.tagType) }}</el-tag>
+          <el-tag effect="plain">
+            <OverflowTooltip :content="getTagTypeLabel(row.tagType)" />
+          </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="描述" min-width="180">
+      <el-table-column prop="description" label="描述" width="280" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="row.description || '暂无描述'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100">
+      <el-table-column prop="createdByName" label="创建人" width="140" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="row.createdByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdDate" label="创建时间" :width="columnWidths.createdDate" min-width="160">
-        <template #default="{ row }">{{ formatTime(row.createdDate) }}</template>
+      <el-table-column prop="createdDate" label="创建时间" width="190" :resizable="false">
+        <template #default="{ row }">
+          <OverflowTooltip :content="formatTime(row.createdDate)" />
+        </template>
       </el-table-column>
-      <el-table-column prop="lastUpdatedByName" label="更新人" :width="columnWidths.lastUpdatedByName" min-width="100">
+      <el-table-column prop="lastUpdatedByName" label="更新人" width="140" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="row.lastUpdatedByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="lastUpdatedDate" label="更新时间" :width="columnWidths.lastUpdatedDate" min-width="160">
-        <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>
+      <el-table-column prop="lastUpdatedDate" label="更新时间" width="190" :resizable="false">
+        <template #default="{ row }">
+          <OverflowTooltip :content="formatTime(row.lastUpdatedDate)" />
+        </template>
       </el-table-column>
-      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="150" fixed="right" :resizable="false" align="center">
+      <el-table-column column-key="actions" label="操作" width="180" fixed="right" :resizable="false" align="center">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetailDialog(row)">详情</el-button>
           <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>

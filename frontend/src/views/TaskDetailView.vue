@@ -26,6 +26,13 @@ function statusIconClass(value) {
 function findTagResult(row, taskTagId) {
     return row.tagResults.find((item) => item.taskTagId === taskTagId);
 }
+function tagResultValue(row, taskTagId) {
+    const result = findTagResult(row, taskTagId);
+    if (!result) {
+        return '-';
+    }
+    return result.optionName || result.valueText || (result.valueNumber ?? '-');
+}
 function findEvaluatorResult(row, taskEvaluatorId) {
     return row.evaluatorResults.find((item) => item.taskEvaluatorId === taskEvaluatorId);
 }
@@ -208,7 +215,7 @@ function evaluatorMessage(result) {
         <span class="meta">数据明细</span>
       </div>
 
-      <el-table :data="rows" row-key="id" border height="100%" tooltip-effect="light" class="task-detail-table">
+      <el-table :data="rows" row-key="id" border height="100%" :fit="false" tooltip-effect="light" class="task-detail-table">
         <el-table-column label="状态" width="120" fixed="left" :resizable="false" align="center">
           <template #default="{ row }">
             <el-tooltip :content="statusLabel(row.status)" placement="top" effect="light">
@@ -218,15 +225,15 @@ function evaluatorMessage(result) {
             </el-tooltip>
           </template>
         </el-table-column>
-        <el-table-column type="index" label="序号" width="90" fixed="left" align="center" />
-        <el-table-column :label="formatNameVersion(base?.datasetName, base?.datasetVersionName)" align="center">
-          <el-table-column v-for="field in fields" :key="field.id" :label="field.fieldName" min-width="220">
+        <el-table-column type="index" label="序号" width="90" fixed="left" :resizable="false" align="center" />
+        <el-table-column :label="formatNameVersion(base?.datasetName, base?.datasetVersionName)" :resizable="false" align="center">
+          <el-table-column v-for="field in fields" :key="field.id" :label="field.fieldName" width="220" :resizable="false">
             <template #default="{ row }">
               <OverflowTooltip :content="row.values[field.id || ''] || '-'" />
             </template>
           </el-table-column>
         </el-table-column>
-        <el-table-column label="应用输出" min-width="260">
+        <el-table-column label="应用输出" width="300" :resizable="false">
           <template #default="{ row }">
             <OverflowTooltip
               :content="appOutputText(row)"
@@ -240,8 +247,8 @@ function evaluatorMessage(result) {
             </OverflowTooltip>
           </template>
         </el-table-column>
-        <el-table-column v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" :label="evaluatorColumnLabel(evaluator)" align="center">
-          <el-table-column v-for="param in evaluator.params || []" :key="evaluatorParamKey(param)" :label="param.paramName" min-width="180">
+        <el-table-column v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" :label="evaluatorColumnLabel(evaluator)" :resizable="false" align="center">
+          <el-table-column v-for="param in evaluator.params || []" :key="evaluatorParamKey(param)" :label="param.paramName" width="190" :resizable="false">
             <template #default="{ row }">
               <OverflowTooltip
                 :content="evaluatorParamValue(row, evaluator, param)"
@@ -249,11 +256,11 @@ function evaluatorMessage(result) {
               />
             </template>
           </el-table-column>
-          <el-table-column label="结果" width="120">
+          <el-table-column label="结果" width="120" :resizable="false">
             <template #default="{ row }">
               <template v-if="isScoredEvaluatorResult(findEvaluatorResult(row, evaluator.taskEvaluatorId))">
                 <el-tag :type="passTagType(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.passResult)" effect="plain">
-                  {{ evaluatorResultLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)) }}
+                  <OverflowTooltip :content="evaluatorResultLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId))" />
                 </el-tag>
               </template>
               <el-tooltip v-else :content="statusLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" placement="top" effect="light">
@@ -263,10 +270,12 @@ function evaluatorMessage(result) {
               </el-tooltip>
             </template>
           </el-table-column>
-          <el-table-column label="得分" width="110">
-            <template #default="{ row }">{{ findEvaluatorResult(row, evaluator.taskEvaluatorId)?.score ?? '-' }}</template>
+          <el-table-column label="得分" width="110" :resizable="false">
+            <template #default="{ row }">
+              <OverflowTooltip :content="findEvaluatorResult(row, evaluator.taskEvaluatorId)?.score ?? '-'" />
+            </template>
           </el-table-column>
-          <el-table-column label="原因" min-width="240">
+          <el-table-column label="原因" width="260" :resizable="false">
             <template #default="{ row }">
               <OverflowTooltip
                 :content="evaluatorMessage(findEvaluatorResult(row, evaluator.taskEvaluatorId)) || '-'"
@@ -275,24 +284,21 @@ function evaluatorMessage(result) {
             </template>
           </el-table-column>
         </el-table-column>
-        <el-table-column v-if="tags.length" label="标签" align="center">
-          <el-table-column v-for="tag in tags" :key="tag.taskTagId" :label="tag.tagName" min-width="190">
+        <el-table-column v-if="tags.length" label="标签" :resizable="false" align="center">
+          <el-table-column v-for="tag in tags" :key="tag.taskTagId" :label="tag.tagName" width="190" :resizable="false">
             <template #default="{ row }">
               <template v-if="findTagResult(row, tag.taskTagId)?.status === 'completed'">
                 <el-tag :type="passTagType(findTagResult(row, tag.taskTagId)?.passResult)" effect="plain">
-                  {{ findTagResult(row, tag.taskTagId)?.passResult || '-' }}
+                  <OverflowTooltip :content="findTagResult(row, tag.taskTagId)?.passResult || '-'" />
                 </el-tag>
-                <span class="result-value">
-                  {{
-                    findTagResult(row, tag.taskTagId)?.optionName ||
-                    findTagResult(row, tag.taskTagId)?.valueText ||
-                    findTagResult(row, tag.taskTagId)?.valueNumber ||
-                    '-'
-                  }}
-                </span>
+                <OverflowTooltip class="result-value" :content="tagResultValue(row, tag.taskTagId)" />
               </template>
-              <el-tag v-else-if="findTagResult(row, tag.taskTagId)?.status === 'stopped'" type="info" effect="plain">已中止</el-tag>
-              <el-tag v-else type="info" effect="plain">未标注</el-tag>
+              <el-tag v-else-if="findTagResult(row, tag.taskTagId)?.status === 'stopped'" type="info" effect="plain">
+                <OverflowTooltip content="已中止" />
+              </el-tag>
+              <el-tag v-else type="info" effect="plain">
+                <OverflowTooltip content="未标注" />
+              </el-tag>
             </template>
           </el-table-column>
         </el-table-column>

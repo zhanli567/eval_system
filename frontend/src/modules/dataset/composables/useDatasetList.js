@@ -4,27 +4,12 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { datasetApi } from '../../../api/dataset';
 import { formatDateTime } from '../../../utils/formatters';
 import { getErrorMessage, movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
-import { useColumnWidths } from '../../../utils/tableColumns';
 
 function defaultFields() {
     return [
         { fieldName: 'query', fieldType: 'string', required: true, description: '用户问题' },
         { fieldName: 'reference_response', fieldType: 'string', required: false, description: '参考答案' }
     ];
-}
-
-function datasetColumns() {
-    return useColumnWidths({
-        name: { width: 240, min: 180, max: 420 },
-        publishedVersionCount: { width: 120, min: 100, max: 180 },
-        latestItemCount: { width: 110, min: 90, max: 170 },
-        description: { width: 280, min: 180, max: 520 },
-        createdByName: { width: 140, min: 100, max: 220 },
-        createdDate: { width: 190, min: 160, max: 240 },
-        lastUpdatedByName: { width: 140, min: 100, max: 220 },
-        lastUpdatedDate: { width: 190, min: 160, max: 240 },
-        actions: { width: 140, min: 120, max: 180 }
-    });
 }
 
 function createFieldDragState() {
@@ -165,7 +150,6 @@ export function useDatasetList() {
     const createVisible = ref(false);
     const createForm = reactive({ name: '', description: '', fields: defaultFields() });
     const drag = createFieldDragState();
-    const columns = datasetColumns();
     const actions = createDatasetActions({ router, datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datasetKeyword, sortBy, sortOrder, createVisible, createForm });
     onMounted(async () => {
         await actions.loadDatasets();
@@ -184,12 +168,10 @@ export function useDatasetList() {
         draggedFieldIndex: drag.draggedFieldIndex,
         dragOverFieldIndex: drag.dragOverFieldIndex,
         createForm,
-        columnWidths: columns.columnWidths,
         ...actions,
         addField,
         removeField,
         ...createDragActions(drag),
-        handleColumnResize: columns.handleColumnResize,
         formatTime: formatDateTime
     };
 }
