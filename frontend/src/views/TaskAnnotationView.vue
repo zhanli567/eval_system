@@ -79,7 +79,7 @@ function isTextOverflow(key) {
     </div>
   </header>
 
-  <section class="annotation-shell" v-loading="loading">
+  <section class="annotation-shell" :class="{ 'annotation-shell--without-tags': !tags.length }" v-loading="loading">
     <el-alert
       v-if="loadError"
       class="annotation-load-error"
@@ -103,84 +103,86 @@ function isTextOverflow(key) {
     </aside>
 
     <main class="annotation-output">
-      <h2>评估器及其数据</h2>
-      <section v-if="hasAppOutput" class="annotation-subsection">
-        <h3>应用输出</h3>
+      <section v-if="hasAppOutput" class="annotation-content-block annotation-app-block">
+        <h2>应用输出</h2>
         <div class="app-output-box">
           <p v-if="formattedAppOutput">{{ formattedAppOutput }}</p>
           <el-empty v-else :description="appOutputEmptyDescription()" :image-size="80" />
         </div>
       </section>
 
-      <div class="auto-result-list evaluator-data-list">
-        <article v-for="result in evaluators" :key="result.id" class="annotation-evaluator-card">
-          <header class="annotation-evaluator-head">
-            <div class="annotation-evaluator-title">
-              <strong>{{ formatNameVersion(result.evaluatorName, result.versionName) }}</strong>
-              <span>{{ evaluatorTypeLabel(result.evaluatorType) }}</span>
-            </div>
-            <div class="annotation-evaluator-summary">
-              <div class="annotation-evaluator-metric">
-                <span>结果</span>
-                <el-tag :type="passTagType(result.passResult)" effect="plain">
-                  {{ evaluatorResultLabel(result) }}
-                </el-tag>
+      <section class="annotation-content-block annotation-evaluator-block">
+        <h2>评估器及其数据</h2>
+        <div class="auto-result-list evaluator-data-list">
+          <article v-for="result in evaluators" :key="result.id" class="annotation-evaluator-card">
+            <header class="annotation-evaluator-head">
+              <div class="annotation-evaluator-title">
+                <strong>{{ formatNameVersion(result.evaluatorName, result.versionName) }}</strong>
+                <span>{{ evaluatorTypeLabel(result.evaluatorType) }}</span>
               </div>
-              <div class="annotation-evaluator-metric">
-                <span>得分</span>
-                <strong>{{ evaluatorScoreLabel(result) }}</strong>
+              <div class="annotation-evaluator-summary">
+                <div class="annotation-evaluator-metric">
+                  <span>结果</span>
+                  <el-tag :type="passTagType(result.passResult)" effect="plain">
+                    {{ evaluatorResultLabel(result) }}
+                  </el-tag>
+                </div>
+                <div class="annotation-evaluator-metric">
+                  <span>得分</span>
+                  <strong>{{ evaluatorScoreLabel(result) }}</strong>
+                </div>
               </div>
-            </div>
-          </header>
+            </header>
 
-          <div v-if="result.params?.length" class="annotation-evaluator-param-table">
-            <div
-              v-for="param in result.params"
-              :key="evaluatorParamKey(param)"
-              class="annotation-evaluator-param-row"
-            >
-              <span class="annotation-evaluator-param-name">{{ param.paramName || '-' }}</span>
-              <div class="annotation-evaluator-param-value-cell">
-                <el-tooltip
-                  :content="evaluatorParamValue(param.value)"
-                  placement="top"
-                  effect="light"
-                  :disabled="!isTextOverflow(evaluatorParamOverflowKey(result, param))"
-                >
-                  <p
-                    v-overflow-mark="evaluatorParamOverflowKey(result, param)"
-                    class="annotation-evaluator-param-value"
-                  >
-                    {{ evaluatorParamValue(param.value) }}
-                  </p>
-                </el-tooltip>
-              </div>
-            </div>
-          </div>
-          <el-empty v-else description="暂无参数数据" :image-size="64" />
-
-          <section v-if="evaluatorReason(result)" class="annotation-evaluator-reason">
-            <span class="annotation-evaluator-reason-label">原因</span>
-            <el-tooltip
-              :content="evaluatorReason(result)"
-              placement="top"
-              effect="light"
-              :disabled="!isTextOverflow(evaluatorReasonOverflowKey(result))"
-            >
-              <p
-                v-overflow-mark="evaluatorReasonOverflowKey(result)"
-                class="annotation-evaluator-reason-text"
+            <div v-if="result.params?.length" class="annotation-evaluator-param-table">
+              <div
+                v-for="param in result.params"
+                :key="evaluatorParamKey(param)"
+                class="annotation-evaluator-param-row"
               >
-                {{ evaluatorReason(result) }}
-              </p>
-            </el-tooltip>
-          </section>
-        </article>
-        <el-empty v-if="!evaluators.length" description="暂无自动评估结果" :image-size="72" />
-      </div>
+                <span class="annotation-evaluator-param-name">{{ param.paramName || '-' }}</span>
+                <div class="annotation-evaluator-param-value-cell">
+                  <el-tooltip
+                    :content="evaluatorParamValue(param.value)"
+                    placement="top"
+                    effect="light"
+                    :disabled="!isTextOverflow(evaluatorParamOverflowKey(result, param))"
+                  >
+                    <p
+                      v-overflow-mark="evaluatorParamOverflowKey(result, param)"
+                      class="annotation-evaluator-param-value"
+                    >
+                      {{ evaluatorParamValue(param.value) }}
+                    </p>
+                  </el-tooltip>
+                </div>
+              </div>
+            </div>
+            <el-empty v-else description="暂无参数数据" :image-size="64" />
+
+            <section v-if="evaluatorReason(result)" class="annotation-evaluator-reason">
+              <span class="annotation-evaluator-reason-label">原因</span>
+              <el-tooltip
+                :content="evaluatorReason(result)"
+                placement="top"
+                effect="light"
+                :disabled="!isTextOverflow(evaluatorReasonOverflowKey(result))"
+              >
+                <p
+                  v-overflow-mark="evaluatorReasonOverflowKey(result)"
+                  class="annotation-evaluator-reason-text"
+                >
+                  {{ evaluatorReason(result) }}
+                </p>
+              </el-tooltip>
+            </section>
+          </article>
+          <el-empty v-if="!evaluators.length" description="暂无自动评估结果" :image-size="72" />
+        </div>
+      </section>
     </main>
 
-    <aside class="annotation-column annotation-form-column">
+    <aside v-if="tags.length" class="annotation-column annotation-form-column">
       <h2>{{ formTitle }}</h2>
       <el-form label-position="top" :disabled="readonlyMode">
         <div v-for="tag in tags" :key="tag.taskTagId" class="annotation-tag-editor">
@@ -224,7 +226,6 @@ function isTextOverflow(key) {
             <span>已标注</span>
           </div>
         </div>
-        <el-empty v-if="!tags.length" description="当前任务暂无人工标签" :image-size="72" />
       </el-form>
     </aside>
     </template>

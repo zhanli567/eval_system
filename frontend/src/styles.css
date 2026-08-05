@@ -1872,6 +1872,10 @@ h2 {
   overflow: hidden;
 }
 
+.annotation-shell--without-tags {
+  grid-template-columns: minmax(320px, 1fr) minmax(520px, 1fr);
+}
+
 .annotation-load-error,
 .annotation-empty-state {
   grid-column: 1 / -1;
@@ -1885,6 +1889,10 @@ h2 {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.annotation-output {
+  gap: 16px;
 }
 
 .annotation-field-list,
@@ -1922,33 +1930,36 @@ h2 {
   line-height: 1.7;
 }
 
+.annotation-content-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.annotation-app-block {
+  flex: 0 0 auto;
+}
+
+.annotation-evaluator-block {
+  flex: 1 1 auto;
+}
+
+.annotation-content-block h2 {
+  flex: 0 0 auto;
+}
+
 .app-output-box {
   flex: 0 0 auto;
   min-height: 180px;
-  max-height: 34%;
-  margin: 14px 0 24px;
+  max-height: 240px;
+  margin: 14px 0 0;
   padding: 16px;
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #fbfcff;
   font-size: 14px;
-}
-
-.annotation-subsection {
-  margin-top: 14px;
-}
-
-.annotation-subsection h3 {
-  margin: 0;
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.annotation-subsection .app-output-box {
-  max-height: 240px;
-  margin: 10px 0 0;
 }
 
 .evaluator-data-list {
