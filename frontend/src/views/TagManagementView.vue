@@ -89,7 +89,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
       <el-table-column prop="lastUpdatedDate" label="更新时间" :width="columnWidths.lastUpdatedDate" min-width="160">
         <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>
       </el-table-column>
-      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="150" fixed="right" :resizable="false">
+      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="150" fixed="right" :resizable="false" align="center">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetailDialog(row)">详情</el-button>
           <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>

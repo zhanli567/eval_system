@@ -104,7 +104,7 @@ const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, 
             {{ row.values[field.id || ''] || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="130" fixed="right" :resizable="false">
+        <el-table-column label="操作" width="130" fixed="right" :resizable="false" align="center">
           <template #default="{ row }">
             <el-button link type="primary" :disabled="!isDraft" @click="openRowDialog(row)">编辑</el-button>
             <el-button link type="danger" :disabled="!isDraft" @click="removeRow(row)">删除</el-button>

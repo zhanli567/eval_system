@@ -331,7 +331,7 @@ function evaluatorMessage(result) {
             </template>
           </el-table-column>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right" :resizable="false">
+        <el-table-column label="操作" width="150" fixed="right" :resizable="false" align="center">
           <template #default="{ row }">
             <el-button link type="primary" @click="openItemDetail(row)">详情</el-button>
             <el-tooltip

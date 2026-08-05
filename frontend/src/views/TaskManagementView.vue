@@ -128,7 +128,7 @@ function formatNameList(items, picker) {
           {{ formatEvaluatorList(row.evaluators) }}
         </template>
       </el-table-column>
-      <el-table-column column-key="tags" label="标签" :width="columnWidths.tags" min-width="140" show-overflow-tooltip>
+      <el-table-column column-key="tags" label="标签" :width="columnWidths.tags" min-width="140" show-overflow-tooltip align="center">
         <template #default="{ row }">
           {{ formatTagList(row.tags) }}
         </template>
@@ -139,7 +139,7 @@ function formatNameList(items, picker) {
       <el-table-column prop="createdDate" label="创建时间" :width="columnWidths.createdDate" min-width="160">
         <template #default="{ row }">{{ formatTime(row.base.createdDate) }}</template>
       </el-table-column>
-      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="160" fixed="right" :resizable="false">
+      <el-table-column column-key="actions" label="操作" :width="columnWidths.actions" min-width="160" fixed="right" :resizable="false" align="center">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDetail(row)">详情</el-button>
           <el-button link type="primary" :icon="CopyDocument" @click.stop="copyTask(row)">复制</el-button>
