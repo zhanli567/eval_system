@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { Back, CircleCheck, CircleClose, Clock, Loading, Refresh, VideoPlay } from '@element-plus/icons-vue';
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
 import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
+import { TABLE_OVERFLOW_TOOLTIP_CLASS } from '../utils/tableOverflowTooltip';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
 const { loading, starting, stopping, page, size, base, fields, evaluators, tags, rows, total, canStartTask, canStopTask, loadDetail, backToList, startTask, stopTask, openItemDetail, openAnnotation, canAnnotateItem, annotationDisabledReason, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
@@ -141,31 +142,56 @@ function evaluatorMessage(result) {
         <div class="task-info-row task-info-row-primary">
           <div class="task-info-item">
             <span>评测集</span>
-            <el-tooltip :content="formatNameVersion(base?.datasetName, base?.datasetVersionName)" placement="top" :disabled="!isTextOverflow('dataset')">
+            <el-tooltip
+              :content="formatNameVersion(base?.datasetName, base?.datasetVersionName)"
+              placement="top"
+              :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
+              :disabled="!isTextOverflow('dataset')"
+            >
               <strong v-overflow-mark="'dataset'">{{ formatNameVersion(base?.datasetName, base?.datasetVersionName) }}</strong>
             </el-tooltip>
           </div>
           <div class="task-info-item">
             <span>评测应用</span>
-            <el-tooltip :content="formatAppBinding(base)" placement="top" :disabled="!isTextOverflow('app')">
+            <el-tooltip
+              :content="formatAppBinding(base)"
+              placement="top"
+              :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
+              :disabled="!isTextOverflow('app')"
+            >
               <strong v-overflow-mark="'app'">{{ formatAppBinding(base) }}</strong>
             </el-tooltip>
           </div>
           <div class="task-info-item">
             <span>创建人</span>
-            <el-tooltip :content="base?.createdByName || '-'" placement="top" :disabled="!isTextOverflow('creator')">
+            <el-tooltip
+              :content="base?.createdByName || '-'"
+              placement="top"
+              :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
+              :disabled="!isTextOverflow('creator')"
+            >
               <strong v-overflow-mark="'creator'">{{ base?.createdByName || '-' }}</strong>
             </el-tooltip>
           </div>
           <div class="task-info-item">
             <span>创建时间</span>
-            <el-tooltip :content="formatTime(base?.createdDate)" placement="top" :disabled="!isTextOverflow('createdDate')">
+            <el-tooltip
+              :content="formatTime(base?.createdDate)"
+              placement="top"
+              :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
+              :disabled="!isTextOverflow('createdDate')"
+            >
               <strong v-overflow-mark="'createdDate'">{{ formatTime(base?.createdDate) }}</strong>
             </el-tooltip>
           </div>
           <div class="task-info-item">
             <span>描述</span>
-            <el-tooltip :content="base?.description || '暂无描述'" placement="top" :disabled="!isTextOverflow('description')">
+            <el-tooltip
+              :content="base?.description || '暂无描述'"
+              placement="top"
+              :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
+              :disabled="!isTextOverflow('description')"
+            >
               <strong v-overflow-mark="'description'">{{ base?.description || '暂无描述' }}</strong>
             </el-tooltip>
           </div>
@@ -180,6 +206,7 @@ function evaluatorMessage(result) {
                 :key="evaluator.taskEvaluatorId"
                 :content="formatEvaluatorDimension(evaluator)"
                 placement="top"
+                :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
                 :disabled="!isTextOverflow(dimensionOverflowKey('evaluator', evaluator.taskEvaluatorId))"
               >
                 <el-tag class="dimension-summary-pill" type="info" effect="light">
@@ -199,6 +226,7 @@ function evaluatorMessage(result) {
                 :key="tag.taskTagId"
                 :content="formatTagDimension(tag)"
                 placement="top"
+                :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
                 :disabled="!isTextOverflow(dimensionOverflowKey('tag', tag.taskTagId))"
               >
                 <el-tag class="dimension-summary-pill" type="info" effect="light">

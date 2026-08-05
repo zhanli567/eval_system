@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { ArrowLeft, ArrowRight, Back } from '@element-plus/icons-vue';
 import { useTaskAnnotation } from '../modules/task/composables/useTaskAnnotation';
 import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
+import { TABLE_OVERFLOW_TOOLTIP_CLASS } from '../utils/tableOverflowTooltip';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
 const taskItemId = computed(() => String(route.params.taskItemId ?? ''));
@@ -146,6 +147,7 @@ function isTextOverflow(key) {
                     :content="evaluatorParamValue(param.value)"
                     placement="top"
                     effect="light"
+                    :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
                     :disabled="!isTextOverflow(evaluatorParamOverflowKey(result, param))"
                   >
                     <p
@@ -166,6 +168,7 @@ function isTextOverflow(key) {
                 :content="evaluatorReason(result)"
                 placement="top"
                 effect="light"
+                :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
                 :disabled="!isTextOverflow(evaluatorReasonOverflowKey(result))"
               >
                 <p
