@@ -57,7 +57,6 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         row-key="id"
         border
         height="100%"
-        :fit="false"
         tooltip-effect="light"
         class="evaluator-table"
       >
@@ -291,7 +290,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
 
         <template v-if="selectedPreset.evaluatorType === 'llm'">
           <h3>参数设置</h3>
-          <el-table :data="selectedPreset.params" border :fit="false">
+          <el-table :data="selectedPreset.params" border>
             <el-table-column prop="paramName" label="变量名" width="180" :resizable="false">
               <template #default="{ row }">
                 <OverflowTooltip :content="row.paramName || '-'" />
@@ -318,7 +317,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         </template>
         <template v-else>
           <h3>代码入参设置</h3>
-          <el-table :data="selectedPreset.params" border :fit="false">
+          <el-table :data="selectedPreset.params" border>
             <el-table-column prop="paramName" label="变量名" width="180" :resizable="false">
               <template #default="{ row }">
                 <OverflowTooltip :content="row.paramName || '-'" />

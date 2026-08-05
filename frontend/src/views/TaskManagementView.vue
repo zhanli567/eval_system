@@ -83,7 +83,6 @@ function formatNameList(items, picker) {
       row-key="base.id"
       border
       height="100%"
-      :fit="false"
       tooltip-effect="light"
       class="task-table"
     >

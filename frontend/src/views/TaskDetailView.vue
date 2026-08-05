@@ -215,7 +215,7 @@ function evaluatorMessage(result) {
         <span class="meta">数据明细</span>
       </div>
 
-      <el-table :data="rows" row-key="id" border height="100%" :fit="false" tooltip-effect="light" class="task-detail-table">
+      <el-table :data="rows" row-key="id" border height="100%" tooltip-effect="light" class="task-detail-table">
         <el-table-column label="状态" width="120" fixed="left" :resizable="false" align="center">
           <template #default="{ row }">
             <el-tooltip :content="statusLabel(row.status)" placement="top" effect="light">

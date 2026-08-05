@@ -51,7 +51,6 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
       row-key="id"
       border
       height="100%"
-      :fit="false"
       tooltip-effect="light"
       class="tag-table"
     >

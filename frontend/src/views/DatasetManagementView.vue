@@ -46,7 +46,6 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
       row-key="id"
       border
       height="100%"
-      :fit="false"
       highlight-current-row
       tooltip-effect="light"
       class="dataset-table"
