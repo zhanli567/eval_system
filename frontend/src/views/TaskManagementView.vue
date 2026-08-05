@@ -144,26 +144,24 @@ function formatNameList(items, picker) {
           <el-button link type="primary" @click.stop="openDetail(row)">详情</el-button>
           <el-button link type="primary" :icon="CopyDocument" @click.stop="copyTask(row)">复制</el-button>
           <el-button
-            v-if="canStartTask(row)"
             link
             type="primary"
             :loading="isStartingTask(row.base.id)"
-            :disabled="isStartingTask(row.base.id)"
+            :disabled="!canStartTask(row) || isStartingTask(row.base.id)"
             @click.stop="startTask(row)"
           >
             开始
           </el-button>
           <el-button
-            v-if="canStopTask(row)"
             link
             type="danger"
             :loading="isStoppingTask(row.base.id)"
-            :disabled="isStoppingTask(row.base.id)"
+            :disabled="!canStopTask(row) || isStoppingTask(row.base.id)"
             @click.stop="stopTask(row)"
           >
             停止
           </el-button>
-          <el-button v-if="canDeleteTask(row)" link type="danger" @click.stop="removeTask(row)">删除</el-button>
+          <el-button link type="danger" :disabled="!canDeleteTask(row)" @click.stop="removeTask(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
