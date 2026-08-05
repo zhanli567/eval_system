@@ -15,3 +15,7 @@ export function formatPromptBlock(value) {
             .trim();
     }
 }
+
+export function normalizePromptForEditor(value) {
+    return formatPromptBlock(value);
+}

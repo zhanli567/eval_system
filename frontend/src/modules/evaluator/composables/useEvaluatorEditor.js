@@ -5,6 +5,7 @@ import { evaluatorApi } from '../../../api/evaluator';
 import { remoteCallApi } from '../../../api/remoteCall';
 import { getErrorMessage } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
+import { normalizePromptForEditor } from '../../../utils/textBlocks';
 
 const DEFAULT_PROMPT = `你是一位专业的AI评估员。
 请根据评分标准评估回复质量。
@@ -52,7 +53,7 @@ function fillForm(form, config) {
     form.evaluatorType = config.evaluatorType;
     form.modelId = config.modelId || '';
     form.modelName = config.modelName || '';
-    form.prompt = config.prompt || DEFAULT_PROMPT;
+    form.prompt = normalizePromptForEditor(config.prompt || DEFAULT_PROMPT);
     form.executeCode = config.executeCode || DEFAULT_CODE;
     form.scoreMin = Number(config.scoreMin ?? 1);
     form.scoreMax = Number(config.scoreMax ?? 5);
