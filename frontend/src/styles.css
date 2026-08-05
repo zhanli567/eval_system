@@ -524,11 +524,10 @@ h2 {
   background: #fff;
   cursor: pointer;
   overflow: hidden;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .preset-card:hover {
-  transform: translateY(-1px);
   border-color: #b9d1fb;
   box-shadow: 0 14px 28px rgba(37, 99, 235, 0.08);
 }
