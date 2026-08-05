@@ -1,10 +1,9 @@
 <script setup>
-import { computed, reactive } from 'vue';
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { ArrowLeft, ArrowRight, Back } from '@element-plus/icons-vue';
 import { useTaskAnnotation } from '../modules/task/composables/useTaskAnnotation';
 import { formatAgentOutputValue, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
-import { TABLE_OVERFLOW_TOOLTIP_CLASS } from '../utils/tableOverflowTooltip';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
 const taskItemId = computed(() => String(route.params.taskItemId ?? ''));
@@ -13,15 +12,6 @@ const formTitle = computed(() => (readonlyMode.value ? '标签结果' : '标注�
 const { loading, saving, loadError, form, task, item, fields, tags, evaluators, previousItemId, nextItemId, saveAnnotation, backToDetail, goItem, passTagType, tagTypeLabel, optionLabel, appOutputEmptyDescription } = useTaskAnnotation(taskId, taskItemId, readonlyMode);
 const formattedAppOutput = computed(() => formatAppOutput(item.value?.appOutput || ''));
 const hasAppOutput = computed(() => task.value?.appType === 'agent' && Boolean(task.value?.appId));
-const overflowState = reactive({});
-const vOverflowMark = {
-    mounted(el, binding) {
-        updateOverflowState(el, binding);
-    },
-    updated(el, binding) {
-        updateOverflowState(el, binding);
-    }
-};
 function formatNameVersion(name, version) {
     return `${name || '-'} / ${version || '-'}`;
 }
@@ -48,19 +38,6 @@ function evaluatorTypeLabel(value) {
 }
 function evaluatorParamKey(param) {
     return `${param.paramId || ''}:${param.paramName || ''}`;
-}
-function evaluatorParamOverflowKey(result, param) {
-    return `param:${result.id || result.taskEvaluatorId || ''}:${evaluatorParamKey(param)}`;
-}
-function evaluatorReasonOverflowKey(result) {
-    return `reason:${result.id || result.taskEvaluatorId || ''}`;
-}
-function updateOverflowState(el, binding) {
-    const key = binding.value;
-    overflowState[key] = Boolean(key) && (el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight);
-}
-function isTextOverflow(key) {
-    return Boolean(overflowState[key]);
 }
 </script>
 
@@ -143,20 +120,11 @@ function isTextOverflow(key) {
               >
                 <span class="annotation-evaluator-param-name">{{ param.paramName || '-' }}</span>
                 <div class="annotation-evaluator-param-value-cell">
-                  <el-tooltip
+                  <OverflowTooltip
                     :content="evaluatorParamValue(param.value)"
-                    placement="top"
-                    effect="light"
-                    :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
-                    :disabled="!isTextOverflow(evaluatorParamOverflowKey(result, param))"
-                  >
-                    <p
-                      v-overflow-mark="evaluatorParamOverflowKey(result, param)"
-                      class="annotation-evaluator-param-value"
-                    >
-                      {{ evaluatorParamValue(param.value) }}
-                    </p>
-                  </el-tooltip>
+                    tag="p"
+                    class="annotation-evaluator-param-value"
+                  />
                 </div>
               </div>
             </div>
@@ -164,20 +132,11 @@ function isTextOverflow(key) {
 
             <section v-if="evaluatorReason(result)" class="annotation-evaluator-reason">
               <span class="annotation-evaluator-reason-label">原因</span>
-              <el-tooltip
+              <OverflowTooltip
                 :content="evaluatorReason(result)"
-                placement="top"
-                effect="light"
-                :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
-                :disabled="!isTextOverflow(evaluatorReasonOverflowKey(result))"
-              >
-                <p
-                  v-overflow-mark="evaluatorReasonOverflowKey(result)"
-                  class="annotation-evaluator-reason-text"
-                >
-                  {{ evaluatorReason(result) }}
-                </p>
-              </el-tooltip>
+                tag="p"
+                class="annotation-evaluator-reason-text"
+              />
             </section>
           </article>
           <el-empty v-if="!evaluators.length" description="暂无自动评估结果" :image-size="72" />

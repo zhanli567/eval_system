@@ -1,22 +1,12 @@
 <script setup>
-import { computed, reactive } from 'vue';
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { Back, CircleCheck, CircleClose, Clock, Loading, Refresh, VideoPlay } from '@element-plus/icons-vue';
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
 import { formatAgentOutputValue, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
-import { TABLE_OVERFLOW_TOOLTIP_CLASS } from '../utils/tableOverflowTooltip';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
 const { loading, starting, stopping, page, size, base, fields, evaluators, tags, rows, total, canStartTask, canStopTask, loadDetail, backToList, startTask, stopTask, openItemDetail, openAnnotation, canAnnotateItem, annotationDisabledReason, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
-const overflowState = reactive({});
-const vOverflowMark = {
-    mounted(el, binding) {
-        updateOverflowState(el, binding);
-    },
-    updated(el, binding) {
-        updateOverflowState(el, binding);
-    }
-};
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -32,16 +22,6 @@ function statusIcon(value) {
 }
 function statusIconClass(value) {
     return `is-${value || 'pending'}`;
-}
-function updateOverflowState(el, binding) {
-    const key = binding.value;
-    overflowState[key] = Boolean(key) && el.scrollWidth > el.clientWidth;
-}
-function isTextOverflow(key) {
-    return Boolean(overflowState[key]);
-}
-function dimensionOverflowKey(type, id) {
-    return `${type}:${id || ''}`;
 }
 function findTagResult(row, taskTagId) {
     return row.tagResults.find((item) => item.taskTagId === taskTagId);
@@ -87,6 +67,14 @@ function findEvaluatorParam(row, evaluator, param) {
 }
 function evaluatorParamValue(row, evaluator, param) {
     return formatAgentOutputValue(findEvaluatorParam(row, evaluator, param)?.value) || '-';
+}
+function appOutputText(row) {
+    const output = formatAppOutput(row.appOutput);
+    if (row.appErrorMessage) {
+        return [output, row.appErrorMessage].filter(Boolean).join('\n\n') || '-';
+    } else {
+        return output || '-';
+    }
 }
 function evaluatorMessage(result) {
     if (!result) {
@@ -142,63 +130,38 @@ function evaluatorMessage(result) {
         <div class="task-info-row task-info-row-primary">
           <div class="task-info-item">
             <span>评测集</span>
-            <el-tooltip
+            <OverflowTooltip
               :content="formatNameVersion(base?.datasetName, base?.datasetVersionName)"
-              placement="top"
-              effect="light"
-              :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
-              :disabled="!isTextOverflow('dataset')"
-            >
-              <strong v-overflow-mark="'dataset'">{{ formatNameVersion(base?.datasetName, base?.datasetVersionName) }}</strong>
-            </el-tooltip>
+              tag="strong"
+            />
           </div>
           <div class="task-info-item">
             <span>评测应用</span>
-            <el-tooltip
+            <OverflowTooltip
               :content="formatAppBinding(base)"
-              placement="top"
-              effect="light"
-              :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
-              :disabled="!isTextOverflow('app')"
-            >
-              <strong v-overflow-mark="'app'">{{ formatAppBinding(base) }}</strong>
-            </el-tooltip>
+              tag="strong"
+            />
           </div>
           <div class="task-info-item">
             <span>创建人</span>
-            <el-tooltip
+            <OverflowTooltip
               :content="base?.createdByName || '-'"
-              placement="top"
-              effect="light"
-              :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
-              :disabled="!isTextOverflow('creator')"
-            >
-              <strong v-overflow-mark="'creator'">{{ base?.createdByName || '-' }}</strong>
-            </el-tooltip>
+              tag="strong"
+            />
           </div>
           <div class="task-info-item">
             <span>创建时间</span>
-            <el-tooltip
+            <OverflowTooltip
               :content="formatTime(base?.createdDate)"
-              placement="top"
-              effect="light"
-              :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
-              :disabled="!isTextOverflow('createdDate')"
-            >
-              <strong v-overflow-mark="'createdDate'">{{ formatTime(base?.createdDate) }}</strong>
-            </el-tooltip>
+              tag="strong"
+            />
           </div>
           <div class="task-info-item">
             <span>描述</span>
-            <el-tooltip
+            <OverflowTooltip
               :content="base?.description || '暂无描述'"
-              placement="top"
-              effect="light"
-              :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
-              :disabled="!isTextOverflow('description')"
-            >
-              <strong v-overflow-mark="'description'">{{ base?.description || '暂无描述' }}</strong>
-            </el-tooltip>
+              tag="strong"
+            />
           </div>
         </div>
         <div class="task-dimension-section">
@@ -206,45 +169,33 @@ function evaluatorMessage(result) {
           <div class="dimension-summary-row task-dimension-summary">
             <div v-if="evaluators.length" class="dimension-summary-group">
               <span class="dimension-summary-group-label">评估器</span>
-              <el-tooltip
+              <el-tag
                 v-for="evaluator in evaluators"
                 :key="evaluator.taskEvaluatorId"
-                :content="formatEvaluatorDimension(evaluator)"
-                placement="top"
+                class="dimension-summary-pill"
+                type="info"
                 effect="light"
-                :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
-                :disabled="!isTextOverflow(dimensionOverflowKey('evaluator', evaluator.taskEvaluatorId))"
               >
-                <el-tag class="dimension-summary-pill" type="info" effect="light">
-                  <span
-                    v-overflow-mark="dimensionOverflowKey('evaluator', evaluator.taskEvaluatorId)"
-                    class="dimension-summary-pill-text"
-                  >
-                    {{ formatEvaluatorDimension(evaluator) }}
-                  </span>
-                </el-tag>
-              </el-tooltip>
+                <OverflowTooltip
+                  :content="formatEvaluatorDimension(evaluator)"
+                  class="dimension-summary-pill-text"
+                />
+              </el-tag>
             </div>
             <div v-if="tags.length" class="dimension-summary-group">
               <span class="dimension-summary-group-label">标签</span>
-              <el-tooltip
+              <el-tag
                 v-for="tag in tags"
                 :key="tag.taskTagId"
-                :content="formatTagDimension(tag)"
-                placement="top"
+                class="dimension-summary-pill"
+                type="info"
                 effect="light"
-                :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
-                :disabled="!isTextOverflow(dimensionOverflowKey('tag', tag.taskTagId))"
               >
-                <el-tag class="dimension-summary-pill" type="info" effect="light">
-                  <span
-                    v-overflow-mark="dimensionOverflowKey('tag', tag.taskTagId)"
-                    class="dimension-summary-pill-text"
-                  >
-                    {{ formatTagDimension(tag) }}
-                  </span>
-                </el-tag>
-              </el-tooltip>
+                <OverflowTooltip
+                  :content="formatTagDimension(tag)"
+                  class="dimension-summary-pill-text"
+                />
+              </el-tag>
             </div>
             <span v-if="!evaluators.length && !tags.length" class="dimension-summary-empty">暂无评测维度</span>
           </div>
@@ -269,22 +220,33 @@ function evaluatorMessage(result) {
         </el-table-column>
         <el-table-column type="index" label="序号" width="90" fixed="left" align="center" />
         <el-table-column :label="formatNameVersion(base?.datasetName, base?.datasetVersionName)" align="center">
-          <el-table-column v-for="field in fields" :key="field.id" :label="field.fieldName" min-width="220" show-overflow-tooltip>
-            <template #default="{ row }">{{ row.values[field.id || ''] || '-' }}</template>
+          <el-table-column v-for="field in fields" :key="field.id" :label="field.fieldName" min-width="220">
+            <template #default="{ row }">
+              <OverflowTooltip :content="row.values[field.id || ''] || '-'" />
+            </template>
           </el-table-column>
         </el-table-column>
-        <el-table-column label="应用输出" min-width="260" show-overflow-tooltip>
+        <el-table-column label="应用输出" min-width="260">
           <template #default="{ row }">
-            <div class="app-output-preview">{{ formatAppOutput(row.appOutput) || '-' }}</div>
-            <p v-if="row.appErrorMessage" class="task-error-preview">
-              {{ row.appErrorMessage }}
-            </p>
+            <OverflowTooltip
+              :content="appOutputText(row)"
+              tag="div"
+              class="app-output-preview"
+            >
+              <span>{{ formatAppOutput(row.appOutput) || '-' }}</span>
+              <p v-if="row.appErrorMessage" class="task-error-preview">
+                {{ row.appErrorMessage }}
+              </p>
+            </OverflowTooltip>
           </template>
         </el-table-column>
         <el-table-column v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" :label="evaluatorColumnLabel(evaluator)" align="center">
-          <el-table-column v-for="param in evaluator.params || []" :key="evaluatorParamKey(param)" :label="param.paramName" min-width="180" show-overflow-tooltip>
+          <el-table-column v-for="param in evaluator.params || []" :key="evaluatorParamKey(param)" :label="param.paramName" min-width="180">
             <template #default="{ row }">
-              <span class="param-value-preview">{{ evaluatorParamValue(row, evaluator, param) }}</span>
+              <OverflowTooltip
+                :content="evaluatorParamValue(row, evaluator, param)"
+                class="param-value-preview"
+              />
             </template>
           </el-table-column>
           <el-table-column label="结果" width="120">
@@ -304,9 +266,12 @@ function evaluatorMessage(result) {
           <el-table-column label="得分" width="110">
             <template #default="{ row }">{{ findEvaluatorResult(row, evaluator.taskEvaluatorId)?.score ?? '-' }}</template>
           </el-table-column>
-          <el-table-column label="原因" min-width="240" show-overflow-tooltip>
+          <el-table-column label="原因" min-width="240">
             <template #default="{ row }">
-              <span class="result-reason-preview">{{ evaluatorMessage(findEvaluatorResult(row, evaluator.taskEvaluatorId)) || '-' }}</span>
+              <OverflowTooltip
+                :content="evaluatorMessage(findEvaluatorResult(row, evaluator.taskEvaluatorId)) || '-'"
+                class="result-reason-preview"
+              />
             </template>
           </el-table-column>
         </el-table-column>

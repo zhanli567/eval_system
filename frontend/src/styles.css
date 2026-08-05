@@ -1864,6 +1864,30 @@ h2 {
   line-height: 1.55;
 }
 
+.overflow-tooltip-text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: inherit;
+  white-space: nowrap;
+}
+
+.app-output-preview.overflow-tooltip-text {
+  display: -webkit-box;
+  white-space: pre-line;
+}
+
+.result-reason-preview.overflow-tooltip-text {
+  display: -webkit-box;
+  white-space: normal;
+}
+
+.dimension-summary-pill-text.overflow-tooltip-text {
+  display: inline-block;
+}
+
 .annotation-shell {
   display: grid;
   grid-template-columns: minmax(300px, 0.75fr) minmax(520px, 1.45fr) minmax(340px, 0.9fr);

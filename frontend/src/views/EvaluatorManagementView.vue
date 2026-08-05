@@ -61,18 +61,17 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         class="evaluator-table"
         @header-dragend="handleColumnResize"
       >
-        <el-table-column prop="evaluatorName" label="评估器名称" :width="columnWidths.evaluatorName" min-width="160" fixed="left" :resizable="false" show-overflow-tooltip>
+        <el-table-column prop="evaluatorName" label="评估器名称" :width="columnWidths.evaluatorName" min-width="160" fixed="left" :resizable="false">
           <template #default="{ row }">
-            <span
+            <OverflowTooltip
+              :content="row.evaluatorName"
               class="linkish"
               role="button"
               tabindex="0"
               @click="editEvaluator(row)"
               @keyup.enter="editEvaluator(row)"
               @keyup.space.prevent="editEvaluator(row)"
-            >
-              {{ row.evaluatorName }}
-            </span>
+            />
           </template>
         </el-table-column>
         <el-table-column prop="evaluatorType" label="类型" :width="columnWidths.evaluatorType" min-width="100">
@@ -81,17 +80,23 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
           </template>
         </el-table-column>
         <el-table-column prop="latestVersionName" label="最新版本" :width="columnWidths.latestVersionName" min-width="110" />
-        <el-table-column prop="description" label="描述" min-width="180" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.description || '暂无描述' }}</template>
+        <el-table-column prop="description" label="描述" min-width="180">
+          <template #default="{ row }">
+            <OverflowTooltip :content="row.description || '暂无描述'" />
+          </template>
         </el-table-column>
-        <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.createdByName || '-' }}</template>
+        <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100">
+          <template #default="{ row }">
+            <OverflowTooltip :content="row.createdByName || '-'" />
+          </template>
         </el-table-column>
         <el-table-column prop="createdDate" label="创建时间" :width="columnWidths.createdDate" min-width="160">
           <template #default="{ row }">{{ formatTime(row.createdDate) }}</template>
         </el-table-column>
-        <el-table-column prop="lastUpdatedByName" label="更新人" :width="columnWidths.lastUpdatedByName" min-width="100" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.lastUpdatedByName || '-' }}</template>
+        <el-table-column prop="lastUpdatedByName" label="更新人" :width="columnWidths.lastUpdatedByName" min-width="100">
+          <template #default="{ row }">
+            <OverflowTooltip :content="row.lastUpdatedByName || '-'" />
+          </template>
         </el-table-column>
         <el-table-column prop="lastUpdatedDate" label="更新时间" :width="columnWidths.lastUpdatedDate" min-width="160">
           <template #default="{ row }">{{ formatTime(row.lastUpdatedDate) }}</template>

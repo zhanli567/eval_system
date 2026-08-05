@@ -3,6 +3,7 @@ import ElementPlus from 'element-plus';
 import 'element-plus/dist/index.css';
 import * as ElementPlusIconsVue from '@element-plus/icons-vue';
 import App from './App.vue';
+import OverflowTooltip from './components/OverflowTooltip.vue';
 import router from './router';
 import { tableOverflowTooltipOptions } from './utils/tableOverflowTooltip';
 import './styles.css';
@@ -10,6 +11,7 @@ const app = createApp(App);
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component);
 }
+app.component('OverflowTooltip', OverflowTooltip);
 app.use(ElementPlus, {
     table: {
         tooltipOptions: tableOverflowTooltipOptions

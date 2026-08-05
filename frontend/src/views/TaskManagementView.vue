@@ -96,45 +96,48 @@ function formatNameList(items, picker) {
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column prop="taskName" label="任务名称" :width="columnWidths.taskName" min-width="160" show-overflow-tooltip>
+      <el-table-column prop="taskName" label="任务名称" :width="columnWidths.taskName" min-width="160">
         <template #default="{ row }">
-          <span
+          <OverflowTooltip
+            :content="row.base.taskName"
             class="linkish"
             role="button"
             tabindex="0"
             @click="openDetail(row)"
             @keyup.enter="openDetail(row)"
             @keyup.space.prevent="openDetail(row)"
-          >
-            {{ row.base.taskName }}
-          </span>
+          />
         </template>
       </el-table-column>
-      <el-table-column prop="datasetName" label="评测集名称" :width="columnWidths.datasetName" min-width="160" show-overflow-tooltip>
+      <el-table-column prop="datasetName" label="评测集名称" :width="columnWidths.datasetName" min-width="160">
         <template #default="{ row }">
-          {{ formatNameVersion(row.base.datasetName, row.base.datasetVersionName) }}
+          <OverflowTooltip :content="formatNameVersion(row.base.datasetName, row.base.datasetVersionName)" />
         </template>
       </el-table-column>
-      <el-table-column column-key="app" label="应用" :width="columnWidths.app" min-width="180" show-overflow-tooltip>
+      <el-table-column column-key="app" label="应用" :width="columnWidths.app" min-width="180">
         <template #default="{ row }">
-          {{ formatAppBinding(row.base) }}
+          <OverflowTooltip :content="formatAppBinding(row.base)" />
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="描述" min-width="180" show-overflow-tooltip>
-        <template #default="{ row }">{{ row.base.description || '暂无描述' }}</template>
-      </el-table-column>
-      <el-table-column column-key="evaluators" label="评估器" :width="columnWidths.evaluators" min-width="160" show-overflow-tooltip>
+      <el-table-column prop="description" label="描述" min-width="180">
         <template #default="{ row }">
-          {{ formatEvaluatorList(row.evaluators) }}
+          <OverflowTooltip :content="row.base.description || '暂无描述'" />
         </template>
       </el-table-column>
-      <el-table-column column-key="tags" label="标签" :width="columnWidths.tags" min-width="140" show-overflow-tooltip align="center">
+      <el-table-column column-key="evaluators" label="评估器" :width="columnWidths.evaluators" min-width="160">
         <template #default="{ row }">
-          {{ formatTagList(row.tags) }}
+          <OverflowTooltip :content="formatEvaluatorList(row.evaluators)" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100" show-overflow-tooltip>
-        <template #default="{ row }">{{ row.base.createdByName || '-' }}</template>
+      <el-table-column column-key="tags" label="标签" :width="columnWidths.tags" min-width="140" align="center">
+        <template #default="{ row }">
+          <OverflowTooltip :content="formatTagList(row.tags)" />
+        </template>
+      </el-table-column>
+      <el-table-column prop="createdByName" label="创建人" :width="columnWidths.createdByName" min-width="100">
+        <template #default="{ row }">
+          <OverflowTooltip :content="row.base.createdByName || '-'" />
+        </template>
       </el-table-column>
       <el-table-column prop="createdDate" label="创建时间" :width="columnWidths.createdDate" min-width="160">
         <template #default="{ row }">{{ formatTime(row.base.createdDate) }}</template>

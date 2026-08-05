@@ -94,14 +94,13 @@ const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, 
           :key="`${field.id}:${field.fieldName}:${field.required}:${field.displayOrder}`"
           :label="field.fieldName"
           min-width="220"
-          show-overflow-tooltip
         >
           <template #header>
             <span>{{ field.fieldName }}</span>
             <span v-if="field.required" class="required-mark">*</span>
           </template>
           <template #default="{ row }">
-            {{ row.values[field.id || ''] || '-' }}
+            <OverflowTooltip :content="row.values[field.id || ''] || '-'" />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="130" fixed="right" :resizable="false" align="center">
