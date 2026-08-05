@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { normalizePromptForEditor } from '../src/utils/textBlocks.js';
+import { formatPromptBlock } from '../src/utils/textBlocks.js';
 
 const rawPrompt = `
     第一段评估说明
@@ -11,6 +11,6 @@ const rawPrompt = `
 `;
 
 assert.equal(
-  normalizePromptForEditor(rawPrompt),
+  formatPromptBlock(rawPrompt),
   '第一段评估说明\n- 子项也不应该保留文本块缩进\n\n<查询>\n${query}\n</查询>'
 );
