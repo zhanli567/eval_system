@@ -2207,23 +2207,50 @@ h2 {
 
 .el-popper.table-overflow-tooltip::after {
   position: absolute;
-  right: 3px;
-  bottom: 3px;
-  width: 14px;
-  height: 14px;
+  right: 4px;
+  bottom: 4px;
+  width: 18px;
+  height: 18px;
   cursor: nwse-resize;
   content: "";
-  background:
-    linear-gradient(135deg, transparent 0 46%, #aab4c5 47% 54%, transparent 55%),
-    linear-gradient(135deg, transparent 0 66%, #c7ceda 67% 74%, transparent 75%);
+  background: radial-gradient(
+    circle at 100% 100%,
+    transparent 0 6px,
+    #c8d1df 6px 7px,
+    transparent 7px 10px,
+    #a7b2c2 10px 11px,
+    transparent 11px
+  );
   opacity: 0.75;
 }
 
 .el-popper.table-overflow-tooltip[data-popper-placement^="top"]::after {
-  top: 3px;
+  top: 4px;
   bottom: auto;
   cursor: nesw-resize;
-  transform: scaleY(-1);
+  background: radial-gradient(
+    circle at 100% 0,
+    transparent 0 6px,
+    #c8d1df 6px 7px,
+    transparent 7px 10px,
+    #a7b2c2 10px 11px,
+    transparent 11px
+  );
+}
+
+.table-overflow-tooltip-resize-shield {
+  position: fixed;
+  inset: 0;
+  z-index: 4199;
+  background: transparent;
+}
+
+.table-overflow-tooltip-resize-shield--bottom {
+  cursor: nwse-resize;
+}
+
+.table-overflow-tooltip-resize-shield--top {
+  cursor: nesw-resize;
 }
 
 body.table-overflow-tooltip--resizing-bottom {
