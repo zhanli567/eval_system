@@ -1,5 +1,5 @@
 <script setup>
-import { Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
+import { DataAnalysis, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
 import { useEvaluatorManagement } from '../modules/evaluator/composables/useEvaluatorManagement';
 import { formatPromptBlock } from '../utils/textBlocks';
 const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, loadCustomEvaluators, searchCustom, changeCustomSize, toggleCustomSort, loadPresetEvaluators, searchPreset, changePresetSize, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, changePickerSize, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, typeLabel, formatTime } = useEvaluatorManagement();
@@ -163,16 +163,27 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
           </div>
 
           <div v-loading="presetLoading" class="preset-grid">
-            <article v-for="preset in presetEvaluators" :key="preset.id" class="preset-card">
+            <article
+              v-for="preset in presetEvaluators"
+              :key="preset.id"
+              class="preset-card"
+              role="button"
+              tabindex="0"
+              @click="viewPreset(preset.id)"
+              @keyup.enter="viewPreset(preset.id)"
+              @keyup.space.prevent="viewPreset(preset.id)"
+            >
               <div class="preset-card-head">
-                <span class="preset-mark"></span>
+                <span class="preset-card-icon">
+                  <el-icon><DataAnalysis /></el-icon>
+                </span>
                 <strong>{{ preset.evaluatorName }}</strong>
-                <el-tag size="small" type="info">{{ typeLabel(preset.evaluatorType) }}</el-tag>
+                <span class="preset-type-pill">{{ typeLabel(preset.evaluatorType) }}</span>
               </div>
-              <p>{{ preset.description }}</p>
+              <p>{{ preset.description || '暂无描述' }}</p>
               <div class="preset-card-actions">
-                <el-button type="primary" :disabled="preset.evaluatorType === 'code'" @click="createFromPreset(preset.id)">基于预置创建</el-button>
-                <el-button @click="viewPreset(preset.id)">查看详情</el-button>
+                <el-button link type="primary" :disabled="preset.evaluatorType === 'code'" @click.stop="createFromPreset(preset.id)">基于预置创建</el-button>
+                <el-button link type="primary" @click.stop="viewPreset(preset.id)">查看详情</el-button>
               </div>
             </article>
           </div>
@@ -230,16 +241,27 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         </div>
 
         <div v-loading="pickerLoading" class="preset-grid picker-grid">
-          <article v-for="preset in pickerPresets" :key="preset.id" class="preset-card">
+          <article
+            v-for="preset in pickerPresets"
+            :key="preset.id"
+            class="preset-card"
+            role="button"
+            tabindex="0"
+            @click="viewPreset(preset.id)"
+            @keyup.enter="viewPreset(preset.id)"
+            @keyup.space.prevent="viewPreset(preset.id)"
+          >
             <div class="preset-card-head">
-              <span class="preset-mark"></span>
+              <span class="preset-card-icon">
+                <el-icon><DataAnalysis /></el-icon>
+              </span>
               <strong>{{ preset.evaluatorName }}</strong>
-              <el-tag size="small" type="info">{{ typeLabel(preset.evaluatorType) }}</el-tag>
+              <span class="preset-type-pill">{{ typeLabel(preset.evaluatorType) }}</span>
             </div>
-            <p>{{ preset.description }}</p>
+            <p>{{ preset.description || '暂无描述' }}</p>
             <div class="preset-card-actions">
-              <el-button type="primary" :disabled="preset.evaluatorType === 'code'" @click="createFromPreset(preset.id)">基于预置创建</el-button>
-              <el-button @click="viewPreset(preset.id)">查看详情</el-button>
+              <el-button link type="primary" :disabled="preset.evaluatorType === 'code'" @click.stop="createFromPreset(preset.id)">基于预置创建</el-button>
+              <el-button link type="primary" @click.stop="viewPreset(preset.id)">查看详情</el-button>
             </div>
           </article>
         </div>
