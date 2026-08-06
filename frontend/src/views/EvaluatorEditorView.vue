@@ -12,13 +12,19 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
         <span class="page-breadcrumb-separator">/</span>
         <OverflowTooltip :content="pageTitle" tag="span" class="page-breadcrumb-current" />
       </nav>
-      <div v-if="isEdit" class="embedded-title-actions">
-        <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="refreshEditor" />
-        <template v-if="activeVersion?.draft">
-          <el-button :loading="saving" type="primary" :disabled="!canEdit || form.evaluatorType === 'code'" @click="submit">保存草稿</el-button>
-          <el-button type="success" :icon="Promotion" :loading="publishing" :disabled="!canEdit || form.evaluatorType === 'code'" @click="publishDraft">发布</el-button>
+      <div class="embedded-title-actions">
+        <template v-if="isEdit">
+          <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="refreshEditor" />
+          <template v-if="activeVersion?.draft">
+            <el-button :loading="saving" type="primary" :disabled="!canEdit || form.evaluatorType === 'code'" @click="submit">保存草稿</el-button>
+            <el-button type="success" :icon="Promotion" :loading="publishing" :disabled="!canEdit || form.evaluatorType === 'code'" @click="publishDraft">发布</el-button>
+          </template>
+          <el-button v-else-if="activeVersion" type="danger" plain :icon="Delete" @click="removeVersion(activeVersion)">删除版本</el-button>
         </template>
-        <el-button v-else-if="activeVersion" type="danger" plain :icon="Delete" @click="removeVersion(activeVersion)">删除版本</el-button>
+        <template v-else>
+          <el-button @click="backToList">取消</el-button>
+          <el-button type="primary" :loading="saving" :disabled="form.evaluatorType === 'code'" @click="submit">创建</el-button>
+        </template>
       </div>
     </div>
 
@@ -206,9 +212,5 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
       </section>
     </main>
 
-    <div v-if="!isEdit" class="task-create-bottom-bar">
-      <el-button @click="backToList">取消</el-button>
-      <el-button type="primary" :loading="saving" :disabled="form.evaluatorType === 'code'" @click="submit">创建</el-button>
-    </div>
   </section>
 </template>

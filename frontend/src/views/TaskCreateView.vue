@@ -13,6 +13,10 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
         <span class="page-breadcrumb-separator">/</span>
         <span class="page-breadcrumb-current">创建评测任务</span>
       </nav>
+      <div class="embedded-title-actions">
+        <el-button @click="backToList">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="submit">创建</el-button>
+      </div>
     </div>
 
     <main class="task-create-main">
@@ -259,11 +263,6 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
         </div>
       </section>
     </main>
-
-    <div class="task-create-bottom-bar">
-      <el-button @click="backToList">取消</el-button>
-      <el-button type="primary" :loading="saving" @click="submit">创建</el-button>
-    </div>
 
     <el-drawer v-model="tagDrawerVisible" title="添加标签" direction="rtl" size="460px" class="tag-picker-drawer">
       <div class="tag-picker-toolbar">
