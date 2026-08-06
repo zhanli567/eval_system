@@ -468,17 +468,22 @@ h2 {
 .evaluator-management-head {
   display: flex;
   flex: 0 0 auto;
-  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
   margin-bottom: 16px;
   min-width: 0;
 }
 
 .evaluator-head-toolbar {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   justify-content: flex-end;
   margin-bottom: 0;
+  min-width: 0;
+}
+
+.panel-toolbar.evaluator-head-toolbar {
+  flex-wrap: nowrap;
 }
 
 .evaluator-panel.fill-workspace .preset-layout {
@@ -827,7 +832,6 @@ h2 {
 .evaluator-create-main {
   width: 100%;
   margin: 0;
-  padding: clamp(8px, 1vw, 12px) clamp(12px, 8vw, 15%) 96px;
 }
 
 .evaluator-create-panel,
@@ -1586,10 +1590,11 @@ h2 {
 
 .task-create-main {
   display: grid;
-  width: min(980px, 100%);
+  width: 100%;
+  box-sizing: border-box;
   min-height: 0;
-  margin: 0 auto;
-  padding: 4px 4px 96px;
+  margin: 0;
+  padding: 4px clamp(16px, 15vw, 15%) 28px;
   overflow-y: auto;
   gap: 16px;
 }
@@ -1839,22 +1844,6 @@ h2 {
   white-space: pre-line;
   word-break: break-word;
   overflow-wrap: anywhere;
-}
-
-.task-create-bottom-bar {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  left: 18px;
-  z-index: 30;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 14px 20px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: rgba(248, 250, 255, 0.94);
-  box-shadow: 0 -12px 30px rgba(31, 41, 66, 0.06);
 }
 
 .task-basic-band {
@@ -2645,6 +2634,11 @@ h2 {
     padding-left: 0;
   }
 
+  .evaluator-management-head,
+  .panel-toolbar.evaluator-head-toolbar {
+    flex-wrap: wrap;
+  }
+
   .detail-header-line,
   .version-head,
   .section-head,
@@ -2677,11 +2671,6 @@ h2 {
 
   .mapping-arrow {
     display: none;
-  }
-
-  .task-create-bottom-bar {
-    left: 0;
-    right: 0;
   }
 
   .task-info-row-primary {
@@ -2767,16 +2756,6 @@ h2 {
   .section-index {
     width: 26px;
     height: 26px;
-  }
-
-  .task-create-bottom-bar {
-    flex-wrap: wrap;
-    justify-content: stretch;
-    padding: 12px;
-  }
-
-  .task-create-bottom-bar .el-button {
-    flex: 1 1 120px;
   }
 
   .task-info-row-primary {

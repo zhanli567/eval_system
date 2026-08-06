@@ -1,5 +1,5 @@
 <script setup>
-import { CircleCheck, CircleClose, Clock, CopyDocument, Loading, Plus, Refresh, Search } from '@element-plus/icons-vue';
+import { CircleCheck, CircleClose, Clock, Loading, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useTaskManagement } from '../modules/task/composables/useTaskManagement';
 const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, statusOptions, loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, stopTask, isStartingTask, isStoppingTask, removeTask, canStartTask, canStopTask, canDeleteTask, toggleSort, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
 const statusIcons = {
@@ -35,6 +35,21 @@ function formatNameList(items, picker) {
     } else {
         return items.map((item) => picker(item) || '-').join('、');
     }
+}
+function runTaskActionLabel(row) {
+    return canStopTask(row) ? '停止' : '开始';
+}
+function runTaskActionType(row) {
+    return canStopTask(row) ? 'danger' : 'primary';
+}
+function isRunTaskActionLoading(row) {
+    return canStopTask(row) ? isStoppingTask(row.base.id) : isStartingTask(row.base.id);
+}
+function canRunTaskAction(row) {
+    return canStopTask(row) || canStartTask(row);
+}
+function runTaskAction(row) {
+    return canStopTask(row) ? stopTask(row) : startTask(row);
 }
 </script>
 
@@ -157,24 +172,15 @@ function formatNameList(items, picker) {
       <el-table-column column-key="actions" label="操作" width="260" fixed="right" :resizable="false" align="center">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDetail(row)">详情</el-button>
-          <el-button link type="primary" :icon="CopyDocument" @click.stop="copyTask(row)">复制</el-button>
+          <el-button link type="primary" @click.stop="copyTask(row)">复制</el-button>
           <el-button
             link
-            type="primary"
-            :loading="isStartingTask(row.base.id)"
-            :disabled="!canStartTask(row) || isStartingTask(row.base.id)"
-            @click.stop="startTask(row)"
+            :type="runTaskActionType(row)"
+            :loading="isRunTaskActionLoading(row)"
+            :disabled="!canRunTaskAction(row) || isRunTaskActionLoading(row)"
+            @click.stop="runTaskAction(row)"
           >
-            开始
-          </el-button>
-          <el-button
-            link
-            type="danger"
-            :loading="isStoppingTask(row.base.id)"
-            :disabled="!canStopTask(row) || isStoppingTask(row.base.id)"
-            @click.stop="stopTask(row)"
-          >
-            停止
+            {{ runTaskActionLabel(row) }}
           </el-button>
           <el-button link type="danger" :disabled="!canDeleteTask(row)" @click.stop="removeTask(row)">删除</el-button>
         </template>
