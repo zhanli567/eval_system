@@ -6,7 +6,6 @@ import {
     ArrowLeft,
     ArrowRight,
     ArrowUp,
-    Back,
     ChatLineRound,
     CircleCheckFilled,
     Collection,
@@ -77,7 +76,11 @@ function tagHasAnnotation(tag) {
 
 <template>
   <header class="topbar detail-topbar annotation-topbar">
-    <el-button link type="primary" :icon="Back" class="back-link" @click="backToDetail">返回评测任务详情</el-button>
+    <nav class="page-breadcrumb" aria-label="页面路径">
+      <button type="button" class="page-breadcrumb-link" @click="backToDetail">评测任务详情</button>
+      <span class="page-breadcrumb-separator">/</span>
+      <span class="page-breadcrumb-current">标注</span>
+    </nav>
   </header>
 
   <section class="annotation-shell" :class="{ 'annotation-shell--without-app': !hasAppOutput }" v-loading="loading">

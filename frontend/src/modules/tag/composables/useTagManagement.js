@@ -1,7 +1,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { tagApi } from '../../../api/tag';
-import { getErrorMessage, movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
+import { getErrorMessage, movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
 
 export const tagTypeOptions = [
@@ -113,8 +113,7 @@ function createTagActions(ctx) {
                 size: ctx.tagSize.value,
                 tagType: ctx.tagType.value,
                 keyword: ctx.tagKeyword.value,
-                sortBy: ctx.sortBy.value,
-                sortOrder: ctx.sortOrder.value
+                ...sortParams(ctx.sortBy, ctx.sortOrder)
             });
             ctx.tags.value = page.records;
             ctx.tagTotal.value = page.total;
@@ -253,8 +252,8 @@ export function useTagManagement() {
     const tagSize = ref(10);
     const tagKeyword = ref('');
     const tagType = ref('');
-    const sortBy = ref('lastUpdatedDate');
-    const sortOrder = ref('desc');
+    const sortBy = ref('');
+    const sortOrder = ref('');
     const dialogVisible = ref(false);
     const detailDialogVisible = ref(false);
     const detailLoading = ref(false);

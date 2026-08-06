@@ -1,12 +1,12 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { Back, CircleCheck, CircleClose, Clock, Loading, Refresh, VideoPlay } from '@element-plus/icons-vue';
+import { CircleCheck, CircleClose, Clock, Loading, Refresh } from '@element-plus/icons-vue';
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
 import { formatAgentOutputValue, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
-const { loading, starting, stopping, page, size, base, fields, evaluators, tags, rows, total, canStartTask, canStopTask, loadDetail, backToList, startTask, stopTask, openAnnotation, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
+const { loading, stopping, page, size, base, fields, evaluators, tags, rows, total, canStopTask, loadDetail, backToList, stopTask, openAnnotation, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -94,40 +94,11 @@ function evaluatorMessage(result) {
 
 <template>
   <header class="topbar detail-topbar">
-    <div>
-      <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评测任务列表</el-button>
-      <h1>
-        {{ base?.taskName || '评测任务详情' }}
-        <el-tooltip v-if="base" :content="statusLabel(base.status)" placement="top" effect="light">
-          <el-icon class="task-status-icon task-title-status" :class="statusIconClass(base.status)">
-            <component :is="statusIcon(base.status)" />
-          </el-icon>
-        </el-tooltip>
-      </h1>
-    </div>
-    <div class="top-actions">
-      <el-button :icon="Refresh" @click="loadDetail">刷新</el-button>
-      <el-button
-        v-if="canStartTask"
-        type="primary"
-        :icon="VideoPlay"
-        :loading="starting"
-        :disabled="starting"
-        @click="startTask"
-      >
-        开始
-      </el-button>
-      <el-button
-        v-if="canStopTask"
-        type="danger"
-        :icon="CircleClose"
-        :loading="stopping"
-        :disabled="stopping"
-        @click="stopTask"
-      >
-        停止任务
-      </el-button>
-    </div>
+    <nav class="page-breadcrumb" aria-label="页面路径">
+      <button type="button" class="page-breadcrumb-link" @click="backToList">评测任务</button>
+      <span class="page-breadcrumb-separator">/</span>
+      <OverflowTooltip :content="base?.taskName || '评测任务详情'" tag="span" class="page-breadcrumb-current" />
+    </nav>
   </header>
 
   <section class="task-detail-shell" v-loading="loading">
@@ -214,6 +185,20 @@ function evaluatorMessage(result) {
       <section class="task-data-panel">
         <div class="panel-toolbar">
           <span class="meta">数据明细</span>
+          <div class="table-toolbar-actions">
+            <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadDetail()" />
+            <el-button
+              v-if="canStopTask"
+              type="danger"
+              plain
+              :icon="CircleClose"
+              :loading="stopping"
+              :disabled="stopping"
+              @click="stopTask"
+            >
+              停止任务
+            </el-button>
+          </div>
         </div>
 
         <el-table :data="rows" row-key="id" border height="100%" tooltip-effect="light" class="task-detail-table">
@@ -257,7 +242,7 @@ function evaluatorMessage(result) {
               />
             </template>
           </el-table-column>
-          <el-table-column label="结果" width="120" :resizable="false">
+          <el-table-column label="结果" width="120" :resizable="false" align="center">
             <template #default="{ row }">
               <template v-if="isScoredEvaluatorResult(findEvaluatorResult(row, evaluator.taskEvaluatorId))">
                 <el-tag :type="passTagType(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.passResult)" effect="plain">
@@ -271,7 +256,7 @@ function evaluatorMessage(result) {
               </el-tooltip>
             </template>
           </el-table-column>
-          <el-table-column label="得分" width="110" :resizable="false">
+          <el-table-column label="得分" width="110" :resizable="false" align="center">
             <template #default="{ row }">
               <OverflowTooltip :content="findEvaluatorResult(row, evaluator.taskEvaluatorId)?.score ?? '-'" />
             </template>

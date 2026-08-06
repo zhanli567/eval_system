@@ -1,5 +1,5 @@
 <script setup>
-import { Back, Plus, Promotion, Refresh, Delete } from '@element-plus/icons-vue';
+import { Plus, Promotion, Refresh, Delete } from '@element-plus/icons-vue';
 import { useEvaluatorEditor } from '../modules/evaluator/composables/useEvaluatorEditor';
 const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, removeVersion, switchType, addParam, removeParam, backToList, formatTime } = useEvaluatorEditor();
 </script>
@@ -7,8 +7,11 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
 <template>
   <header class="topbar detail-topbar">
     <div>
-      <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评估器列表</el-button>
-      <h1>{{ pageTitle }}</h1>
+      <nav class="page-breadcrumb" aria-label="页面路径">
+        <button type="button" class="page-breadcrumb-link" @click="backToList">评估器</button>
+        <span class="page-breadcrumb-separator">/</span>
+        <OverflowTooltip :content="pageTitle" tag="span" class="page-breadcrumb-current" />
+      </nav>
       <span v-if="isEdit && activeVersion" class="meta">
         当前版本 {{ activeVersion.versionName }} · {{ activeVersion.draft ? '草稿可编辑' : '发布版本只读' }}
       </span>

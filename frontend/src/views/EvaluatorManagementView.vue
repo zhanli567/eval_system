@@ -61,9 +61,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         </el-table-column>
         <el-table-column prop="evaluatorType" label="类型" min-width="130" :resizable="false" align="center">
           <template #default="{ row }">
-            <el-tag size="small" effect="plain">
-              <OverflowTooltip :content="typeLabel(row.evaluatorType)" />
-            </el-tag>
+            <OverflowTooltip :content="typeLabel(row.evaluatorType)" />
           </template>
         </el-table-column>
         <el-table-column prop="latestVersionName" label="最新版本" min-width="130" :resizable="false" align="center">

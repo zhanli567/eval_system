@@ -25,10 +25,10 @@ defineEmits(['toggle']);
 
 const active = computed(() => props.sortBy === props.field);
 const nextOrderLabel = computed(() => {
-    if (active.value && props.sortOrder === 'desc') {
-        return '升序';
-    } else {
+    if (active.value && props.sortOrder === 'asc') {
         return '降序';
+    } else {
+        return '升序';
     }
 });
 const ariaLabel = computed(() => `${props.label}，点击${nextOrderLabel.value}`);

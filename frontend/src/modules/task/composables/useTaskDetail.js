@@ -6,7 +6,6 @@ import { formatDateTime } from '../../../utils/formatters';
 import { passTagType, statusLabel, tagTypeLabel } from '../../../utils/taskLabels';
 import { formatTaskAppBinding } from '../../../utils/taskAppBinding';
 
-const STARTABLE_STATUSES = ['pending', 'failed', 'stopped'];
 const STOPPABLE_STATUSES = ['running'];
 
 async function loadTaskDetail(ctx, options = {}) {
@@ -32,7 +31,7 @@ function startTaskPolling(ctx) {
         return;
     }
     ctx.pollTimer = window.setInterval(() => {
-        if (!ctx.loading.value && !ctx.starting.value) {
+        if (!ctx.loading.value) {
             ctx.loadDetail({ silent: true });
         }
     }, 60000);
@@ -56,20 +55,6 @@ function createTaskDetailActions(ctx, router) {
     }
     function backToList() {
         router.push({ name: 'tasks' });
-    }
-    async function startTask() {
-        if (!ctx.taskId.value) {
-            return;
-        }
-        ctx.starting.value = true;
-        try {
-            ctx.detail.value = await taskApi.startTask(ctx.taskId.value);
-            ElMessage.success('评测任务已开始');
-            startPolling();
-        }
-        finally {
-            ctx.starting.value = false;
-        }
     }
     async function stopTask() {
         if (!ctx.taskId.value) {
@@ -107,7 +92,7 @@ function createTaskDetailActions(ctx, router) {
             query: { mode }
         });
     }
-    return { loadDetail, changeSize, backToList, startTask, stopTask, startPolling, stopPolling, openAnnotation };
+    return { loadDetail, changeSize, backToList, stopTask, startPolling, stopPolling, openAnnotation };
 }
 
 function hasTagBindings(ctx) {
@@ -136,12 +121,11 @@ function syncPollingByStatus(status, actions) {
 export function useTaskDetail(taskId) {
     const router = useRouter();
     const loading = ref(false);
-    const starting = ref(false);
     const stopping = ref(false);
     const detail = ref();
     const page = ref(1);
     const size = ref(10);
-    const ctx = { taskId, loading, starting, stopping, detail, page, size, pollTimer: undefined };
+    const ctx = { taskId, loading, stopping, detail, page, size, pollTimer: undefined };
     const actions = createTaskDetailActions(ctx, router);
     ctx.loadDetail = actions.loadDetail;
     const base = computed(() => taskBase(detail.value));
@@ -150,7 +134,6 @@ export function useTaskDetail(taskId) {
     const tags = computed(() => taskTags(detail.value));
     const rows = computed(() => taskRows(detail.value));
     const total = computed(() => taskTotal(detail.value));
-    const canStartTask = computed(() => STARTABLE_STATUSES.includes(base.value?.status));
     const canStopTask = computed(() => STOPPABLE_STATUSES.includes(base.value?.status));
     watch(taskId, async () => {
         await actions.loadDetail();
@@ -163,7 +146,6 @@ export function useTaskDetail(taskId) {
     const formatTime = formatDateTime;
     return {
         loading,
-        starting,
         stopping,
         detail,
         page,
@@ -174,11 +156,9 @@ export function useTaskDetail(taskId) {
         tags,
         rows,
         total,
-        canStartTask,
         canStopTask,
         loadDetail: actions.loadDetail,
         backToList: actions.backToList,
-        startTask: actions.startTask,
         stopTask: actions.stopTask,
         openAnnotation: actions.openAnnotation,
         changeSize: actions.changeSize,

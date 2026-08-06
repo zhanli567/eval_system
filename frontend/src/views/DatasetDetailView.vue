@@ -1,28 +1,20 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { ArrowDown, Back, Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
+import { ArrowDown, Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useDatasetDetail } from '../modules/dataset/composables/useDatasetDetail';
 const route = useRoute();
 const datasetId = computed(() => String(route.params.datasetId ?? ''));
-const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, tablePage, tableSize, searchFieldId, searchKeyword, fieldVisible, rowVisible, rowEditingId, excelInput, coverExcelInput, draggedFieldIndex, dragOverFieldIndex, fieldForm, rowForm, activeVersion, isDraft, tableRows, tableTotal, fields, dataTableKey, loadDataset, selectVersion, loadDetail, changeTableSize, backToList, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, openFieldDialog, submitFields, openRowDialog, submitRow, removeRow, handleAddDataCommand, importExcel, coverExcel, publishDraft, removeVersion, coverDraft, formatTime } = useDatasetDetail(datasetId);
+const { detailLoading, datasetTitle, versions, activeVersionId, tablePage, tableSize, searchFieldId, searchKeyword, fieldVisible, rowVisible, rowEditingId, excelInput, coverExcelInput, draggedFieldIndex, dragOverFieldIndex, fieldForm, rowForm, activeVersion, isDraft, tableRows, tableTotal, fields, dataTableKey, loadDataset, selectVersion, loadDetail, changeTableSize, backToList, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, openFieldDialog, submitFields, openRowDialog, submitRow, removeRow, handleAddDataCommand, importExcel, coverExcel, publishDraft, removeVersion, coverDraft, formatTime } = useDatasetDetail(datasetId);
 </script>
 
 <template>
   <header class="topbar detail-topbar">
-    <div>
-      <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评测集列表</el-button>
-      <h1 class="dataset-detail-heading" :class="{ 'has-description': datasetSummary?.description }">
-        <span class="dataset-detail-name" :title="datasetTitle">{{ datasetTitle }}</span>
-        <template v-if="datasetSummary?.description">
-          <span class="dataset-detail-separator">-</span>
-          <span class="dataset-detail-description" :title="datasetSummary.description">{{ datasetSummary.description }}</span>
-        </template>
-      </h1>
-    </div>
-    <div class="top-actions">
-      <el-button :icon="Refresh" @click="loadDataset">刷新</el-button>
-    </div>
+    <nav class="page-breadcrumb" aria-label="页面路径">
+      <button type="button" class="page-breadcrumb-link" @click="backToList">评测集</button>
+      <span class="page-breadcrumb-separator">/</span>
+      <OverflowTooltip :content="datasetTitle" tag="span" class="page-breadcrumb-current" />
+    </nav>
   </header>
 
   <section v-if="versions.length" class="detail-panel standalone-detail-panel fill-workspace">
@@ -85,6 +77,9 @@ const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, 
         </el-select>
         <el-input v-model="searchKeyword" clearable placeholder="请输入关键词" class="search-input" @keyup.enter="loadDetail" />
         <el-button class="search-icon-button" :icon="Search" title="筛选" aria-label="筛选" @click="loadDetail" />
+        <div class="table-toolbar-actions">
+          <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadDataset" />
+        </div>
       </div>
 
       <el-table :key="dataTableKey" :data="tableRows" row-key="id" border height="100%" tooltip-effect="light" class="data-table">

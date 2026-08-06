@@ -2,7 +2,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { evaluatorApi } from '../../../api/evaluator';
-import { movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
+import { movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
 
 function presetParams(page, size, categoryId, keyword) {
@@ -35,8 +35,7 @@ function createCustomActions(ctx) {
                 size: ctx.customSize.value,
                 evaluatorType: ctx.customType.value,
                 keyword: ctx.customKeyword.value,
-                sortBy: ctx.customSortBy.value,
-                sortOrder: ctx.customSortOrder.value
+                ...sortParams(ctx.customSortBy, ctx.customSortOrder)
             });
             ctx.customEvaluators.value = page.records;
             ctx.customTotal.value = page.total;
@@ -186,8 +185,8 @@ export function useEvaluatorManagement() {
     const customSize = ref(10);
     const customKeyword = ref('');
     const customType = ref('');
-    const customSortBy = ref('lastUpdatedDate');
-    const customSortOrder = ref('desc');
+    const customSortBy = ref('');
+    const customSortOrder = ref('');
     const categories = ref([]);
     const activeCategoryId = ref('');
     const presetLoading = ref(false);

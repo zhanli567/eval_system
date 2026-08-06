@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { taskApi } from '../../../api/task';
 import { formatDateTime } from '../../../utils/formatters';
-import { movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
+import { movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 import { TASK_STATUS_OPTIONS, statusLabel } from '../../../utils/taskLabels';
 import { formatTaskAppBinding } from '../../../utils/taskAppBinding';
 
@@ -22,8 +22,7 @@ async function loadTaskPage(state, options = {}) {
             size: state.size.value,
             keyword: state.keyword.value,
             status: state.status.value,
-            sortBy: state.sortBy.value,
-            sortOrder: state.sortOrder.value
+            ...sortParams(state.sortBy, state.sortOrder)
         });
         state.tasks.value = result.records;
         state.total.value = result.total;
@@ -207,8 +206,8 @@ export function useTaskManagement() {
     const size = ref(10);
     const keyword = ref('');
     const status = ref('');
-    const sortBy = ref('lastUpdatedDate');
-    const sortOrder = ref('desc');
+    const sortBy = ref('');
+    const sortOrder = ref('');
     const state = { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder };
     const ctx = { state, loading, pollTimer: undefined, startingTaskIds, stoppingTaskIds };
     const actions = createTaskManagementActions(ctx, router);

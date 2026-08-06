@@ -6,8 +6,16 @@ export function getErrorMessage(error, fallback) {
 }
 
 export function toggleDescSort(sortBy, sortOrder, field) {
-    sortOrder.value = sortBy.value === field && sortOrder.value === 'desc' ? 'asc' : 'desc';
+    sortOrder.value = sortBy.value === field && sortOrder.value === 'asc' ? 'desc' : 'asc';
     sortBy.value = field;
+}
+
+export function sortParams(sortBy, sortOrder) {
+    if (sortBy.value) {
+        return { sortBy: sortBy.value, sortOrder: sortOrder.value || 'asc' };
+    } else {
+        return {};
+    }
 }
 
 export function movePreviousPageIfLastRow(records, page) {

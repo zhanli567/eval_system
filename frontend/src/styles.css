@@ -261,16 +261,52 @@ body {
 }
 
 .detail-topbar {
-  align-items: flex-end;
+  align-items: center;
 }
 
 .detail-topbar > div:first-child {
   min-width: 0;
 }
 
-.back-link {
-  margin: 0 0 8px -4px;
-  padding-left: 0;
+.page-breadcrumb {
+  display: flex;
+  align-items: center;
+  max-width: min(920px, 100%);
+  min-width: 0;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.page-breadcrumb-link {
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--muted);
+  font: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.page-breadcrumb-link:hover,
+.page-breadcrumb-link:focus {
+  color: var(--accent);
+}
+
+.page-breadcrumb-separator {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.page-breadcrumb-current {
+  display: inline-block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 h1,
@@ -281,42 +317,6 @@ h2 {
 
 h1 {
   font-size: 26px;
-}
-
-.dataset-detail-heading {
-  display: flex;
-  align-items: baseline;
-  max-width: min(760px, 100%);
-  min-width: 0;
-  gap: 8px;
-}
-
-.dataset-detail-name,
-.dataset-detail-description {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dataset-detail-name {
-  flex: 0 1 auto;
-  max-width: 100%;
-}
-
-.dataset-detail-heading.has-description .dataset-detail-name {
-  max-width: 55%;
-}
-
-.dataset-detail-separator,
-.dataset-detail-description {
-  color: var(--muted);
-  font-size: 16px;
-  font-weight: 400;
-}
-
-.dataset-detail-description {
-  flex: 1 1 auto;
 }
 
 h2 {
@@ -962,8 +962,8 @@ h2 {
   padding-right: 0;
   padding-left: 0;
   color: var(--muted);
-  background: transparent;
-  border-color: transparent;
+  background: #fff;
+  border-color: var(--line);
   box-shadow: none;
 }
 
@@ -971,7 +971,7 @@ h2 {
 .toolbar-icon-button:focus {
   color: var(--accent);
   background: var(--accent-soft);
-  border-color: transparent;
+  border-color: #bfdbfe;
 }
 
 .sortable-header {
@@ -1406,10 +1406,6 @@ h2 {
 .task-status-icon {
   font-size: 19px;
   vertical-align: middle;
-}
-
-.task-title-status {
-  margin-left: 8px;
 }
 
 .task-status-icon.is-pending {
@@ -1893,10 +1889,6 @@ h2 {
 
 .annotation-topbar {
   margin-bottom: 12px;
-}
-
-.annotation-topbar .back-link {
-  margin-bottom: 0;
 }
 
 .task-dimension-summary {
