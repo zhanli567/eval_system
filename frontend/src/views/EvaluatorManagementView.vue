@@ -1,21 +1,11 @@
 <script setup>
-import { DataAnalysis, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
+import { DataAnalysis, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useEvaluatorManagement } from '../modules/evaluator/composables/useEvaluatorManagement';
 import { formatPromptBlock } from '../utils/textBlocks';
 const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, loadCustomEvaluators, searchCustom, changeCustomSize, toggleCustomSort, loadPresetEvaluators, searchPreset, changePresetSize, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, changePickerSize, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, typeLabel, formatTime } = useEvaluatorManagement();
 </script>
 
 <template>
-  <header class="topbar">
-    <div>
-      <h1>评估器管理</h1>
-    </div>
-    <div class="top-actions">
-      <el-button :icon="Refresh" @click="activeTab === 'custom' ? loadCustomEvaluators() : loadPresetEvaluators()">刷新</el-button>
-      <el-button type="primary" :icon="Plus" @click="openPicker">创建评估器</el-button>
-    </div>
-  </header>
-
   <section class="evaluator-panel fill-workspace">
     <div class="evaluator-tabs">
       <button :class="{ active: activeTab === 'custom' }" @click="activeTab = 'custom'">自定义</button>
@@ -41,13 +31,9 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
           </template>
         </el-input>
         <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchCustom" />
-        <div class="task-sort-actions">
-          <el-button :class="{ active: customSortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleCustomSort('lastUpdatedDate')">
-            更新时间 {{ customSortBy === 'lastUpdatedDate' ? (customSortOrder === 'desc' ? '降序' : '升序') : '' }}
-          </el-button>
-          <el-button :class="{ active: customSortBy === 'createdDate' }" :icon="Sort" @click="toggleCustomSort('createdDate')">
-            创建时间 {{ customSortBy === 'createdDate' ? (customSortOrder === 'desc' ? '降序' : '升序') : '' }}
-          </el-button>
+        <div class="table-toolbar-actions">
+          <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadCustomEvaluators" />
+          <el-button type="primary" :icon="Plus" @click="openPicker">创建评估器</el-button>
         </div>
       </div>
 
@@ -95,7 +81,16 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             <OverflowTooltip :content="row.createdByName || '-'" />
           </template>
         </el-table-column>
-        <el-table-column prop="createdDate" label="创建时间" min-width="190" :resizable="false" align="center">
+        <el-table-column prop="createdDate" min-width="190" :resizable="false" align="center">
+          <template #header>
+            <SortableHeader
+              label="创建时间"
+              field="createdDate"
+              :sort-by="customSortBy"
+              :sort-order="customSortOrder"
+              @toggle="toggleCustomSort"
+            />
+          </template>
           <template #default="{ row }">
             <OverflowTooltip :content="formatTime(row.createdDate)" />
           </template>
@@ -105,7 +100,16 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             <OverflowTooltip :content="row.lastUpdatedByName || '-'" />
           </template>
         </el-table-column>
-        <el-table-column prop="lastUpdatedDate" label="更新时间" min-width="190" :resizable="false" align="center">
+        <el-table-column prop="lastUpdatedDate" min-width="190" :resizable="false" align="center">
+          <template #header>
+            <SortableHeader
+              label="更新时间"
+              field="lastUpdatedDate"
+              :sort-by="customSortBy"
+              :sort-order="customSortOrder"
+              @toggle="toggleCustomSort"
+            />
+          </template>
           <template #default="{ row }">
             <OverflowTooltip :content="formatTime(row.lastUpdatedDate)" />
           </template>
@@ -159,6 +163,10 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
               </template>
             </el-input>
             <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchPreset" />
+            <div class="table-toolbar-actions">
+              <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadPresetEvaluators" />
+              <el-button type="primary" :icon="Plus" @click="openPicker">创建评估器</el-button>
+            </div>
           </div>
 
           <div v-loading="presetLoading" class="preset-grid">

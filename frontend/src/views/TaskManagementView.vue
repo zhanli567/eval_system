@@ -1,5 +1,5 @@
 <script setup>
-import { CircleCheck, CircleClose, Clock, CopyDocument, Loading, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
+import { CircleCheck, CircleClose, Clock, CopyDocument, Loading, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useTaskManagement } from '../modules/task/composables/useTaskManagement';
 const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, statusOptions, loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, stopTask, isStartingTask, isStoppingTask, removeTask, canStartTask, canStopTask, canDeleteTask, toggleSort, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
 const statusIcons = {
@@ -30,23 +30,15 @@ function formatTagList(tags) {
     return formatNameList(tags, (item) => item.tagName);
 }
 function formatNameList(items, picker) {
-    if (!items?.length)
+    if (!items?.length) {
         return '-';
-    return items.map((item) => picker(item) || '-').join('、');
+    } else {
+        return items.map((item) => picker(item) || '-').join('、');
+    }
 }
 </script>
 
 <template>
-  <header class="topbar">
-    <div>
-      <h1>评测任务</h1>
-    </div>
-    <div class="top-actions">
-      <el-button :icon="Refresh" @click="loadTasks">刷新</el-button>
-      <el-button type="primary" :icon="Plus" @click="openCreate">创建评测任务</el-button>
-    </div>
-  </header>
-
   <section class="task-panel">
     <div class="panel-toolbar task-toolbar">
       <el-select v-model="status" clearable placeholder="全部状态" class="field-select" @change="searchTasks">
@@ -67,13 +59,9 @@ function formatNameList(items, picker) {
         </template>
       </el-input>
       <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchTasks" />
-      <div class="task-sort-actions">
-        <el-button :class="{ active: sortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleSort('lastUpdatedDate')">
-          更新时间 {{ sortBy === 'lastUpdatedDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
-        </el-button>
-        <el-button :class="{ active: sortBy === 'createdDate' }" :icon="Sort" @click="toggleSort('createdDate')">
-          创建时间 {{ sortBy === 'createdDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
-        </el-button>
+      <div class="table-toolbar-actions">
+        <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadTasks" />
+        <el-button type="primary" :icon="Plus" @click="openCreate">创建评测任务</el-button>
       </div>
     </div>
 
@@ -138,9 +126,32 @@ function formatNameList(items, picker) {
           <OverflowTooltip :content="row.base.createdByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdDate" label="创建时间" min-width="190" :resizable="false" align="center">
+      <el-table-column prop="createdDate" min-width="190" :resizable="false" align="center">
+        <template #header>
+          <SortableHeader
+            label="创建时间"
+            field="createdDate"
+            :sort-by="sortBy"
+            :sort-order="sortOrder"
+            @toggle="toggleSort"
+          />
+        </template>
         <template #default="{ row }">
           <OverflowTooltip :content="formatTime(row.base.createdDate)" />
+        </template>
+      </el-table-column>
+      <el-table-column prop="lastUpdatedDate" min-width="190" :resizable="false" align="center">
+        <template #header>
+          <SortableHeader
+            label="更新时间"
+            field="lastUpdatedDate"
+            :sort-by="sortBy"
+            :sort-order="sortOrder"
+            @toggle="toggleSort"
+          />
+        </template>
+        <template #default="{ row }">
+          <OverflowTooltip :content="formatTime(row.base.lastUpdatedDate)" />
         </template>
       </el-table-column>
       <el-table-column column-key="actions" label="操作" width="260" fixed="right" :resizable="false" align="center">

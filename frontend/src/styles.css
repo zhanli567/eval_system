@@ -225,7 +225,7 @@ body {
   min-height: 0;
   min-width: 0;
   overflow-y: auto;
-  padding: clamp(14px, 2vw, 24px) clamp(14px, 2.4vw, 28px) clamp(24px, 4vw, 40px);
+  padding: clamp(14px, 2vw, 24px) clamp(14px, 2.4vw, 28px);
 }
 
 .workspace-loading {
@@ -949,6 +949,73 @@ h2 {
   padding-left: 0;
 }
 
+.table-toolbar-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.toolbar-icon-button {
+  width: 34px;
+  padding-right: 0;
+  padding-left: 0;
+  color: var(--muted);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.toolbar-icon-button:hover,
+.toolbar-icon-button:focus {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+
+.sortable-header {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-width: 0;
+  gap: 6px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.sortable-header-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sortable-header-icon {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-rows: 9px 9px;
+  align-items: center;
+  width: 14px;
+}
+
+.sort-caret {
+  width: 14px;
+  height: 9px;
+  color: #9aa3b8;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.sort-caret.active {
+  color: var(--accent);
+}
+
 .field-select {
   flex: 0 1 180px;
   width: min(180px, 100%);
@@ -1334,18 +1401,6 @@ h2 {
 .task-toolbar {
   justify-content: space-between;
   flex-wrap: wrap;
-}
-
-.task-sort-actions {
-  display: flex;
-  gap: 10px;
-  margin-left: auto;
-}
-
-.task-sort-actions .active {
-  color: var(--accent);
-  border-color: #bfdbfe;
-  background: var(--accent-soft);
 }
 
 .task-status-icon {
@@ -2433,7 +2488,7 @@ h2 {
     width: 132px;
   }
 
-  .task-sort-actions {
+  .table-toolbar-actions {
     flex-wrap: wrap;
   }
 
@@ -2656,7 +2711,7 @@ h2 {
     width: 100%;
   }
 
-  .task-sort-actions {
+  .table-toolbar-actions {
     width: 100%;
     margin-left: 0;
   }
