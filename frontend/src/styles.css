@@ -91,7 +91,10 @@ body {
 }
 
 .header-right {
+  display: flex;
   flex: 0 1 220px;
+  align-items: center;
+  justify-content: flex-end;
   min-width: 220px;
 }
 
