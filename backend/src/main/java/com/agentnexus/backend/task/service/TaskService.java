@@ -1440,16 +1440,8 @@ public class TaskService {
           "",
           "LLM评估器未绑定模型名称");
     }
-    PreparedEvaluationInput prepared = prepareEvaluationInput(config, mappings, values, appOutputs);
-    if (StringUtils.hasText(prepared.errorMessage())) {
-      return new EvaluationSimulationResult(
-          STATUS_FAILED,
-          null,
-          "",
-          "",
-          prepared.errorMessage());
-    }
-    String renderedPrompt = renderPrompt(config.prompt(), prepared.params());
+    Map<String, Object> preparedParams = prepareEvaluationInput(config, mappings, values, appOutputs);
+    String renderedPrompt = renderPrompt(config.prompt(), preparedParams);
     ModelChatResult response = remoteCallService.chatModel(config.modelId(), config.modelName(), renderedPrompt);
     if (response == null || !StringUtils.hasText(response.outputText())) {
       return new EvaluationSimulationResult(
@@ -1499,7 +1491,7 @@ public class TaskService {
     return reason + "\n" + notice;
   }
 
-  private PreparedEvaluationInput prepareEvaluationInput(
+  private Map<String, Object> prepareEvaluationInput(
       EvaluationRuntimeConfig config,
       List<TaskEvaluatorParamMappingRecord> mappings,
       Map<String, String> values,
@@ -1515,16 +1507,11 @@ public class TaskService {
         value = param.defaultValue();
       }
       if (!StringUtils.hasText(value)) {
-        if (Boolean.TRUE.equals(param.required())) {
-          return new PreparedEvaluationInput(
-              params,
-              "必填参数未完成映射或数据为空：" + param.paramName());
-        }
-        continue;
+        value = "";
       }
       params.put(param.paramName(), value);
     }
-    return new PreparedEvaluationInput(params, "");
+    return params;
   }
 
   private String resolveMappingValue(
@@ -1919,12 +1906,6 @@ public class TaskService {
   private record ItemExecutionResult(
       boolean failed,
       Set<String> failedEvaluatorIds
-  ) {
-  }
-
-  private record PreparedEvaluationInput(
-      Map<String, Object> params,
-      String errorMessage
   ) {
   }
 
