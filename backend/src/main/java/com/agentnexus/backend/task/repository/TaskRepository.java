@@ -170,6 +170,20 @@ public class TaskRepository {
   }
 
   /**
+   * 返回评测任务是否已绑定指定标签。
+   *
+   * @param taskId 评测任务ID
+   * @param tagId 标签ID
+   * @return 返回评测任务是否已绑定指定标签
+   */
+  public boolean existsTaskTag(String taskId, String tagId) {
+    return taskTagMapper.selectCount(new LambdaQueryWrapper<EvalTaskTag>()
+        .eq(EvalTaskTag::getSpaceId, currentSpaceId())
+        .eq(EvalTaskTag::getTaskId, taskId)
+        .eq(EvalTaskTag::getTagId, tagId)) > 0;
+  }
+
+  /**
    * 根据任务ID查询用于复制的评测任务基础信息。
    *
    * @param taskId 评测任务ID
@@ -282,6 +296,16 @@ public class TaskRepository {
     paramMappingMapper.insert(mapping);
   }
 
+  /**
+   * 保存评测任务与标签的绑定关系。
+   *
+   * @param id 任务标签ID
+   * @param taskId 评测任务ID
+   * @param tagId 标签ID
+   * @param status 标签状态
+   * @param displayOrder 展示顺序
+   * @param now 更新时间
+   */
   public void insertTaskTag(String id, String taskId, String tagId, String status, int displayOrder, String now) {
     EvalTaskTag tag = new EvalTaskTag();
     tag.setId(id);
@@ -292,6 +316,25 @@ public class TaskRepository {
     tag.setLastUpdatedDate(toLastUpdatedDate(now));
     fillCreated(tag);
     taskTagMapper.insert(tag);
+  }
+
+  /**
+   * 返回评测任务下一个标签展示顺序。
+   *
+   * @param taskId 评测任务ID
+   * @return 下一个标签展示顺序
+   */
+  public int nextTaskTagDisplayOrder(String taskId) {
+    EvalTaskTag tag = taskTagMapper.selectOne(new LambdaQueryWrapper<EvalTaskTag>()
+        .eq(EvalTaskTag::getSpaceId, currentSpaceId())
+        .eq(EvalTaskTag::getTaskId, taskId)
+        .orderByDesc(EvalTaskTag::getDisplayOrder)
+        .last("LIMIT 1"));
+    if (tag == null || tag.getDisplayOrder() == null) {
+      return 1;
+    } else {
+      return tag.getDisplayOrder() + 1;
+    }
   }
 
   public void insertTaskItem(
@@ -383,6 +426,23 @@ public class TaskRepository {
     taskMapper.delete(new LambdaQueryWrapper<EvalTask>()
         .eq(EvalTask::getSpaceId, currentSpaceId())
         .eq(EvalTask::getId, taskId));
+  }
+
+  /**
+   * 删除评测任务标签及其标注结果。
+   *
+   * @param taskId 评测任务ID
+   * @param taskTagId 任务标签ID
+   */
+  public void deleteTaskTag(String taskId, String taskTagId) {
+    tagResultMapper.delete(new LambdaQueryWrapper<EvalTaskTagResult>()
+        .eq(EvalTaskTagResult::getSpaceId, currentSpaceId())
+        .eq(EvalTaskTagResult::getTaskId, taskId)
+        .eq(EvalTaskTagResult::getTaskTagId, taskTagId));
+    taskTagMapper.delete(new LambdaQueryWrapper<EvalTaskTag>()
+        .eq(EvalTaskTag::getSpaceId, currentSpaceId())
+        .eq(EvalTaskTag::getTaskId, taskId)
+        .eq(EvalTaskTag::getId, taskTagId));
   }
 
   public void updateTaskStatus(String taskId, String status, String startedAt, String finishedAt, String now) {
@@ -767,6 +827,21 @@ public class TaskRepository {
   public List<TaskTagBindingRecord> listTaskTagBindings(String taskId) {
     return CurrentSpaceHolder.callWithSpace(currentSpaceId(), () ->
         taskMapper.listTaskTagBindings(currentSpaceId(), taskId));
+  }
+
+  /**
+   * 查询评测任务已绑定的指定标签。
+   *
+   * @param taskId 评测任务ID
+   * @param taskTagId 任务标签ID
+   * @return 任务标签绑定，不存在时返回null
+   */
+  public TaskTagBindingRecord findTaskTagBinding(String taskId, String taskTagId) {
+    return listTaskTagBindings(taskId)
+        .stream()
+        .filter(tag -> Objects.equals(tag.id(), taskTagId))
+        .findFirst()
+        .orElse(null);
   }
 
   public TaskItemRecord findTaskItem(String taskItemId) {

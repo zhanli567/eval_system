@@ -1,12 +1,19 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { tagApi } from '../../../api/tag';
 import { taskApi } from '../../../api/task';
 import { formatDateTime } from '../../../utils/formatters';
 import { passTagType, statusLabel, tagTypeLabel } from '../../../utils/taskLabels';
 import { formatTaskAppBinding } from '../../../utils/taskAppBinding';
 
 const STOPPABLE_STATUSES = ['running'];
+const TASK_TAG_TYPE_OPTIONS = [
+    { value: 'category', label: '分类' },
+    { value: 'boolean', label: '布尔' },
+    { value: 'number', label: '数字' },
+    { value: 'text', label: '文本' }
+];
 
 async function loadTaskDetail(ctx, options = {}) {
     if (!ctx.taskId.value) {
@@ -18,8 +25,7 @@ async function loadTaskDetail(ctx, options = {}) {
     }
     try {
         ctx.detail.value = await taskApi.getTask(ctx.taskId.value, { page: ctx.page.value, size: ctx.size.value });
-    }
-    finally {
+    } finally {
         if (!silent) {
             ctx.loading.value = false;
         }
@@ -70,8 +76,7 @@ function createTaskDetailActions(ctx, router) {
             ctx.detail.value = await taskApi.stopTask(ctx.taskId.value);
             ElMessage.success('评测任务已停止');
             stopPolling();
-        }
-        finally {
+        } finally {
             ctx.stopping.value = false;
         }
     }
@@ -83,9 +88,6 @@ function createTaskDetailActions(ctx, router) {
     }
     function openAnnotation(row) {
         const mode = canAnnotateItem(ctx, row) ? 'annotate' : 'detail';
-        openTaskItem(row, mode);
-    }
-    function openTaskItem(row, mode) {
         router.push({
             name: 'task-annotation',
             params: { taskId: ctx.taskId.value, taskItemId: row.id },
@@ -93,6 +95,64 @@ function createTaskDetailActions(ctx, router) {
         });
     }
     return { loadDetail, changeSize, backToList, stopTask, startPolling, stopPolling, openAnnotation };
+}
+
+function createTagActions(ctx, router) {
+    async function loadAllTags() {
+        ctx.tagLoading.value = true;
+        try {
+            const page = await tagApi.listTags({ page: 1, size: 100 });
+            ctx.allTags.value = page.records;
+        } finally {
+            ctx.tagLoading.value = false;
+        }
+    }
+    async function openTagDrawer() {
+        ctx.tagDrawerVisible.value = true;
+        await loadAllTags();
+    }
+    async function addTaskTag(tag) {
+        if (!tag?.id) {
+            return;
+        }
+        await taskApi.addTaskTag(ctx.taskId.value, tag.id);
+        ElMessage.success('标签已添加');
+        await ctx.loadDetail();
+    }
+    async function removeTaskTagByTag(tag) {
+        const binding = findTaskTagByTagId(ctx.detail.value?.tags ?? [], tag?.id);
+        if (!binding) {
+            return;
+        }
+        await removeTaskTag(binding);
+    }
+    async function removeTaskTag(tag) {
+        await confirmTaskTagRemove(tag);
+        await taskApi.deleteTaskTag(ctx.taskId.value, tag.taskTagId);
+        ElMessage.success('标签已移除');
+        await ctx.loadDetail();
+    }
+    function openTagManagement() {
+        router.push({ name: 'tags' });
+    }
+    return { loadAllTags, openTagDrawer, addTaskTag, removeTaskTagByTag, removeTaskTag, openTagManagement };
+}
+
+function confirmTaskTagRemove(tag) {
+    return ElMessageBox.confirm(
+        '请注意，删除后，所有已经录入的该标签均会删除',
+        `是否确认删除标签：${tag?.tagName || '-'}`,
+        {
+            type: 'warning',
+            confirmButtonText: '删除',
+            cancelButtonText: '取消',
+            confirmButtonClass: 'el-button--danger'
+        }
+    );
+}
+
+function findTaskTagByTagId(tags, tagId) {
+    return tags.find((item) => item.tagId === tagId);
 }
 
 function hasTagBindings(ctx) {
@@ -115,57 +175,242 @@ const taskRows = (detail) => detail?.items.records ?? [];
 const taskTotal = (detail) => detail?.items.total ?? 0;
 
 function syncPollingByStatus(status, actions) {
-    status === 'running' ? actions.startPolling() : actions.stopPolling();
+    if (status === 'running') {
+        actions.startPolling();
+    } else {
+        actions.stopPolling();
+    }
+}
+
+function createDefaultColumnSettings(detail) {
+    return [
+        ...taskFields(detail).map((field) => tableColumn('field', field.id, field.fieldName || '评测集字段')),
+        ...createAppOutputColumn(detail),
+        ...taskEvaluators(detail).map((evaluator) => tableColumn('evaluator', evaluator.taskEvaluatorId, evaluatorLabel(evaluator))),
+        ...taskTags(detail).map((tag) => tableColumn('tag', tag.taskTagId, tag.tagName || '标签'))
+    ];
+}
+
+function createAppOutputColumn(detail) {
+    if (taskBase(detail)?.appType === 'agent') {
+        return [tableColumn('appOutput', 'appOutput', '应用输出')];
+    } else {
+        return [];
+    }
+}
+
+function tableColumn(type, refId, label) {
+    return { id: `${type}:${refId}`, type, refId, label, visible: true };
+}
+
+function evaluatorLabel(evaluator) {
+    return `${evaluator.evaluatorName || '-'} / ${evaluator.versionName || '-'}`;
+}
+
+function syncColumnSettings(ctx) {
+    ctx.columnSettings.value = syncColumnSettingList(ctx.columnSettings.value, ctx.detail.value);
+    ctx.columnSettingDraft.value = syncColumnSettingList(ctx.columnSettingDraft.value, ctx.detail.value);
+}
+
+function syncColumnSettingList(currentColumns, detail) {
+    const nextColumns = createDefaultColumnSettings(detail);
+    const currentById = new Map(currentColumns.map((item) => [item.id, item]));
+    const nextById = new Map(nextColumns.map((item) => [item.id, item]));
+    const ordered = currentColumns
+        .map((item) => mergeColumnSetting(nextById.get(item.id), item))
+        .filter(Boolean);
+    const appended = nextColumns
+        .filter((item) => !currentById.has(item.id))
+        .map((item) => mergeColumnSetting(item));
+    return [...ordered, ...appended];
+}
+
+function mergeColumnSetting(nextColumn, currentColumn) {
+    if (!nextColumn) {
+        return null;
+    }
+    return {
+        ...nextColumn,
+        visible: currentColumn?.visible ?? true
+    };
+}
+
+function hydrateColumnSettings(settings, detail) {
+    return settings
+        .map((setting) => hydrateColumnSetting(setting, detail))
+        .filter((column) => column.type === 'appOutput' || Boolean(column.target));
+}
+
+function hydrateColumnSetting(setting, detail) {
+    const target = findColumnTarget(setting, detail);
+    const label = target ? targetLabel(setting, target) : setting.label;
+    return { ...setting, label, target };
+}
+
+function findColumnTarget(setting, detail) {
+    if (setting.type === 'field') {
+        return taskFields(detail).find((field) => field.id === setting.refId);
+    } else if (setting.type === 'evaluator') {
+        return taskEvaluators(detail).find((evaluator) => evaluator.taskEvaluatorId === setting.refId);
+    } else if (setting.type === 'tag') {
+        return taskTags(detail).find((tag) => tag.taskTagId === setting.refId);
+    } else {
+        return null;
+    }
+}
+
+function targetLabel(setting, target) {
+    if (setting.type === 'field') {
+        return target.fieldName || setting.label;
+    } else if (setting.type === 'evaluator') {
+        return evaluatorLabel(target);
+    } else if (setting.type === 'tag') {
+        return target.tagName || setting.label;
+    } else {
+        return setting.label;
+    }
+}
+
+function createColumnActions(ctx) {
+    function setColumnVisible(columnId, visible) {
+        ctx.columnSettingDraft.value = ctx.columnSettingDraft.value.map((item) => (
+            item.id === columnId ? { ...item, visible } : item
+        ));
+    }
+    function resetColumnSettings() {
+        const defaults = createDefaultColumnSettings(ctx.detail.value);
+        ctx.columnSettings.value = cloneColumnSettings(defaults);
+        ctx.columnSettingDraft.value = cloneColumnSettings(defaults);
+    }
+    function confirmColumnSettings() {
+        ctx.columnSettings.value = cloneColumnSettings(ctx.columnSettingDraft.value);
+        ctx.columnSettingVisible.value = false;
+    }
+    function startColumnDrag(index) {
+        ctx.draggedColumnIndex.value = index;
+    }
+    function enterColumnDrag(index) {
+        if (ctx.draggedColumnIndex.value === null || ctx.draggedColumnIndex.value === index) {
+            return;
+        }
+        moveColumn(ctx, ctx.draggedColumnIndex.value, index);
+        ctx.draggedColumnIndex.value = index;
+    }
+    function finishColumnDrag() {
+        ctx.draggedColumnIndex.value = null;
+    }
+    return { setColumnVisible, resetColumnSettings, confirmColumnSettings, startColumnDrag, enterColumnDrag, finishColumnDrag };
+}
+
+function moveColumn(ctx, fromIndex, toIndex) {
+    const nextColumns = [...ctx.columnSettingDraft.value];
+    const moved = nextColumns.splice(fromIndex, 1)[0];
+    nextColumns.splice(toIndex, 0, moved);
+    ctx.columnSettingDraft.value = nextColumns;
+}
+
+function cloneColumnSettings(settings) {
+    return settings.map((item) => ({ ...item }));
 }
 
 export function useTaskDetail(taskId) {
     const router = useRouter();
-    const loading = ref(false);
-    const stopping = ref(false);
-    const detail = ref();
-    const page = ref(1);
-    const size = ref(10);
-    const ctx = { taskId, loading, stopping, detail, page, size, pollTimer: undefined };
+    const state = createTaskDetailState();
+    const ctx = createContext(taskId, state);
     const actions = createTaskDetailActions(ctx, router);
+    const tagActions = createTagActions(ctx, router);
+    const columnActions = createColumnActions(ctx);
     ctx.loadDetail = actions.loadDetail;
-    const base = computed(() => taskBase(detail.value));
-    const fields = computed(() => taskFields(detail.value));
-    const evaluators = computed(() => taskEvaluators(detail.value));
-    const tags = computed(() => taskTags(detail.value));
-    const rows = computed(() => taskRows(detail.value));
-    const total = computed(() => taskTotal(detail.value));
-    const canStopTask = computed(() => STOPPABLE_STATUSES.includes(base.value?.status));
-    watch(taskId, async () => {
+    const computedValues = createComputedValues(ctx.detail, ctx.columnSettings, ctx.columnSettingDraft);
+    watchTaskDetail(ctx, computedValues, actions);
+    return createTaskDetailReturn(ctx, computedValues, actions, tagActions, columnActions);
+}
+
+function createTaskDetailState() {
+    return {
+        loading: ref(false),
+        stopping: ref(false),
+        detail: ref(),
+        page: ref(1),
+        size: ref(10),
+        tagDrawerVisible: ref(false),
+        tagKeyword: ref(''),
+        tagTypeFilter: ref(''),
+        tagLoading: ref(false),
+        allTags: ref([]),
+        columnSettingVisible: ref(false),
+        columnSettings: ref([]),
+        columnSettingDraft: ref([]),
+        draggedColumnIndex: ref(null)
+    };
+}
+
+function watchTaskDetail(ctx, computedValues, actions) {
+    watch(ctx.taskId, async () => {
         await actions.loadDetail();
     }, { immediate: true });
-    watch(() => base.value?.status, (status) => {
+    watch(() => computedValues.base.value?.status, (status) => {
         syncPollingByStatus(status, actions);
     });
+    watch(ctx.detail, () => {
+        syncColumnSettings(ctx);
+    });
+    watch(ctx.columnSettingVisible, (visible) => {
+        if (visible) {
+            ctx.columnSettingDraft.value = cloneColumnSettings(ctx.columnSettings.value);
+        }
+    });
     onBeforeUnmount(actions.stopPolling);
+}
 
-    const formatTime = formatDateTime;
+function createTaskDetailReturn(ctx, computedValues, actions, tagActions, columnActions) {
     return {
-        loading,
-        stopping,
-        detail,
-        page,
-        size,
-        base,
-        fields,
-        evaluators,
-        tags,
-        rows,
-        total,
-        canStopTask,
-        loadDetail: actions.loadDetail,
-        backToList: actions.backToList,
-        stopTask: actions.stopTask,
-        openAnnotation: actions.openAnnotation,
-        changeSize: actions.changeSize,
+        ...refsToReturn(ctx),
+        ...computedValues,
+        ...actions,
+        ...tagActions,
+        ...columnActions,
         formatAppBinding: formatTaskAppBinding,
         statusLabel,
         passTagType,
         tagTypeLabel,
-        formatTime
+        formatTime: formatDateTime,
+        tagTypeOptions: computed(() => TASK_TAG_TYPE_OPTIONS)
+    };
+}
+
+function createContext(taskId, state) {
+    return { taskId, ...state, pollTimer: undefined };
+}
+
+function createComputedValues(detail, columnSettings, columnSettingDraft) {
+    const base = computed(() => taskBase(detail.value));
+    return {
+        base,
+        fields: computed(() => taskFields(detail.value)),
+        evaluators: computed(() => taskEvaluators(detail.value)),
+        tags: computed(() => taskTags(detail.value)),
+        rows: computed(() => taskRows(detail.value)),
+        total: computed(() => taskTotal(detail.value)),
+        canStopTask: computed(() => STOPPABLE_STATUSES.includes(base.value?.status)),
+        selectedTagIds: computed(() => taskTags(detail.value).map((tag) => tag.tagId)),
+        columnSettingItems: computed(() => hydrateColumnSettings(columnSettingDraft.value, detail.value)),
+        visibleTableColumns: computed(() => hydrateColumnSettings(columnSettings.value, detail.value).filter((column) => column.visible))
+    };
+}
+
+function refsToReturn(ctx) {
+    return {
+        loading: ctx.loading,
+        stopping: ctx.stopping,
+        detail: ctx.detail,
+        page: ctx.page,
+        size: ctx.size,
+        tagDrawerVisible: ctx.tagDrawerVisible,
+        tagKeyword: ctx.tagKeyword,
+        tagTypeFilter: ctx.tagTypeFilter,
+        tagLoading: ctx.tagLoading,
+        allTags: ctx.allTags,
+        columnSettingVisible: ctx.columnSettingVisible
     };
 }

@@ -608,9 +608,13 @@ function createTagActions(ctx, loadActions) {
         ctx.state.tagDrawerVisible.value = true;
         await loadActions.ensureTagsLoaded();
     }
+    function openTagManagement() {
+        ctx.router.push({ name: 'tags' });
+    }
     function addTag(tag) {
-        if (isTagSelected(tag.id))
+        if (isTagSelected(tag.id)) {
             return;
+        }
         if (ctx.state.selectedTagIds.value.length >= 5) {
             ElMessage.warning('标签最多添加5个');
             return;
@@ -623,7 +627,7 @@ function createTagActions(ctx, loadActions) {
     function isTagSelected(tagId) {
         return ctx.state.selectedTagIds.value.includes(tagId);
     }
-    return { openTagDrawer, addTag, removeTag, isTagSelected };
+    return { openTagDrawer, openTagManagement, addTag, removeTag, isTagSelected };
 }
 
 function createCopyActions(ctx, loadActions, appActions) {

@@ -19,7 +19,6 @@ import com.agentnexus.backend.remoteCall.api.dto.response.AgentChatResponse;
 import com.agentnexus.backend.remoteCall.api.dto.request.AgentMessage;
 import com.agentnexus.backend.remoteCall.api.dto.response.ModelChatResult;
 import com.agentnexus.backend.remoteCall.service.RemoteCallService;
-import com.agentnexus.backend.tag.api.dto.response.TagConfig;
 import com.agentnexus.backend.tag.api.dto.response.TagOptionDto;
 import com.agentnexus.backend.tag.repository.TagRepository;
 import com.agentnexus.backend.task.api.dto.response.AnnotationDetail;
@@ -600,6 +599,56 @@ public class TaskService {
     } else {
       taskRepository.deleteTask(taskId);
     }
+  }
+
+  /**
+   * 为评测任务添加标签并初始化标签结果。
+   *
+   * @param taskId 评测任务ID
+   * @param tagId 标签ID
+   * @return 添加标签后的评测任务详情
+   */
+  @Transactional
+  public TaskDetail addTaskTag(String taskId, String tagId) {
+    TaskBase task = findTask(taskId);
+    String safeTagId = requireText(tagId, "请选择标签");
+    if (tagRepository.findTagConfig(safeTagId) == null) {
+      throw new IllegalArgumentException("标签不存在");
+    } else if (taskRepository.existsTaskTag(taskId, safeTagId)) {
+      throw new IllegalArgumentException("该任务已添加此标签");
+    } else if (taskRepository.listTaskTagBindings(taskId).size() >= MAX_DIMENSION_COUNT) {
+      throw new IllegalArgumentException("标签最多添加5个");
+    }
+
+    String now = now();
+    String taskTagId = id();
+    int displayOrder = taskRepository.nextTaskTagDisplayOrder(taskId);
+    taskRepository.insertTaskTag(taskTagId, taskId, safeTagId, STATUS_PENDING, displayOrder, now);
+    for (TaskItemRecord item : taskRepository.listAllTaskItems(taskId)) {
+      taskRepository.insertTagResult(id(), taskId, item.id(), taskTagId, STATUS_PENDING, now);
+    }
+    taskRepository.updateTaskStatus(taskId, task.status(), null, null, now);
+    return getTask(taskId, 1, 10);
+  }
+
+  /**
+   * 删除评测任务已绑定的标签及其结果。
+   *
+   * @param taskId 评测任务ID
+   * @param taskTagId 任务标签ID
+   * @return 删除标签后的评测任务详情
+   */
+  @Transactional
+  public TaskDetail deleteTaskTag(String taskId, String taskTagId) {
+    TaskBase task = findTask(taskId);
+    String safeTaskTagId = requireText(taskTagId, "请选择标签");
+    if (taskRepository.findTaskTagBinding(taskId, safeTaskTagId) == null) {
+      throw new IllegalArgumentException("任务标签不存在");
+    }
+    String now = now();
+    taskRepository.deleteTaskTag(taskId, safeTaskTagId);
+    taskRepository.updateTaskStatus(taskId, task.status(), null, null, now);
+    return getTask(taskId, 1, 10);
   }
 
   public AnnotationDetail getAnnotation(String taskId, String taskItemId) {
