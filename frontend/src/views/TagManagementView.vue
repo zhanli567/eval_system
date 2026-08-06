@@ -152,9 +152,9 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
             <el-button link type="primary" :icon="Plus" @click="addCategoryOption('pass')">添加标签</el-button>
           </div>
           <div class="option-list">
-            <div v-for="(_, index) in tagForm.passOptions" :key="`pass-${index}`" class="option-editor">
-              <el-input v-model="tagForm.passOptions[index]" maxlength="20" show-word-limit placeholder="请输入标签" />
-              <el-button :icon="Delete" circle @click="removeCategoryOption('pass', index)" />
+            <div v-for="index in tagForm.passOptions.length" :key="`pass-${index}`" class="option-editor">
+              <el-input v-model="tagForm.passOptions[index - 1]" maxlength="20" show-word-limit placeholder="请输入标签" />
+              <el-button :icon="Delete" circle @click="removeCategoryOption('pass', index - 1)" />
             </div>
           </div>
         </section>
@@ -165,9 +165,9 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
             <el-button link type="primary" :icon="Plus" @click="addCategoryOption('fail')">添加标签</el-button>
           </div>
           <div class="option-list">
-            <div v-for="(_, index) in tagForm.failOptions" :key="`fail-${index}`" class="option-editor">
-              <el-input v-model="tagForm.failOptions[index]" maxlength="20" show-word-limit placeholder="请输入标签" />
-              <el-button :icon="Delete" circle @click="removeCategoryOption('fail', index)" />
+            <div v-for="index in tagForm.failOptions.length" :key="`fail-${index}`" class="option-editor">
+              <el-input v-model="tagForm.failOptions[index - 1]" maxlength="20" show-word-limit placeholder="请输入标签" />
+              <el-button :icon="Delete" circle @click="removeCategoryOption('fail', index - 1)" />
             </div>
           </div>
         </section>
