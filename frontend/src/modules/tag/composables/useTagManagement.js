@@ -1,7 +1,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { tagApi } from '../../../api/tag';
-import { getErrorMessage, movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
+import { getErrorMessage, movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
 
 export const tagTypeOptions = [
@@ -49,39 +49,39 @@ function optionNames(detail, group) {
     return names.length ? names : [''];
 }
 
-function validateForm(form) {
+function getFormError(form) {
     if (!form.tagName.trim()) {
-        throw new Error('请输入标签名称');
-    }
-    if (form.tagName.trim().length > 50) {
-        throw new Error('标签名称不能超过50个字符');
-    }
-    if (form.description.trim().length > 200) {
-        throw new Error('描述不能超过200个字符');
-    }
-    if (form.tagType === 'category') {
-        validateCategoryOptions(form);
-    }
-    if (form.tagType === 'number') {
-        validateNumberRange(form);
+        return '请输入标签名称';
+    } else if (form.tagName.trim().length > 50) {
+        return '标签名称不能超过50个字符';
+    } else if (form.description.trim().length > 200) {
+        return '描述不能超过200个字符';
+    } else if (form.tagType === 'category') {
+        return getCategoryOptionsError(form);
+    } else if (form.tagType === 'number') {
+        return getNumberRangeError(form);
+    } else {
+        return '';
     }
 }
 
-function validateCategoryOptions(form) {
+function getCategoryOptionsError(form) {
     if (!cleanOptions(form.passOptions).length || !cleanOptions(form.failOptions).length) {
-        throw new Error('分类标签请至少配置一个Pass选项和一个Fail选项');
+        return '分类标签请至少配置一个Pass选项和一个Fail选项';
+    } else {
+        return '';
     }
 }
 
-function validateNumberRange(form) {
+function getNumberRangeError(form) {
     if (!form.minValue || !form.maxValue || !form.passThreshold) {
-        throw new Error('请维护评分范围和通过阈值');
-    }
-    if (form.minValue >= form.maxValue) {
-        throw new Error('评分最大值必须大于最小值');
-    }
-    if (form.passThreshold < form.minValue || form.passThreshold > form.maxValue) {
-        throw new Error('通过阈值必须介于评分范围内');
+        return '请维护评分范围和通过阈值';
+    } else if (form.minValue >= form.maxValue) {
+        return '评分最大值必须大于最小值';
+    } else if (form.passThreshold < form.minValue || form.passThreshold > form.maxValue) {
+        return '通过阈值必须介于评分范围内';
+    } else {
+        return '';
     }
 }
 
@@ -113,8 +113,7 @@ function createTagActions(ctx) {
                 size: ctx.tagSize.value,
                 tagType: ctx.tagType.value,
                 keyword: ctx.tagKeyword.value,
-                sortBy: ctx.sortBy.value,
-                sortOrder: ctx.sortOrder.value
+                ...sortParams(ctx.sortBy, ctx.sortOrder)
             });
             ctx.tags.value = page.records;
             ctx.tagTotal.value = page.total;
@@ -164,23 +163,25 @@ function createTagDialogActions(ctx) {
 
 function createTagSubmitActions(ctx, loadTags) {
     async function submitTag() {
+        const errorMessage = getFormError(ctx.tagForm);
+        if (errorMessage) {
+            ElMessage.error(errorMessage);
+            return;
+        } else {
+            ctx.saving.value = true;
+        }
         try {
-            validateForm(ctx.tagForm);
             const name = ctx.tagForm.tagName.trim();
             const page = ctx.editingId.value
                 ? null
                 : await tagApi.listTags({ page: 1, size: 100, keyword: name });
             if (page?.records.some((tag) => tag.tagName === name)) {
-                throw new Error('当前空间已存在同名标签');
+                ElMessage.error('当前空间已存在同名标签');
             } else {
-                ctx.saving.value = true;
                 await saveTag();
                 ctx.dialogVisible.value = false;
                 await loadTags();
             }
-        }
-        catch (error) {
-            ElMessage.error(getErrorMessage(error, '保存失败'));
         }
         finally {
             ctx.saving.value = false;
@@ -251,8 +252,8 @@ export function useTagManagement() {
     const tagSize = ref(10);
     const tagKeyword = ref('');
     const tagType = ref('');
-    const sortBy = ref('lastUpdatedDate');
-    const sortOrder = ref('desc');
+    const sortBy = ref('');
+    const sortOrder = ref('');
     const dialogVisible = ref(false);
     const detailDialogVisible = ref(false);
     const detailLoading = ref(false);

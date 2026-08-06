@@ -1,19 +1,20 @@
 <script setup>
-import { Back, Delete, Plus } from '@element-plus/icons-vue';
+import { Delete, Plus } from '@element-plus/icons-vue';
 import { useTaskCreate } from '../modules/task/composables/useTaskCreate';
 import { formatPromptBlock } from '../utils/textBlocks';
 const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, publishedVersions, fields, selectedTags, filteredTags, tagTypeOptions, customEvaluators, categoryOptions, evaluatorBlocks, agents, models, agentDetailLoading, agentVersionLoading, modelLoading, agentVersions, agentChildAgents, agentInputs, agentOutputs, appFieldMappings, form, handleDatasetVisible, handleAgentVisible, handleCustomEvaluatorVisible, handlePresetCategoryVisible, handlePresetEvaluatorVisible, handleModelVisible, changePresetCategory, changeEvaluatorSource, selectEvaluator, selectCustomVersion, addEvaluator, removeEvaluator, openTagDrawer, addTag, removeTag, isTagSelected, submit, paramKey, fieldTypeLabel, agentOutputLabel, tagTypeLabel, backToList } = useTaskCreate();
 </script>
 
 <template>
-  <header class="topbar detail-topbar">
-    <div>
-      <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评测任务列表</el-button>
-      <h1>创建评测任务</h1>
-    </div>
-  </header>
-
   <section class="task-create-shell" v-loading="loading">
+    <div class="embedded-page-title">
+      <nav class="page-breadcrumb" aria-label="页面路径">
+        <button type="button" class="page-breadcrumb-link" @click="backToList">评测任务</button>
+        <span class="page-breadcrumb-separator">/</span>
+        <span class="page-breadcrumb-current">创建评测任务</span>
+      </nav>
+    </div>
+
     <main class="task-create-main">
       <section class="task-create-section">
         <div class="section-index">1</div>

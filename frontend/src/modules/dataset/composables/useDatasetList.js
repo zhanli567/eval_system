@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { datasetApi } from '../../../api/dataset';
 import { formatDateTime } from '../../../utils/formatters';
-import { getErrorMessage, movePreviousPageIfLastRow, toggleDescSort } from '../../../utils/composableHelpers';
+import { getErrorMessage, movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 
 function defaultFields() {
     return [
@@ -60,8 +60,7 @@ function createDatasetActions(ctx) {
                 page: ctx.datasetPage.value,
                 size: ctx.datasetSize.value,
                 keyword: ctx.datasetKeyword.value,
-                sortBy: ctx.sortBy.value,
-                sortOrder: ctx.sortOrder.value
+                ...sortParams(ctx.sortBy, ctx.sortOrder)
             });
             ctx.datasets.value = page.records;
             ctx.datasetTotal.value = page.total;
@@ -145,8 +144,8 @@ export function useDatasetList() {
     const datasetPage = ref(1);
     const datasetSize = ref(10);
     const datasetKeyword = ref('');
-    const sortBy = ref('lastUpdatedDate');
-    const sortOrder = ref('desc');
+    const sortBy = ref('');
+    const sortOrder = ref('');
     const createVisible = ref(false);
     const createForm = reactive({ name: '', description: '', fields: defaultFields() });
     const drag = createFieldDragState();

@@ -67,7 +67,6 @@ async function loadSpaces() {
             :loading="spaceLoading"
             :disabled="spaceLoading || !spaceOptions.length"
             placeholder="暂无可用空间"
-            filterable
           >
             <el-option
               v-for="space in spaceOptions"

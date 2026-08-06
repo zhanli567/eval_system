@@ -1,29 +1,27 @@
 <script setup>
-import { Back, Plus, Promotion, Refresh, Delete } from '@element-plus/icons-vue';
+import { Plus, Promotion, Refresh, Delete } from '@element-plus/icons-vue';
 import { useEvaluatorEditor } from '../modules/evaluator/composables/useEvaluatorEditor';
 const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, removeVersion, switchType, addParam, removeParam, backToList, formatTime } = useEvaluatorEditor();
 </script>
 
 <template>
-  <header class="topbar detail-topbar">
-    <div>
-      <el-button link type="primary" :icon="Back" class="back-link" @click="backToList">返回评估器列表</el-button>
-      <h1>{{ pageTitle }}</h1>
-      <span v-if="isEdit && activeVersion" class="meta">
-        当前版本 {{ activeVersion.versionName }} · {{ activeVersion.draft ? '草稿可编辑' : '发布版本只读' }}
-      </span>
-    </div>
-    <div class="top-actions">
-      <el-button v-if="isEdit" :icon="Refresh" @click="refreshEditor">刷新</el-button>
-      <template v-if="isEdit && activeVersion?.draft">
-        <el-button :loading="saving" type="primary" :disabled="!canEdit || form.evaluatorType === 'code'" @click="submit">保存草稿</el-button>
-        <el-button type="success" :icon="Promotion" :loading="publishing" :disabled="!canEdit || form.evaluatorType === 'code'" @click="publishDraft">发布</el-button>
-      </template>
-      <el-button v-else-if="isEdit && activeVersion" type="danger" plain :icon="Delete" @click="removeVersion(activeVersion)">删除版本</el-button>
-    </div>
-  </header>
-
   <section class="evaluator-editor-shell" :class="{ 'is-create': !isEdit, 'is-edit': isEdit, 'task-create-shell': !isEdit }" v-loading="loading">
+    <div class="embedded-page-title">
+      <nav class="page-breadcrumb" aria-label="页面路径">
+        <button type="button" class="page-breadcrumb-link" @click="backToList">评估器</button>
+        <span class="page-breadcrumb-separator">/</span>
+        <OverflowTooltip :content="pageTitle" tag="span" class="page-breadcrumb-current" />
+      </nav>
+      <div v-if="isEdit" class="embedded-title-actions">
+        <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="refreshEditor" />
+        <template v-if="activeVersion?.draft">
+          <el-button :loading="saving" type="primary" :disabled="!canEdit || form.evaluatorType === 'code'" @click="submit">保存草稿</el-button>
+          <el-button type="success" :icon="Promotion" :loading="publishing" :disabled="!canEdit || form.evaluatorType === 'code'" @click="publishDraft">发布</el-button>
+        </template>
+        <el-button v-else-if="activeVersion" type="danger" plain :icon="Delete" @click="removeVersion(activeVersion)">删除版本</el-button>
+      </div>
+    </div>
+
     <aside v-if="isEdit" class="version-rail evaluator-version-rail">
       <div class="rail-title">
         <span>版本管理</span>

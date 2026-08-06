@@ -1,29 +1,19 @@
 <script setup>
-import { DataAnalysis, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
+import { DataAnalysis, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useEvaluatorManagement } from '../modules/evaluator/composables/useEvaluatorManagement';
 import { formatPromptBlock } from '../utils/textBlocks';
 const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, loadCustomEvaluators, searchCustom, changeCustomSize, toggleCustomSort, loadPresetEvaluators, searchPreset, changePresetSize, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, changePickerSize, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, typeLabel, formatTime } = useEvaluatorManagement();
 </script>
 
 <template>
-  <header class="topbar">
-    <div>
-      <h1>评估器管理</h1>
-    </div>
-    <div class="top-actions">
-      <el-button :icon="Refresh" @click="activeTab === 'custom' ? loadCustomEvaluators() : loadPresetEvaluators()">刷新</el-button>
-      <el-button type="primary" :icon="Plus" @click="openPicker">创建评估器</el-button>
-    </div>
-  </header>
-
   <section class="evaluator-panel fill-workspace">
-    <div class="evaluator-tabs">
-      <button :class="{ active: activeTab === 'custom' }" @click="activeTab = 'custom'">自定义</button>
-      <button :class="{ active: activeTab === 'preset' }" @click="activeTab = 'preset'">预置</button>
-    </div>
+    <div class="evaluator-management-head">
+      <div class="evaluator-tabs">
+        <button :class="{ active: activeTab === 'custom' }" @click="activeTab = 'custom'">自定义</button>
+        <button :class="{ active: activeTab === 'preset' }" @click="activeTab = 'preset'">预置</button>
+      </div>
 
-    <template v-if="activeTab === 'custom'">
-      <div class="panel-toolbar table-toolbar">
+      <div v-if="activeTab === 'custom'" class="panel-toolbar table-toolbar evaluator-head-toolbar">
         <el-select v-model="customType" clearable placeholder="全部类型" class="field-select" @change="searchCustom">
           <el-option label="LLM" value="llm" />
           <el-option label="Code" value="code" disabled />
@@ -40,24 +30,40 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             <el-icon><Search /></el-icon>
           </template>
         </el-input>
-        <el-button @click="searchCustom">搜索</el-button>
-        <div class="task-sort-actions">
-          <el-button :class="{ active: customSortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleCustomSort('lastUpdatedDate')">
-            更新时间 {{ customSortBy === 'lastUpdatedDate' ? (customSortOrder === 'desc' ? '降序' : '升序') : '' }}
-          </el-button>
-          <el-button :class="{ active: customSortBy === 'createdDate' }" :icon="Sort" @click="toggleCustomSort('createdDate')">
-            创建时间 {{ customSortBy === 'createdDate' ? (customSortOrder === 'desc' ? '降序' : '升序') : '' }}
-          </el-button>
-        </div>
+        <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchCustom" />
+        <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadCustomEvaluators" />
+        <el-button type="primary" :icon="Plus" @click="openPicker">创建评估器</el-button>
       </div>
 
+      <div v-else class="panel-toolbar table-toolbar evaluator-head-toolbar">
+        <el-select v-model="activeCategoryId" clearable placeholder="全部分类" class="field-select" @change="selectPresetCategory">
+          <el-option v-for="category in categoryOptions" :key="category.id || 'all-head'" :label="category.categoryName" :value="category.id" />
+        </el-select>
+        <el-input
+          v-model="presetKeyword"
+          clearable
+          placeholder="请输入预置评估器名称"
+          class="search-input"
+          @keyup.enter="searchPreset"
+          @clear="searchPreset"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchPreset" />
+        <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadPresetEvaluators" />
+        <el-button type="primary" :icon="Plus" @click="openPicker">创建评估器</el-button>
+      </div>
+    </div>
+
+    <template v-if="activeTab === 'custom'">
       <el-table
         v-loading="customLoading"
         :data="customEvaluators"
         row-key="id"
         border
         height="100%"
-        :fit="false"
         tooltip-effect="light"
         class="evaluator-table"
       >
@@ -74,39 +80,55 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             />
           </template>
         </el-table-column>
-        <el-table-column prop="evaluatorType" label="类型" width="130" :resizable="false">
+        <el-table-column prop="evaluatorType" label="类型" min-width="130" :resizable="false" align="center">
           <template #default="{ row }">
-            <el-tag size="small" effect="plain">
-              <OverflowTooltip :content="typeLabel(row.evaluatorType)" />
-            </el-tag>
+            <OverflowTooltip :content="typeLabel(row.evaluatorType)" />
           </template>
         </el-table-column>
-        <el-table-column prop="latestVersionName" label="最新版本" width="130" :resizable="false">
+        <el-table-column prop="latestVersionName" label="最新版本" min-width="130" :resizable="false" align="center">
           <template #default="{ row }">
             <OverflowTooltip :content="row.latestVersionName || '-'" />
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="描述" width="280" :resizable="false">
+        <el-table-column prop="description" label="描述" min-width="280" :resizable="false">
           <template #default="{ row }">
             <OverflowTooltip :content="row.description || '暂无描述'" />
           </template>
         </el-table-column>
-        <el-table-column prop="createdByName" label="创建人" width="140" :resizable="false">
+        <el-table-column prop="createdByName" label="创建人" min-width="140" :resizable="false" align="center">
           <template #default="{ row }">
             <OverflowTooltip :content="row.createdByName || '-'" />
           </template>
         </el-table-column>
-        <el-table-column prop="createdDate" label="创建时间" width="190" :resizable="false">
+        <el-table-column prop="createdDate" min-width="190" :resizable="false" align="center">
+          <template #header>
+            <SortableHeader
+              label="创建时间"
+              field="createdDate"
+              :sort-by="customSortBy"
+              :sort-order="customSortOrder"
+              @toggle="toggleCustomSort"
+            />
+          </template>
           <template #default="{ row }">
             <OverflowTooltip :content="formatTime(row.createdDate)" />
           </template>
         </el-table-column>
-        <el-table-column prop="lastUpdatedByName" label="更新人" width="140" :resizable="false">
+        <el-table-column prop="lastUpdatedByName" label="更新人" min-width="140" :resizable="false" align="center">
           <template #default="{ row }">
             <OverflowTooltip :content="row.lastUpdatedByName || '-'" />
           </template>
         </el-table-column>
-        <el-table-column prop="lastUpdatedDate" label="更新时间" width="190" :resizable="false">
+        <el-table-column prop="lastUpdatedDate" min-width="190" :resizable="false" align="center">
+          <template #header>
+            <SortableHeader
+              label="更新时间"
+              field="lastUpdatedDate"
+              :sort-by="customSortBy"
+              :sort-order="customSortOrder"
+              @toggle="toggleCustomSort"
+            />
+          </template>
           <template #default="{ row }">
             <OverflowTooltip :content="formatTime(row.lastUpdatedDate)" />
           </template>
@@ -133,45 +155,12 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
     </template>
 
     <template v-else>
-      <div class="preset-layout">
-        <aside class="preset-category-rail">
-          <button
-            v-for="category in categoryOptions"
-            :key="category.id || 'all'"
-            :class="{ active: activeCategoryId === category.id }"
-            @click="selectPresetCategory(category.id)"
-          >
-            {{ category.categoryName }}
-          </button>
-        </aside>
-
-        <div class="preset-content">
-          <div class="panel-toolbar">
-            <el-input
-              v-model="presetKeyword"
-              clearable
-              placeholder="请输入预置评估器名称"
-              class="search-input"
-              @keyup.enter="searchPreset"
-              @clear="searchPreset"
-            >
-              <template #prefix>
-                <el-icon><Search /></el-icon>
-              </template>
-            </el-input>
-            <el-button @click="searchPreset">搜索</el-button>
-          </div>
-
+      <div class="preset-content preset-content-full">
           <div v-loading="presetLoading" class="preset-grid">
             <article
               v-for="preset in presetEvaluators"
               :key="preset.id"
               class="preset-card"
-              role="button"
-              tabindex="0"
-              @click="viewPreset(preset.id)"
-              @keyup.enter="viewPreset(preset.id)"
-              @keyup.space.prevent="viewPreset(preset.id)"
             >
               <div class="preset-card-head">
                 <span class="preset-card-icon">
@@ -199,7 +188,6 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
               @current-change="loadPresetEvaluators"
             />
           </div>
-        </div>
       </div>
     </template>
   </section>
@@ -236,6 +224,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
                 <el-icon><Search /></el-icon>
               </template>
             </el-input>
+            <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchPicker" />
             <el-button type="primary" :icon="Plus" @click="createCustom">自定义创建评估器</el-button>
           </div>
         </div>
@@ -245,11 +234,6 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             v-for="preset in pickerPresets"
             :key="preset.id"
             class="preset-card"
-            role="button"
-            tabindex="0"
-            @click="viewPreset(preset.id)"
-            @keyup.enter="viewPreset(preset.id)"
-            @keyup.space.prevent="viewPreset(preset.id)"
           >
             <div class="preset-card-head">
               <span class="preset-card-icon">
@@ -291,8 +275,8 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
 
         <template v-if="selectedPreset.evaluatorType === 'llm'">
           <h3>参数设置</h3>
-          <el-table :data="selectedPreset.params" border :fit="false">
-            <el-table-column prop="paramName" label="变量名" width="180" :resizable="false">
+          <el-table :data="selectedPreset.params" border>
+            <el-table-column prop="paramName" label="变量名" min-width="180" :resizable="false">
               <template #default="{ row }">
                 <OverflowTooltip :content="row.paramName || '-'" />
               </template>
@@ -307,7 +291,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
                 <OverflowTooltip :content="row.required ? '是' : '否'" />
               </template>
             </el-table-column>
-            <el-table-column prop="description" label="描述" width="360" :resizable="false">
+            <el-table-column prop="description" label="描述" min-width="360" :resizable="false">
               <template #default="{ row }">
                 <OverflowTooltip :content="row.description || '-'" />
               </template>
@@ -318,8 +302,8 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         </template>
         <template v-else>
           <h3>代码入参设置</h3>
-          <el-table :data="selectedPreset.params" border :fit="false">
-            <el-table-column prop="paramName" label="变量名" width="180" :resizable="false">
+          <el-table :data="selectedPreset.params" border>
+            <el-table-column prop="paramName" label="变量名" min-width="180" :resizable="false">
               <template #default="{ row }">
                 <OverflowTooltip :content="row.paramName || '-'" />
               </template>
@@ -334,12 +318,12 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
                 <OverflowTooltip :content="row.required ? '是' : '否'" />
               </template>
             </el-table-column>
-            <el-table-column prop="description" label="描述" width="320" :resizable="false">
+            <el-table-column prop="description" label="描述" min-width="320" :resizable="false">
               <template #default="{ row }">
                 <OverflowTooltip :content="row.description || '-'" />
               </template>
             </el-table-column>
-            <el-table-column prop="defaultValue" label="默认值" width="180" :resizable="false">
+            <el-table-column prop="defaultValue" label="默认值" min-width="180" :resizable="false">
               <template #default="{ row }">
                 <OverflowTooltip :content="row.defaultValue || '-'" />
               </template>

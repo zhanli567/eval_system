@@ -6,7 +6,6 @@ import { formatDateTime } from '../../../utils/formatters';
 import { passTagType, statusLabel, tagTypeLabel } from '../../../utils/taskLabels';
 import { formatTaskAppBinding } from '../../../utils/taskAppBinding';
 
-const STARTABLE_STATUSES = ['pending', 'failed', 'stopped'];
 const STOPPABLE_STATUSES = ['running'];
 
 async function loadTaskDetail(ctx, options = {}) {
@@ -32,7 +31,7 @@ function startTaskPolling(ctx) {
         return;
     }
     ctx.pollTimer = window.setInterval(() => {
-        if (!ctx.loading.value && !ctx.starting.value) {
+        if (!ctx.loading.value) {
             ctx.loadDetail({ silent: true });
         }
     }, 60000);
@@ -56,20 +55,6 @@ function createTaskDetailActions(ctx, router) {
     }
     function backToList() {
         router.push({ name: 'tasks' });
-    }
-    async function startTask() {
-        if (!ctx.taskId.value) {
-            return;
-        }
-        ctx.starting.value = true;
-        try {
-            ctx.detail.value = await taskApi.startTask(ctx.taskId.value);
-            ElMessage.success('评测任务已开始');
-            startPolling();
-        }
-        finally {
-            ctx.starting.value = false;
-        }
     }
     async function stopTask() {
         if (!ctx.taskId.value) {
@@ -96,13 +81,9 @@ function createTaskDetailActions(ctx, router) {
     function stopPolling() {
         stopTaskPolling(ctx);
     }
-    function openItemDetail(row) {
-        openTaskItem(row, 'detail');
-    }
     function openAnnotation(row) {
-        if (canAnnotateItem(ctx, row)) {
-            openTaskItem(row, 'annotate');
-        }
+        const mode = canAnnotateItem(ctx, row) ? 'annotate' : 'detail';
+        openTaskItem(row, mode);
     }
     function openTaskItem(row, mode) {
         router.push({
@@ -111,7 +92,7 @@ function createTaskDetailActions(ctx, router) {
             query: { mode }
         });
     }
-    return { loadDetail, changeSize, backToList, startTask, stopTask, startPolling, stopPolling, openItemDetail, openAnnotation };
+    return { loadDetail, changeSize, backToList, stopTask, startPolling, stopPolling, openAnnotation };
 }
 
 function hasTagBindings(ctx) {
@@ -124,16 +105,6 @@ function isStoppedForAnnotation(ctx, row) {
 
 function canAnnotateItem(ctx, row) {
     return hasTagBindings(ctx) && !isStoppedForAnnotation(ctx, row);
-}
-
-function annotationDisabledReason(ctx, row) {
-    if (!hasTagBindings(ctx)) {
-        return '当前任务未绑定标签，无法标注';
-    } else if (isStoppedForAnnotation(ctx, row)) {
-        return '当前任务已中止，无法标注';
-    } else {
-        return '';
-    }
 }
 
 const taskBase = (detail) => detail?.base;
@@ -150,12 +121,11 @@ function syncPollingByStatus(status, actions) {
 export function useTaskDetail(taskId) {
     const router = useRouter();
     const loading = ref(false);
-    const starting = ref(false);
     const stopping = ref(false);
     const detail = ref();
     const page = ref(1);
     const size = ref(10);
-    const ctx = { taskId, loading, starting, stopping, detail, page, size, pollTimer: undefined };
+    const ctx = { taskId, loading, stopping, detail, page, size, pollTimer: undefined };
     const actions = createTaskDetailActions(ctx, router);
     ctx.loadDetail = actions.loadDetail;
     const base = computed(() => taskBase(detail.value));
@@ -164,7 +134,6 @@ export function useTaskDetail(taskId) {
     const tags = computed(() => taskTags(detail.value));
     const rows = computed(() => taskRows(detail.value));
     const total = computed(() => taskTotal(detail.value));
-    const canStartTask = computed(() => STARTABLE_STATUSES.includes(base.value?.status));
     const canStopTask = computed(() => STOPPABLE_STATUSES.includes(base.value?.status));
     watch(taskId, async () => {
         await actions.loadDetail();
@@ -177,7 +146,6 @@ export function useTaskDetail(taskId) {
     const formatTime = formatDateTime;
     return {
         loading,
-        starting,
         stopping,
         detail,
         page,
@@ -188,16 +156,11 @@ export function useTaskDetail(taskId) {
         tags,
         rows,
         total,
-        canStartTask,
         canStopTask,
         loadDetail: actions.loadDetail,
         backToList: actions.backToList,
-        startTask: actions.startTask,
         stopTask: actions.stopTask,
-        openItemDetail: actions.openItemDetail,
         openAnnotation: actions.openAnnotation,
-        canAnnotateItem: (row) => canAnnotateItem(ctx, row),
-        annotationDisabledReason: (row) => annotationDisabledReason(ctx, row),
         changeSize: actions.changeSize,
         formatAppBinding: formatTaskAppBinding,
         statusLabel,

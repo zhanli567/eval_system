@@ -1,20 +1,10 @@
 <script setup>
-import { Delete, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
+import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useTagManagement } from '../modules/tag/composables/useTagManagement';
 const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, sortBy, sortOrder, dialogVisible, detailDialogVisible, detailLoading, tagDetail, detailPassOptions, detailFailOptions, editing, dialogTitle, tagForm, tagTypeOptions, booleanOptions, loadTags, searchTags, changeTagSize, toggleSort, openCreateDialog, openDetailDialog, openEditDialog, submitTag, removeTag, addCategoryOption, removeCategoryOption, getTagTypeLabel, formatTime } = useTagManagement();
 </script>
 
 <template>
-  <header class="topbar">
-    <div>
-      <h1>标签管理</h1>
-    </div>
-    <div class="top-actions">
-      <el-button :icon="Refresh" @click="loadTags">刷新</el-button>
-      <el-button type="primary" :icon="Plus" @click="openCreateDialog">创建标签</el-button>
-    </div>
-  </header>
-
   <section class="tag-panel fill-workspace">
     <div class="panel-toolbar table-toolbar">
       <el-select v-model="tagType" clearable placeholder="全部类型" class="field-select" @change="searchTags">
@@ -34,14 +24,10 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
           <el-icon><Search /></el-icon>
         </template>
       </el-input>
-      <el-button @click="searchTags">搜索</el-button>
-      <div class="task-sort-actions">
-        <el-button :class="{ active: sortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleSort('lastUpdatedDate')">
-          更新时间 {{ sortBy === 'lastUpdatedDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
-        </el-button>
-        <el-button :class="{ active: sortBy === 'createdDate' }" :icon="Sort" @click="toggleSort('createdDate')">
-          创建时间 {{ sortBy === 'createdDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
-        </el-button>
+      <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchTags" />
+      <div class="table-toolbar-actions">
+        <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadTags" />
+        <el-button type="primary" :icon="Plus" @click="openCreateDialog">创建标签</el-button>
       </div>
     </div>
 
@@ -51,7 +37,6 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
       row-key="id"
       border
       height="100%"
-      :fit="false"
       tooltip-effect="light"
       class="tag-table"
     >
@@ -68,34 +53,50 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
           />
         </template>
       </el-table-column>
-      <el-table-column prop="tagType" label="类型" width="140" :resizable="false">
+      <el-table-column prop="tagType" label="类型" min-width="140" :resizable="false" align="center">
         <template #default="{ row }">
-          <el-tag effect="plain">
-            <OverflowTooltip :content="getTagTypeLabel(row.tagType)" />
-          </el-tag>
+          <OverflowTooltip :content="getTagTypeLabel(row.tagType)" />
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="描述" width="280" :resizable="false">
+      <el-table-column prop="description" label="描述" min-width="280" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="row.description || '暂无描述'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdByName" label="创建人" width="140" :resizable="false">
+      <el-table-column prop="createdByName" label="创建人" min-width="140" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="row.createdByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdDate" label="创建时间" width="190" :resizable="false">
+      <el-table-column prop="createdDate" min-width="190" :resizable="false" align="center">
+        <template #header>
+          <SortableHeader
+            label="创建时间"
+            field="createdDate"
+            :sort-by="sortBy"
+            :sort-order="sortOrder"
+            @toggle="toggleSort"
+          />
+        </template>
         <template #default="{ row }">
           <OverflowTooltip :content="formatTime(row.createdDate)" />
         </template>
       </el-table-column>
-      <el-table-column prop="lastUpdatedByName" label="更新人" width="140" :resizable="false">
+      <el-table-column prop="lastUpdatedByName" label="更新人" min-width="140" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="row.lastUpdatedByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="lastUpdatedDate" label="更新时间" width="190" :resizable="false">
+      <el-table-column prop="lastUpdatedDate" min-width="190" :resizable="false" align="center">
+        <template #header>
+          <SortableHeader
+            label="更新时间"
+            field="lastUpdatedDate"
+            :sort-by="sortBy"
+            :sort-order="sortOrder"
+            @toggle="toggleSort"
+          />
+        </template>
         <template #default="{ row }">
           <OverflowTooltip :content="formatTime(row.lastUpdatedDate)" />
         </template>
@@ -153,8 +154,14 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
             <el-button link type="primary" :icon="Plus" @click="addCategoryOption('pass')">添加标签</el-button>
           </div>
           <div class="option-list">
-            <div v-for="(_, index) in tagForm.passOptions" :key="`pass-${index}`" class="option-editor">
-              <el-input v-model="tagForm.passOptions[index]" maxlength="20" show-word-limit placeholder="请输入标签" />
+            <div v-for="(option, index) in tagForm.passOptions" :key="`pass-${index}`" class="option-editor">
+              <el-input
+                :model-value="option"
+                maxlength="20"
+                show-word-limit
+                placeholder="请输入标签"
+                @update:model-value="tagForm.passOptions[index] = $event"
+              />
               <el-button :icon="Delete" circle @click="removeCategoryOption('pass', index)" />
             </div>
           </div>
@@ -166,8 +173,14 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
             <el-button link type="primary" :icon="Plus" @click="addCategoryOption('fail')">添加标签</el-button>
           </div>
           <div class="option-list">
-            <div v-for="(_, index) in tagForm.failOptions" :key="`fail-${index}`" class="option-editor">
-              <el-input v-model="tagForm.failOptions[index]" maxlength="20" show-word-limit placeholder="请输入标签" />
+            <div v-for="(option, index) in tagForm.failOptions" :key="`fail-${index}`" class="option-editor">
+              <el-input
+                :model-value="option"
+                maxlength="20"
+                show-word-limit
+                placeholder="请输入标签"
+                @update:model-value="tagForm.failOptions[index] = $event"
+              />
               <el-button :icon="Delete" circle @click="removeCategoryOption('fail', index)" />
             </div>
           </div>

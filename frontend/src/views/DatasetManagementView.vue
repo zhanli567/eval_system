@@ -1,20 +1,10 @@
 <script setup>
-import { Delete, Plus, Refresh, Search, Sort } from '@element-plus/icons-vue';
+import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useDatasetList } from '../modules/dataset/composables/useDatasetList';
 const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datasetKeyword, sortBy, sortOrder, createVisible, draggedFieldIndex, dragOverFieldIndex, createForm, loadDatasets, searchDatasets, changeDatasetSize, toggleSort, openDataset, openCreateDialog, submitCreate, removeDataset, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, formatTime } = useDatasetList();
 </script>
 
 <template>
-  <header class="topbar">
-    <div>
-      <h1>评测集管理</h1>
-    </div>
-    <div class="top-actions">
-      <el-button :icon="Refresh" @click="loadDatasets">刷新</el-button>
-      <el-button type="primary" :icon="Plus" @click="openCreateDialog">创建评测集</el-button>
-    </div>
-  </header>
-
   <section class="dataset-panel fill-workspace">
     <div class="panel-toolbar table-toolbar">
       <el-input
@@ -29,14 +19,10 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
           <el-icon><Search /></el-icon>
         </template>
       </el-input>
-      <el-button @click="searchDatasets">搜索</el-button>
-      <div class="task-sort-actions">
-        <el-button :class="{ active: sortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleSort('lastUpdatedDate')">
-          更新时间 {{ sortBy === 'lastUpdatedDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
-        </el-button>
-        <el-button :class="{ active: sortBy === 'createdDate' }" :icon="Sort" @click="toggleSort('createdDate')">
-          创建时间 {{ sortBy === 'createdDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
-        </el-button>
+      <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchDatasets" />
+      <div class="table-toolbar-actions">
+        <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadDatasets" />
+        <el-button type="primary" :icon="Plus" @click="openCreateDialog">创建评测集</el-button>
       </div>
     </div>
 
@@ -46,7 +32,6 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
       row-key="id"
       border
       height="100%"
-      :fit="false"
       highlight-current-row
       tooltip-effect="light"
       class="dataset-table"
@@ -64,37 +49,55 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
           />
         </template>
       </el-table-column>
-      <el-table-column prop="publishedVersionCount" label="版本数量" width="120" :resizable="false">
+      <el-table-column prop="publishedVersionCount" label="版本数量" min-width="120" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="row.publishedVersionCount" />
         </template>
       </el-table-column>
-      <el-table-column prop="latestItemCount" label="数据量" width="110" :resizable="false">
+      <el-table-column prop="latestItemCount" label="数据量" min-width="110" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="row.latestItemCount" />
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="描述" width="280" :resizable="false">
+      <el-table-column prop="description" label="描述" min-width="280" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="row.description || '暂无描述'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdByName" label="创建人" width="140" :resizable="false">
+      <el-table-column prop="createdByName" label="创建人" min-width="140" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="row.createdByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdDate" label="创建时间" width="190" :resizable="false">
+      <el-table-column prop="createdDate" min-width="190" :resizable="false" align="center">
+        <template #header>
+          <SortableHeader
+            label="创建时间"
+            field="createdDate"
+            :sort-by="sortBy"
+            :sort-order="sortOrder"
+            @toggle="toggleSort"
+          />
+        </template>
         <template #default="{ row }">
           <OverflowTooltip :content="formatTime(row.createdDate)" />
         </template>
       </el-table-column>
-      <el-table-column prop="lastUpdatedByName" label="更新人" width="140" :resizable="false">
+      <el-table-column prop="lastUpdatedByName" label="更新人" min-width="140" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="row.lastUpdatedByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="lastUpdatedDate" label="更新时间" width="190" :resizable="false">
+      <el-table-column prop="lastUpdatedDate" min-width="190" :resizable="false" align="center">
+        <template #header>
+          <SortableHeader
+            label="更新时间"
+            field="lastUpdatedDate"
+            :sort-by="sortBy"
+            :sort-order="sortOrder"
+            @toggle="toggleSort"
+          />
+        </template>
         <template #default="{ row }">
           <OverflowTooltip :content="formatTime(row.lastUpdatedDate)" />
         </template>
