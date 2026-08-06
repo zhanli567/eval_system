@@ -95,7 +95,7 @@ function formatNameList(items, picker) {
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column prop="taskName" label="任务名称" width="220" :resizable="false">
+      <el-table-column prop="taskName" label="任务名称" min-width="220" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip
             :content="row.base.taskName"
@@ -108,37 +108,37 @@ function formatNameList(items, picker) {
           />
         </template>
       </el-table-column>
-      <el-table-column prop="datasetName" label="评测集名称" width="210" :resizable="false">
+      <el-table-column prop="datasetName" label="评测集名称" min-width="210" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="formatNameVersion(row.base.datasetName, row.base.datasetVersionName)" />
         </template>
       </el-table-column>
-      <el-table-column column-key="app" label="应用" width="260" :resizable="false">
+      <el-table-column column-key="app" label="应用" min-width="260" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="formatAppBinding(row.base)" />
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="描述" width="260" :resizable="false">
+      <el-table-column prop="description" label="描述" min-width="260" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="row.base.description || '暂无描述'" />
         </template>
       </el-table-column>
-      <el-table-column column-key="evaluators" label="评估器" width="220" :resizable="false">
+      <el-table-column column-key="evaluators" label="评估器" min-width="220" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="formatEvaluatorList(row.evaluators)" />
         </template>
       </el-table-column>
-      <el-table-column column-key="tags" label="标签" width="190" :resizable="false" align="center">
+      <el-table-column column-key="tags" label="标签" min-width="190" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="formatTagList(row.tags)" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdByName" label="创建人" width="140" :resizable="false">
+      <el-table-column prop="createdByName" label="创建人" min-width="140" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="row.base.createdByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdDate" label="创建时间" width="190" :resizable="false">
+      <el-table-column prop="createdDate" label="创建时间" min-width="190" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="formatTime(row.base.createdDate)" />
         </template>

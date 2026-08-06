@@ -227,13 +227,13 @@ function evaluatorMessage(result) {
         </el-table-column>
         <el-table-column type="index" label="序号" width="90" fixed="left" :resizable="false" align="center" />
         <el-table-column :label="formatNameVersion(base?.datasetName, base?.datasetVersionName)" :resizable="false" align="center">
-          <el-table-column v-for="field in fields" :key="field.id" :label="field.fieldName" width="220" :resizable="false">
+          <el-table-column v-for="field in fields" :key="field.id" :label="field.fieldName" min-width="220" :resizable="false">
             <template #default="{ row }">
               <OverflowTooltip :content="row.values[field.id || ''] || '-'" />
             </template>
           </el-table-column>
         </el-table-column>
-        <el-table-column label="应用输出" width="300" :resizable="false">
+        <el-table-column label="应用输出" min-width="300" :resizable="false">
           <template #default="{ row }">
             <OverflowTooltip
               :content="appOutputText(row)"
@@ -248,7 +248,7 @@ function evaluatorMessage(result) {
           </template>
         </el-table-column>
         <el-table-column v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" :label="evaluatorColumnLabel(evaluator)" :resizable="false" align="center">
-          <el-table-column v-for="param in evaluator.params || []" :key="evaluatorParamKey(param)" :label="param.paramName" width="190" :resizable="false">
+          <el-table-column v-for="param in evaluator.params || []" :key="evaluatorParamKey(param)" :label="param.paramName" min-width="190" :resizable="false">
             <template #default="{ row }">
               <OverflowTooltip
                 :content="evaluatorParamValue(row, evaluator, param)"
@@ -275,7 +275,7 @@ function evaluatorMessage(result) {
               <OverflowTooltip :content="findEvaluatorResult(row, evaluator.taskEvaluatorId)?.score ?? '-'" />
             </template>
           </el-table-column>
-          <el-table-column label="原因" width="260" :resizable="false">
+          <el-table-column label="原因" min-width="260" :resizable="false">
             <template #default="{ row }">
               <OverflowTooltip
                 :content="evaluatorMessage(findEvaluatorResult(row, evaluator.taskEvaluatorId)) || '-'"
@@ -285,7 +285,7 @@ function evaluatorMessage(result) {
           </el-table-column>
         </el-table-column>
         <el-table-column v-if="tags.length" label="标签" :resizable="false" align="center">
-          <el-table-column v-for="tag in tags" :key="tag.taskTagId" :label="tag.tagName" width="190" :resizable="false">
+          <el-table-column v-for="tag in tags" :key="tag.taskTagId" :label="tag.tagName" min-width="190" :resizable="false">
             <template #default="{ row }">
               <template v-if="findTagResult(row, tag.taskTagId)?.status === 'completed'">
                 <el-tag :type="passTagType(findTagResult(row, tag.taskTagId)?.passResult)" effect="plain">

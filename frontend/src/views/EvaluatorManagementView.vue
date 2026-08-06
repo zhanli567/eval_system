@@ -73,39 +73,39 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             />
           </template>
         </el-table-column>
-        <el-table-column prop="evaluatorType" label="类型" width="130" :resizable="false">
+        <el-table-column prop="evaluatorType" label="类型" min-width="130" :resizable="false">
           <template #default="{ row }">
             <el-tag size="small" effect="plain">
               <OverflowTooltip :content="typeLabel(row.evaluatorType)" />
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="latestVersionName" label="最新版本" width="130" :resizable="false">
+        <el-table-column prop="latestVersionName" label="最新版本" min-width="130" :resizable="false">
           <template #default="{ row }">
             <OverflowTooltip :content="row.latestVersionName || '-'" />
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="描述" width="280" :resizable="false">
+        <el-table-column prop="description" label="描述" min-width="280" :resizable="false">
           <template #default="{ row }">
             <OverflowTooltip :content="row.description || '暂无描述'" />
           </template>
         </el-table-column>
-        <el-table-column prop="createdByName" label="创建人" width="140" :resizable="false">
+        <el-table-column prop="createdByName" label="创建人" min-width="140" :resizable="false" align="center">
           <template #default="{ row }">
             <OverflowTooltip :content="row.createdByName || '-'" />
           </template>
         </el-table-column>
-        <el-table-column prop="createdDate" label="创建时间" width="190" :resizable="false">
+        <el-table-column prop="createdDate" label="创建时间" min-width="190" :resizable="false" align="center">
           <template #default="{ row }">
             <OverflowTooltip :content="formatTime(row.createdDate)" />
           </template>
         </el-table-column>
-        <el-table-column prop="lastUpdatedByName" label="更新人" width="140" :resizable="false">
+        <el-table-column prop="lastUpdatedByName" label="更新人" min-width="140" :resizable="false" align="center">
           <template #default="{ row }">
             <OverflowTooltip :content="row.lastUpdatedByName || '-'" />
           </template>
         </el-table-column>
-        <el-table-column prop="lastUpdatedDate" label="更新时间" width="190" :resizable="false">
+        <el-table-column prop="lastUpdatedDate" label="更新时间" min-width="190" :resizable="false" align="center">
           <template #default="{ row }">
             <OverflowTooltip :content="formatTime(row.lastUpdatedDate)" />
           </template>
@@ -291,7 +291,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         <template v-if="selectedPreset.evaluatorType === 'llm'">
           <h3>参数设置</h3>
           <el-table :data="selectedPreset.params" border>
-            <el-table-column prop="paramName" label="变量名" width="180" :resizable="false">
+            <el-table-column prop="paramName" label="变量名" min-width="180" :resizable="false">
               <template #default="{ row }">
                 <OverflowTooltip :content="row.paramName || '-'" />
               </template>
@@ -306,7 +306,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
                 <OverflowTooltip :content="row.required ? '是' : '否'" />
               </template>
             </el-table-column>
-            <el-table-column prop="description" label="描述" width="360" :resizable="false">
+            <el-table-column prop="description" label="描述" min-width="360" :resizable="false">
               <template #default="{ row }">
                 <OverflowTooltip :content="row.description || '-'" />
               </template>
@@ -318,7 +318,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         <template v-else>
           <h3>代码入参设置</h3>
           <el-table :data="selectedPreset.params" border>
-            <el-table-column prop="paramName" label="变量名" width="180" :resizable="false">
+            <el-table-column prop="paramName" label="变量名" min-width="180" :resizable="false">
               <template #default="{ row }">
                 <OverflowTooltip :content="row.paramName || '-'" />
               </template>
@@ -333,12 +333,12 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
                 <OverflowTooltip :content="row.required ? '是' : '否'" />
               </template>
             </el-table-column>
-            <el-table-column prop="description" label="描述" width="320" :resizable="false">
+            <el-table-column prop="description" label="描述" min-width="320" :resizable="false">
               <template #default="{ row }">
                 <OverflowTooltip :content="row.description || '-'" />
               </template>
             </el-table-column>
-            <el-table-column prop="defaultValue" label="默认值" width="180" :resizable="false">
+            <el-table-column prop="defaultValue" label="默认值" min-width="180" :resizable="false">
               <template #default="{ row }">
                 <OverflowTooltip :content="row.defaultValue || '-'" />
               </template>

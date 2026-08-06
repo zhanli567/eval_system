@@ -67,34 +67,34 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
           />
         </template>
       </el-table-column>
-      <el-table-column prop="tagType" label="类型" width="140" :resizable="false">
+      <el-table-column prop="tagType" label="类型" min-width="140" :resizable="false">
         <template #default="{ row }">
           <el-tag effect="plain">
             <OverflowTooltip :content="getTagTypeLabel(row.tagType)" />
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="描述" width="280" :resizable="false">
+      <el-table-column prop="description" label="描述" min-width="280" :resizable="false">
         <template #default="{ row }">
           <OverflowTooltip :content="row.description || '暂无描述'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdByName" label="创建人" width="140" :resizable="false">
+      <el-table-column prop="createdByName" label="创建人" min-width="140" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="row.createdByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="createdDate" label="创建时间" width="190" :resizable="false">
+      <el-table-column prop="createdDate" label="创建时间" min-width="190" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="formatTime(row.createdDate)" />
         </template>
       </el-table-column>
-      <el-table-column prop="lastUpdatedByName" label="更新人" width="140" :resizable="false">
+      <el-table-column prop="lastUpdatedByName" label="更新人" min-width="140" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="row.lastUpdatedByName || '-'" />
         </template>
       </el-table-column>
-      <el-table-column prop="lastUpdatedDate" label="更新时间" width="190" :resizable="false">
+      <el-table-column prop="lastUpdatedDate" label="更新时间" min-width="190" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="formatTime(row.lastUpdatedDate)" />
         </template>

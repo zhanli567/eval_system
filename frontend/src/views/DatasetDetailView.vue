@@ -93,7 +93,7 @@ const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, 
           v-for="field in fields"
           :key="`${field.id}:${field.fieldName}:${field.required}:${field.displayOrder}`"
           :label="field.fieldName"
-          width="220"
+          min-width="220"
           :resizable="false"
         >
           <template #header>
