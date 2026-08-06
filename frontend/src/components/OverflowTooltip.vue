@@ -35,7 +35,7 @@ const displayText = computed(() => {
 });
 
 function updateOverflowState() {
-    const el = textRef.value?.$el || textRef.value;
+    const el = resolveTextElement();
     if (el) {
         isOverflow.value = el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight;
     } else {
@@ -43,12 +43,21 @@ function updateOverflowState() {
     }
 }
 
+function resolveTextElement() {
+    const el = textRef.value?.$el || textRef.value;
+    return isDomElement(el) ? el : null;
+}
+
+function isDomElement(el) {
+    return typeof Element !== 'undefined' && el instanceof Element;
+}
+
 function observeTextElement() {
     if (!window.ResizeObserver) {
         return;
     }
     resizeObserver = new ResizeObserver(updateOverflowState);
-    const el = textRef.value?.$el || textRef.value;
+    const el = resolveTextElement();
     if (el) {
         resizeObserver.observe(el);
     }

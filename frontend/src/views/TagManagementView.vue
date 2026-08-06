@@ -152,9 +152,15 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
             <el-button link type="primary" :icon="Plus" @click="addCategoryOption('pass')">添加标签</el-button>
           </div>
           <div class="option-list">
-            <div v-for="index in tagForm.passOptions.length" :key="`pass-${index}`" class="option-editor">
-              <el-input v-model="tagForm.passOptions[index - 1]" maxlength="20" show-word-limit placeholder="请输入标签" />
-              <el-button :icon="Delete" circle @click="removeCategoryOption('pass', index - 1)" />
+            <div v-for="(option, index) in tagForm.passOptions" :key="`pass-${index}`" class="option-editor">
+              <el-input
+                :model-value="option"
+                maxlength="20"
+                show-word-limit
+                placeholder="请输入标签"
+                @update:model-value="tagForm.passOptions[index] = $event"
+              />
+              <el-button :icon="Delete" circle @click="removeCategoryOption('pass', index)" />
             </div>
           </div>
         </section>
@@ -165,9 +171,15 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
             <el-button link type="primary" :icon="Plus" @click="addCategoryOption('fail')">添加标签</el-button>
           </div>
           <div class="option-list">
-            <div v-for="index in tagForm.failOptions.length" :key="`fail-${index}`" class="option-editor">
-              <el-input v-model="tagForm.failOptions[index - 1]" maxlength="20" show-word-limit placeholder="请输入标签" />
-              <el-button :icon="Delete" circle @click="removeCategoryOption('fail', index - 1)" />
+            <div v-for="(option, index) in tagForm.failOptions" :key="`fail-${index}`" class="option-editor">
+              <el-input
+                :model-value="option"
+                maxlength="20"
+                show-word-limit
+                placeholder="请输入标签"
+                @update:model-value="tagForm.failOptions[index] = $event"
+              />
+              <el-button :icon="Delete" circle @click="removeCategoryOption('fail', index)" />
             </div>
           </div>
         </section>
