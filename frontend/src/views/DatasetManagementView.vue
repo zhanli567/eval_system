@@ -63,12 +63,12 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
           />
         </template>
       </el-table-column>
-      <el-table-column prop="publishedVersionCount" label="版本数量" min-width="120" :resizable="false">
+      <el-table-column prop="publishedVersionCount" label="版本数量" min-width="120" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="row.publishedVersionCount" />
         </template>
       </el-table-column>
-      <el-table-column prop="latestItemCount" label="数据量" min-width="110" :resizable="false">
+      <el-table-column prop="latestItemCount" label="数据量" min-width="110" :resizable="false" align="center">
         <template #default="{ row }">
           <OverflowTooltip :content="row.latestItemCount" />
         </template>

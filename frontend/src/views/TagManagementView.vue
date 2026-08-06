@@ -67,11 +67,9 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
           />
         </template>
       </el-table-column>
-      <el-table-column prop="tagType" label="类型" min-width="140" :resizable="false">
+      <el-table-column prop="tagType" label="类型" min-width="140" :resizable="false" align="center">
         <template #default="{ row }">
-          <el-tag effect="plain">
-            <OverflowTooltip :content="getTagTypeLabel(row.tagType)" />
-          </el-tag>
+          <OverflowTooltip :content="getTagTypeLabel(row.tagType)" />
         </template>
       </el-table-column>
       <el-table-column prop="description" label="描述" min-width="280" :resizable="false">

@@ -1,43 +1,69 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { ArrowLeft, ArrowRight, Back, ChatLineRound, Collection, DataAnalysis, PriceTag } from '@element-plus/icons-vue';
+import {
+    ArrowDown,
+    ArrowLeft,
+    ArrowRight,
+    ArrowUp,
+    Back,
+    ChatLineRound,
+    CircleCheckFilled,
+    Collection,
+    DataAnalysis,
+    PriceTag
+} from '@element-plus/icons-vue';
 import { useTaskAnnotation } from '../modules/task/composables/useTaskAnnotation';
-import { formatAgentOutputValue, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
+import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
+import { statusLabel } from '../utils/taskLabels';
+import { renderSafeMarkdown } from '../utils/markdownRenderer';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
 const taskItemId = computed(() => String(route.params.taskItemId ?? ''));
 const readonlyMode = computed(() => route.query.mode === 'detail');
 const { loading, saving, loadError, form, task, item, fields, tags, evaluators, previousItemId, nextItemId, saveAnnotation, backToDetail, goItem, passTagType, tagTypeLabel, optionLabel, appOutputEmptyDescription } = useTaskAnnotation(taskId, taskItemId, readonlyMode);
 const formattedAppOutput = computed(() => formatAppOutput(item.value?.appOutput || ''));
+const renderedAppOutput = computed(() => renderSafeMarkdown(formattedAppOutput.value));
 const hasAppOutput = computed(() => task.value?.appType === 'agent' && Boolean(task.value?.appId));
 const completedTagCount = computed(() => tags.value.filter((tag) => tagHasAnnotation(tag)).length);
+const evaluatorPanelExpanded = ref(false);
+const EVALUATOR_STATUS_LABELS = {
+    completed: '完成',
+    failed: '失败',
+    stopped: '终止',
+    pending: '待执行',
+    running: '进行中',
+    skipped: '跳过'
+};
+const PASS_RESULT_LABELS = {
+    pass: 'Pass',
+    fail: 'Fail'
+};
 function formatNameVersion(name, version) {
     return `${name || '-'} / ${version || '-'}`;
-}
-function evaluatorResultLabel(result) {
-    return result.passResult || result.status || '-';
 }
 function evaluatorReason(result) {
     return formatEvaluatorReason(result.resultValue || '') || result.errorMessage || '';
 }
-function evaluatorParamValue(value) {
-    return formatAgentOutputValue(value) || '-';
-}
 function evaluatorScoreLabel(result) {
     return result.score === undefined || result.score === null ? '-' : result.score;
 }
-function evaluatorTypeLabel(value) {
-    if (value === 'llm') {
-        return 'LLM';
-    } else if (value === 'code') {
-        return 'Code';
-    } else {
-        return value || '-';
-    }
+function evaluatorStatusText(result) {
+    return EVALUATOR_STATUS_LABELS[result?.status] || statusLabel(result?.status);
 }
-function evaluatorParamKey(param) {
-    return `${param.paramId || ''}:${param.paramName || ''}`;
+function evaluatorStatusClass(result) {
+    return `is-${result?.status || 'pending'}`;
+}
+function evaluatorPassScoreLabel(result) {
+    const resultText = PASS_RESULT_LABELS[result?.passResult] || '-';
+    const scoreText = evaluatorScoreLabel(result);
+    return resultText === '-' ? '-' : `${resultText}: ${scoreText}`;
+}
+function evaluatorPassScoreClass(result) {
+    return `is-${result?.passResult || 'empty'}`;
+}
+function toggleEvaluatorPanel() {
+    evaluatorPanelExpanded.value = !evaluatorPanelExpanded.value;
 }
 function tagHasAnnotation(tag) {
     const value = form[tag.taskTagId];
@@ -70,7 +96,6 @@ function tagHasAnnotation(tag) {
         <div class="annotation-section-title">
           <el-icon><Collection /></el-icon>
           <span>评测集数据</span>
-          <small>第 {{ item?.rowNo || '-' }} 条</small>
         </div>
         <div class="annotation-field-list">
           <div v-for="field in fields" :key="field.id" class="annotation-field">
@@ -87,19 +112,28 @@ function tagHasAnnotation(tag) {
           <span>应用输出</span>
         </div>
         <div class="app-output-box">
-          <p v-if="formattedAppOutput">{{ formattedAppOutput }}</p>
+          <div v-if="formattedAppOutput" class="markdown-content" v-html="renderedAppOutput"></div>
           <el-empty v-else :description="appOutputEmptyDescription()" :image-size="80" />
         </div>
       </main>
 
       <aside class="annotation-pane annotation-side-panel">
-        <section v-if="tags.length" class="annotation-content-block annotation-form-section">
+        <section class="annotation-content-block annotation-form-section">
           <div class="annotation-section-title">
             <el-icon><PriceTag /></el-icon>
             <span>标签（人工标注）</span>
-            <small>标注完成：{{ completedTagCount }} / {{ tags.length }}</small>
+            <small v-if="tags.length" class="annotation-complete-count">
+              <el-icon><CircleCheckFilled /></el-icon>
+              标注完成：{{ completedTagCount }} / {{ tags.length }}
+            </small>
           </div>
-          <el-form class="annotation-tag-form" label-position="top" :disabled="readonlyMode">
+          <el-empty
+            v-if="!tags.length"
+            class="annotation-tag-empty"
+            description="暂无数据，请在添加标签后进行标注操作"
+            :image-size="180"
+          />
+          <el-form v-else class="annotation-tag-form" label-position="top" :disabled="readonlyMode">
             <div v-for="tag in tags" :key="tag.taskTagId" class="annotation-tag-editor">
               <div class="annotation-tag-head">
                 <strong>{{ tag.tagName }}</strong>
@@ -144,49 +178,36 @@ function tagHasAnnotation(tag) {
           </el-form>
         </section>
 
-        <section class="annotation-content-block annotation-evaluator-block">
-          <div class="annotation-section-title">
-            <el-icon><DataAnalysis /></el-icon>
-            <span>评估器（自动）</span>
-          </div>
-          <div class="auto-result-list evaluator-data-list">
+        <section
+          class="annotation-content-block annotation-evaluator-block"
+          :class="{ 'is-expanded': evaluatorPanelExpanded }"
+        >
+          <button type="button" class="annotation-evaluator-toggle" @click="toggleEvaluatorPanel">
+            <span class="annotation-section-title">
+              <el-icon><DataAnalysis /></el-icon>
+              <span>评估器（自动）</span>
+            </span>
+            <el-icon class="annotation-evaluator-toggle-icon">
+              <ArrowUp v-if="evaluatorPanelExpanded" />
+              <ArrowDown v-else />
+            </el-icon>
+          </button>
+          <div v-show="evaluatorPanelExpanded" class="auto-result-list evaluator-data-list">
             <article v-for="result in evaluators" :key="result.id" class="annotation-evaluator-card">
               <header class="annotation-evaluator-head">
                 <div class="annotation-evaluator-title">
                   <strong>{{ formatNameVersion(result.evaluatorName, result.versionName) }}</strong>
-                  <span>{{ evaluatorTypeLabel(result.evaluatorType) }}</span>
                 </div>
                 <div class="annotation-evaluator-summary">
-                  <div class="annotation-evaluator-metric">
-                    <span>结果</span>
-                    <el-tag :type="passTagType(result.passResult)" effect="plain">
-                      {{ evaluatorResultLabel(result) }}
-                    </el-tag>
-                  </div>
-                  <div class="annotation-evaluator-metric">
-                    <span>得分</span>
-                    <strong>{{ evaluatorScoreLabel(result) }}</strong>
-                  </div>
+                  <span class="annotation-status-chip">
+                    <i class="annotation-status-dot" :class="evaluatorStatusClass(result)"></i>
+                    {{ evaluatorStatusText(result) }}
+                  </span>
+                  <span v-if="result.passResult" class="annotation-score-pill" :class="evaluatorPassScoreClass(result)">
+                    {{ evaluatorPassScoreLabel(result) }}
+                  </span>
                 </div>
               </header>
-
-              <div v-if="result.params?.length" class="annotation-evaluator-param-table">
-                <div
-                  v-for="param in result.params"
-                  :key="evaluatorParamKey(param)"
-                  class="annotation-evaluator-param-row"
-                >
-                  <span class="annotation-evaluator-param-name">{{ param.paramName || '-' }}</span>
-                  <div class="annotation-evaluator-param-value-cell">
-                    <OverflowTooltip
-                      :content="evaluatorParamValue(param.value)"
-                      tag="p"
-                      class="annotation-evaluator-param-value"
-                    />
-                  </div>
-                </div>
-              </div>
-              <el-empty v-else description="暂无参数数据" :image-size="64" />
 
               <section v-if="evaluatorReason(result)" class="annotation-evaluator-reason">
                 <span class="annotation-evaluator-reason-label">原因</span>
@@ -200,17 +221,17 @@ function tagHasAnnotation(tag) {
             <el-empty v-if="!evaluators.length" description="暂无自动评估结果" :image-size="72" />
           </div>
         </section>
-      </aside>
 
-      <footer class="annotation-bottom-actions">
-        <span class="annotation-item-counter">第 {{ item?.rowNo || '-' }} 条</span>
-        <el-button :disabled="!previousItemId" :icon="ArrowLeft" @click="goItem(previousItemId)">上一条</el-button>
-        <el-button :disabled="!nextItemId" @click="goItem(nextItemId)">
-          下一条
-          <el-icon class="el-icon--right"><ArrowRight /></el-icon>
-        </el-button>
-        <el-button v-if="!readonlyMode" type="primary" :loading="saving" :disabled="!!loadError || !item || !tags.length" @click="saveAnnotation">保存标注</el-button>
-      </footer>
+        <footer class="annotation-bottom-actions">
+          <span class="annotation-item-counter">第 {{ item?.rowNo || '-' }} 条</span>
+          <el-button :disabled="!previousItemId" :icon="ArrowLeft" @click="goItem(previousItemId)">上一条</el-button>
+          <el-button :disabled="!nextItemId" @click="goItem(nextItemId)">
+            下一条
+            <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+          </el-button>
+          <el-button v-if="!readonlyMode && tags.length" type="primary" :loading="saving" :disabled="!!loadError || !item" @click="saveAnnotation">保存标注</el-button>
+        </footer>
+      </aside>
     </template>
   </section>
 </template>
