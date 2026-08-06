@@ -166,11 +166,6 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
               v-for="preset in presetEvaluators"
               :key="preset.id"
               class="preset-card"
-              role="button"
-              tabindex="0"
-              @click="viewPreset(preset.id)"
-              @keyup.enter="viewPreset(preset.id)"
-              @keyup.space.prevent="viewPreset(preset.id)"
             >
               <div class="preset-card-head">
                 <span class="preset-card-icon">
@@ -244,11 +239,6 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             v-for="preset in pickerPresets"
             :key="preset.id"
             class="preset-card"
-            role="button"
-            tabindex="0"
-            @click="viewPreset(preset.id)"
-            @keyup.enter="viewPreset(preset.id)"
-            @keyup.space.prevent="viewPreset(preset.id)"
           >
             <div class="preset-card-head">
               <span class="preset-card-icon">
