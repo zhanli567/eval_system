@@ -34,7 +34,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
           <el-icon><Search /></el-icon>
         </template>
       </el-input>
-      <el-button @click="searchTags">搜索</el-button>
+      <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchTags" />
       <div class="task-sort-actions">
         <el-button :class="{ active: sortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleSort('lastUpdatedDate')">
           更新时间 {{ sortBy === 'lastUpdatedDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}

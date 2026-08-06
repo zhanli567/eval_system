@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { ArrowDown, Back, Delete, Plus, Refresh } from '@element-plus/icons-vue';
+import { ArrowDown, Back, Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useDatasetDetail } from '../modules/dataset/composables/useDatasetDetail';
 const route = useRoute();
 const datasetId = computed(() => String(route.params.datasetId ?? ''));
@@ -84,7 +84,7 @@ const { detailLoading, datasetSummary, datasetTitle, versions, activeVersionId, 
           <el-option v-for="field in fields" :key="field.id" :label="field.fieldName" :value="field.id" />
         </el-select>
         <el-input v-model="searchKeyword" clearable placeholder="请输入关键词" class="search-input" @keyup.enter="loadDetail" />
-        <el-button @click="loadDetail">筛选</el-button>
+        <el-button class="search-icon-button" :icon="Search" title="筛选" aria-label="筛选" @click="loadDetail" />
       </div>
 
       <el-table :key="dataTableKey" :data="tableRows" row-key="id" border height="100%" tooltip-effect="light" class="data-table">

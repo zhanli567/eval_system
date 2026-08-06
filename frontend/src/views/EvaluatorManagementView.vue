@@ -40,7 +40,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             <el-icon><Search /></el-icon>
           </template>
         </el-input>
-        <el-button @click="searchCustom">搜索</el-button>
+        <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchCustom" />
         <div class="task-sort-actions">
           <el-button :class="{ active: customSortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleCustomSort('lastUpdatedDate')">
             更新时间 {{ customSortBy === 'lastUpdatedDate' ? (customSortOrder === 'desc' ? '降序' : '升序') : '' }}
@@ -158,7 +158,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
                 <el-icon><Search /></el-icon>
               </template>
             </el-input>
-            <el-button @click="searchPreset">搜索</el-button>
+            <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchPreset" />
           </div>
 
           <div v-loading="presetLoading" class="preset-grid">
@@ -230,6 +230,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
                 <el-icon><Search /></el-icon>
               </template>
             </el-input>
+            <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchPicker" />
             <el-button type="primary" :icon="Plus" @click="createCustom">自定义创建评估器</el-button>
           </div>
         </div>

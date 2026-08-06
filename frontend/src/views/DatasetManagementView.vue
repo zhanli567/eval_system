@@ -29,7 +29,7 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
           <el-icon><Search /></el-icon>
         </template>
       </el-input>
-      <el-button @click="searchDatasets">搜索</el-button>
+      <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchDatasets" />
       <div class="task-sort-actions">
         <el-button :class="{ active: sortBy === 'lastUpdatedDate' }" :icon="Sort" @click="toggleSort('lastUpdatedDate')">
           更新时间 {{ sortBy === 'lastUpdatedDate' ? (sortOrder === 'desc' ? '降序' : '升序') : '' }}
