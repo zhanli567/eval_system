@@ -6,7 +6,7 @@ import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
 import { formatAgentOutputValue, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
-const { loading, starting, stopping, page, size, base, fields, evaluators, tags, rows, total, canStartTask, canStopTask, loadDetail, backToList, startTask, stopTask, openItemDetail, openAnnotation, canAnnotateItem, annotationDisabledReason, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
+const { loading, starting, stopping, page, size, base, fields, evaluators, tags, rows, total, canStartTask, canStopTask, loadDetail, backToList, startTask, stopTask, openAnnotation, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -131,91 +131,92 @@ function evaluatorMessage(result) {
   </header>
 
   <section class="task-detail-shell" v-loading="loading">
-    <section class="task-basic-band">
-      <h2>基础信息</h2>
-      <div class="task-detail-info-grid">
-        <div class="task-info-row task-info-row-primary">
-          <div class="task-info-item">
-            <span>评测集</span>
-            <OverflowTooltip
-              :content="formatNameVersion(base?.datasetName, base?.datasetVersionName)"
-              tag="strong"
-            />
+    <section class="task-detail-card">
+      <section class="task-basic-band">
+        <h2>基础信息</h2>
+        <div class="task-detail-info-grid">
+          <div class="task-info-row task-info-row-primary">
+            <div class="task-info-item">
+              <span>评测集</span>
+              <OverflowTooltip
+                :content="formatNameVersion(base?.datasetName, base?.datasetVersionName)"
+                tag="strong"
+              />
+            </div>
+            <div class="task-info-item">
+              <span>评测应用</span>
+              <OverflowTooltip
+                :content="formatAppBinding(base)"
+                tag="strong"
+              />
+            </div>
+            <div class="task-info-item">
+              <span>创建人</span>
+              <OverflowTooltip
+                :content="base?.createdByName || '-'"
+                tag="strong"
+              />
+            </div>
+            <div class="task-info-item">
+              <span>创建时间</span>
+              <OverflowTooltip
+                :content="formatTime(base?.createdDate)"
+                tag="strong"
+              />
+            </div>
+            <div class="task-info-item">
+              <span>描述</span>
+              <OverflowTooltip
+                :content="base?.description || '暂无描述'"
+                tag="strong"
+              />
+            </div>
           </div>
-          <div class="task-info-item">
-            <span>评测应用</span>
-            <OverflowTooltip
-              :content="formatAppBinding(base)"
-              tag="strong"
-            />
-          </div>
-          <div class="task-info-item">
-            <span>创建人</span>
-            <OverflowTooltip
-              :content="base?.createdByName || '-'"
-              tag="strong"
-            />
-          </div>
-          <div class="task-info-item">
-            <span>创建时间</span>
-            <OverflowTooltip
-              :content="formatTime(base?.createdDate)"
-              tag="strong"
-            />
-          </div>
-          <div class="task-info-item">
-            <span>描述</span>
-            <OverflowTooltip
-              :content="base?.description || '暂无描述'"
-              tag="strong"
-            />
+          <div class="task-dimension-section">
+            <span class="task-dimension-title">评测维度</span>
+            <div class="dimension-summary-row task-dimension-summary">
+              <div v-if="evaluators.length" class="dimension-summary-group">
+                <span class="dimension-summary-group-label">评估器</span>
+                <el-tag
+                  v-for="evaluator in evaluators"
+                  :key="evaluator.taskEvaluatorId"
+                  class="dimension-summary-pill"
+                  type="info"
+                  effect="light"
+                >
+                  <OverflowTooltip
+                    :content="formatEvaluatorDimension(evaluator)"
+                    class="dimension-summary-pill-text"
+                  />
+                </el-tag>
+              </div>
+              <div v-if="tags.length" class="dimension-summary-group">
+                <span class="dimension-summary-group-label">标签</span>
+                <el-tag
+                  v-for="tag in tags"
+                  :key="tag.taskTagId"
+                  class="dimension-summary-pill"
+                  type="info"
+                  effect="light"
+                >
+                  <OverflowTooltip
+                    :content="formatTagDimension(tag)"
+                    class="dimension-summary-pill-text"
+                  />
+                </el-tag>
+              </div>
+              <span v-if="!evaluators.length && !tags.length" class="dimension-summary-empty">暂无评测维度</span>
+            </div>
           </div>
         </div>
-        <div class="task-dimension-section">
-          <span class="task-dimension-title">评测维度</span>
-          <div class="dimension-summary-row task-dimension-summary">
-            <div v-if="evaluators.length" class="dimension-summary-group">
-              <span class="dimension-summary-group-label">评估器</span>
-              <el-tag
-                v-for="evaluator in evaluators"
-                :key="evaluator.taskEvaluatorId"
-                class="dimension-summary-pill"
-                type="info"
-                effect="light"
-              >
-                <OverflowTooltip
-                  :content="formatEvaluatorDimension(evaluator)"
-                  class="dimension-summary-pill-text"
-                />
-              </el-tag>
-            </div>
-            <div v-if="tags.length" class="dimension-summary-group">
-              <span class="dimension-summary-group-label">标签</span>
-              <el-tag
-                v-for="tag in tags"
-                :key="tag.taskTagId"
-                class="dimension-summary-pill"
-                type="info"
-                effect="light"
-              >
-                <OverflowTooltip
-                  :content="formatTagDimension(tag)"
-                  class="dimension-summary-pill-text"
-                />
-              </el-tag>
-            </div>
-            <span v-if="!evaluators.length && !tags.length" class="dimension-summary-empty">暂无评测维度</span>
-          </div>
+      </section>
+
+      <section class="task-data-panel">
+        <div class="panel-toolbar">
+          <span class="meta">数据明细</span>
         </div>
-      </div>
-    </section>
 
-    <section class="task-data-panel">
-      <div class="panel-toolbar">
-        <span class="meta">数据明细</span>
-      </div>
-
-      <el-table :data="rows" row-key="id" border height="100%" tooltip-effect="light" class="task-detail-table">
+        <el-table :data="rows" row-key="id" border height="100%" tooltip-effect="light" class="task-detail-table">
         <el-table-column label="状态" width="120" fixed="left" :resizable="false" align="center">
           <template #default="{ row }">
             <el-tooltip :content="statusLabel(row.status)" placement="top" effect="light">
@@ -302,34 +303,25 @@ function evaluatorMessage(result) {
             </template>
           </el-table-column>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right" :resizable="false" align="center">
+        <el-table-column label="操作" width="120" fixed="right" :resizable="false" align="center">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openItemDetail(row)">详情</el-button>
-            <el-tooltip
-              :content="annotationDisabledReason(row)"
-              placement="top"
-              effect="light"
-              :disabled="canAnnotateItem(row)"
-            >
-              <span class="task-action-button-wrap">
-                <el-button link type="primary" :disabled="!canAnnotateItem(row)" @click="openAnnotation(row)">标注</el-button>
-              </span>
-            </el-tooltip>
+            <el-button link type="primary" @click="openAnnotation(row)">标注</el-button>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
 
-      <div class="pager-row">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="size"
-          :page-sizes="[5, 10, 20]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="changeSize"
-          @current-change="loadDetail"
-        />
-      </div>
+        <div class="pager-row">
+          <el-pagination
+            v-model:current-page="page"
+            v-model:page-size="size"
+            :page-sizes="[5, 10, 20]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+            @size-change="changeSize"
+            @current-change="loadDetail"
+          />
+        </div>
+      </section>
     </section>
   </section>
 </template>

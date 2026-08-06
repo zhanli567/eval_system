@@ -336,9 +336,7 @@ h2 {
 .task-basic-band,
 .task-data-panel,
 .task-create-shell,
-.task-create-section,
-.annotation-column,
-.annotation-output {
+.task-create-section {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -351,9 +349,7 @@ h2 {
 .task-basic-band,
 .task-data-panel,
 .task-create-shell,
-.task-create-section,
-.annotation-column,
-.annotation-output {
+.task-create-section {
   padding: 18px;
 }
 
@@ -1439,8 +1435,37 @@ h2 {
 }
 
 .task-detail-shell {
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
+}
+
+.task-detail-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 32px rgba(31, 41, 66, 0.06);
+}
+
+.task-detail-card .task-basic-band,
+.task-detail-card .task-data-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.task-detail-card .task-basic-band {
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.task-detail-card .task-data-panel {
+  padding: 16px 18px 18px;
 }
 
 .task-create-main {
@@ -1805,6 +1830,14 @@ h2 {
   white-space: nowrap;
 }
 
+.annotation-topbar {
+  margin-bottom: 12px;
+}
+
+.annotation-topbar .back-link {
+  margin-bottom: 0;
+}
+
 .task-dimension-summary {
   min-height: 28px;
 }
@@ -1823,11 +1856,6 @@ h2 {
   margin-left: 8px;
   color: var(--ink);
   font-weight: 700;
-}
-
-.task-action-button-wrap {
-  display: inline-flex;
-  vertical-align: middle;
 }
 
 .app-output-preview {
@@ -1888,14 +1916,19 @@ h2 {
 
 .annotation-shell {
   display: grid;
-  grid-template-columns: minmax(300px, 0.75fr) minmax(520px, 1.45fr) minmax(340px, 0.9fr);
-  gap: 16px;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(420px, 1.1fr) minmax(360px, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0;
   align-items: stretch;
   overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 32px rgba(31, 41, 66, 0.06);
 }
 
-.annotation-shell--without-tags {
-  grid-template-columns: minmax(320px, 1fr) minmax(520px, 1fr);
+.annotation-shell--without-app {
+  grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.1fr);
 }
 
 .annotation-load-error,
@@ -1903,18 +1936,51 @@ h2 {
   grid-column: 1 / -1;
 }
 
-.annotation-column,
-.annotation-output {
+.annotation-pane {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  padding: 24px 26px;
+  border-right: 1px solid var(--line);
 }
 
-.annotation-output {
-  gap: 16px;
+.annotation-side-panel {
+  gap: 20px;
+  border-right: 0;
+}
+
+.annotation-section-title {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.annotation-section-title .el-icon {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.annotation-section-title small {
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .annotation-field-list,
@@ -1930,10 +1996,13 @@ h2 {
 
 .annotation-field {
   min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: #fff;
+  padding: 8px 0 16px;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+}
+
+.annotation-field:last-child {
+  border-bottom: 0;
 }
 
 .annotation-field span {
@@ -1959,28 +2028,23 @@ h2 {
   min-height: 0;
 }
 
-.annotation-app-block {
-  flex: 0 0 auto;
+.annotation-form-section {
+  flex: 0 1 auto;
+  max-height: 46%;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
 }
 
 .annotation-evaluator-block {
   flex: 1 1 auto;
 }
 
-.annotation-content-block h2 {
-  flex: 0 0 auto;
-}
-
 .app-output-box {
-  flex: 0 0 auto;
-  min-height: 180px;
-  max-height: 240px;
+  flex: 1 1 auto;
+  min-height: 0;
   margin: 14px 0 0;
-  padding: 16px;
+  padding: 0 8px 0 0;
   overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: #fbfcff;
   font-size: 14px;
 }
 
@@ -2138,12 +2202,7 @@ h2 {
   overflow-wrap: anywhere;
 }
 
-.annotation-form-column {
-  position: sticky;
-  top: 18px;
-}
-
-.annotation-form-column .el-form {
+.annotation-tag-form {
   display: grid;
   align-content: start;
   flex: 1 1 auto;
@@ -2177,6 +2236,24 @@ h2 {
   display: flex;
   align-items: center;
   gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.annotation-bottom-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+
+.annotation-item-counter {
+  margin-right: 8px;
   color: var(--muted);
   font-size: 13px;
 }
@@ -2240,17 +2317,15 @@ h2 {
 
 @media (max-width: 1500px) {
   .annotation-shell {
-    grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+    grid-template-columns: minmax(240px, 0.75fr) minmax(360px, 1.05fr) minmax(320px, 0.95fr);
   }
 
-  .annotation-shell--without-tags {
-    grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1fr);
+  .annotation-shell--without-app {
+    grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.1fr);
   }
 
-  .annotation-form-column {
-    position: static;
-    grid-column: 1 / -1;
-    min-height: 360px;
+  .annotation-pane {
+    padding: 22px 20px;
   }
 }
 
@@ -2432,8 +2507,25 @@ h2 {
     overflow-y: auto;
   }
 
-  .annotation-form-column {
-    grid-column: auto;
+  .annotation-shell--without-app {
+    grid-template-columns: 1fr;
+  }
+
+  .annotation-pane {
+    min-height: 320px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .annotation-side-panel {
+    min-height: 420px;
+    border-bottom: 0;
+  }
+
+  .annotation-bottom-actions {
+    position: sticky;
+    bottom: 0;
+    flex-wrap: wrap;
   }
 
   .annotation-evaluator-head {
@@ -2511,11 +2603,9 @@ h2 {
   .detail-panel,
   .tag-panel,
   .task-panel,
-  .task-basic-band,
-  .task-data-panel,
+  .task-detail-card,
   .task-create-section,
-  .annotation-column,
-  .annotation-output,
+  .annotation-shell,
   .evaluator-panel,
   .editor-form-panel {
     animation: lift-in 260ms ease-out both;

@@ -96,13 +96,9 @@ function createTaskDetailActions(ctx, router) {
     function stopPolling() {
         stopTaskPolling(ctx);
     }
-    function openItemDetail(row) {
-        openTaskItem(row, 'detail');
-    }
     function openAnnotation(row) {
-        if (canAnnotateItem(ctx, row)) {
-            openTaskItem(row, 'annotate');
-        }
+        const mode = canAnnotateItem(ctx, row) ? 'annotate' : 'detail';
+        openTaskItem(row, mode);
     }
     function openTaskItem(row, mode) {
         router.push({
@@ -111,7 +107,7 @@ function createTaskDetailActions(ctx, router) {
             query: { mode }
         });
     }
-    return { loadDetail, changeSize, backToList, startTask, stopTask, startPolling, stopPolling, openItemDetail, openAnnotation };
+    return { loadDetail, changeSize, backToList, startTask, stopTask, startPolling, stopPolling, openAnnotation };
 }
 
 function hasTagBindings(ctx) {
@@ -124,16 +120,6 @@ function isStoppedForAnnotation(ctx, row) {
 
 function canAnnotateItem(ctx, row) {
     return hasTagBindings(ctx) && !isStoppedForAnnotation(ctx, row);
-}
-
-function annotationDisabledReason(ctx, row) {
-    if (!hasTagBindings(ctx)) {
-        return '当前任务未绑定标签，无法标注';
-    } else if (isStoppedForAnnotation(ctx, row)) {
-        return '当前任务已中止，无法标注';
-    } else {
-        return '';
-    }
 }
 
 const taskBase = (detail) => detail?.base;
@@ -194,10 +180,7 @@ export function useTaskDetail(taskId) {
         backToList: actions.backToList,
         startTask: actions.startTask,
         stopTask: actions.stopTask,
-        openItemDetail: actions.openItemDetail,
         openAnnotation: actions.openAnnotation,
-        canAnnotateItem: (row) => canAnnotateItem(ctx, row),
-        annotationDisabledReason: (row) => annotationDisabledReason(ctx, row),
         changeSize: actions.changeSize,
         formatAppBinding: formatTaskAppBinding,
         statusLabel,
