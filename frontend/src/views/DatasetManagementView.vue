@@ -123,7 +123,7 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
     </div>
   </section>
 
-  <el-dialog v-model="createVisible" title="创建评测集" class="dataset-create-dialog fixed-dialog" style="--fixed-dialog-width: min(860px, 86vw); --fixed-dialog-height: min(640px, 86vh)" :close-on-click-modal="true">
+  <el-dialog v-model="createVisible" title="创建评测集" class="dataset-create-dialog fixed-dialog" style="--fixed-dialog-width: min(760px, 86vw); --fixed-dialog-height: min(640px, 86vh)" :close-on-click-modal="true">
     <el-form label-position="top">
       <el-form-item>
         <template #label>评测集名称 <span class="required-mark">*</span></template>

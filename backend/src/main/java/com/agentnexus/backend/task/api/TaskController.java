@@ -81,6 +81,38 @@ public class TaskController {
     return ApiResponse.ok(taskService.stopTask(taskId));
   }
 
+  /**
+   * 为评测任务添加标签。
+   *
+   * @param taskId 评测任务ID
+   * @param tagId 标签ID
+   * @return 添加标签后的评测任务详情
+   */
+  @POST
+  @Path("/{taskId}/tags/{tagId}")
+  public ApiResponse<TaskDetail> addTaskTag(
+      @PathParam("taskId") String taskId,
+      @PathParam("tagId") String tagId
+  ) {
+    return ApiResponse.ok(taskService.addTaskTag(taskId, tagId));
+  }
+
+  /**
+   * 删除评测任务已绑定的标签。
+   *
+   * @param taskId 评测任务ID
+   * @param taskTagId 任务标签ID
+   * @return 删除标签后的评测任务详情
+   */
+  @POST
+  @Path("/{taskId}/tags/{taskTagId}/delete")
+  public ApiResponse<TaskDetail> deleteTaskTag(
+      @PathParam("taskId") String taskId,
+      @PathParam("taskTagId") String taskTagId
+  ) {
+    return ApiResponse.ok(taskService.deleteTaskTag(taskId, taskTagId));
+  }
+
   @POST
   @Path("/{taskId}/delete")
   public ApiResponse<Void> deleteTask(@PathParam("taskId") String taskId) {

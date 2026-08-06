@@ -1,8 +1,59 @@
 <script setup>
 import { Delete, Plus } from '@element-plus/icons-vue';
+import TaskTagDrawer from '../components/TaskTagDrawer.vue';
 import { useTaskCreate } from '../modules/task/composables/useTaskCreate';
 import { formatPromptBlock } from '../utils/textBlocks';
-const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, publishedVersions, fields, selectedTags, filteredTags, tagTypeOptions, customEvaluators, categoryOptions, evaluatorBlocks, agents, models, agentDetailLoading, agentVersionLoading, modelLoading, agentVersions, agentChildAgents, agentInputs, agentOutputs, appFieldMappings, form, handleDatasetVisible, handleAgentVisible, handleCustomEvaluatorVisible, handlePresetCategoryVisible, handlePresetEvaluatorVisible, handleModelVisible, changePresetCategory, changeEvaluatorSource, selectEvaluator, selectCustomVersion, addEvaluator, removeEvaluator, openTagDrawer, addTag, removeTag, isTagSelected, submit, paramKey, fieldTypeLabel, agentOutputLabel, tagTypeLabel, backToList } = useTaskCreate();
+const {
+    loading,
+    saving,
+    tagDrawerVisible,
+    tagKeyword,
+    tagTypeFilter,
+    datasets,
+    publishedVersions,
+    fields,
+    tags,
+    selectedTagIds,
+    selectedTags,
+    tagTypeOptions,
+    customEvaluators,
+    categoryOptions,
+    evaluatorBlocks,
+    agents,
+    models,
+    agentDetailLoading,
+    agentVersionLoading,
+    modelLoading,
+    agentVersions,
+    agentChildAgents,
+    agentInputs,
+    agentOutputs,
+    appFieldMappings,
+    form,
+    handleDatasetVisible,
+    handleAgentVisible,
+    handleCustomEvaluatorVisible,
+    handlePresetCategoryVisible,
+    handlePresetEvaluatorVisible,
+    handleModelVisible,
+    changePresetCategory,
+    changeEvaluatorSource,
+    selectEvaluator,
+    selectCustomVersion,
+    addEvaluator,
+    removeEvaluator,
+    loadTags,
+    openTagDrawer,
+    openTagManagement,
+    addTag,
+    removeTag,
+    submit,
+    paramKey,
+    fieldTypeLabel,
+    agentOutputLabel,
+    tagTypeLabel,
+    backToList
+} = useTaskCreate();
 </script>
 
 <template>
@@ -258,35 +309,23 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
               </div>
               <el-button :icon="Delete" circle @click="removeTag(tag.id)" />
             </article>
-            <span v-if="!selectedTags.length" class="selected-empty-text">暂无标签</span>
           </div>
         </div>
       </section>
     </main>
 
-    <el-drawer v-model="tagDrawerVisible" title="添加标签" direction="rtl" size="460px" class="tag-picker-drawer">
-      <div class="tag-picker-toolbar">
-        <el-input v-model="tagKeyword" clearable placeholder="搜索标签名或描述" />
-        <el-select v-model="tagTypeFilter" clearable placeholder="全部类别">
-          <el-option v-for="type in tagTypeOptions" :key="type.value" :label="type.label" :value="type.value" />
-        </el-select>
-      </div>
-
-      <div class="tag-picker-list">
-        <article v-for="tag in filteredTags" :key="tag.id" class="tag-picker-card">
-          <div class="tag-picker-card-main">
-            <div class="tag-title-row">
-              <strong>{{ tag.tagName }}</strong>
-              <el-tag size="small" effect="plain">{{ tagTypeLabel(tag.tagType) }}</el-tag>
-            </div>
-            <p>{{ tag.description || '暂无描述' }}</p>
-          </div>
-          <el-button type="primary" plain :disabled="isTagSelected(tag.id)" @click="addTag(tag)">
-            {{ isTagSelected(tag.id) ? '已添加' : '添加' }}
-          </el-button>
-        </article>
-        <el-empty v-if="!filteredTags.length" description="暂无匹配标签" :image-size="80" />
-      </div>
-    </el-drawer>
+    <TaskTagDrawer
+      v-model="tagDrawerVisible"
+      v-model:keyword="tagKeyword"
+      v-model:tag-type="tagTypeFilter"
+      title="添加标签"
+      selected-mode="disabled"
+      :tags="tags"
+      :selected-tag-ids="selectedTagIds"
+      :tag-type-options="tagTypeOptions"
+      @refresh="loadTags"
+      @create="openTagManagement"
+      @add="addTag"
+    />
   </section>
 </template>

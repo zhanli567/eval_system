@@ -1,12 +1,56 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { CircleCheck, CircleClose, Clock, Loading, Refresh } from '@element-plus/icons-vue';
+import { CircleCheck, CircleClose, Clock, Delete, Loading, Operation, PriceTag, Refresh } from '@element-plus/icons-vue';
+import TaskTagDrawer from '../components/TaskTagDrawer.vue';
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
 import { formatAgentOutputValue, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
-const { loading, stopping, page, size, base, fields, evaluators, tags, rows, total, canStopTask, loadDetail, backToList, stopTask, openAnnotation, changeSize, formatAppBinding, statusLabel, passTagType, tagTypeLabel, formatTime } = useTaskDetail(taskId);
+const {
+    loading,
+    stopping,
+    page,
+    size,
+    base,
+    evaluators,
+    tags,
+    rows,
+    total,
+    canStopTask,
+    tagDrawerVisible,
+    tagKeyword,
+    tagTypeFilter,
+    tagLoading,
+    allTags,
+    selectedTagIds,
+    tagTypeOptions,
+    columnSettingVisible,
+    columnSettingItems,
+    visibleTableColumns,
+    loadDetail,
+    loadAllTags,
+    backToList,
+    stopTask,
+    openAnnotation,
+    changeSize,
+    openTagDrawer,
+    addTaskTag,
+    removeTaskTag,
+    removeTaskTagByTag,
+    openTagManagement,
+    setColumnVisible,
+    resetColumnSettings,
+    confirmColumnSettings,
+    startColumnDrag,
+    enterColumnDrag,
+    finishColumnDrag,
+    formatAppBinding,
+    statusLabel,
+    passTagType,
+    tagTypeLabel,
+    formatTime
+} = useTaskDetail(taskId);
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -89,6 +133,9 @@ function evaluatorMessage(result) {
     } else {
         return formatEvaluatorReason(result.resultValue || '') || result.errorMessage || '';
     }
+}
+function tagHeaderText(tag) {
+    return `${tag?.tagName || '-'}（${tagTypeLabel(tag?.tagType)}）`;
 }
 </script>
 
@@ -186,6 +233,48 @@ function evaluatorMessage(result) {
         <div class="panel-toolbar">
           <span class="meta">数据明细</span>
           <div class="table-toolbar-actions">
+            <el-button :icon="PriceTag" @click="openTagDrawer">标签配置</el-button>
+            <el-popover
+              v-model:visible="columnSettingVisible"
+              placement="bottom-end"
+              :width="280"
+              trigger="click"
+              popper-class="column-setting-popover"
+            >
+              <template #reference>
+                <el-button class="toolbar-icon-button" :icon="Operation" title="表头设置" aria-label="表头设置" />
+              </template>
+              <div class="column-setting-panel">
+                <div class="column-setting-head">
+                  <strong>表头设置</strong>
+                </div>
+                <div class="column-setting-list">
+                  <div
+                    v-for="(column, index) in columnSettingItems"
+                    :key="column.id"
+                    class="column-setting-item"
+                    draggable="true"
+                    @dragstart="startColumnDrag(index)"
+                    @dragenter.prevent="enterColumnDrag(index)"
+                    @dragover.prevent
+                    @dragend="finishColumnDrag"
+                    @drop.prevent="finishColumnDrag"
+                  >
+                    <span class="column-drag-handle">☰</span>
+                    <el-checkbox
+                      :model-value="column.visible"
+                      @change="setColumnVisible(column.id, Boolean($event))"
+                    >
+                      <OverflowTooltip :content="column.label" class="column-setting-label" />
+                    </el-checkbox>
+                  </div>
+                </div>
+                <div class="column-setting-actions">
+                  <el-button link @click="resetColumnSettings">重置</el-button>
+                  <el-button type="primary" @click="confirmColumnSettings">确定</el-button>
+                </div>
+              </div>
+            </el-popover>
             <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadDetail()" />
             <el-button
               v-if="canStopTask"
@@ -202,97 +291,129 @@ function evaluatorMessage(result) {
         </div>
 
         <el-table :data="rows" row-key="id" border height="100%" tooltip-effect="light" class="task-detail-table">
-        <el-table-column label="状态" width="120" fixed="left" :resizable="false" align="center">
-          <template #default="{ row }">
-            <el-tooltip :content="statusLabel(row.status)" placement="top" effect="light">
-              <el-icon class="task-status-icon" :class="statusIconClass(row.status)">
-                <component :is="statusIcon(row.status)" />
-              </el-icon>
-            </el-tooltip>
-          </template>
-        </el-table-column>
-        <el-table-column type="index" label="序号" width="90" fixed="left" :resizable="false" align="center" />
-        <el-table-column :label="formatNameVersion(base?.datasetName, base?.datasetVersionName)" :resizable="false" align="center">
-          <el-table-column v-for="field in fields" :key="field.id" :label="field.fieldName" min-width="220" :resizable="false">
+          <el-table-column label="状态" width="120" fixed="left" :resizable="false" align="center">
             <template #default="{ row }">
-              <OverflowTooltip :content="row.values[field.id || ''] || '-'" />
-            </template>
-          </el-table-column>
-        </el-table-column>
-        <el-table-column label="应用输出" min-width="300" :resizable="false">
-          <template #default="{ row }">
-            <OverflowTooltip
-              :content="appOutputText(row)"
-              tag="div"
-              class="app-output-preview"
-            >
-              <span>{{ formatAppOutput(row.appOutput) || '-' }}</span>
-              <p v-if="row.appErrorMessage" class="task-error-preview">
-                {{ row.appErrorMessage }}
-              </p>
-            </OverflowTooltip>
-          </template>
-        </el-table-column>
-        <el-table-column v-for="evaluator in evaluators" :key="evaluator.taskEvaluatorId" :label="evaluatorColumnLabel(evaluator)" :resizable="false" align="center">
-          <el-table-column v-for="param in evaluator.params || []" :key="evaluatorParamKey(param)" :label="param.paramName" min-width="190" :resizable="false">
-            <template #default="{ row }">
-              <OverflowTooltip
-                :content="evaluatorParamValue(row, evaluator, param)"
-                class="param-value-preview"
-              />
-            </template>
-          </el-table-column>
-          <el-table-column label="结果" width="120" :resizable="false" align="center">
-            <template #default="{ row }">
-              <template v-if="isScoredEvaluatorResult(findEvaluatorResult(row, evaluator.taskEvaluatorId))">
-                <el-tag :type="passTagType(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.passResult)" effect="plain">
-                  <OverflowTooltip :content="evaluatorResultLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId))" />
-                </el-tag>
-              </template>
-              <el-tooltip v-else :content="statusLabel(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" placement="top" effect="light">
-                <el-icon class="task-status-icon" :class="statusIconClass(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)">
-                  <component :is="statusIcon(findEvaluatorResult(row, evaluator.taskEvaluatorId)?.status)" />
+              <el-tooltip :content="statusLabel(row.status)" placement="top" effect="light">
+                <el-icon class="task-status-icon" :class="statusIconClass(row.status)">
+                  <component :is="statusIcon(row.status)" />
                 </el-icon>
               </el-tooltip>
             </template>
           </el-table-column>
-          <el-table-column label="得分" width="110" :resizable="false" align="center">
-            <template #default="{ row }">
-              <OverflowTooltip :content="findEvaluatorResult(row, evaluator.taskEvaluatorId)?.score ?? '-'" />
-            </template>
-          </el-table-column>
-          <el-table-column label="原因" min-width="260" :resizable="false">
-            <template #default="{ row }">
-              <OverflowTooltip
-                :content="evaluatorMessage(findEvaluatorResult(row, evaluator.taskEvaluatorId)) || '-'"
-                class="result-reason-preview"
-              />
-            </template>
-          </el-table-column>
-        </el-table-column>
-        <el-table-column v-if="tags.length" label="标签" :resizable="false" align="center">
-          <el-table-column v-for="tag in tags" :key="tag.taskTagId" :label="tag.tagName" min-width="190" :resizable="false">
-            <template #default="{ row }">
-              <template v-if="findTagResult(row, tag.taskTagId)?.status === 'completed'">
-                <el-tag :type="passTagType(findTagResult(row, tag.taskTagId)?.passResult)" effect="plain">
-                  <OverflowTooltip :content="findTagResult(row, tag.taskTagId)?.passResult || '-'" />
-                </el-tag>
-                <OverflowTooltip class="result-value" :content="tagResultValue(row, tag.taskTagId)" />
+          <el-table-column type="index" label="序号" width="90" fixed="left" :resizable="false" align="center" />
+          <template v-for="column in visibleTableColumns" :key="column.id">
+            <el-table-column
+              v-if="column.type === 'field'"
+              :label="column.label"
+              min-width="220"
+              :resizable="false"
+            >
+              <template #default="{ row }">
+                <OverflowTooltip :content="row.values[column.refId || ''] || '-'" />
               </template>
-              <el-tag v-else-if="findTagResult(row, tag.taskTagId)?.status === 'stopped'" type="info" effect="plain">
-                <OverflowTooltip content="已中止" />
-              </el-tag>
-              <el-tag v-else type="info" effect="plain">
-                <OverflowTooltip content="未标注" />
-              </el-tag>
+            </el-table-column>
+            <el-table-column
+              v-else-if="column.type === 'appOutput'"
+              label="应用输出"
+              min-width="300"
+              :resizable="false"
+            >
+              <template #default="{ row }">
+                <OverflowTooltip
+                  :content="appOutputText(row)"
+                  tag="div"
+                  class="app-output-preview"
+                >
+                  <span>{{ formatAppOutput(row.appOutput) || '-' }}</span>
+                  <p v-if="row.appErrorMessage" class="task-error-preview">
+                    {{ row.appErrorMessage }}
+                  </p>
+                </OverflowTooltip>
+              </template>
+            </el-table-column>
+            <el-table-column
+              v-else-if="column.type === 'evaluator'"
+              :label="evaluatorColumnLabel(column.target)"
+              :resizable="false"
+              align="center"
+            >
+              <el-table-column v-for="param in column.target.params || []" :key="evaluatorParamKey(param)" :label="param.paramName" min-width="190" :resizable="false">
+                <template #default="{ row }">
+                  <OverflowTooltip
+                    :content="evaluatorParamValue(row, column.target, param)"
+                    class="param-value-preview"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column label="结果" width="120" :resizable="false" align="center">
+                <template #default="{ row }">
+                  <template v-if="isScoredEvaluatorResult(findEvaluatorResult(row, column.target.taskEvaluatorId))">
+                    <el-tag :type="passTagType(findEvaluatorResult(row, column.target.taskEvaluatorId)?.passResult)" effect="plain">
+                      <OverflowTooltip :content="evaluatorResultLabel(findEvaluatorResult(row, column.target.taskEvaluatorId))" />
+                    </el-tag>
+                  </template>
+                  <el-tooltip v-else :content="statusLabel(findEvaluatorResult(row, column.target.taskEvaluatorId)?.status)" placement="top" effect="light">
+                    <el-icon class="task-status-icon" :class="statusIconClass(findEvaluatorResult(row, column.target.taskEvaluatorId)?.status)">
+                      <component :is="statusIcon(findEvaluatorResult(row, column.target.taskEvaluatorId)?.status)" />
+                    </el-icon>
+                  </el-tooltip>
+                </template>
+              </el-table-column>
+              <el-table-column label="得分" width="110" :resizable="false" align="center">
+                <template #default="{ row }">
+                  <OverflowTooltip :content="findEvaluatorResult(row, column.target.taskEvaluatorId)?.score ?? '-'" />
+                </template>
+              </el-table-column>
+              <el-table-column label="原因" min-width="260" :resizable="false">
+                <template #default="{ row }">
+                  <OverflowTooltip
+                    :content="evaluatorMessage(findEvaluatorResult(row, column.target.taskEvaluatorId)) || '-'"
+                    class="result-reason-preview"
+                  />
+                </template>
+              </el-table-column>
+            </el-table-column>
+            <el-table-column
+              v-else-if="column.type === 'tag'"
+              min-width="210"
+              :resizable="false"
+              align="center"
+            >
+              <template #header>
+                <div class="tag-table-header">
+                  <OverflowTooltip :content="tagHeaderText(column.target)" class="tag-table-header-text" />
+                  <el-button
+                    class="tag-table-delete"
+                    link
+                    type="danger"
+                    :icon="Delete"
+                    title="删除标签"
+                    aria-label="删除标签"
+                    @click.stop="removeTaskTag(column.target)"
+                  />
+                </div>
+              </template>
+              <template #default="{ row }">
+                <template v-if="findTagResult(row, column.target.taskTagId)?.status === 'completed'">
+                  <el-tag :type="passTagType(findTagResult(row, column.target.taskTagId)?.passResult)" effect="plain">
+                    <OverflowTooltip :content="findTagResult(row, column.target.taskTagId)?.passResult || '-'" />
+                  </el-tag>
+                  <OverflowTooltip class="result-value" :content="tagResultValue(row, column.target.taskTagId)" />
+                </template>
+                <el-tag v-else-if="findTagResult(row, column.target.taskTagId)?.status === 'stopped'" type="info" effect="plain">
+                  <OverflowTooltip content="已中止" />
+                </el-tag>
+                <el-tag v-else type="info" effect="plain">
+                  <OverflowTooltip content="未标注" />
+                </el-tag>
+              </template>
+            </el-table-column>
+          </template>
+          <el-table-column label="操作" width="120" fixed="right" :resizable="false" align="center">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="openAnnotation(row)">标注</el-button>
             </template>
           </el-table-column>
-        </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right" :resizable="false" align="center">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="openAnnotation(row)">标注</el-button>
-          </template>
-        </el-table-column>
         </el-table>
 
         <div class="pager-row">
@@ -308,5 +429,19 @@ function evaluatorMessage(result) {
         </div>
       </section>
     </section>
+    <TaskTagDrawer
+      v-model="tagDrawerVisible"
+      v-model:keyword="tagKeyword"
+      v-model:tag-type="tagTypeFilter"
+      title="标签配置"
+      :tags="allTags"
+      :selected-tag-ids="selectedTagIds"
+      :tag-type-options="tagTypeOptions"
+      :loading="tagLoading"
+      @refresh="loadAllTags"
+      @create="openTagManagement"
+      @add="addTaskTag"
+      @remove="removeTaskTagByTag"
+    />
   </section>
 </template>

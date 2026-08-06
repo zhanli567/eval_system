@@ -125,7 +125,7 @@ const { detailLoading, datasetTitle, versions, activeVersionId, tablePage, table
     <el-empty class="embedded-empty" description="暂无版本数据" />
   </section>
 
-  <el-dialog v-model="fieldVisible" title="编辑表头" class="dataset-field-dialog fixed-dialog" style="--fixed-dialog-width: min(860px, 86vw); --fixed-dialog-height: min(640px, 86vh)" :close-on-click-modal="true">
+  <el-dialog v-model="fieldVisible" title="编辑表头" class="dataset-field-dialog fixed-dialog" style="--fixed-dialog-width: min(780px, 86vw); --fixed-dialog-height: min(640px, 86vh)" :close-on-click-modal="true">
     <div class="dialog-subtitle">
       <span>草稿表结构</span>
       <el-button link type="primary" :icon="Plus" @click="addField(fieldForm)">添加列</el-button>
