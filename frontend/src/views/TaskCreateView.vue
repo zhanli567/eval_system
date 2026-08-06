@@ -6,15 +6,15 @@ const { loading, saving, tagDrawerVisible, tagKeyword, tagTypeFilter, datasets, 
 </script>
 
 <template>
-  <header class="topbar detail-topbar">
-    <nav class="page-breadcrumb" aria-label="页面路径">
-      <button type="button" class="page-breadcrumb-link" @click="backToList">评测任务</button>
-      <span class="page-breadcrumb-separator">/</span>
-      <span class="page-breadcrumb-current">创建评测任务</span>
-    </nav>
-  </header>
-
   <section class="task-create-shell" v-loading="loading">
+    <div class="embedded-page-title">
+      <nav class="page-breadcrumb" aria-label="页面路径">
+        <button type="button" class="page-breadcrumb-link" @click="backToList">评测任务</button>
+        <span class="page-breadcrumb-separator">/</span>
+        <span class="page-breadcrumb-current">创建评测任务</span>
+      </nav>
+    </div>
+
     <main class="task-create-main">
       <section class="task-create-section">
         <div class="section-index">1</div>

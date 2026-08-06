@@ -75,15 +75,15 @@ function tagHasAnnotation(tag) {
 </script>
 
 <template>
-  <header class="topbar detail-topbar annotation-topbar">
-    <nav class="page-breadcrumb" aria-label="页面路径">
-      <button type="button" class="page-breadcrumb-link" @click="backToDetail">评测任务详情</button>
-      <span class="page-breadcrumb-separator">/</span>
-      <span class="page-breadcrumb-current">标注</span>
-    </nav>
-  </header>
-
   <section class="annotation-shell" :class="{ 'annotation-shell--without-app': !hasAppOutput }" v-loading="loading">
+    <div class="embedded-page-title">
+      <nav class="page-breadcrumb" aria-label="页面路径">
+        <button type="button" class="page-breadcrumb-link" @click="backToDetail">评测任务详情</button>
+        <span class="page-breadcrumb-separator">/</span>
+        <span class="page-breadcrumb-current">标注</span>
+      </nav>
+    </div>
+
     <el-alert
       v-if="loadError"
       class="annotation-load-error"

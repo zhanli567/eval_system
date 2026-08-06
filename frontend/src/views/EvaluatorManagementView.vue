@@ -7,13 +7,13 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
 
 <template>
   <section class="evaluator-panel fill-workspace">
-    <div class="evaluator-tabs">
-      <button :class="{ active: activeTab === 'custom' }" @click="activeTab = 'custom'">自定义</button>
-      <button :class="{ active: activeTab === 'preset' }" @click="activeTab = 'preset'">预置</button>
-    </div>
+    <div class="evaluator-management-head">
+      <div class="evaluator-tabs">
+        <button :class="{ active: activeTab === 'custom' }" @click="activeTab = 'custom'">自定义</button>
+        <button :class="{ active: activeTab === 'preset' }" @click="activeTab = 'preset'">预置</button>
+      </div>
 
-    <template v-if="activeTab === 'custom'">
-      <div class="panel-toolbar table-toolbar">
+      <div v-if="activeTab === 'custom'" class="panel-toolbar table-toolbar evaluator-head-toolbar">
         <el-select v-model="customType" clearable placeholder="全部类型" class="field-select" @change="searchCustom">
           <el-option label="LLM" value="llm" />
           <el-option label="Code" value="code" disabled />
@@ -31,12 +31,33 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
           </template>
         </el-input>
         <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchCustom" />
-        <div class="table-toolbar-actions">
-          <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadCustomEvaluators" />
-          <el-button type="primary" :icon="Plus" @click="openPicker">创建评估器</el-button>
-        </div>
+        <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadCustomEvaluators" />
+        <el-button type="primary" :icon="Plus" @click="openPicker">创建评估器</el-button>
       </div>
 
+      <div v-else class="panel-toolbar table-toolbar evaluator-head-toolbar">
+        <el-select v-model="activeCategoryId" clearable placeholder="全部分类" class="field-select" @change="selectPresetCategory">
+          <el-option v-for="category in categoryOptions" :key="category.id || 'all-head'" :label="category.categoryName" :value="category.id" />
+        </el-select>
+        <el-input
+          v-model="presetKeyword"
+          clearable
+          placeholder="请输入预置评估器名称"
+          class="search-input"
+          @keyup.enter="searchPreset"
+          @clear="searchPreset"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchPreset" />
+        <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadPresetEvaluators" />
+        <el-button type="primary" :icon="Plus" @click="openPicker">创建评估器</el-button>
+      </div>
+    </div>
+
+    <template v-if="activeTab === 'custom'">
       <el-table
         v-loading="customLoading"
         :data="customEvaluators"
@@ -134,39 +155,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
     </template>
 
     <template v-else>
-      <div class="preset-layout">
-        <aside class="preset-category-rail">
-          <button
-            v-for="category in categoryOptions"
-            :key="category.id || 'all'"
-            :class="{ active: activeCategoryId === category.id }"
-            @click="selectPresetCategory(category.id)"
-          >
-            {{ category.categoryName }}
-          </button>
-        </aside>
-
-        <div class="preset-content">
-          <div class="panel-toolbar">
-            <el-input
-              v-model="presetKeyword"
-              clearable
-              placeholder="请输入预置评估器名称"
-              class="search-input"
-              @keyup.enter="searchPreset"
-              @clear="searchPreset"
-            >
-              <template #prefix>
-                <el-icon><Search /></el-icon>
-              </template>
-            </el-input>
-            <el-button class="search-icon-button" :icon="Search" title="搜索" aria-label="搜索" @click="searchPreset" />
-            <div class="table-toolbar-actions">
-              <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadPresetEvaluators" />
-              <el-button type="primary" :icon="Plus" @click="openPicker">创建评估器</el-button>
-            </div>
-          </div>
-
+      <div class="preset-content preset-content-full">
           <div v-loading="presetLoading" class="preset-grid">
             <article
               v-for="preset in presetEvaluators"
@@ -199,7 +188,6 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
               @current-change="loadPresetEvaluators"
             />
           </div>
-        </div>
       </div>
     </template>
   </section>

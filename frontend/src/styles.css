@@ -245,7 +245,6 @@ body {
 .pager-row,
 .rail-title,
 .version-actions,
-.top-actions,
 .dialog-subtitle {
   display: flex;
   align-items: center;
@@ -258,14 +257,6 @@ body {
   gap: 12px 16px;
   min-width: 0;
   margin-bottom: 18px;
-}
-
-.detail-topbar {
-  align-items: center;
-}
-
-.detail-topbar > div:first-child {
-  min-width: 0;
 }
 
 .page-breadcrumb {
@@ -309,6 +300,24 @@ body {
   white-space: nowrap;
 }
 
+.embedded-page-title {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.embedded-title-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+
 h1,
 h2 {
   margin: 0;
@@ -323,7 +332,6 @@ h2 {
   font-size: 22px;
 }
 
-.top-actions,
 .version-actions {
   flex-wrap: wrap;
   gap: 10px;
@@ -431,7 +439,7 @@ h2 {
   display: flex;
   flex: 0 0 auto;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .evaluator-tabs button {
@@ -455,6 +463,22 @@ h2 {
 
 .evaluator-table {
   width: 100%;
+}
+
+.evaluator-management-head {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.evaluator-head-toolbar {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  margin-bottom: 0;
 }
 
 .evaluator-panel.fill-workspace .preset-layout {
@@ -518,6 +542,14 @@ h2 {
 .preset-content {
   min-width: 0;
   padding-left: 18px;
+}
+
+.preset-content-full {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding-left: 0;
 }
 
 .preset-grid {
@@ -732,7 +764,8 @@ h2 {
 .evaluator-editor-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0;
   align-items: stretch;
   height: calc(100vh - 190px);
   min-height: 0;
@@ -740,15 +773,18 @@ h2 {
 }
 
 .evaluator-editor-shell.is-edit {
-  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(31, 41, 66, 0.06);
 }
 
 .evaluator-version-rail {
   height: 100%;
   min-height: 0;
   overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-right: 1px solid var(--line);
 }
 
 .dataset-version-rail .version-item,
@@ -775,10 +811,10 @@ h2 {
 }
 
 .editor-form-panel {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: 0 12px 32px rgba(31, 41, 66, 0.06);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .editor-form-panel {
@@ -1088,6 +1124,7 @@ h2 {
 .detail-panel {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   margin-top: 18px;
   overflow: hidden;
 }
@@ -1146,6 +1183,28 @@ h2 {
 .version-head {
   justify-content: space-between;
   margin-bottom: 16px;
+}
+
+.dataset-detail-toolbar {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dataset-detail-filters,
+.dataset-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dataset-detail-filters {
+  flex: 1 1 420px;
+}
+
+.dataset-detail-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .meta,
@@ -1481,7 +1540,7 @@ h2 {
 
 .task-create-shell {
   position: relative;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -1492,7 +1551,7 @@ h2 {
 
 .task-detail-card {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -1887,10 +1946,6 @@ h2 {
   white-space: nowrap;
 }
 
-.annotation-topbar {
-  margin-bottom: 12px;
-}
-
 .task-dimension-summary {
   min-height: 28px;
 }
@@ -1970,6 +2025,7 @@ h2 {
 .annotation-shell {
   display: grid;
   grid-template-columns: minmax(280px, 0.8fr) minmax(420px, 1.1fr) minmax(360px, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0;
   align-items: stretch;
   overflow: hidden;
@@ -2551,10 +2607,6 @@ h2 {
 
   .workspace--fixed {
     overflow: auto;
-  }
-
-  .top-actions {
-    justify-content: flex-start;
   }
 
   .detail-panel,

@@ -9,15 +9,15 @@ const { detailLoading, datasetTitle, versions, activeVersionId, tablePage, table
 </script>
 
 <template>
-  <header class="topbar detail-topbar">
-    <nav class="page-breadcrumb" aria-label="页面路径">
-      <button type="button" class="page-breadcrumb-link" @click="backToList">评测集</button>
-      <span class="page-breadcrumb-separator">/</span>
-      <OverflowTooltip :content="datasetTitle" tag="span" class="page-breadcrumb-current" />
-    </nav>
-  </header>
-
   <section v-if="versions.length" class="detail-panel standalone-detail-panel fill-workspace">
+    <div class="embedded-page-title">
+      <nav class="page-breadcrumb" aria-label="页面路径">
+        <button type="button" class="page-breadcrumb-link" @click="backToList">评测集</button>
+        <span class="page-breadcrumb-separator">/</span>
+        <OverflowTooltip :content="datasetTitle" tag="span" class="page-breadcrumb-current" />
+      </nav>
+    </div>
+
     <aside class="version-rail dataset-version-rail">
       <div class="rail-title">
         <span>评测集版本</span>
@@ -39,16 +39,20 @@ const { detailLoading, datasetTitle, versions, activeVersionId, tablePage, table
     </aside>
 
     <div class="version-content" v-loading="detailLoading">
-      <div class="version-head">
-        <div>
-          <h2>{{ activeVersion?.versionName || '-' }}</h2>
-          <span class="meta">数据量 {{ activeVersion?.itemCount ?? 0 }} · {{ isDraft ? '草稿可编辑' : '发布版本只读' }}</span>
+      <div class="version-head dataset-detail-toolbar">
+        <div class="dataset-detail-filters">
+          <el-select v-model="searchFieldId" clearable placeholder="全部" class="field-select">
+            <el-option v-for="field in fields" :key="field.id" :label="field.fieldName" :value="field.id" />
+          </el-select>
+          <el-input v-model="searchKeyword" clearable placeholder="请输入关键词" class="search-input" @keyup.enter="loadDetail" />
+          <el-button class="search-icon-button" :icon="Search" title="筛选" aria-label="筛选" @click="loadDetail" />
         </div>
-        <div class="version-actions">
+        <div class="version-actions dataset-detail-actions">
+          <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadDataset" />
           <template v-if="isDraft">
             <el-button @click="openFieldDialog">编辑表头</el-button>
             <el-dropdown trigger="hover" @command="handleAddDataCommand">
-              <el-button type="primary">
+              <el-button>
                 添加数据
                 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
               </el-button>
@@ -68,17 +72,6 @@ const { detailLoading, datasetTitle, versions, activeVersionId, tablePage, table
             <el-button @click="coverDraft(activeVersion)">覆盖当前草稿</el-button>
             <el-button type="danger" plain @click="removeVersion(activeVersion)">删除版本</el-button>
           </template>
-        </div>
-      </div>
-
-      <div class="panel-toolbar">
-        <el-select v-model="searchFieldId" clearable placeholder="全部" class="field-select">
-          <el-option v-for="field in fields" :key="field.id" :label="field.fieldName" :value="field.id" />
-        </el-select>
-        <el-input v-model="searchKeyword" clearable placeholder="请输入关键词" class="search-input" @keyup.enter="loadDetail" />
-        <el-button class="search-icon-button" :icon="Search" title="筛选" aria-label="筛选" @click="loadDetail" />
-        <div class="table-toolbar-actions">
-          <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadDataset" />
         </div>
       </div>
 
@@ -121,7 +114,16 @@ const { detailLoading, datasetTitle, versions, activeVersionId, tablePage, table
     </div>
   </section>
 
-  <el-empty v-else v-loading="detailLoading" description="暂无版本数据" />
+  <section v-else class="empty-detail-card fill-workspace" v-loading="detailLoading">
+    <div class="embedded-page-title">
+      <nav class="page-breadcrumb" aria-label="页面路径">
+        <button type="button" class="page-breadcrumb-link" @click="backToList">评测集</button>
+        <span class="page-breadcrumb-separator">/</span>
+        <OverflowTooltip :content="datasetTitle" tag="span" class="page-breadcrumb-current" />
+      </nav>
+    </div>
+    <el-empty class="embedded-empty" description="暂无版本数据" />
+  </section>
 
   <el-dialog v-model="fieldVisible" title="编辑表头" class="dataset-field-dialog fixed-dialog" style="--fixed-dialog-width: min(860px, 86vw); --fixed-dialog-height: min(640px, 86vh)" :close-on-click-modal="true">
     <div class="dialog-subtitle">

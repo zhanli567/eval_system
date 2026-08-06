@@ -93,16 +93,16 @@ function evaluatorMessage(result) {
 </script>
 
 <template>
-  <header class="topbar detail-topbar">
-    <nav class="page-breadcrumb" aria-label="页面路径">
-      <button type="button" class="page-breadcrumb-link" @click="backToList">评测任务</button>
-      <span class="page-breadcrumb-separator">/</span>
-      <OverflowTooltip :content="base?.taskName || '评测任务详情'" tag="span" class="page-breadcrumb-current" />
-    </nav>
-  </header>
-
   <section class="task-detail-shell" v-loading="loading">
     <section class="task-detail-card">
+      <div class="embedded-page-title">
+        <nav class="page-breadcrumb" aria-label="页面路径">
+          <button type="button" class="page-breadcrumb-link" @click="backToList">评测任务</button>
+          <span class="page-breadcrumb-separator">/</span>
+          <OverflowTooltip :content="base?.taskName || '评测任务详情'" tag="span" class="page-breadcrumb-current" />
+        </nav>
+      </div>
+
       <section class="task-basic-band">
         <h2>基础信息</h2>
         <div class="task-detail-info-grid">
