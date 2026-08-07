@@ -26,6 +26,7 @@ const {
     tagSize,
     tagTotal,
     tagLoading,
+    tagOperatingIds,
     allTags,
     selectedTagIds,
     tagTypeOptions,
@@ -276,7 +277,7 @@ async function refreshTagsAfterCreate() {
                       :model-value="column.visible"
                       @change="setColumnVisible(column.id, Boolean($event))"
                     >
-                      <OverflowTooltip :content="column.label" class="column-setting-label" />
+                      <OverflowTooltip :content="column.settingLabel || column.label" class="column-setting-label" />
                     </el-checkbox>
                   </div>
                 </div>
@@ -396,8 +397,9 @@ async function refreshTagsAfterCreate() {
                   <el-button
                     class="tag-table-delete"
                     link
-                    type="danger"
                     :icon="Delete"
+                    :loading="tagOperatingIds.includes(column.target?.tagId || column.target?.taskTagId)"
+                    :disabled="tagOperatingIds.includes(column.target?.tagId || column.target?.taskTagId)"
                     title="删除标签"
                     aria-label="删除标签"
                     @click.stop="removeTaskTag(column.target)"
@@ -451,6 +453,7 @@ async function refreshTagsAfterCreate() {
       :selected-tag-ids="selectedTagIds"
       :tag-type-options="tagTypeOptions"
       :loading="tagLoading"
+      :operating-tag-ids="tagOperatingIds"
       :total="tagTotal"
       @refresh="loadAllTags"
       @search="searchAllTags"

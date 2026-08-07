@@ -13,6 +13,7 @@ const props = defineProps({
     keyword: { type: String, default: '' },
     tagType: { type: String, default: '' },
     selectedMode: { type: String, default: 'remove' },
+    operatingTagIds: { type: Array, default: () => [] },
     page: { type: Number, default: 1 },
     size: { type: Number, default: 10 },
     total: { type: Number, default: 0 }
@@ -53,10 +54,15 @@ const pageSize = computed({
     set: (value) => emit('update:size', value)
 });
 const selectedIds = computed(() => new Set(props.selectedTagIds));
+const operatingIds = computed(() => new Set(props.operatingTagIds));
 const displayTags = computed(() => props.tags);
 
 function isSelected(tag) {
     return selectedIds.value.has(tag.id);
+}
+
+function isOperating(tag) {
+    return operatingIds.value.has(tag.id);
 }
 
 function selectedButtonText() {
@@ -64,7 +70,7 @@ function selectedButtonText() {
 }
 
 function handleSelectedClick(tag) {
-    if (props.selectedMode === 'disabled') {
+    if (props.selectedMode === 'disabled' || isOperating(tag)) {
         return;
     }
     emit('remove', tag);
@@ -88,7 +94,7 @@ function changeSize(value) {
 </script>
 
 <template>
-  <el-drawer v-model="visible" :title="title" direction="rtl" size="520px" class="task-tag-drawer">
+  <el-drawer v-model="visible" :title="title" direction="rtl" size="560px" class="task-tag-drawer">
     <div class="task-tag-drawer-toolbar">
       <el-select v-model="selectedType" clearable placeholder="全部类型" class="task-tag-type-select" @change="searchTags">
         <el-option v-for="type in tagTypeOptions" :key="type.value" :label="type.label" :value="type.value" />
@@ -124,13 +130,23 @@ function changeSize(value) {
         <el-button
           v-if="isSelected(tag)"
           plain
-          :type="selectedMode === 'disabled' ? 'info' : 'danger'"
-          :disabled="selectedMode === 'disabled'"
+          :type="selectedMode === 'disabled' ? 'info' : 'primary'"
+          :loading="isOperating(tag)"
+          :disabled="selectedMode === 'disabled' || isOperating(tag)"
           @click="handleSelectedClick(tag)"
         >
           {{ selectedButtonText() }}
         </el-button>
-        <el-button v-else plain type="primary" @click="emit('add', tag)">添加</el-button>
+        <el-button
+          v-else
+          plain
+          type="primary"
+          :loading="isOperating(tag)"
+          :disabled="isOperating(tag)"
+          @click="emit('add', tag)"
+        >
+          添加
+        </el-button>
       </article>
       <el-empty v-if="!displayTags.length" description="暂无匹配标签" :image-size="80" />
     </div>

@@ -109,22 +109,29 @@ function createTagActions(ctx) {
         if (!tag?.id) {
             return;
         }
-        await taskApi.addTaskTag(ctx.taskId.value, tag.id);
-        ElMessage.success('标签已添加');
-        await refreshTaskAndTags(ctx, loadAllTags);
+        await runTagOperation(ctx, tag.id, async () => {
+            await taskApi.addTaskTag(ctx.taskId.value, tag.id);
+            ElMessage.success('标签已添加');
+            await refreshTaskAndTags(ctx, loadAllTags);
+        });
     }
     async function removeTaskTagByTag(tag) {
         const binding = findTaskTagByTagId(ctx.detail.value?.tags ?? [], tag?.id);
         if (!binding) {
             return;
         }
-        await removeTaskTag(binding);
+        await removeTaskTag(binding, tag.id);
     }
-    async function removeTaskTag(tag) {
-        await confirmTaskTagRemove(tag);
-        await taskApi.deleteTaskTag(ctx.taskId.value, tag.taskTagId);
-        ElMessage.success('标签已移除');
-        await refreshTaskAndTags(ctx, loadAllTags);
+    async function removeTaskTag(tag, operatingTagId = tag?.tagId || tag?.taskTagId) {
+        if (!tag?.taskTagId) {
+            return;
+        }
+        await runTagOperation(ctx, operatingTagId, async () => {
+            await confirmTaskTagRemove(tag);
+            await taskApi.deleteTaskTag(ctx.taskId.value, tag.taskTagId);
+            ElMessage.success('标签已移除');
+            await refreshTaskAndTags(ctx, loadAllTags);
+        });
     }
     async function searchAllTags() {
         ctx.tagPage.value = 1;
@@ -135,6 +142,18 @@ function createTagActions(ctx) {
         await loadAllTags();
     }
     return { loadAllTags, openTagDrawer, addTaskTag, removeTaskTagByTag, removeTaskTag, searchAllTags, changeTagSize };
+}
+
+async function runTagOperation(ctx, tagId, operation) {
+    if (!tagId || ctx.tagOperatingIds.value.includes(tagId)) {
+        return;
+    }
+    ctx.tagOperatingIds.value = [...ctx.tagOperatingIds.value, tagId];
+    try {
+        await operation();
+    } finally {
+        ctx.tagOperatingIds.value = ctx.tagOperatingIds.value.filter((item) => item !== tagId);
+    }
 }
 
 async function loadPagedTags(ctx) {
@@ -208,10 +227,12 @@ function syncPollingByStatus(status, actions) {
 
 function createDefaultColumnSettings(detail) {
     return [
-        ...taskFields(detail).map((field) => tableColumn('field', field.id, field.fieldName || '评测集字段')),
+        ...taskFields(detail).map((field) => tableColumn('field', field.id, field.fieldName || '评测集字段', datasetSettingLabel(field))),
         ...createAppOutputColumn(detail),
-        ...taskEvaluators(detail).map((evaluator) => tableColumn('evaluator', evaluator.taskEvaluatorId, evaluatorLabel(evaluator))),
-        ...taskTags(detail).map((tag) => tableColumn('tag', tag.taskTagId, tag.tagName || '标签'))
+        ...taskEvaluators(detail).map((evaluator) => (
+            tableColumn('evaluator', evaluator.taskEvaluatorId, evaluatorLabel(evaluator), evaluatorSettingLabel(evaluator))
+        )),
+        ...taskTags(detail).map((tag) => tableColumn('tag', tag.taskTagId, tag.tagName || '标签', tagSettingLabel(tag)))
     ];
 }
 
@@ -223,12 +244,33 @@ function createAppOutputColumn(detail) {
     }
 }
 
-function tableColumn(type, refId, label) {
-    return { id: `${type}:${refId}`, type, refId, label, visible: true };
+function tableColumn(type, refId, label, settingLabel = label) {
+    return { id: `${type}:${refId}`, type, refId, label, settingLabel, visible: true };
+}
+
+function datasetSettingLabel(field) {
+    return `评测集-${field.fieldName || '字段'}`;
 }
 
 function evaluatorLabel(evaluator) {
     return `${evaluator.evaluatorName || '-'} / ${evaluator.versionName || '-'}`;
+}
+
+function evaluatorSettingLabel(evaluator) {
+    const name = evaluator.evaluatorName || evaluator.versionName || '-';
+    return `${evaluatorSourceLabel(evaluator.evaluatorSource)}-${name}`;
+}
+
+function evaluatorSourceLabel(source) {
+    if (source === 'custom') {
+        return '自定义评估器';
+    } else {
+        return '预置评估器';
+    }
+}
+
+function tagSettingLabel(tag) {
+    return `标签-${tag.tagName || '-'}`;
 }
 
 function syncColumnSettings(ctx) {
@@ -268,7 +310,8 @@ function hydrateColumnSettings(settings, detail) {
 function hydrateColumnSetting(setting, detail) {
     const target = findColumnTarget(setting, detail);
     const label = target ? targetLabel(setting, target) : setting.label;
-    return { ...setting, label, target };
+    const settingLabel = target ? targetSettingLabel(setting, target) : setting.settingLabel || label;
+    return { ...setting, label, settingLabel, target };
 }
 
 function findColumnTarget(setting, detail) {
@@ -292,6 +335,18 @@ function targetLabel(setting, target) {
         return target.tagName || setting.label;
     } else {
         return setting.label;
+    }
+}
+
+function targetSettingLabel(setting, target) {
+    if (setting.type === 'field') {
+        return datasetSettingLabel(target);
+    } else if (setting.type === 'evaluator') {
+        return evaluatorSettingLabel(target);
+    } else if (setting.type === 'tag') {
+        return tagSettingLabel(target);
+    } else {
+        return setting.settingLabel || setting.label;
     }
 }
 
@@ -364,6 +419,7 @@ function createTaskDetailState() {
         tagSize: ref(10),
         tagTotal: ref(0),
         tagLoading: ref(false),
+        tagOperatingIds: ref([]),
         allTags: ref([]),
         columnSettingVisible: ref(false),
         columnSettings: ref([]),
@@ -414,7 +470,6 @@ function createComputedValues(detail, columnSettings, columnSettingDraft) {
     const base = computed(() => taskBase(detail.value));
     return {
         base,
-        fields: computed(() => taskFields(detail.value)),
         evaluators: computed(() => taskEvaluators(detail.value)),
         tags: computed(() => taskTags(detail.value)),
         rows: computed(() => taskRows(detail.value)),
@@ -430,7 +485,6 @@ function refsToReturn(ctx) {
     return {
         loading: ctx.loading,
         stopping: ctx.stopping,
-        detail: ctx.detail,
         page: ctx.page,
         size: ctx.size,
         tagDrawerVisible: ctx.tagDrawerVisible,
@@ -440,6 +494,7 @@ function refsToReturn(ctx) {
         tagSize: ctx.tagSize,
         tagTotal: ctx.tagTotal,
         tagLoading: ctx.tagLoading,
+        tagOperatingIds: ctx.tagOperatingIds,
         allTags: ctx.allTags,
         columnSettingVisible: ctx.columnSettingVisible
     };

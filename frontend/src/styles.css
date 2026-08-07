@@ -1867,10 +1867,15 @@ h2 {
 
 .task-tag-drawer-toolbar {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr) 34px auto;
+  grid-template-columns: 118px minmax(220px, 1fr) 34px auto;
   gap: 10px;
   align-items: center;
   margin-bottom: 16px;
+}
+
+.task-tag-type-select,
+.task-tag-search {
+  min-width: 0;
 }
 
 .task-tag-drawer-list {
@@ -1971,6 +1976,22 @@ h2 {
   background: #f7faff;
 }
 
+.column-setting-item .el-checkbox,
+.column-setting-item .el-checkbox__label {
+  min-width: 0;
+}
+
+.column-setting-item .el-checkbox {
+  width: 100%;
+}
+
+.column-setting-item .el-checkbox__label {
+  width: 0;
+  flex: 1;
+  display: block;
+  overflow: hidden;
+}
+
 .column-drag-handle {
   color: #b5becd;
   cursor: grab;
@@ -1979,7 +2000,10 @@ h2 {
 }
 
 .column-setting-label {
-  max-width: 190px;
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  vertical-align: middle;
 }
 
 .column-setting-actions {
@@ -2008,7 +2032,13 @@ h2 {
   height: 22px;
   padding: 0;
   opacity: 0;
+  color: #8a94a8;
   transition: opacity 0.16s ease;
+}
+
+.tag-table-delete:hover,
+.tag-table-delete:focus {
+  color: var(--accent);
 }
 
 .tag-table-header:hover .tag-table-delete {
