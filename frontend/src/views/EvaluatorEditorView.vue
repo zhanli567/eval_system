@@ -1,7 +1,7 @@
 <script setup>
-import { Plus, Promotion, Refresh, Delete } from '@element-plus/icons-vue';
+import { ChatDotRound, CopyDocument, Delete, Document, MagicStick, Plus, Promotion, Refresh, Tickets } from '@element-plus/icons-vue';
 import { useEvaluatorEditor } from '../modules/evaluator/composables/useEvaluatorEditor';
-const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, removeVersion, switchType, addParam, removeParam, backToList, formatTime } = useEvaluatorEditor();
+const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, removeVersion, switchType, addParam, removeParam, backToList, openPresetPicker, searchPreset, selectPresetCategory, changePresetPage, usePresetEvaluator, copyPrompt, clearPrompt, formatTime } = useEvaluatorEditor();
 </script>
 
 <template>
@@ -93,8 +93,12 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
                     :disabled="!canEdit && form.evaluatorType !== 'llm'"
                     @click="switchType('llm')"
                   >
+                    <span class="method-card-icon">
+                      <el-icon><ChatDotRound /></el-icon>
+                    </span>
                     <strong>LLM</strong>
                     <span>通过 Prompt 设计规则，让大模型判断预期输出和实际输出的差异</span>
+                    <i class="method-card-check" />
                   </button>
                   <button
                     type="button"
@@ -103,8 +107,20 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
                     disabled
                     @click="switchType('code')"
                   >
+                    <span class="method-card-icon">
+                      <el-icon><Document /></el-icon>
+                    </span>
                     <strong>Code</strong>
                     <span>通过 Coding 设计规则，执行代码函数来对比预期输出和实际输出</span>
+                    <i class="method-card-check" />
+                  </button>
+                  <button v-if="!isEdit" type="button" class="method-card disabled" disabled>
+                    <span class="method-card-icon">
+                      <el-icon><Tickets /></el-icon>
+                    </span>
+                    <strong>基于评测任务</strong>
+                    <span>通过历史评测任务的标注结果，抽象并总结为新的 LLM 评估器</span>
+                    <i class="method-card-check" />
                   </button>
                 </div>
               </el-form-item>
@@ -125,7 +141,18 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
                   </el-select>
                 </el-form-item>
 
-                <el-form-item label="Prompt" required>
+                <el-form-item required>
+                  <template #label>
+                    <div class="prompt-label-row">
+                      <span>Prompt</span>
+                      <div v-if="!isEdit && canEdit" class="prompt-tool-actions">
+                        <el-button link type="primary" :icon="MagicStick" disabled>AI优化</el-button>
+                        <el-button link type="primary" :icon="Tickets" @click="openPresetPicker">选择预置评估器</el-button>
+                        <el-button link type="primary" :icon="CopyDocument" @click="copyPrompt">复制</el-button>
+                        <el-button link type="primary" :icon="Delete" @click="clearPrompt">清空</el-button>
+                      </div>
+                    </div>
+                  </template>
                   <el-input
                     v-model="form.prompt"
                     type="textarea"
@@ -199,14 +226,14 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
               <h2 v-if="!isEdit">评分信息</h2>
               <el-form-item label="评分范围" required>
                 <div class="range-row">
-                  <el-input-number v-model="form.scoreMin" :disabled="!canEdit" />
+                  <el-input-number v-model="form.scoreMin" controls-position="right" class="quiet-input-number" :disabled="!canEdit" />
                   <span>-</span>
-                  <el-input-number v-model="form.scoreMax" :disabled="!canEdit" />
+                  <el-input-number v-model="form.scoreMax" controls-position="right" class="quiet-input-number" :disabled="!canEdit" />
                 </div>
               </el-form-item>
 
               <el-form-item label="通过阈值" required>
-                <el-input-number v-model="form.passThreshold" class="wide-control" :disabled="!canEdit" />
+                <el-input-number v-model="form.passThreshold" controls-position="right" class="wide-control quiet-input-number" :disabled="!canEdit" />
               </el-form-item>
             </div>
           </section>
@@ -214,5 +241,64 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
       </section>
     </main>
 
+    <el-dialog v-model="presetPickerVisible" title="选择预置评估器" class="evaluator-picker-dialog fixed-dialog" style="--fixed-dialog-width: min(980px, 88vw); --fixed-dialog-height: min(680px, 84vh)" :close-on-click-modal="true">
+      <div class="preset-layout picker-layout">
+        <aside class="preset-category-rail">
+          <span class="rail-caption">预置评估器分类</span>
+          <button
+            v-for="category in presetCategories"
+            :key="category.id || 'preset-all'"
+            type="button"
+            :class="{ active: presetCategoryId === category.id }"
+            @click="selectPresetCategory(category.id)"
+          >
+            {{ category.categoryName }}
+          </button>
+        </aside>
+        <div class="preset-content">
+          <div class="picker-head">
+            <div>
+              <h2>全部分类预置评估器</h2>
+            </div>
+            <div class="picker-actions">
+              <el-input v-model="presetKeyword" clearable placeholder="请输入预置评估器名称" maxlength="50" show-word-limit class="search-input" @keyup.enter="searchPreset" @clear="searchPreset" />
+            </div>
+          </div>
+          <div v-loading="presetLoading" class="preset-grid picker-grid">
+            <article
+              v-for="preset in presetEvaluators"
+              :key="preset.id"
+              class="preset-card"
+              :class="{ disabled: preset.evaluatorType === 'code' }"
+            >
+              <div class="preset-card-head">
+                <span class="preset-card-icon">
+                  <el-icon><Tickets /></el-icon>
+                </span>
+                <strong>{{ preset.evaluatorName }}</strong>
+                <span class="preset-type-pill">{{ preset.evaluatorType === 'code' ? 'Code' : 'LLM' }}</span>
+              </div>
+              <p>{{ preset.description || '暂无描述' }}</p>
+              <div class="preset-card-actions">
+                <el-button link type="primary" :disabled="preset.evaluatorType === 'code'" @click.stop="usePresetEvaluator(preset.id)">使用此评估器</el-button>
+              </div>
+            </article>
+            <el-empty v-if="!presetEvaluators.length && !presetLoading" description="暂无预置评估器" :image-size="80" />
+          </div>
+          <div class="pager-row">
+            <el-pagination
+              v-model:current-page="presetPage"
+              v-model:page-size="presetSize"
+              small
+              :page-sizes="[9, 18, 27]"
+              layout="total, sizes, prev, pager, next"
+              :total="presetTotal"
+              @current-change="changePresetPage"
+              @size-change="changePresetPage"
+            />
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </section>
 </template>

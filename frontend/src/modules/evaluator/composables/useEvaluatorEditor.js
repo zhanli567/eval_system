@@ -178,9 +178,10 @@ function pickVersion(list, preferredVersionId) {
 function createEvaluatorEditorActions(ctx, router) {
     const modelActions = createModelActions(ctx);
     const versionActions = createVersionActions(ctx);
+    const presetPickerActions = createPresetPickerActions(ctx);
     const saveActions = createSaveActions(ctx, router, versionActions);
     const formActions = createFormActions(ctx, router);
-    return { ...modelActions, ...versionActions, ...saveActions, ...formActions };
+    return { ...modelActions, ...versionActions, ...presetPickerActions, ...saveActions, ...formActions };
 }
 
 function createModelActions(ctx) {
@@ -249,6 +250,72 @@ function createVersionActions(ctx) {
         ensureParamsByType(ctx.form);
     }
     return { refreshEditor, loadPreset, loadVersions, selectVersion };
+}
+
+function createPresetPickerActions(ctx) {
+    return {
+        openPresetPicker: () => openPresetPicker(ctx),
+        searchPreset: () => searchPreset(ctx),
+        selectPresetCategory: (categoryId) => selectPresetCategory(ctx, categoryId),
+        changePresetPage: () => loadPresetEvaluators(ctx),
+        usePresetEvaluator: (presetId) => usePresetEvaluator(ctx, presetId)
+    };
+}
+
+async function openPresetPicker(ctx) {
+    ctx.presetPickerVisible.value = true;
+    if (!ctx.presetCategories.value.length) {
+        await loadPresetCategories(ctx);
+    } else {
+        await loadPresetEvaluators(ctx);
+    }
+}
+
+async function loadPresetCategories(ctx) {
+    const categories = await evaluatorApi.listPresetCategories();
+    ctx.presetCategories.value = [
+        { id: '', categoryName: '全部分类', displayOrder: 0 },
+        ...categories
+    ];
+    await loadPresetEvaluators(ctx);
+}
+
+async function loadPresetEvaluators(ctx) {
+    ctx.presetLoading.value = true;
+    try {
+        const page = await evaluatorApi.listPresetEvaluators({
+            page: ctx.presetPage.value,
+            size: ctx.presetSize.value,
+            categoryId: ctx.presetCategoryId.value,
+            keyword: ctx.presetKeyword.value
+        });
+        ctx.presetEvaluators.value = page.records;
+        ctx.presetTotal.value = page.total;
+    } finally {
+        ctx.presetLoading.value = false;
+    }
+}
+
+async function searchPreset(ctx) {
+    ctx.presetPage.value = 1;
+    await loadPresetEvaluators(ctx);
+}
+
+async function selectPresetCategory(ctx, categoryId) {
+    ctx.presetCategoryId.value = categoryId;
+    ctx.presetPage.value = 1;
+    await loadPresetEvaluators(ctx);
+}
+
+async function usePresetEvaluator(ctx, presetId) {
+    const detail = await evaluatorApi.getPresetEvaluator(presetId);
+    if (detail.evaluatorType === 'code') {
+        ElMessage.warning('暂不支持Code型评估器');
+    } else {
+        fillForm(ctx.form, detail);
+        ensureParamsByType(ctx.form);
+        ctx.presetPickerVisible.value = false;
+    }
 }
 
 function createSaveActions(ctx, router, versionActions) {
@@ -335,10 +402,21 @@ function createFormActions(ctx, router) {
     function changeParamType(index, dataType) {
         ctx.form.params[index].dataType = dataType;
     }
+    async function copyPrompt() {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(ctx.form.prompt || '');
+            ElMessage.success('Prompt已复制');
+        } else {
+            ElMessage.warning('当前浏览器不支持复制到剪贴板');
+        }
+    }
+    function clearPrompt() {
+        ctx.form.prompt = '';
+    }
     function backToList() {
         router.push({ name: 'evaluators' });
     }
-    return { switchType, addParam, removeParam, changeParamType, backToList };
+    return { switchType, addParam, removeParam, changeParamType, copyPrompt, clearPrompt, backToList };
 }
 
 function canEditValue(isEdit, activeDetail, evaluatorType) {
@@ -393,6 +471,15 @@ export function useEvaluatorEditor() {
     const activeDetail = ref(null);
     const models = ref([]);
     const modelLoading = ref(false);
+    const presetPickerVisible = ref(false);
+    const presetCategories = ref([]);
+    const presetEvaluators = ref([]);
+    const presetPage = ref(1);
+    const presetSize = ref(9);
+    const presetTotal = ref(0);
+    const presetKeyword = ref('');
+    const presetCategoryId = ref('');
+    const presetLoading = ref(false);
     const form = reactive({
         evaluatorName: '',
         description: '',
@@ -414,7 +501,7 @@ export function useEvaluatorEditor() {
     const activeVersion = computed(() => versions.value.find((item) => item.id === activeVersionId.value));
     const promptParams = computed(() => promptParamsValue(form));
     const modelOptions = computed(() => modelOptionsValue(form, models));
-    const ctx = { loading, saving, publishing, versions, activeVersionId, activeDetail, models, modelLoading, form, evaluatorId, presetId, isEdit, canEdit };
+    const ctx = { loading, saving, publishing, versions, activeVersionId, activeDetail, models, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, form, evaluatorId, presetId, isEdit, canEdit };
     const actions = createEvaluatorEditorActions(ctx, router);
 
     onMounted(async () => {
@@ -439,6 +526,15 @@ export function useEvaluatorEditor() {
         promptParams,
         modelOptions,
         modelLoading,
+        presetPickerVisible,
+        presetCategories,
+        presetEvaluators,
+        presetPage,
+        presetSize,
+        presetTotal,
+        presetKeyword,
+        presetCategoryId,
+        presetLoading,
         ...actions,
         formatTime: formatDateTime
     };

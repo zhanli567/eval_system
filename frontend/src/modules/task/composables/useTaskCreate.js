@@ -32,7 +32,7 @@ const AGENT_OUTPUT_DESCRIPTIONS = {
 function createEvaluatorBlock() {
     return {
         key: `${Date.now()}-${Math.random()}`,
-        evaluatorSource: 'preset',
+        evaluatorSource: 'custom',
         presetCategoryId: '',
         evaluatorId: '',
         evaluatorVersionId: '',
@@ -406,6 +406,20 @@ function createEvaluatorActions(ctx, loadActions) {
     return { changePresetCategory, changeEvaluatorSource, selectEvaluator, selectCustomVersion, addEvaluator, removeEvaluator };
 }
 
+function createEvaluatorResetActions(ctx) {
+    function resetEvaluator(block) {
+        const source = block.evaluatorSource;
+        Object.assign(block, createEvaluatorBlock(), {
+            key: block.key,
+            evaluatorSource: source
+        });
+    }
+    function resetParamMapping(block, param) {
+        block.paramMappings[paramKey(param)] = defaultParamMapping(ctx);
+    }
+    return { resetEvaluator, resetParamMapping };
+}
+
 async function fillSelectedEvaluator(ctx, block) {
     if (block.evaluatorSource === 'preset') {
         const detail = await evaluatorApi.getPresetEvaluator(block.evaluatorId);
@@ -509,6 +523,27 @@ function createAppActions(ctx, loadActions) {
         normalizeParamOutputMappings(ctx);
     }
     return { selectAgent };
+}
+
+function createResetActions(ctx) {
+    function resetDatasetSelection() {
+        ctx.state.form.datasetId = '';
+        ctx.state.form.datasetVersionId = '';
+        ctx.state.versions.value = [];
+        ctx.state.fields.value = [];
+        clearAppFieldMappings(ctx);
+    }
+    function resetAgentSelection() {
+        ctx.state.form.appId = '';
+        ctx.state.form.appVersionId = '';
+        ctx.state.form.appAgentAlias = '';
+        clearAppFieldMappings(ctx);
+        normalizeParamOutputMappings(ctx);
+    }
+    function resetAppFieldMapping(inputId) {
+        ctx.state.appFieldMappings[inputId] = '';
+    }
+    return { resetDatasetSelection, resetAgentSelection, resetAppFieldMapping };
 }
 
 function selectDefaultAgent(ctx) {
@@ -1033,7 +1068,9 @@ export function useTaskCreate() {
     const loadActions = createLoadActions(ctx);
     const visibleHandlers = createVisibleHandlers(loadActions);
     const evaluatorActions = createEvaluatorActions(ctx, loadActions);
+    const evaluatorResetActions = createEvaluatorResetActions(ctx);
     const appActions = createAppActions(ctx, loadActions);
+    const resetActions = createResetActions(ctx);
     const tagActions = createTagActions(ctx, loadActions);
     const copyActions = createCopyActions(ctx, loadActions, appActions);
     const submitActions = createSubmitActions(ctx);
@@ -1080,6 +1117,8 @@ export function useTaskCreate() {
         ...loadActions,
         ...visibleHandlers,
         ...evaluatorActions,
+        ...evaluatorResetActions,
+        ...resetActions,
         ...tagActions,
         ...submitActions,
         paramKey,
