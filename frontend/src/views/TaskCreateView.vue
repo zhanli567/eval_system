@@ -265,13 +265,13 @@ async function refreshTagsAfterCreate() {
               </template>
             </div>
 
-            <el-button v-if="block.evaluatorName" class="evaluator-detail-toggle" link type="primary" @click="block.detailExpanded = !block.detailExpanded">
+            <button v-if="block.evaluatorName" type="button" class="evaluator-detail-toggle" @click="block.detailExpanded = !block.detailExpanded">
+              <span>评估器详情</span>
               <el-icon>
                 <ArrowDown v-if="block.detailExpanded" />
                 <ArrowRight v-else />
               </el-icon>
-              <span>评估器详情</span>
-            </el-button>
+            </button>
 
             <div v-if="block.params.length" class="param-mapping-list">
               <h3>字段映射</h3>

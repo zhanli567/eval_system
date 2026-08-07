@@ -236,8 +236,20 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
           <h2>试运行</h2>
           <el-button v-if="trialResult" link type="primary" @click="clearTrialResult">清空结果</el-button>
         </div>
+        <div v-if="trialResult" class="trial-result-card">
+          <div class="trial-result-head">
+            <span :class="['trial-result-badge', trialResult.result === 'pass' ? 'pass' : 'fail']">{{ trialResult.result === 'pass' ? 'Pass' : 'Fail' }}</span>
+            <strong>{{ trialResult.score ?? '-' }}</strong>
+          </div>
+          <p v-if="trialResult.errorMessage">{{ trialResult.errorMessage }}</p>
+          <p v-else>{{ trialResult.reason || '暂无原因' }}</p>
+          <pre>{{ trialResult.outputText || '-' }}</pre>
+        </div>
+        <div v-else class="trial-empty">
+          点击运行按钮发送请求，可以在此区域获取运行结果
+        </div>
         <div class="trial-param-list">
-          <el-form label-position="top">
+          <el-form v-if="promptParams.length" label-position="top">
             <el-form-item v-for="param in promptParams" :key="param.paramName">
               <template #label>
                 {{ param.paramName }}<span v-if="param.required" class="required-mark">*</span>
@@ -252,18 +264,9 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
               />
             </el-form-item>
           </el-form>
-          <div v-if="!promptParams.length" class="trial-empty">
+          <div v-else class="trial-param-empty">
             Prompt 中暂无可试运行参数
           </div>
-        </div>
-        <div v-if="trialResult" class="trial-result-card">
-          <div class="trial-result-head">
-            <span :class="['trial-result-badge', trialResult.result === 'pass' ? 'pass' : 'fail']">{{ trialResult.result === 'pass' ? 'Pass' : 'Fail' }}</span>
-            <strong>{{ trialResult.score ?? '-' }}</strong>
-          </div>
-          <p v-if="trialResult.errorMessage">{{ trialResult.errorMessage }}</p>
-          <p v-else>{{ trialResult.reason || '暂无原因' }}</p>
-          <pre>{{ trialResult.outputText || '-' }}</pre>
         </div>
         <el-button class="trial-run-button" type="primary" :loading="trialLoading" @click="runTrial">
           <el-icon><Promotion /></el-icon>

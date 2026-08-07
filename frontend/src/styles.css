@@ -922,8 +922,14 @@ h2 {
 
 .method-card > span:not(.method-card-icon) {
   grid-column: 1 / -1;
+  grid-row: 2;
   color: var(--muted);
   line-height: 1.55;
+}
+
+.method-card-check {
+  grid-column: 3;
+  grid-row: 1;
 }
 
 .method-card-icon {
@@ -1007,14 +1013,17 @@ h2 {
 
 .evaluator-create-main {
   grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
-  align-items: start;
+  align-items: stretch;
   gap: 0;
+  height: 100%;
+  min-height: 0;
   padding: 0;
   overflow: hidden;
 }
 
 .evaluator-create-panel {
   min-width: 0;
+  height: 100%;
   min-height: 0;
   padding: 22px 24px 28px;
   overflow-y: auto;
@@ -1023,14 +1032,16 @@ h2 {
 .evaluator-trial-panel {
   position: sticky;
   top: 0;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
   align-self: stretch;
+  height: 100%;
   min-height: 0;
   padding: 24px;
-  overflow-y: auto;
+  overflow: hidden;
   border-left: 1px solid var(--line);
-  background: #fff;
+  background: #f7f8fc;
 }
 
 .trial-panel-head,
@@ -1049,26 +1060,46 @@ h2 {
 
 .trial-param-list {
   min-height: 0;
-  max-height: 360px;
+  max-height: 300px;
   overflow-y: auto;
-  padding-right: 2px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
 }
 
 .trial-empty {
   display: grid;
-  min-height: 180px;
+  min-height: 300px;
+  place-items: center;
+  padding: 28px 18px;
+  border: 1px dashed #dbe3f0;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, transparent 48%, #edf2fa 49%, transparent 50%) 0 0 / 46px 46px,
+    linear-gradient(45deg, transparent 48%, #edf2fa 49%, transparent 50%) 0 0 / 46px 46px,
+    #fff;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.trial-param-empty {
+  display: grid;
+  min-height: 88px;
   place-items: center;
   color: var(--muted);
   font-size: 14px;
+  text-align: center;
 }
 
 .trial-result-card {
   display: grid;
   gap: 10px;
-  padding: 12px;
+  padding: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: #f0f2f7;
 }
 
 .trial-result-card p,
@@ -1102,8 +1133,11 @@ h2 {
 }
 
 .trial-run-button {
-  align-self: end;
+  margin-top: auto;
   width: 100%;
+  min-height: 42px;
+  background: #18233a;
+  border-color: #18233a;
 }
 
 .required-title {
@@ -1232,6 +1266,21 @@ h2 {
   padding-left: 0;
 }
 
+.el-select .el-select__wrapper {
+  align-items: center;
+  min-height: 34px;
+}
+
+.el-select .el-select__selection {
+  align-items: center;
+}
+
+.el-select .el-select__placeholder,
+.el-select .el-select__selected-item {
+  display: flex;
+  align-items: center;
+}
+
 .toolbar-icon-button:hover,
 .toolbar-icon-button:focus {
   color: var(--accent);
@@ -1240,7 +1289,10 @@ h2 {
 }
 
 .panel-toolbar .el-button + .el-button,
-.table-toolbar-actions .el-button + .el-button {
+.table-toolbar-actions .el-button + .el-button,
+.dataset-detail-actions .el-button + .el-button,
+.dataset-detail-actions .el-button + .el-dropdown,
+.dataset-detail-actions .el-dropdown + .el-button {
   margin-left: 0;
 }
 
@@ -1834,7 +1886,7 @@ h2 {
   box-sizing: border-box;
   min-height: 0;
   margin: 0;
-  padding: 4px clamp(18px, 25vw, 25%) 28px;
+  padding: 4px clamp(18px, 33vw, 33%) 28px;
   overflow-y: auto;
   gap: 16px;
 }
@@ -1842,6 +1894,8 @@ h2 {
 .task-create-main.evaluator-create-main {
   grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
   gap: 0;
+  height: 100%;
+  min-height: 0;
   padding: 0;
   overflow: hidden;
 }
@@ -2120,10 +2174,29 @@ h2 {
   border-top: 1px solid var(--line);
 }
 
-.evaluator-detail-toggle.el-button {
-  margin-top: 4px;
-  margin-left: 0;
+.evaluator-detail-toggle {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
   padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 400;
+}
+
+.evaluator-detail-toggle:hover,
+.evaluator-detail-toggle:focus {
+  color: var(--ink);
+  background: transparent;
+}
+
+.evaluator-inline-detail .score-summary {
+  font-weight: 400;
 }
 
 .inline-detail-head {
@@ -2142,10 +2215,14 @@ h2 {
 
 .selected-tag-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
   min-height: 38px;
   margin-top: 12px;
+}
+
+.selected-tag-card {
+  min-height: 82px;
 }
 
 .tag-picker-card {
@@ -2153,6 +2230,7 @@ h2 {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
+  min-height: 82px;
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;

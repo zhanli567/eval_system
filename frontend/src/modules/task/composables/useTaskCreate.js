@@ -298,7 +298,7 @@ function createTagLoaders(ctx) {
 function createEvaluatorLoaders(ctx) {
     async function loadCustomEvaluators() {
         const page = await evaluatorApi.listEvaluators({ page: 1, size: 100 });
-        ctx.state.customEvaluators.value = page.records;
+        ctx.state.customEvaluators.value = page.records.filter((evaluator) => evaluator.latestVersionId);
     }
     async function loadPresetCategories() {
         ctx.state.presetCategories.value = await evaluatorApi.listPresetCategories();
