@@ -2,9 +2,11 @@ package com.agentnexus.backend.evaluator.api;
 
 import com.agentnexus.backend.common.ApiResponse;
 import com.agentnexus.backend.common.PageResponse;
-import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorConfig;
 import com.agentnexus.backend.evaluator.api.dto.request.EvaluatorInput;
+import com.agentnexus.backend.evaluator.api.dto.request.EvaluatorTrialRequest;
+import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorConfig;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorSummary;
+import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorTrialResponse;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorVersionDto;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetCategoryDto;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorDetail;
@@ -70,6 +72,18 @@ public class EvaluatorController {
   @Path("")
   public ApiResponse<EvaluatorConfig> createEvaluator(EvaluatorInput request) {
     return ApiResponse.ok(evaluatorService.createEvaluator(request));
+  }
+
+  /**
+   * 使用当前页面评估器配置进行试运行。
+   *
+   * @param request 试运行请求
+   * @return 试运行结果
+   */
+  @POST
+  @Path("/trial")
+  public ApiResponse<EvaluatorTrialResponse> runTrial(EvaluatorTrialRequest request) {
+    return ApiResponse.ok(evaluatorService.runTrial(request));
   }
 
   @POST

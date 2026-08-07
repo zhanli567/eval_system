@@ -859,6 +859,7 @@ h2 {
 }
 
 .evaluator-form .el-form-item__label {
+  width: 100%;
   font-weight: 400;
 }
 
@@ -874,7 +875,7 @@ h2 {
 
 .method-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   width: 100%;
 }
@@ -990,6 +991,101 @@ h2 {
   margin-left: 0;
   padding: 0;
   font-weight: 700;
+}
+
+.evaluator-create-main {
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: start;
+  padding-right: clamp(18px, 14vw, 240px);
+  padding-left: clamp(18px, 14vw, 240px);
+}
+
+.evaluator-create-panel {
+  min-width: 0;
+}
+
+.evaluator-trial-panel {
+  position: sticky;
+  top: 0;
+  display: grid;
+  gap: 16px;
+  min-height: 640px;
+  padding: 18px;
+  border-left: 1px solid var(--line);
+  background: #fff;
+}
+
+.trial-panel-head,
+.trial-result-head,
+.inline-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trial-panel-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.trial-param-list {
+  min-height: 0;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.trial-empty {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.trial-result-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.trial-result-card p,
+.trial-result-card pre {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.trial-result-card pre {
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.trial-result-badge {
+  padding: 4px 9px;
+  border-radius: 5px;
+  font-weight: 700;
+}
+
+.trial-result-badge.pass {
+  color: #16a34a;
+  background: #ecfdf3;
+}
+
+.trial-result-badge.fail {
+  color: #ef4444;
+  background: #fff1f2;
+}
+
+.trial-run-button {
+  align-self: end;
+  width: 100%;
 }
 
 .required-title {
@@ -1720,7 +1816,7 @@ h2 {
   box-sizing: border-box;
   min-height: 0;
   margin: 0;
-  padding: 4px clamp(18px, 20vw, 20%) 28px;
+  padding: 4px clamp(18px, 25vw, 25%) 28px;
   overflow-y: auto;
   gap: 16px;
 }
@@ -1758,6 +1854,19 @@ h2 {
 
 .section-body {
   min-width: 0;
+}
+
+.section-body > h2,
+.section-head > h2 {
+  margin: 0 0 18px;
+}
+
+.section-head {
+  margin-bottom: 12px;
+}
+
+.section-head > h2 {
+  margin-bottom: 0;
 }
 
 .section-head,
@@ -1857,9 +1966,13 @@ h2 {
 
 .evaluator-config-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 12px;
+}
+
+.evaluator-config-full {
+  grid-column: 1 / -1;
 }
 
 .param-mapping-list {
@@ -1881,7 +1994,7 @@ h2 {
 }
 
 .param-cell {
-  min-height: 40px;
+  min-height: 34px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1891,13 +2004,25 @@ h2 {
   background: #fafbff;
 }
 
+.plain-param-cell {
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.param-mapping-row .el-select,
+.app-select-grid .el-select,
+.inline-controls .el-select,
+.evaluator-config-grid .el-select {
+  width: 100%;
+}
+
 .mapping-arrow {
   color: var(--muted);
   text-align: center;
 }
 
 .mapping-source-label {
-  min-height: 40px;
+  min-height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1915,6 +2040,21 @@ h2 {
   margin-top: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
+}
+
+.evaluator-detail-toggle.el-button {
+  margin-top: 4px;
+  margin-left: 0;
+  padding: 0;
+}
+
+.inline-detail-head {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.evaluator-inline-detail .code-block {
+  background: #fff;
 }
 
 .evaluator-inline-detail p {
@@ -2889,6 +3029,17 @@ h2 {
   .task-create-main {
     padding-right: clamp(16px, 10vw, 120px);
     padding-left: clamp(16px, 10vw, 120px);
+  }
+
+  .evaluator-create-main {
+    grid-template-columns: 1fr;
+  }
+
+  .evaluator-trial-panel {
+    position: static;
+    min-height: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
   .evaluator-config-grid {

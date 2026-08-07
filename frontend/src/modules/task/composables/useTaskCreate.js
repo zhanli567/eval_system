@@ -420,6 +420,18 @@ function createEvaluatorResetActions(ctx) {
     return { resetEvaluator, resetParamMapping };
 }
 
+function createEvaluatorPromptActions() {
+    async function copyBlockPrompt(block) {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(block.prompt || '');
+            ElMessage.success('Prompt已复制');
+        } else {
+            ElMessage.warning('当前浏览器不支持复制到剪贴板');
+        }
+    }
+    return { copyBlockPrompt };
+}
+
 async function fillSelectedEvaluator(ctx, block) {
     if (block.evaluatorSource === 'preset') {
         const detail = await evaluatorApi.getPresetEvaluator(block.evaluatorId);
@@ -1069,6 +1081,7 @@ export function useTaskCreate() {
     const visibleHandlers = createVisibleHandlers(loadActions);
     const evaluatorActions = createEvaluatorActions(ctx, loadActions);
     const evaluatorResetActions = createEvaluatorResetActions(ctx);
+    const evaluatorPromptActions = createEvaluatorPromptActions();
     const appActions = createAppActions(ctx, loadActions);
     const resetActions = createResetActions(ctx);
     const tagActions = createTagActions(ctx, loadActions);
@@ -1118,6 +1131,7 @@ export function useTaskCreate() {
         ...visibleHandlers,
         ...evaluatorActions,
         ...evaluatorResetActions,
+        ...evaluatorPromptActions,
         ...resetActions,
         ...tagActions,
         ...submitActions,

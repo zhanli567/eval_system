@@ -1,7 +1,7 @@
 <script setup>
 import { ChatDotRound, CopyDocument, Delete, Document, MagicStick, Plus, Promotion, Refresh, Tickets } from '@element-plus/icons-vue';
 import { useEvaluatorEditor } from '../modules/evaluator/composables/useEvaluatorEditor';
-const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, removeVersion, switchType, addParam, removeParam, backToList, openPresetPicker, searchPreset, selectPresetCategory, changePresetPage, usePresetEvaluator, copyPrompt, clearPrompt, formatTime } = useEvaluatorEditor();
+const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, trialLoading, trialResult, trialParamValues, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, removeVersion, switchType, addParam, removeParam, backToList, openPresetPicker, searchPreset, selectPresetCategory, changePresetPage, usePresetEvaluator, runTrial, clearTrialResult, copyPrompt, clearPrompt, formatTime } = useEvaluatorEditor();
 </script>
 
 <template>
@@ -112,14 +112,6 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
                     </span>
                     <strong>Code</strong>
                     <span>通过 Coding 设计规则，执行代码函数来对比预期输出和实际输出</span>
-                    <i class="method-card-check" />
-                  </button>
-                  <button v-if="!isEdit" type="button" class="method-card disabled" disabled>
-                    <span class="method-card-icon">
-                      <el-icon><Tickets /></el-icon>
-                    </span>
-                    <strong>基于评测任务</strong>
-                    <span>通过历史评测任务的标注结果，抽象并总结为新的 LLM 评估器</span>
                     <i class="method-card-check" />
                   </button>
                 </div>
@@ -239,6 +231,45 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
           </section>
         </el-form>
       </section>
+      <aside v-if="!isEdit && form.evaluatorType === 'llm'" class="evaluator-trial-panel">
+        <div class="trial-panel-head">
+          <h2>试运行</h2>
+          <el-button v-if="trialResult" link type="primary" @click="clearTrialResult">清空结果</el-button>
+        </div>
+        <div class="trial-param-list">
+          <el-form label-position="top">
+            <el-form-item v-for="param in promptParams" :key="param.paramName">
+              <template #label>
+                {{ param.paramName }}<span v-if="param.required" class="required-mark">*</span>
+              </template>
+              <el-input
+                v-model="trialParamValues[param.paramName]"
+                type="textarea"
+                :autosize="{ minRows: 2, maxRows: 5 }"
+                maxlength="2000"
+                show-word-limit
+                placeholder="请输入"
+              />
+            </el-form-item>
+          </el-form>
+          <div v-if="!promptParams.length" class="trial-empty">
+            Prompt 中暂无可试运行参数
+          </div>
+        </div>
+        <div v-if="trialResult" class="trial-result-card">
+          <div class="trial-result-head">
+            <span :class="['trial-result-badge', trialResult.result === 'pass' ? 'pass' : 'fail']">{{ trialResult.result === 'pass' ? 'Pass' : 'Fail' }}</span>
+            <strong>{{ trialResult.score ?? '-' }}</strong>
+          </div>
+          <p v-if="trialResult.errorMessage">{{ trialResult.errorMessage }}</p>
+          <p v-else>{{ trialResult.reason || '暂无原因' }}</p>
+          <pre>{{ trialResult.outputText || '-' }}</pre>
+        </div>
+        <el-button class="trial-run-button" type="primary" :loading="trialLoading" @click="runTrial">
+          <el-icon><Promotion /></el-icon>
+          <span>开始运行</span>
+        </el-button>
+      </aside>
     </main>
 
     <el-dialog v-model="presetPickerVisible" title="选择预置评估器" class="evaluator-picker-dialog fixed-dialog" style="--fixed-dialog-width: min(980px, 88vw); --fixed-dialog-height: min(680px, 84vh)" :close-on-click-modal="true">

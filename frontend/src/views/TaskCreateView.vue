@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { Delete, Plus, Refresh } from '@element-plus/icons-vue';
+import { ArrowDown, ArrowRight, CopyDocument, Delete, Plus, Refresh } from '@element-plus/icons-vue';
 import TagCreateDialog from '../components/TagCreateDialog.vue';
 import TaskTagDrawer from '../components/TaskTagDrawer.vue';
 import { useTaskCreate } from '../modules/task/composables/useTaskCreate';
@@ -53,6 +53,7 @@ const {
     resetDatasetSelection,
     resetAgentSelection,
     resetAppFieldMapping,
+    copyBlockPrompt,
     loadTags,
     openTagDrawer,
     searchTags,
@@ -118,7 +119,8 @@ async function refreshTagsAfterCreate() {
               </div>
               <span v-if="form.datasetId && !publishedVersions.length" class="hint">该评测集暂无发布版本，请先发布评测集。</span>
             </el-form-item>
-            <el-form-item label="选择应用">
+            <el-form-item>
+              <template #label>选择应用 <span class="required-mark">*</span></template>
               <div class="app-picker">
                 <el-radio-group v-model="form.appType" class="plain-radio-group">
                   <el-radio label="none">不关联应用</el-radio>
@@ -155,9 +157,8 @@ async function refreshTagsAfterCreate() {
           <div class="app-mapping-panel">
             <div class="param-mapping-list app-field-mapping-list">
               <div v-for="input in agentInputs" :key="input.id" class="param-mapping-row app-field-mapping-row">
-                <div class="param-cell">
-                  <strong>{{ input.fieldName }}</strong>
-                  <el-tag size="small" effect="plain">{{ input.fieldType || 'string' }}</el-tag>
+                <div class="param-cell plain-param-cell">
+                  <span>{{ input.fieldName }}</span>
                 </div>
                 <span class="mapping-arrow">→</span>
                 <span class="mapping-source-label">评测集字段</span>
@@ -189,7 +190,7 @@ async function refreshTagsAfterCreate() {
             </div>
 
             <div class="evaluator-config-grid">
-              <el-form-item>
+              <el-form-item class="evaluator-config-full">
                 <template #label>评估器类型 <span class="required-mark">*</span></template>
                 <el-radio-group v-model="block.evaluatorSource" class="plain-radio-group" @change="changeEvaluatorSource(block)">
                   <el-radio label="custom">自定义评估器</el-radio>
@@ -215,7 +216,7 @@ async function refreshTagsAfterCreate() {
                     <el-option v-for="item in block.presetOptions" :key="item.id" :label="item.evaluatorName" :value="item.id" :disabled="item.evaluatorType === 'code'" />
                   </el-select>
                 </el-form-item>
-                <el-form-item v-if="block.evaluatorType === 'llm'">
+                <el-form-item v-if="block.evaluatorType === 'llm'" class="evaluator-config-full">
                   <template #label>选择模型 <span class="required-mark">*</span></template>
                   <el-select
                     v-model="block.modelId"
@@ -256,12 +257,19 @@ async function refreshTagsAfterCreate() {
               </template>
             </div>
 
+            <el-button v-if="block.evaluatorName" class="evaluator-detail-toggle" link type="primary" @click="block.detailExpanded = !block.detailExpanded">
+              <el-icon>
+                <ArrowDown v-if="block.detailExpanded" />
+                <ArrowRight v-else />
+              </el-icon>
+              <span>评估器详情</span>
+            </el-button>
+
             <div v-if="block.params.length" class="param-mapping-list">
               <h3>字段映射</h3>
               <div v-for="param in block.params" :key="paramKey(param)" class="param-mapping-row">
-                <div class="param-cell">
-                  <strong>{{ param.paramName }}<span v-if="param.required" class="required-mark">*</span></strong>
-                  <span>{{ param.dataType }}</span>
+                <div class="param-cell plain-param-cell">
+                  <span>{{ param.paramName }}<span v-if="param.required" class="required-mark">*</span></span>
                 </div>
                 <span class="mapping-arrow">→</span>
                 <el-select v-model="block.paramMappings[paramKey(param)].sourceType" class="mapping-source">
@@ -293,9 +301,6 @@ async function refreshTagsAfterCreate() {
               </div>
             </div>
 
-            <el-button v-if="block.evaluatorName" link type="primary" @click="block.detailExpanded = !block.detailExpanded">
-              {{ block.detailExpanded ? '收起评估器详情' : '查看评估器详情' }}
-            </el-button>
             <div v-if="block.detailExpanded" class="evaluator-inline-detail">
               <p>{{ block.description || '暂无描述' }}</p>
               <div class="score-summary">
@@ -303,7 +308,13 @@ async function refreshTagsAfterCreate() {
                 <span>评分范围：{{ block.scoreMin ?? '-' }} - {{ block.scoreMax ?? '-' }}</span>
                 <span>通过阈值：{{ block.passThreshold ?? '-' }}</span>
               </div>
-              <pre v-if="block.evaluatorType === 'llm'" class="code-block">{{ formatPromptBlock(block.prompt) }}</pre>
+              <template v-if="block.evaluatorType === 'llm'">
+                <div class="inline-detail-head">
+                  <span>Prompt</span>
+                  <el-button link type="primary" :icon="CopyDocument" @click="copyBlockPrompt(block)">复制</el-button>
+                </div>
+                <pre class="code-block">{{ formatPromptBlock(block.prompt) }}</pre>
+              </template>
               <pre v-else class="code-block">{{ block.executeCode }}</pre>
             </div>
           </article>

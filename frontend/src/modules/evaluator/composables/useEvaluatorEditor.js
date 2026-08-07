@@ -169,6 +169,22 @@ function validateEvaluatorBody(form, models) {
     return true;
 }
 
+function validateTrialForm(form, models) {
+    if ([form.scoreMin, form.scoreMax, form.passThreshold].some((value) => value === null || value === undefined || Number.isNaN(Number(value)))) {
+        ElMessage.warning('请完善评分范围和通过阈值');
+        return false;
+    }
+    if (form.scoreMin >= form.scoreMax) {
+        ElMessage.warning('评分范围最大值必须大于最小值');
+        return false;
+    }
+    if (form.passThreshold < form.scoreMin || form.passThreshold > form.scoreMax) {
+        ElMessage.warning('通过阈值必须位于评分范围内');
+        return false;
+    }
+    return validateEvaluatorBody(form, models);
+}
+
 function pickVersion(list, preferredVersionId) {
     return list.find((item) => item.id === preferredVersionId)
         ?? list.find((item) => item.draft)
@@ -179,9 +195,10 @@ function createEvaluatorEditorActions(ctx, router) {
     const modelActions = createModelActions(ctx);
     const versionActions = createVersionActions(ctx);
     const presetPickerActions = createPresetPickerActions(ctx);
+    const trialActions = createTrialActions(ctx);
     const saveActions = createSaveActions(ctx, router, versionActions);
     const formActions = createFormActions(ctx, router);
-    return { ...modelActions, ...versionActions, ...presetPickerActions, ...saveActions, ...formActions };
+    return { ...modelActions, ...versionActions, ...presetPickerActions, ...trialActions, ...saveActions, ...formActions };
 }
 
 function createModelActions(ctx) {
@@ -314,8 +331,31 @@ async function usePresetEvaluator(ctx, presetId) {
     } else {
         fillForm(ctx.form, detail);
         ensureParamsByType(ctx.form);
+        syncTrialParamValues(ctx.form, ctx.trialParamValues);
         ctx.presetPickerVisible.value = false;
     }
+}
+
+function createTrialActions(ctx) {
+    async function runTrial() {
+        if (!validateTrialForm(ctx.form, ctx.models)) {
+            return;
+        }
+        ctx.trialLoading.value = true;
+        ctx.trialResult.value = null;
+        try {
+            ctx.trialResult.value = await evaluatorApi.runTrial({
+                evaluator: payload(ctx.form, ctx.models),
+                paramValues: { ...ctx.trialParamValues }
+            });
+        } finally {
+            ctx.trialLoading.value = false;
+        }
+    }
+    function clearTrialResult() {
+        ctx.trialResult.value = null;
+    }
+    return { runTrial, clearTrialResult };
 }
 
 function createSaveActions(ctx, router, versionActions) {
@@ -460,6 +500,20 @@ function syncPromptWhenLlm(form) {
     }
 }
 
+function syncTrialParamValues(form, values) {
+    const names = new Set(form.params.map((param) => param.paramName));
+    Object.keys(values).forEach((name) => {
+        if (!names.has(name)) {
+            delete values[name];
+        }
+    });
+    form.params.forEach((param) => {
+        if (values[param.paramName] === undefined) {
+            values[param.paramName] = param.defaultValue || '';
+        }
+    });
+}
+
 export function useEvaluatorEditor() {
     const route = useRoute();
     const router = useRouter();
@@ -480,6 +534,9 @@ export function useEvaluatorEditor() {
     const presetKeyword = ref('');
     const presetCategoryId = ref('');
     const presetLoading = ref(false);
+    const trialLoading = ref(false);
+    const trialResult = ref(null);
+    const trialParamValues = reactive({});
     const form = reactive({
         evaluatorName: '',
         description: '',
@@ -501,14 +558,19 @@ export function useEvaluatorEditor() {
     const activeVersion = computed(() => versions.value.find((item) => item.id === activeVersionId.value));
     const promptParams = computed(() => promptParamsValue(form));
     const modelOptions = computed(() => modelOptionsValue(form, models));
-    const ctx = { loading, saving, publishing, versions, activeVersionId, activeDetail, models, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, form, evaluatorId, presetId, isEdit, canEdit };
+    const ctx = { loading, saving, publishing, versions, activeVersionId, activeDetail, models, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, trialLoading, trialResult, trialParamValues, form, evaluatorId, presetId, isEdit, canEdit };
     const actions = createEvaluatorEditorActions(ctx, router);
 
     onMounted(async () => {
         await initEditor(actions, isEdit, presetId, form);
+        syncTrialParamValues(form, trialParamValues);
     });
     watch(() => [form.evaluatorType, form.prompt], () => {
         syncPromptWhenLlm(form);
+        syncTrialParamValues(form, trialParamValues);
+    });
+    watch(() => form.params.map((param) => `${param.paramName}:${param.defaultValue || ''}`), () => {
+        syncTrialParamValues(form, trialParamValues);
     });
 
     return {
@@ -535,6 +597,9 @@ export function useEvaluatorEditor() {
         presetKeyword,
         presetCategoryId,
         presetLoading,
+        trialLoading,
+        trialResult,
+        trialParamValues,
         ...actions,
         formatTime: formatDateTime
     };
