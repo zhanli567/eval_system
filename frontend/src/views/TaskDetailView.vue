@@ -277,7 +277,11 @@ async function refreshTagsAfterCreate() {
                       :model-value="column.visible"
                       @change="setColumnVisible(column.id, Boolean($event))"
                     >
-                      <OverflowTooltip :content="column.settingLabel || column.label" class="column-setting-label" />
+                      <OverflowTooltip
+                        :content="column.settingLabel || column.label"
+                        axis="horizontal"
+                        class="column-setting-label"
+                      />
                     </el-checkbox>
                   </div>
                 </div>
@@ -357,7 +361,7 @@ async function refreshTagsAfterCreate() {
                   />
                 </template>
               </el-table-column>
-              <el-table-column label="结果" width="120" :resizable="false" align="center">
+              <el-table-column label="结果" width="92" :resizable="false" align="center">
                 <template #default="{ row }">
                   <template v-if="isScoredEvaluatorResult(findEvaluatorResult(row, column.target.taskEvaluatorId))">
                     <el-tag :type="passTagType(findEvaluatorResult(row, column.target.taskEvaluatorId)?.passResult)" effect="plain">
@@ -371,7 +375,7 @@ async function refreshTagsAfterCreate() {
                   </el-tooltip>
                 </template>
               </el-table-column>
-              <el-table-column label="得分" width="110" :resizable="false" align="center">
+              <el-table-column label="得分" width="86" :resizable="false" align="center">
                 <template #default="{ row }">
                   <OverflowTooltip :content="findEvaluatorResult(row, column.target.taskEvaluatorId)?.score ?? '-'" />
                 </template>
@@ -387,7 +391,7 @@ async function refreshTagsAfterCreate() {
             </el-table-column>
             <el-table-column
               v-else-if="column.type === 'tag'"
-              min-width="210"
+              width="170"
               :resizable="false"
               align="center"
             >
@@ -407,12 +411,12 @@ async function refreshTagsAfterCreate() {
                 </div>
               </template>
               <template #default="{ row }">
-                <template v-if="findTagResult(row, column.target.taskTagId)?.status === 'completed'">
-                  <el-tag :type="passTagType(findTagResult(row, column.target.taskTagId)?.passResult)" effect="plain">
+                <div v-if="findTagResult(row, column.target.taskTagId)?.status === 'completed'" class="tag-result-cell">
+                  <el-tag class="tag-result-status" :type="passTagType(findTagResult(row, column.target.taskTagId)?.passResult)" effect="plain">
                     <OverflowTooltip :content="findTagResult(row, column.target.taskTagId)?.passResult || '-'" />
                   </el-tag>
-                  <OverflowTooltip class="result-value" :content="tagResultValue(row, column.target.taskTagId)" />
-                </template>
+                  <OverflowTooltip class="result-value tag-result-value" :content="tagResultValue(row, column.target.taskTagId)" />
+                </div>
                 <el-tag v-else-if="findTagResult(row, column.target.taskTagId)?.status === 'stopped'" type="info" effect="plain">
                   <OverflowTooltip content="已中止" />
                 </el-tag>
