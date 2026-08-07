@@ -13,8 +13,10 @@ const { detailLoading, datasetTitle, versions, activeVersionId, tablePage, table
     <div class="embedded-page-title">
       <nav class="page-breadcrumb" aria-label="页面路径">
         <button type="button" class="page-breadcrumb-link" @click="backToList">评测集</button>
-        <span class="page-breadcrumb-separator">/</span>
-        <OverflowTooltip :content="datasetTitle" tag="span" class="page-breadcrumb-current" />
+        <template v-if="datasetTitle">
+          <span class="page-breadcrumb-separator">/</span>
+          <OverflowTooltip :content="datasetTitle" tag="span" class="page-breadcrumb-current" />
+        </template>
       </nav>
     </div>
 
@@ -118,8 +120,10 @@ const { detailLoading, datasetTitle, versions, activeVersionId, tablePage, table
     <div class="embedded-page-title">
       <nav class="page-breadcrumb" aria-label="页面路径">
         <button type="button" class="page-breadcrumb-link" @click="backToList">评测集</button>
-        <span class="page-breadcrumb-separator">/</span>
-        <OverflowTooltip :content="datasetTitle" tag="span" class="page-breadcrumb-current" />
+        <template v-if="datasetTitle">
+          <span class="page-breadcrumb-separator">/</span>
+          <OverflowTooltip :content="datasetTitle" tag="span" class="page-breadcrumb-current" />
+        </template>
       </nav>
     </div>
     <el-empty class="embedded-empty" description="暂无版本数据" />

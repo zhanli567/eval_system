@@ -21,7 +21,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
         <el-input
           v-model="customKeyword"
           clearable
-          placeholder="请输入评估器名称"
+          placeholder="请输入名称"
           class="search-input"
           @keyup.enter="searchCustom"
           @clear="searchCustom"
@@ -36,13 +36,10 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
       </div>
 
       <div v-else class="panel-toolbar table-toolbar evaluator-head-toolbar">
-        <el-select v-model="activeCategoryId" clearable placeholder="全部分类" class="field-select" @change="selectPresetCategory">
-          <el-option v-for="category in categoryOptions" :key="category.id || 'all-head'" :label="category.categoryName" :value="category.id" />
-        </el-select>
         <el-input
           v-model="presetKeyword"
           clearable
-          placeholder="请输入预置评估器名称"
+          placeholder="请输入名称"
           class="search-input"
           @keyup.enter="searchPreset"
           @clear="searchPreset"
@@ -155,7 +152,18 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
     </template>
 
     <template v-else>
-      <div class="preset-content preset-content-full">
+      <div class="preset-layout evaluator-preset-layout">
+        <aside class="preset-category-rail">
+          <button
+            v-for="category in categoryOptions"
+            :key="category.id || 'preset-all'"
+            :class="{ active: activeCategoryId === category.id }"
+            @click="selectPresetCategory(category.id)"
+          >
+            {{ category.categoryName }}
+          </button>
+        </aside>
+        <div class="preset-content">
           <div v-loading="presetLoading" class="preset-grid">
             <article
               v-for="preset in presetEvaluators"
@@ -188,6 +196,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
               @current-change="loadPresetEvaluators"
             />
           </div>
+        </div>
       </div>
     </template>
   </section>
@@ -215,7 +224,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             <el-input
               v-model="pickerKeyword"
               clearable
-              placeholder="请输入预置评估器名称"
+              placeholder="请输入名称"
               class="search-input"
               @keyup.enter="searchPicker"
               @clear="searchPicker"

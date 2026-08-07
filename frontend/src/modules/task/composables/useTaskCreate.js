@@ -60,11 +60,16 @@ function createState() {
         tagDrawerVisible: ref(false),
         tagKeyword: ref(''),
         tagTypeFilter: ref(''),
+        tagLoading: ref(false),
+        tagPage: ref(1),
+        tagSize: ref(10),
+        tagTotal: ref(0),
         datasets: ref([]),
         versions: ref([]),
         fields: ref([]),
         tags: ref([]),
         selectedTagIds: ref([]),
+        selectedTagRecords: ref([]),
         customEvaluators: ref([]),
         presetCategories: ref([]),
         evaluatorBlocks: ref([]),
@@ -111,18 +116,8 @@ function createComputedValues(state) {
         agentInputs: computed(() => selectedAgent.value?.inputs || []),
         agentOutputs,
         tagTypeOptions: computed(() => TASK_TAG_TYPE_OPTIONS),
-        selectedTags: computed(() => state.selectedTagIds.value.map((tagId) => state.tags.value.find((tag) => tag.id === tagId)).filter(Boolean)),
-        filteredTags: computed(() => filterTags(state.tags.value, state.tagKeyword.value, state.tagTypeFilter.value))
+        selectedTags: computed(() => state.selectedTagRecords.value)
     };
-}
-
-function filterTags(tags, keywordValue, tagType) {
-    const keyword = keywordValue.trim().toLowerCase();
-    return tags.filter((tag) => {
-        const matchesType = !tagType || tag.tagType === tagType;
-        const matchesKeyword = !keyword || tag.tagName.toLowerCase().includes(keyword) || tag.description.toLowerCase().includes(keyword);
-        return matchesType && matchesKeyword;
-    });
 }
 
 function createLoadActions(ctx) {
@@ -244,6 +239,15 @@ function createEvaluatorEnsureLoaders(loaders) {
 }
 
 function createRawLoaders(ctx) {
+    return {
+        ...createDatasetLoaders(ctx),
+        ...createTagLoaders(ctx),
+        ...createEvaluatorLoaders(ctx),
+        ...createRemoteLoaders(ctx)
+    };
+}
+
+function createDatasetLoaders(ctx) {
     async function loadDatasets() {
         const page = await datasetApi.listDatasets({ page: 1, size: 100 });
         ctx.state.datasets.value = page.records;
@@ -252,36 +256,51 @@ function createRawLoaders(ctx) {
         ctx.state.versions.value = [];
         ctx.state.fields.value = [];
         ctx.state.form.datasetVersionId = '';
-        if (!ctx.state.form.datasetId)
+        if (!ctx.state.form.datasetId) {
             return;
+        }
         ctx.state.versions.value = await datasetApi.listVersions(ctx.state.form.datasetId);
         ctx.state.form.datasetVersionId = ctx.computed.publishedVersions.value[0]?.id || '';
     }
     async function loadFields() {
         ctx.state.fields.value = [];
-        if (!ctx.state.form.datasetVersionId)
+        if (!ctx.state.form.datasetVersionId) {
             return;
+        }
         const detail = await datasetApi.getVersionDetail(ctx.state.form.datasetVersionId, { page: 1, size: 1 });
         ctx.state.fields.value = detail.fields;
         ctx.state.evaluatorBlocks.value.forEach((block) => ensureParamMappings(ctx, block));
         ensureAppFieldMappings(ctx);
     }
+    return { loadDatasets, loadVersions, loadFields };
+}
+
+function createTagLoaders(ctx) {
     async function loadTags() {
-        const page = await tagApi.listTags({ page: 1, size: 100 });
-        ctx.state.tags.value = page.records;
+        ctx.state.tagLoading.value = true;
+        try {
+            const page = await tagApi.listTags({
+                page: ctx.state.tagPage.value,
+                size: ctx.state.tagSize.value,
+                tagType: ctx.state.tagTypeFilter.value,
+                keyword: ctx.state.tagKeyword.value
+            });
+            ctx.state.tags.value = page.records;
+            ctx.state.tagTotal.value = page.total;
+        } finally {
+            ctx.state.tagLoading.value = false;
+        }
     }
+    return { loadTags };
+}
+
+function createEvaluatorLoaders(ctx) {
     async function loadCustomEvaluators() {
         const page = await evaluatorApi.listEvaluators({ page: 1, size: 100 });
         ctx.state.customEvaluators.value = page.records;
     }
     async function loadPresetCategories() {
         ctx.state.presetCategories.value = await evaluatorApi.listPresetCategories();
-    }
-    async function loadAgents() {
-        ctx.state.agents.value = await remoteCallApi.listAgents();
-        if (ctx.state.form.appType === 'agent') {
-            selectDefaultAgent(ctx);
-        }
     }
     async function loadPresetOptions(block) {
         const page = await evaluatorApi.listPresetEvaluators({
@@ -292,16 +311,17 @@ function createRawLoaders(ctx) {
         });
         block.presetOptions = page.records;
     }
-    return {
-        loadDatasets,
-        loadTags,
-        loadCustomEvaluators,
-        loadPresetCategories,
-        loadAgents,
-        loadPresetOptions,
-        loadVersions,
-        loadFields
-    };
+    return { loadCustomEvaluators, loadPresetCategories, loadPresetOptions };
+}
+
+function createRemoteLoaders(ctx) {
+    async function loadAgents() {
+        ctx.state.agents.value = await remoteCallApi.listAgents();
+        if (ctx.state.form.appType === 'agent') {
+            selectDefaultAgent(ctx);
+        }
+    }
+    return { loadAgents };
 }
 
 async function loadAgentCache(agentId, loading, apiCall, cache, fallback) {
@@ -606,10 +626,8 @@ function normalizeMapping(ctx, mapping) {
 function createTagActions(ctx, loadActions) {
     async function openTagDrawer() {
         ctx.state.tagDrawerVisible.value = true;
-        await loadActions.ensureTagsLoaded();
-    }
-    function openTagManagement() {
-        ctx.router.push({ name: 'tags' });
+        await loadActions.loadTags();
+        ctx.state.tagsLoaded.value = true;
     }
     function addTag(tag) {
         if (isTagSelected(tag.id)) {
@@ -619,15 +637,35 @@ function createTagActions(ctx, loadActions) {
             ElMessage.warning('标签最多添加5个');
             return;
         }
+        ensureTagInCurrentList(ctx, tag);
         ctx.state.selectedTagIds.value.push(tag.id);
+        ctx.state.selectedTagRecords.value.push(tag);
     }
     function removeTag(tagId) {
         ctx.state.selectedTagIds.value = ctx.state.selectedTagIds.value.filter((item) => item !== tagId);
+        ctx.state.selectedTagRecords.value = ctx.state.selectedTagRecords.value.filter((item) => item.id !== tagId);
     }
     function isTagSelected(tagId) {
         return ctx.state.selectedTagIds.value.includes(tagId);
     }
-    return { openTagDrawer, openTagManagement, addTag, removeTag, isTagSelected };
+    async function searchTags() {
+        ctx.state.tagPage.value = 1;
+        await loadActions.loadTags();
+        ctx.state.tagsLoaded.value = true;
+    }
+    async function changeTagSize() {
+        ctx.state.tagPage.value = 1;
+        await loadActions.loadTags();
+        ctx.state.tagsLoaded.value = true;
+    }
+    return { openTagDrawer, addTag, removeTag, isTagSelected, searchTags, changeTagSize };
+}
+
+function ensureTagInCurrentList(ctx, tag) {
+    if (ctx.state.tags.value.some((item) => item.id === tag.id)) {
+        return;
+    }
+    ctx.state.tags.value = [tag, ...ctx.state.tags.value];
 }
 
 function createCopyActions(ctx, loadActions, appActions) {
@@ -641,9 +679,10 @@ function createCopyActions(ctx, loadActions, appActions) {
             await restoreCopyDataset(ctx, loadActions, config);
             await restoreCopyApplication(ctx, loadActions, appActions, config);
             await restoreCopyEvaluators(ctx, loadActions, config.evaluators || []);
-            await loadActions.loadTags();
+            await loadCopyTags(ctx);
             ctx.state.tagsLoaded.value = true;
             ctx.state.selectedTagIds.value = config.tagIds || [];
+            ctx.state.selectedTagRecords.value = ctx.state.tags.value.filter((tag) => ctx.state.selectedTagIds.value.includes(tag.id));
         }
         finally {
             ctx.copying = false;
@@ -651,6 +690,12 @@ function createCopyActions(ctx, loadActions, appActions) {
         }
     }
     return { loadTaskCopy };
+}
+
+async function loadCopyTags(ctx) {
+    const page = await tagApi.listTags({ page: 1, size: 100 });
+    ctx.state.tags.value = page.records;
+    ctx.state.tagTotal.value = page.total;
 }
 
 async function restoreCopyDataset(ctx, loadActions, config) {

@@ -346,7 +346,7 @@ function canEditValue(isEdit, activeDetail, evaluatorType) {
 }
 
 function pageTitleValue(isEdit, evaluatorName) {
-    return isEdit ? evaluatorName || '编辑评估器' : '创建评估器';
+    return isEdit ? evaluatorName || '' : '创建评估器';
 }
 
 function promptParamsValue(form) {

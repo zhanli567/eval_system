@@ -12,16 +12,24 @@ const props = defineProps({
     loading: { type: Boolean, default: false },
     keyword: { type: String, default: '' },
     tagType: { type: String, default: '' },
-    selectedMode: { type: String, default: 'remove' }
+    selectedMode: { type: String, default: 'remove' },
+    page: { type: Number, default: 1 },
+    size: { type: Number, default: 10 },
+    total: { type: Number, default: 0 }
 });
 const emit = defineEmits([
     'update:modelValue',
     'update:keyword',
     'update:tagType',
+    'update:page',
+    'update:size',
     'refresh',
+    'search',
     'create',
     'add',
-    'remove'
+    'remove',
+    'page-change',
+    'size-change'
 ]);
 
 const visible = computed({
@@ -36,16 +44,16 @@ const selectedType = computed({
     get: () => props.tagType,
     set: (value) => emit('update:tagType', value)
 });
-const selectedIds = computed(() => new Set(props.selectedTagIds));
-const filteredTags = computed(() => {
-    const keyword = searchKeyword.value.trim().toLowerCase();
-    return props.tags.filter((tag) => {
-        const matchesType = !selectedType.value || tag.tagType === selectedType.value;
-        const text = `${tag.tagName || ''} ${tag.description || ''}`.toLowerCase();
-        const matchesKeyword = !keyword || text.includes(keyword);
-        return matchesType && matchesKeyword;
-    });
+const currentPage = computed({
+    get: () => props.page,
+    set: (value) => emit('update:page', value)
 });
+const pageSize = computed({
+    get: () => props.size,
+    set: (value) => emit('update:size', value)
+});
+const selectedIds = computed(() => new Set(props.selectedTagIds));
+const displayTags = computed(() => props.tags);
 
 function isSelected(tag) {
     return selectedIds.value.has(tag.id);
@@ -61,12 +69,28 @@ function handleSelectedClick(tag) {
     }
     emit('remove', tag);
 }
+
+function searchTags() {
+    emit('update:page', 1);
+    emit('search');
+}
+
+function changePage(value) {
+    emit('update:page', value);
+    emit('page-change');
+}
+
+function changeSize(value) {
+    emit('update:size', value);
+    emit('update:page', 1);
+    emit('size-change');
+}
 </script>
 
 <template>
   <el-drawer v-model="visible" :title="title" direction="rtl" size="520px" class="task-tag-drawer">
     <div class="task-tag-drawer-toolbar">
-      <el-select v-model="selectedType" clearable placeholder="全部类型" class="task-tag-type-select">
+      <el-select v-model="selectedType" clearable placeholder="全部类型" class="task-tag-type-select" @change="searchTags">
         <el-option v-for="type in tagTypeOptions" :key="type.value" :label="type.label" :value="type.value" />
       </el-select>
       <el-input
@@ -76,6 +100,9 @@ function handleSelectedClick(tag) {
         maxlength="20"
         show-word-limit
         class="task-tag-search"
+        @keyup.enter="searchTags"
+        @clear="searchTags"
+        @change="searchTags"
       >
         <template #prefix>
           <el-icon><Search /></el-icon>
@@ -86,7 +113,7 @@ function handleSelectedClick(tag) {
     </div>
 
     <div v-loading="loading" class="task-tag-drawer-list">
-      <article v-for="tag in filteredTags" :key="tag.id" class="task-tag-drawer-card">
+      <article v-for="tag in displayTags" :key="tag.id" class="task-tag-drawer-card">
         <div class="task-tag-drawer-card-main">
           <div class="tag-title-row">
             <strong>{{ tag.tagName }}</strong>
@@ -105,7 +132,19 @@ function handleSelectedClick(tag) {
         </el-button>
         <el-button v-else plain type="primary" @click="emit('add', tag)">添加</el-button>
       </article>
-      <el-empty v-if="!filteredTags.length" description="暂无匹配标签" :image-size="80" />
+      <el-empty v-if="!displayTags.length" description="暂无匹配标签" :image-size="80" />
+    </div>
+    <div class="task-tag-drawer-pager">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        small
+        :page-sizes="[5, 10, 20]"
+        layout="total, sizes, prev, pager, next"
+        :total="total"
+        @size-change="changeSize"
+        @current-change="changePage"
+      />
     </div>
   </el-drawer>
 </template>

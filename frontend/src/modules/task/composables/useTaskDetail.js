@@ -97,15 +97,9 @@ function createTaskDetailActions(ctx, router) {
     return { loadDetail, changeSize, backToList, stopTask, startPolling, stopPolling, openAnnotation };
 }
 
-function createTagActions(ctx, router) {
+function createTagActions(ctx) {
     async function loadAllTags() {
-        ctx.tagLoading.value = true;
-        try {
-            const page = await tagApi.listTags({ page: 1, size: 100 });
-            ctx.allTags.value = page.records;
-        } finally {
-            ctx.tagLoading.value = false;
-        }
+        await loadPagedTags(ctx);
     }
     async function openTagDrawer() {
         ctx.tagDrawerVisible.value = true;
@@ -117,7 +111,7 @@ function createTagActions(ctx, router) {
         }
         await taskApi.addTaskTag(ctx.taskId.value, tag.id);
         ElMessage.success('标签已添加');
-        await ctx.loadDetail();
+        await refreshTaskAndTags(ctx, loadAllTags);
     }
     async function removeTaskTagByTag(tag) {
         const binding = findTaskTagByTagId(ctx.detail.value?.tags ?? [], tag?.id);
@@ -130,12 +124,42 @@ function createTagActions(ctx, router) {
         await confirmTaskTagRemove(tag);
         await taskApi.deleteTaskTag(ctx.taskId.value, tag.taskTagId);
         ElMessage.success('标签已移除');
-        await ctx.loadDetail();
+        await refreshTaskAndTags(ctx, loadAllTags);
     }
-    function openTagManagement() {
-        router.push({ name: 'tags' });
+    async function searchAllTags() {
+        ctx.tagPage.value = 1;
+        await loadAllTags();
     }
-    return { loadAllTags, openTagDrawer, addTaskTag, removeTaskTagByTag, removeTaskTag, openTagManagement };
+    async function changeTagSize() {
+        ctx.tagPage.value = 1;
+        await loadAllTags();
+    }
+    return { loadAllTags, openTagDrawer, addTaskTag, removeTaskTagByTag, removeTaskTag, searchAllTags, changeTagSize };
+}
+
+async function loadPagedTags(ctx) {
+    ctx.tagLoading.value = true;
+    try {
+        const page = await tagApi.listTags(tagPageParams(ctx));
+        ctx.allTags.value = page.records;
+        ctx.tagTotal.value = page.total;
+    } finally {
+        ctx.tagLoading.value = false;
+    }
+}
+
+function tagPageParams(ctx) {
+    return {
+        page: ctx.tagPage.value,
+        size: ctx.tagSize.value,
+        tagType: ctx.tagTypeFilter.value,
+        keyword: ctx.tagKeyword.value
+    };
+}
+
+async function refreshTaskAndTags(ctx, loadAllTags) {
+    await ctx.loadDetail();
+    await loadAllTags();
 }
 
 function confirmTaskTagRemove(tag) {
@@ -318,7 +342,7 @@ export function useTaskDetail(taskId) {
     const state = createTaskDetailState();
     const ctx = createContext(taskId, state);
     const actions = createTaskDetailActions(ctx, router);
-    const tagActions = createTagActions(ctx, router);
+    const tagActions = createTagActions(ctx);
     const columnActions = createColumnActions(ctx);
     ctx.loadDetail = actions.loadDetail;
     const computedValues = createComputedValues(ctx.detail, ctx.columnSettings, ctx.columnSettingDraft);
@@ -336,6 +360,9 @@ function createTaskDetailState() {
         tagDrawerVisible: ref(false),
         tagKeyword: ref(''),
         tagTypeFilter: ref(''),
+        tagPage: ref(1),
+        tagSize: ref(10),
+        tagTotal: ref(0),
         tagLoading: ref(false),
         allTags: ref([]),
         columnSettingVisible: ref(false),
@@ -409,6 +436,9 @@ function refsToReturn(ctx) {
         tagDrawerVisible: ctx.tagDrawerVisible,
         tagKeyword: ctx.tagKeyword,
         tagTypeFilter: ctx.tagTypeFilter,
+        tagPage: ctx.tagPage,
+        tagSize: ctx.tagSize,
+        tagTotal: ctx.tagTotal,
         tagLoading: ctx.tagLoading,
         allTags: ctx.allTags,
         columnSettingVisible: ctx.columnSettingVisible
