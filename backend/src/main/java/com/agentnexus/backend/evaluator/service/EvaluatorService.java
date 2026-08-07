@@ -112,7 +112,7 @@ public class EvaluatorService {
     if (response == null || !StringUtils.hasText(response.outputText())) {
       return new EvaluatorTrialResponse("", "fail", null, "", "模型对话接口未返回评估结果");
     }
-    EvaluationParseResult parsed = parseEvaluationOutput(response.outputText());
+    EvaluatorParseResult parsed = parseEvaluationOutput(response.outputText());
     if (StringUtils.hasText(parsed.errorMessage())) {
       return new EvaluatorTrialResponse(response.outputText(), "fail", null, "", parsed.errorMessage());
     }
@@ -567,27 +567,27 @@ public class EvaluatorService {
     return rendered.toString();
   }
 
-  private EvaluationParseResult parseEvaluationOutput(String outputText) {
+  private EvaluatorParseResult parseEvaluationOutput(String outputText) {
     if (!StringUtils.hasText(outputText)) {
-      return new EvaluationParseResult(null, "", "模型评估结果为空");
+      return new EvaluatorParseResult(null, "", "模型评估结果为空");
     }
     String json = extractJson(outputText);
     if (!StringUtils.hasText(json)) {
-      return new EvaluationParseResult(null, "", "模型评估结果不是JSON格式");
+      return new EvaluatorParseResult(null, "", "模型评估结果不是JSON格式");
     }
     try {
       JsonNode root = objectMapper.readTree(json);
       JsonNode scoreNode = root.get("score");
       if (scoreNode == null || scoreNode.isNull()) {
-        return new EvaluationParseResult(null, "", "模型评估结果缺少score字段");
+        return new EvaluatorParseResult(null, "", "模型评估结果缺少score字段");
       }
       BigDecimal score = scoreNode.isNumber()
           ? scoreNode.decimalValue()
           : new BigDecimal(scoreNode.asText().trim());
       String reason = root.hasNonNull("reason") ? root.get("reason").asText() : outputText;
-      return new EvaluationParseResult(score, reason, "");
+      return new EvaluatorParseResult(score, reason, "");
     } catch (Exception error) {
-      return new EvaluationParseResult(null, "", "模型评估结果解析失败：" + error.getMessage());
+      return new EvaluatorParseResult(null, "", "模型评估结果解析失败：" + error.getMessage());
     }
   }
 
@@ -656,7 +656,7 @@ public class EvaluatorService {
   ) {
   }
 
-  private record EvaluationParseResult(
+  private record EvaluatorParseResult(
       BigDecimal score,
       String reason,
       String errorMessage
