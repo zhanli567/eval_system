@@ -1886,9 +1886,9 @@ h2 {
   box-sizing: border-box;
   min-height: 0;
   margin: 0;
-  padding: 4px clamp(18px, 33vw, 33%) 28px;
+  padding: 4px clamp(18px, 28.5vw, 28.5%) 28px;
   overflow-y: auto;
-  gap: 16px;
+  gap: 0;
 }
 
 .task-create-main.evaluator-create-main {
@@ -1901,12 +1901,39 @@ h2 {
 }
 
 .task-create-section {
+  position: relative;
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
   gap: 10px;
 }
 
-.task-create-shell .task-create-section {
+.task-create-page-shell .task-create-section {
+  padding: 0 0 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.task-create-page-shell .task-create-section::before {
+  content: "";
+  position: absolute;
+  top: 38px;
+  bottom: 0;
+  left: 15px;
+  width: 1px;
+  background: #dfe6f2;
+}
+
+.task-create-page-shell .task-create-section:last-child {
+  padding-bottom: 0;
+}
+
+.task-create-page-shell .task-create-section:last-child::before {
+  bottom: 0;
+}
+
+.task-create-shell:not(.task-create-page-shell) .task-create-section {
   padding: 4px 0 24px;
   border: 0;
   border-bottom: 1px solid var(--line);
@@ -1915,7 +1942,7 @@ h2 {
   box-shadow: none;
 }
 
-.task-create-shell .task-create-section:last-child {
+.task-create-shell:not(.task-create-page-shell) .task-create-section:last-child {
   padding-bottom: 0;
   border-bottom: 0;
 }
@@ -2047,6 +2074,7 @@ h2 {
 }
 
 .evaluator-config-card {
+  font-size: 14px;
   margin-top: 14px;
   padding: 0;
   overflow: hidden;
@@ -2057,6 +2085,14 @@ h2 {
 
 .evaluator-config-body {
   padding: 16px;
+}
+
+.evaluator-config-body .el-form-item__label,
+.evaluator-config-body .el-radio,
+.evaluator-config-body .param-cell,
+.evaluator-config-body .el-select,
+.evaluator-config-body .el-input {
+  font-size: 14px;
 }
 
 .evaluator-config-head {
@@ -2091,6 +2127,7 @@ h2 {
 .evaluator-collapse-button strong {
   min-width: 0;
   overflow: hidden;
+  font-size: 15px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2120,9 +2157,17 @@ h2 {
 
 .param-mapping-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 24px 140px minmax(220px, 1fr) 34px;
+  grid-template-columns: minmax(0, 1fr) 20px minmax(96px, 112px) minmax(0, 1.2fr) 34px;
   gap: 10px;
   align-items: center;
+}
+
+.param-mapping-row > * {
+  min-width: 0;
+}
+
+.app-field-mapping-row {
+  grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1.5fr) 34px;
 }
 
 .param-cell {
@@ -2139,6 +2184,13 @@ h2 {
 .plain-param-cell {
   color: var(--ink);
   font-weight: 400;
+}
+
+.param-cell span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .param-mapping-row .el-select,

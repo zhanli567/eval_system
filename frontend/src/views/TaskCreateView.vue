@@ -75,7 +75,7 @@ async function refreshTagsAfterCreate() {
 </script>
 
 <template>
-  <section class="task-create-shell" v-loading="loading">
+  <section class="task-create-shell task-create-page-shell" v-loading="loading">
     <div class="embedded-page-title">
       <nav class="page-breadcrumb" aria-label="页面路径">
         <button type="button" class="page-breadcrumb-link" @click="backToList">评测任务</button>
@@ -161,7 +161,6 @@ async function refreshTagsAfterCreate() {
                   <span>{{ input.fieldName }}</span>
                 </div>
                 <span class="mapping-arrow">→</span>
-                <span class="mapping-source-label">评测集字段</span>
                 <el-select v-model="appFieldMappings[input.id]" filterable placeholder="请选择评测集字段" :disabled="!form.datasetVersionId">
                   <el-option v-for="field in fields" :key="field.id" :label="`${field.fieldName} · ${fieldTypeLabel(field.fieldType)}`" :value="field.id" />
                 </el-select>

@@ -372,6 +372,7 @@ function createEvaluatorActions(ctx, loadActions) {
             clearEvaluatorDetail(block);
             return;
         }
+        block.detailExpanded = false;
         block.loading = true;
         try {
             await fillSelectedEvaluator(ctx, block);
@@ -381,8 +382,10 @@ function createEvaluatorActions(ctx, loadActions) {
         }
     }
     async function selectCustomVersion(block) {
-        if (!block.evaluatorVersionId)
+        if (!block.evaluatorVersionId) {
             return;
+        }
+        block.detailExpanded = false;
         block.loading = true;
         try {
             const detail = await evaluatorApi.getVersion(block.evaluatorVersionId);
@@ -502,6 +505,7 @@ function clearEvaluatorDetail(block) {
         passThreshold: undefined,
         params: [],
         paramMappings: {},
+        detailExpanded: false,
         versions: []
     });
     if (block.evaluatorSource !== 'preset') {
