@@ -491,6 +491,10 @@ h2 {
   flex: 0 1 300px;
 }
 
+.evaluator-head-toolbar .evaluator-type-select {
+  flex: 0 0 150px;
+}
+
 .evaluator-panel.fill-workspace .preset-layout {
   flex: 1 1 auto;
   min-height: 0;
@@ -863,6 +867,14 @@ h2 {
   font-weight: 400;
 }
 
+.evaluator-create-panel .el-form-item {
+  margin-bottom: 24px;
+}
+
+.evaluator-create-panel .el-form-item__label {
+  padding-bottom: 8px;
+}
+
 .evaluator-form .el-form-item.is-required > .el-form-item__label::before {
   display: none;
 }
@@ -994,14 +1006,18 @@ h2 {
 }
 
 .evaluator-create-main {
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
   align-items: start;
-  padding-right: clamp(18px, 14vw, 240px);
-  padding-left: clamp(18px, 14vw, 240px);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 .evaluator-create-panel {
   min-width: 0;
+  min-height: 0;
+  padding: 22px 24px 28px;
+  overflow-y: auto;
 }
 
 .evaluator-trial-panel {
@@ -1009,8 +1025,10 @@ h2 {
   top: 0;
   display: grid;
   gap: 16px;
-  min-height: 640px;
-  padding: 18px;
+  align-self: stretch;
+  min-height: 0;
+  padding: 24px;
+  overflow-y: auto;
   border-left: 1px solid var(--line);
   background: #fff;
 }
@@ -1821,6 +1839,13 @@ h2 {
   gap: 16px;
 }
 
+.task-create-main.evaluator-create-main {
+  grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 .task-create-section {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
@@ -1909,6 +1934,17 @@ h2 {
   margin-top: 16px;
 }
 
+.task-create-shell .el-form-item__label,
+.task-create-shell .el-radio,
+.task-create-shell .param-cell {
+  font-weight: 400;
+}
+
+.task-create-shell .section-body > h2,
+.task-create-shell .section-head > h2 {
+  font-weight: 700;
+}
+
 .app-picker,
 .app-mapping-panel {
   display: grid;
@@ -1958,17 +1994,58 @@ h2 {
 
 .evaluator-config-card {
   margin-top: 14px;
-  padding: 16px;
+  padding: 0;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #fff;
+}
+
+.evaluator-config-body {
+  padding: 16px;
+}
+
+.evaluator-config-head {
+  min-height: 56px;
+  padding: 0 14px;
+  background: #f7f8fb;
+  border-bottom: 1px solid var(--line);
+}
+
+.evaluator-config-head > strong {
+  display: none;
+}
+
+.evaluator-collapse-button {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+}
+
+.evaluator-collapse-button .el-icon {
+  font-size: 18px;
+  color: #4b5574;
+}
+
+.evaluator-collapse-button strong {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .evaluator-config-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 12px;
 }
 
 .evaluator-config-full {
@@ -1984,6 +2061,7 @@ h2 {
 .param-mapping-list h3 {
   margin: 4px 0;
   font-size: 15px;
+  font-weight: 400;
 }
 
 .param-mapping-row {
@@ -2050,7 +2128,7 @@ h2 {
 
 .inline-detail-head {
   color: var(--ink);
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .evaluator-inline-detail .code-block {
@@ -3031,8 +3109,9 @@ h2 {
     padding-left: clamp(16px, 10vw, 120px);
   }
 
-  .evaluator-create-main {
+  .task-create-main.evaluator-create-main {
     grid-template-columns: 1fr;
+    overflow-y: auto;
   }
 
   .evaluator-trial-panel {

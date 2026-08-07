@@ -48,6 +48,7 @@ function createEvaluatorBlock() {
         presetOptions: [],
         presetOptionsLoaded: false,
         versions: [],
+        collapsed: false,
         detailExpanded: false,
         loading: false
     };

@@ -182,6 +182,13 @@ async function refreshTagsAfterCreate() {
 
           <article v-for="(block, index) in evaluatorBlocks" :key="block.key" class="evaluator-config-card" v-loading="block.loading">
             <div class="evaluator-config-head">
+              <button type="button" class="evaluator-collapse-button" @click="block.collapsed = !block.collapsed">
+                <el-icon>
+                  <ArrowRight v-if="block.collapsed" />
+                  <ArrowDown v-else />
+                </el-icon>
+                <strong>{{ block.evaluatorName || ('\u8bc4\u4f30\u5668' + (index + 1)) }}</strong>
+              </button>
               <strong>{{ block.evaluatorName || `评估器 ${index + 1}` }}</strong>
               <div class="evaluator-card-actions">
                 <el-button class="bare-icon-button" :icon="Refresh" text title="重置" aria-label="重置评估器" @click="resetEvaluator(block)" />
@@ -189,6 +196,7 @@ async function refreshTagsAfterCreate() {
               </div>
             </div>
 
+            <div v-show="!block.collapsed" class="evaluator-config-body">
             <div class="evaluator-config-grid">
               <el-form-item class="evaluator-config-full">
                 <template #label>评估器类型 <span class="required-mark">*</span></template>
@@ -303,19 +311,25 @@ async function refreshTagsAfterCreate() {
 
             <div v-if="block.detailExpanded" class="evaluator-inline-detail">
               <p>{{ block.description || '暂无描述' }}</p>
-              <div class="score-summary">
-                <span>类型：{{ block.evaluatorType || '-' }}</span>
-                <span>评分范围：{{ block.scoreMin ?? '-' }} - {{ block.scoreMax ?? '-' }}</span>
-                <span>通过阈值：{{ block.passThreshold ?? '-' }}</span>
-              </div>
               <template v-if="block.evaluatorType === 'llm'">
                 <div class="inline-detail-head">
                   <span>Prompt</span>
                   <el-button link type="primary" :icon="CopyDocument" @click="copyBlockPrompt(block)">复制</el-button>
                 </div>
                 <pre class="code-block">{{ formatPromptBlock(block.prompt) }}</pre>
+                <div class="score-summary">
+                  <span>评分范围：{{ block.scoreMin ?? '-' }} - {{ block.scoreMax ?? '-' }}</span>
+                  <span>通过阈值：{{ block.passThreshold ?? '-' }}</span>
+                </div>
               </template>
-              <pre v-else class="code-block">{{ block.executeCode }}</pre>
+              <template v-else>
+                <pre class="code-block">{{ block.executeCode }}</pre>
+                <div class="score-summary">
+                  <span>评分范围：{{ block.scoreMin ?? '-' }} - {{ block.scoreMax ?? '-' }}</span>
+                  <span>通过阈值：{{ block.passThreshold ?? '-' }}</span>
+                </div>
+              </template>
+            </div>
             </div>
           </article>
         </div>
