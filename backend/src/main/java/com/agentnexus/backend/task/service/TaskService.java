@@ -618,17 +618,17 @@ public class TaskService {
       throw new IllegalArgumentException("该任务已添加此标签");
     } else if (taskRepository.listTaskTagBindings(taskId).size() >= MAX_DIMENSION_COUNT) {
       throw new IllegalArgumentException("标签最多添加5个");
+    } else {
+      String now = now();
+      String taskTagId = id();
+      int displayOrder = taskRepository.nextTaskTagDisplayOrder(taskId);
+      taskRepository.insertTaskTag(taskTagId, taskId, safeTagId, STATUS_PENDING, displayOrder, now);
+      for (TaskItemRecord item : taskRepository.listAllTaskItems(taskId)) {
+        taskRepository.insertTagResult(id(), taskId, item.id(), taskTagId, STATUS_PENDING, now);
+      }
+      taskRepository.updateTaskStatus(taskId, task.status(), null, null, now);
+      return getTask(taskId, 1, 10);
     }
-
-    String now = now();
-    String taskTagId = id();
-    int displayOrder = taskRepository.nextTaskTagDisplayOrder(taskId);
-    taskRepository.insertTaskTag(taskTagId, taskId, safeTagId, STATUS_PENDING, displayOrder, now);
-    for (TaskItemRecord item : taskRepository.listAllTaskItems(taskId)) {
-      taskRepository.insertTagResult(id(), taskId, item.id(), taskTagId, STATUS_PENDING, now);
-    }
-    taskRepository.updateTaskStatus(taskId, task.status(), null, null, now);
-    return getTask(taskId, 1, 10);
   }
 
   /**

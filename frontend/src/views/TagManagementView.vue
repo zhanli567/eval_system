@@ -144,7 +144,6 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
         <el-select v-model="tagForm.tagType" clearable class="wide-control" :disabled="editing">
           <el-option v-for="item in tagTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
-        <span v-if="editing" class="hint">标签类型创建后不可修改</span>
       </el-form-item>
 
       <div v-if="tagForm.tagType === 'category'" class="tag-config-grid">

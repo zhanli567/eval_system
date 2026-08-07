@@ -1,7 +1,8 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { CircleCheck, CircleClose, Clock, Delete, Loading, Operation, PriceTag, Refresh } from '@element-plus/icons-vue';
+import TagCreateDialog from '../components/TagCreateDialog.vue';
 import TaskTagDrawer from '../components/TaskTagDrawer.vue';
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
 import { formatAgentOutputValue, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
@@ -21,6 +22,9 @@ const {
     tagDrawerVisible,
     tagKeyword,
     tagTypeFilter,
+    tagPage,
+    tagSize,
+    tagTotal,
     tagLoading,
     allTags,
     selectedTagIds,
@@ -38,7 +42,8 @@ const {
     addTaskTag,
     removeTaskTag,
     removeTaskTagByTag,
-    openTagManagement,
+    searchAllTags,
+    changeTagSize,
     setColumnVisible,
     resetColumnSettings,
     confirmColumnSettings,
@@ -51,6 +56,7 @@ const {
     tagTypeLabel,
     formatTime
 } = useTaskDetail(taskId);
+const tagCreateVisible = ref(false);
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -137,6 +143,9 @@ function evaluatorMessage(result) {
 function tagHeaderText(tag) {
     return `${tag?.tagName || '-'}（${tagTypeLabel(tag?.tagType)}）`;
 }
+async function refreshTagsAfterCreate() {
+    await loadAllTags();
+}
 </script>
 
 <template>
@@ -145,8 +154,10 @@ function tagHeaderText(tag) {
       <div class="embedded-page-title">
         <nav class="page-breadcrumb" aria-label="页面路径">
           <button type="button" class="page-breadcrumb-link" @click="backToList">评测任务</button>
-          <span class="page-breadcrumb-separator">/</span>
-          <OverflowTooltip :content="base?.taskName || '评测任务详情'" tag="span" class="page-breadcrumb-current" />
+          <template v-if="base?.taskName">
+            <span class="page-breadcrumb-separator">/</span>
+            <OverflowTooltip :content="base.taskName" tag="span" class="page-breadcrumb-current" />
+          </template>
         </nav>
       </div>
 
@@ -242,7 +253,7 @@ function tagHeaderText(tag) {
               popper-class="column-setting-popover"
             >
               <template #reference>
-                <el-button class="toolbar-icon-button" :icon="Operation" title="表头设置" aria-label="表头设置" />
+                <el-button :icon="Operation">表头设置</el-button>
               </template>
               <div class="column-setting-panel">
                 <div class="column-setting-head">
@@ -433,15 +444,22 @@ function tagHeaderText(tag) {
       v-model="tagDrawerVisible"
       v-model:keyword="tagKeyword"
       v-model:tag-type="tagTypeFilter"
+      v-model:page="tagPage"
+      v-model:size="tagSize"
       title="标签配置"
       :tags="allTags"
       :selected-tag-ids="selectedTagIds"
       :tag-type-options="tagTypeOptions"
       :loading="tagLoading"
+      :total="tagTotal"
       @refresh="loadAllTags"
-      @create="openTagManagement"
+      @search="searchAllTags"
+      @page-change="loadAllTags"
+      @size-change="changeTagSize"
+      @create="tagCreateVisible = true"
       @add="addTaskTag"
       @remove="removeTaskTagByTag"
     />
+    <TagCreateDialog v-model="tagCreateVisible" @created="refreshTagsAfterCreate" />
   </section>
 </template>

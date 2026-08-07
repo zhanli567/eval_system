@@ -1,5 +1,7 @@
 <script setup>
+import { ref } from 'vue';
 import { Delete, Plus } from '@element-plus/icons-vue';
+import TagCreateDialog from '../components/TagCreateDialog.vue';
 import TaskTagDrawer from '../components/TaskTagDrawer.vue';
 import { useTaskCreate } from '../modules/task/composables/useTaskCreate';
 import { formatPromptBlock } from '../utils/textBlocks';
@@ -9,6 +11,10 @@ const {
     tagDrawerVisible,
     tagKeyword,
     tagTypeFilter,
+    tagLoading,
+    tagPage,
+    tagSize,
+    tagTotal,
     datasets,
     publishedVersions,
     fields,
@@ -44,7 +50,8 @@ const {
     removeEvaluator,
     loadTags,
     openTagDrawer,
-    openTagManagement,
+    searchTags,
+    changeTagSize,
     addTag,
     removeTag,
     submit,
@@ -54,6 +61,11 @@ const {
     tagTypeLabel,
     backToList
 } = useTaskCreate();
+const tagCreateVisible = ref(false);
+
+async function refreshTagsAfterCreate() {
+    await loadTags();
+}
 </script>
 
 <template>
@@ -318,14 +330,22 @@ const {
       v-model="tagDrawerVisible"
       v-model:keyword="tagKeyword"
       v-model:tag-type="tagTypeFilter"
+      v-model:page="tagPage"
+      v-model:size="tagSize"
       title="添加标签"
-      selected-mode="disabled"
       :tags="tags"
       :selected-tag-ids="selectedTagIds"
       :tag-type-options="tagTypeOptions"
+      :loading="tagLoading"
+      :total="tagTotal"
       @refresh="loadTags"
-      @create="openTagManagement"
+      @search="searchTags"
+      @page-change="loadTags"
+      @size-change="changeTagSize"
+      @create="tagCreateVisible = true"
       @add="addTag"
+      @remove="(tag) => removeTag(tag.id)"
     />
+    <TagCreateDialog v-model="tagCreateVisible" @created="refreshTagsAfterCreate" />
   </section>
 </template>

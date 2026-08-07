@@ -9,8 +9,10 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
     <div class="embedded-page-title">
       <nav class="page-breadcrumb" aria-label="页面路径">
         <button type="button" class="page-breadcrumb-link" @click="backToList">评估器</button>
-        <span class="page-breadcrumb-separator">/</span>
-        <OverflowTooltip :content="pageTitle" tag="span" class="page-breadcrumb-current" />
+        <template v-if="pageTitle">
+          <span class="page-breadcrumb-separator">/</span>
+          <OverflowTooltip :content="pageTitle" tag="span" class="page-breadcrumb-current" />
+        </template>
       </nav>
       <div class="embedded-title-actions">
         <template v-if="isEdit">

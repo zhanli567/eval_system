@@ -32,7 +32,7 @@ function createComputed(state) {
     const activeVersion = computed(() => state.detail.value?.version);
     const fields = computed(() => state.detail.value?.fields ?? []);
     return {
-        datasetTitle: computed(() => state.datasetSummary.value?.name || '评测集详情'),
+        datasetTitle: computed(() => state.datasetSummary.value?.name || ''),
         activeVersion,
         isDraft: computed(() => activeVersion.value?.draft === true),
         tableRows: computed(() => state.detail.value?.rows.records ?? []),

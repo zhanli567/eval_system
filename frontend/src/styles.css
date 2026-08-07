@@ -473,6 +473,7 @@ h2 {
   gap: 14px;
   margin-bottom: 16px;
   min-width: 0;
+  flex-wrap: nowrap;
 }
 
 .evaluator-head-toolbar {
@@ -486,7 +487,16 @@ h2 {
   flex-wrap: nowrap;
 }
 
+.evaluator-head-toolbar .search-input {
+  flex: 0 1 300px;
+}
+
 .evaluator-panel.fill-workspace .preset-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.evaluator-preset-layout {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -989,6 +999,9 @@ h2 {
   height: 34px;
   padding-right: 0;
   padding-left: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .table-toolbar-actions {
@@ -1011,6 +1024,29 @@ h2 {
   background: #fff;
   border-color: var(--line);
   box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-toolbar-actions > .el-button,
+.dataset-detail-actions > .el-button,
+.embedded-title-actions > .el-button,
+.evaluator-head-toolbar > .el-button {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-toolbar-actions > .toolbar-icon-button,
+.dataset-detail-actions > .toolbar-icon-button,
+.embedded-title-actions > .toolbar-icon-button,
+.evaluator-head-toolbar > .toolbar-icon-button {
+  width: 34px;
+  min-width: 34px;
+  padding-right: 0;
+  padding-left: 0;
 }
 
 .toolbar-icon-button:hover,
@@ -1826,7 +1862,7 @@ h2 {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 18px;
+  padding: 18px 22px;
 }
 
 .task-tag-drawer-toolbar {
@@ -1834,7 +1870,7 @@ h2 {
   grid-template-columns: 150px minmax(0, 1fr) 34px auto;
   gap: 10px;
   align-items: center;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .task-tag-drawer-list {
@@ -1844,19 +1880,24 @@ h2 {
   gap: 12px;
   flex: 1;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 0 2px 12px 0;
 }
 
 .task-tag-drawer-card {
-  min-height: 78px;
+  min-height: 82px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
-  padding: 14px 16px;
+  padding: 15px 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #fff;
+}
+
+.task-tag-drawer-card:hover {
+  border-color: #bfdbfe;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.06);
 }
 
 .task-tag-drawer-card-main {
@@ -1882,6 +1923,15 @@ h2 {
   background: #f3f6fb;
   font-size: 12px;
   line-height: 18px;
+}
+
+.task-tag-drawer-pager {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  overflow-x: auto;
 }
 
 .column-setting-popover {
