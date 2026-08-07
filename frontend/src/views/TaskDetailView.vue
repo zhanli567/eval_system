@@ -415,6 +415,7 @@ async function refreshTagsAfterCreate() {
                   <el-tag class="tag-result-status" :type="passTagType(findTagResult(row, column.target.taskTagId)?.passResult)" effect="plain">
                     <OverflowTooltip :content="findTagResult(row, column.target.taskTagId)?.passResult || '-'" />
                   </el-tag>
+                  <span class="tag-result-separator">-</span>
                   <OverflowTooltip class="result-value tag-result-value" :content="tagResultValue(row, column.target.taskTagId)" />
                 </div>
                 <el-tag v-else-if="findTagResult(row, column.target.taskTagId)?.status === 'stopped'" type="info" effect="plain">

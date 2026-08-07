@@ -2172,18 +2172,24 @@ h2 {
 
 .tag-result-cell {
   min-width: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  max-width: 100%;
+  gap: 4px;
+  vertical-align: middle;
 }
 
 .tag-result-status {
   flex: 0 0 auto;
 }
 
+.tag-result-separator {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
 .tag-result-value {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   margin-left: 0;
 }
 
