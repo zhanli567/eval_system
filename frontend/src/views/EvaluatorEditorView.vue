@@ -133,10 +133,10 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
                   </el-select>
                 </el-form-item>
 
-                <el-form-item required>
+                <el-form-item class="prompt-form-item" required>
                   <template #label>
                     <div class="prompt-label-row">
-                      <span>Prompt</span>
+                      <span class="prompt-label-title">Prompt</span>
                       <div v-if="!isEdit && canEdit" class="prompt-tool-actions">
                         <el-button link type="primary" :icon="MagicStick" disabled>AI优化</el-button>
                         <el-button link type="primary" :icon="Tickets" @click="openPresetPicker">选择预置评估器</el-button>

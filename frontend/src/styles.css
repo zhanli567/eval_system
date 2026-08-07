@@ -885,6 +885,10 @@ h2 {
   color: #f56c6c;
 }
 
+.evaluator-form .prompt-form-item.is-required > .el-form-item__label::after {
+  display: none;
+}
+
 .method-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -997,6 +1001,16 @@ h2 {
   gap: 12px;
 }
 
+.prompt-label-title {
+  flex: 0 0 auto;
+}
+
+.prompt-label-title::after {
+  content: "*";
+  margin-left: 4px;
+  color: #f56c6c;
+}
+
 .prompt-tool-actions {
   display: inline-flex;
   flex: 0 0 auto;
@@ -1073,12 +1087,9 @@ h2 {
   min-height: 300px;
   place-items: center;
   padding: 28px 18px;
-  border: 1px dashed #dbe3f0;
+  border: 1px dashed var(--line);
   border-radius: 8px;
-  background:
-    linear-gradient(135deg, transparent 48%, #edf2fa 49%, transparent 50%) 0 0 / 46px 46px,
-    linear-gradient(45deg, transparent 48%, #edf2fa 49%, transparent 50%) 0 0 / 46px 46px,
-    #fff;
+  background: #fff;
   color: var(--muted);
   font-size: 14px;
   text-align: center;
@@ -1136,8 +1147,14 @@ h2 {
   margin-top: auto;
   width: 100%;
   min-height: 42px;
-  background: #18233a;
-  border-color: #18233a;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.trial-run-button:hover,
+.trial-run-button:focus {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
 }
 
 .required-title {
@@ -1155,7 +1172,7 @@ h2 {
   gap: 8px;
   min-height: 38px;
   padding: 8px 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--el-border-color, #dcdfe6);
   border-top: 0;
   border-radius: 0 0 var(--radius) var(--radius);
   color: var(--muted);
