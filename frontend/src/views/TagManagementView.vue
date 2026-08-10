@@ -123,7 +123,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
     </div>
   </section>
 
-  <el-dialog v-model="dialogVisible" :title="dialogTitle" class="tag-dialog fixed-dialog" style="--fixed-dialog-width: min(720px, 86vw); --fixed-dialog-height: min(660px, 86vh)" :close-on-click-modal="true">
+  <el-dialog v-model="dialogVisible" :title="dialogTitle" class="tag-dialog fixed-dialog" style="--fixed-dialog-width: min(520px, 86vw); --fixed-dialog-height: min(760px, 86vh)" :close-on-click-modal="true">
     <el-form label-position="top" class="tag-form">
       <el-form-item>
         <template #label>标签名称 <span class="required-mark">*</span></template>
@@ -231,7 +231,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
     </template>
   </el-dialog>
 
-  <el-dialog v-model="detailDialogVisible" title="标签详情" class="tag-dialog tag-detail-dialog fixed-dialog" style="--fixed-dialog-width: min(680px, 86vw); --fixed-dialog-height: min(560px, 82vh)" :close-on-click-modal="true">
+  <el-dialog v-model="detailDialogVisible" title="标签详情" class="tag-dialog tag-detail-dialog fixed-dialog" style="--fixed-dialog-width: min(520px, 86vw); --fixed-dialog-height: min(660px, 82vh)" :close-on-click-modal="true">
     <div v-loading="detailLoading" class="tag-detail-body">
       <template v-if="tagDetail">
         <el-descriptions :column="2" border class="tag-detail-descriptions">

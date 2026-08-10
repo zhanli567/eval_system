@@ -2,6 +2,7 @@ package com.agentnexus.backend.dataset.api;
 
 import com.agentnexus.backend.common.ApiResponse;
 import com.agentnexus.backend.common.PageResponse;
+import com.agentnexus.backend.common.dto.DescriptionUpdateRequest;
 import com.agentnexus.backend.dataset.api.dto.request.CreateDatasetRequest;
 import com.agentnexus.backend.dataset.api.dto.request.DeleteRowsRequest;
 import com.agentnexus.backend.dataset.api.dto.request.FieldInput;
@@ -54,6 +55,22 @@ public class DatasetController {
   @Path("")
   public ApiResponse<DatasetSummary> createDataset(CreateDatasetRequest request) {
     return ApiResponse.ok(datasetService.createDataset(request));
+  }
+
+  /**
+   * 更新评测集描述。
+   *
+   * @param datasetId 评测集ID
+   * @param request 描述更新请求
+   * @return 更新后的评测集概要
+   */
+  @POST
+  @Path("/{datasetId}/description")
+  public ApiResponse<DatasetSummary> updateDescription(
+      @PathParam("datasetId") String datasetId,
+      DescriptionUpdateRequest request
+  ) {
+    return ApiResponse.ok(datasetService.updateDescription(datasetId, request));
   }
 
   @POST

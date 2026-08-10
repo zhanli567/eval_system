@@ -12,8 +12,10 @@
   --scrollbar-thumb: #cbd5e1;
   --scrollbar-thumb-hover: #94a3b8;
   --scrollbar-track: transparent;
+  --app-font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --el-font-family: var(--app-font-family);
   color: var(--ink);
-  font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-family: var(--app-font-family);
   background: var(--bg);
 }
 
@@ -55,7 +57,15 @@ body {
   min-width: 0;
   width: 100%;
   overflow: hidden;
+  font-family: var(--app-font-family);
   background: var(--bg);
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: var(--app-font-family);
 }
 
 #app {
@@ -1541,10 +1551,61 @@ h2 {
   font-weight: 700;
 }
 
+.dataset-schema-title {
+  font-weight: 400;
+}
+
 .field-editor-list {
   display: grid;
   gap: 4px;
   padding-right: 4px;
+}
+
+.field-editor-table {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.field-editor-table-head,
+.field-editor-table .field-editor {
+  display: grid;
+  grid-template-columns: 42px minmax(150px, 1.1fr) minmax(120px, 150px) 82px minmax(150px, 1.4fr) 58px;
+  gap: 10px;
+  align-items: center;
+  min-width: 720px;
+}
+
+.field-editor-table-head {
+  min-height: 40px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  background: #f7f9fd;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field-editor-table .field-editor {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.field-editor-table .field-editor:last-child {
+  border-bottom: 0;
+}
+
+.field-delete-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--muted);
+}
+
+.field-delete-button:hover,
+.field-delete-button:focus {
+  color: var(--accent);
 }
 
 .field-editor {
@@ -1570,6 +1631,16 @@ h2 {
   background: #f4f6ff;
   box-shadow: inset 0 0 0 1px #ccd3ff;
   transform: translateY(2px) scale(0.988);
+}
+
+.resource-description-form {
+  display: grid;
+  align-content: start;
+}
+
+.resource-description-form .el-textarea__inner {
+  height: 180px !important;
+  resize: none;
 }
 
 .drag-handle {
@@ -2032,13 +2103,15 @@ h2 {
 
 .metric-distribution-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.8fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.75fr);
+  align-items: stretch;
   gap: 16px;
   min-width: 0;
 }
 
 .metric-pie-chart {
-  height: 300px;
+  height: 320px;
+  min-height: 320px;
 }
 
 .task-create-main {
@@ -2352,6 +2425,18 @@ h2 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mapping-param-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+}
+
+.mapping-param-label .mapping-required-mark {
+  flex: 0 0 auto;
+  margin-left: 0;
 }
 
 .param-mapping-row .el-select,

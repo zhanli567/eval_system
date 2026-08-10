@@ -423,9 +423,26 @@ public class TaskRepository {
     taskItemMapper.delete(new LambdaQueryWrapper<EvalTaskItem>()
         .eq(EvalTaskItem::getSpaceId, currentSpaceId())
         .eq(EvalTaskItem::getTaskId, taskId));
-    taskMapper.delete(new LambdaQueryWrapper<EvalTask>()
+	    taskMapper.delete(new LambdaQueryWrapper<EvalTask>()
+	        .eq(EvalTask::getSpaceId, currentSpaceId())
+	        .eq(EvalTask::getId, taskId));
+  }
+
+  /**
+   * 更新评测任务描述。
+   *
+   * @param taskId 评测任务ID
+   * @param description 评测任务描述
+   * @param now 当前时间戳
+   */
+  public void updateTaskDescription(String taskId, String description, String now) {
+    taskMapper.update(null, new LambdaUpdateWrapper<EvalTask>()
         .eq(EvalTask::getSpaceId, currentSpaceId())
-        .eq(EvalTask::getId, taskId));
+        .eq(EvalTask::getId, taskId)
+        .set(EvalTask::getDescription, description)
+        .set(EvalTask::getLastUpdatedBy, currentUserId())
+        .set(EvalTask::getLastUpdatedByName, currentUserName())
+        .set(EvalTask::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   /**

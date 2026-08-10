@@ -276,7 +276,10 @@ async function refreshTagsAfterCreate() {
               <h3>字段映射</h3>
               <div v-for="param in block.params" :key="paramKey(param)" class="param-mapping-row">
                 <div class="param-cell plain-param-cell">
-                  <span>{{ param.paramName }}<span v-if="param.required" class="required-mark">*</span></span>
+                  <span class="mapping-param-label">
+                    <span v-if="param.required" class="required-mark mapping-required-mark">*</span>
+                    <span>{{ param.paramName }}</span>
+                  </span>
                 </div>
                 <span class="mapping-arrow">→</span>
                 <el-select v-model="block.paramMappings[paramKey(param)].sourceType" class="mapping-source">

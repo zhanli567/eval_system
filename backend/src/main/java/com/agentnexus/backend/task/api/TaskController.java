@@ -2,6 +2,7 @@ package com.agentnexus.backend.task.api;
 
 import com.agentnexus.backend.common.ApiResponse;
 import com.agentnexus.backend.common.PageResponse;
+import com.agentnexus.backend.common.dto.DescriptionUpdateRequest;
 import com.agentnexus.backend.task.api.dto.response.AnnotationDetail;
 import com.agentnexus.backend.task.api.dto.request.CreateTaskRequest;
 import com.agentnexus.backend.task.api.dto.request.SaveAnnotationRequest;
@@ -58,6 +59,22 @@ public class TaskController {
       @QueryParam("size") @DefaultValue("10") int size
   ) {
     return ApiResponse.ok(taskService.getTask(taskId, page, size));
+  }
+
+  /**
+   * 更新评测任务描述。
+   *
+   * @param taskId 评测任务ID
+   * @param request 描述更新请求
+   * @return 更新后的评测任务详情
+   */
+  @POST
+  @Path("/{taskId}/description")
+  public ApiResponse<TaskDetail> updateDescription(
+      @PathParam("taskId") String taskId,
+      DescriptionUpdateRequest request
+  ) {
+    return ApiResponse.ok(taskService.updateDescription(taskId, request));
   }
 
   /**

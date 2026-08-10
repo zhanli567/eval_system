@@ -18,6 +18,9 @@ export const evaluatorApi = {
     runTrial(data) {
         return unwrap(http.post('/evaluators/trial', data));
     },
+    updateDescription(evaluatorId, description) {
+        return unwrap(http.post(`/evaluators/${evaluatorId}/description`, { description }));
+    },
     deleteEvaluator(evaluatorId) {
         return unwrap(http.post(`/evaluators/${evaluatorId}/delete`));
     },
