@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { Delete, Plus } from '@element-plus/icons-vue';
+import { ArrowDown, ArrowRight, CopyDocument, Delete, Plus, Refresh } from '@element-plus/icons-vue';
 import TagCreateDialog from '../components/TagCreateDialog.vue';
 import TaskTagDrawer from '../components/TaskTagDrawer.vue';
 import { useTaskCreate } from '../modules/task/composables/useTaskCreate';
@@ -48,6 +48,12 @@ const {
     selectCustomVersion,
     addEvaluator,
     removeEvaluator,
+    resetEvaluator,
+    resetParamMapping,
+    resetDatasetSelection,
+    resetAgentSelection,
+    resetAppFieldMapping,
+    copyBlockPrompt,
     loadTags,
     openTagDrawer,
     searchTags,
@@ -69,7 +75,7 @@ async function refreshTagsAfterCreate() {
 </script>
 
 <template>
-  <section class="task-create-shell" v-loading="loading">
+  <section class="task-create-shell task-create-page-shell" v-loading="loading">
     <div class="embedded-page-title">
       <nav class="page-breadcrumb" aria-label="页面路径">
         <button type="button" class="page-breadcrumb-link" @click="backToList">评测任务</button>
@@ -97,11 +103,11 @@ async function refreshTagsAfterCreate() {
             </el-form-item>
             <el-form-item>
               <template #label>选择评测集及版本 <span class="required-mark">*</span></template>
-              <div class="inline-controls">
-                <el-select v-model="form.datasetId" clearable placeholder="请选择评测集" filterable @visible-change="handleDatasetVisible">
+              <div class="inline-controls select-reset-group">
+                <el-select v-model="form.datasetId" placeholder="请选择评测集" filterable @visible-change="handleDatasetVisible">
                   <el-option v-for="dataset in datasets" :key="dataset.id" :label="dataset.name" :value="dataset.id" />
                 </el-select>
-                <el-select v-model="form.datasetVersionId" clearable placeholder="请选择发布版本" :disabled="!form.datasetId">
+                <el-select v-model="form.datasetVersionId" placeholder="请选择发布版本" :disabled="!form.datasetId">
                   <el-option
                     v-for="version in publishedVersions"
                     :key="version.id"
@@ -109,23 +115,25 @@ async function refreshTagsAfterCreate() {
                     :value="version.id"
                   />
                 </el-select>
+                <el-button class="toolbar-icon-button" :icon="Refresh" title="重置" aria-label="重置评测集" @click="resetDatasetSelection" />
               </div>
               <span v-if="form.datasetId && !publishedVersions.length" class="hint">该评测集暂无发布版本，请先发布评测集。</span>
             </el-form-item>
-            <el-form-item label="选择应用">
+            <el-form-item>
+              <template #label>选择应用 <span class="required-mark">*</span></template>
               <div class="app-picker">
                 <el-radio-group v-model="form.appType" class="plain-radio-group">
                   <el-radio label="none">不关联应用</el-radio>
                   <el-radio label="agent">智能体</el-radio>
                 </el-radio-group>
-                <div v-if="form.appType === 'agent'" class="app-select-grid">
-                  <el-select v-model="form.appId" clearable placeholder="请选择智能体" filterable @visible-change="handleAgentVisible">
+                <div v-if="form.appType === 'agent'" class="app-select-grid select-reset-group">
+                  <el-select v-model="form.appId" placeholder="请选择智能体" filterable @visible-change="handleAgentVisible">
                     <el-option v-for="agent in agents" :key="agent.id" :label="agent.agentName" :value="agent.id" />
                   </el-select>
-                  <el-select v-model="form.appVersionId" clearable placeholder="请选择智能体版本" :disabled="!form.appId" :loading="agentVersionLoading">
+                  <el-select v-model="form.appVersionId" placeholder="请选择智能体版本" :disabled="!form.appId" :loading="agentVersionLoading">
                     <el-option v-for="version in agentVersions" :key="version.id" :label="version.versionName" :value="version.id" />
                   </el-select>
-                  <el-select v-model="form.appAgentAlias" placeholder="选择子智能体（可选）" clearable :disabled="!form.appId" :loading="agentDetailLoading">
+                  <el-select v-model="form.appAgentAlias" placeholder="选择子智能体（可选）" :disabled="!form.appId" :loading="agentDetailLoading">
                     <el-option label="超级智能体" value="" />
                     <el-option
                       v-for="child in agentChildAgents"
@@ -134,6 +142,7 @@ async function refreshTagsAfterCreate() {
                       :value="child.agentAlias"
                     />
                   </el-select>
+                  <el-button class="toolbar-icon-button" :icon="Refresh" title="重置" aria-label="重置应用" @click="resetAgentSelection" />
                 </div>
               </div>
             </el-form-item>
@@ -148,15 +157,14 @@ async function refreshTagsAfterCreate() {
           <div class="app-mapping-panel">
             <div class="param-mapping-list app-field-mapping-list">
               <div v-for="input in agentInputs" :key="input.id" class="param-mapping-row app-field-mapping-row">
-                <div class="param-cell">
-                  <strong>{{ input.fieldName }}</strong>
-                  <el-tag size="small" effect="plain">{{ input.fieldType || 'string' }}</el-tag>
+                <div class="param-cell plain-param-cell">
+                  <span>{{ input.fieldName }}</span>
                 </div>
                 <span class="mapping-arrow">→</span>
-                <span class="mapping-source-label">评测集字段</span>
-                <el-select v-model="appFieldMappings[input.id]" clearable filterable placeholder="请选择评测集字段" :disabled="!form.datasetVersionId">
+                <el-select v-model="appFieldMappings[input.id]" filterable placeholder="请选择评测集字段" :disabled="!form.datasetVersionId">
                   <el-option v-for="field in fields" :key="field.id" :label="`${field.fieldName} · ${fieldTypeLabel(field.fieldType)}`" :value="field.id" />
                 </el-select>
+                <el-button class="toolbar-icon-button" :icon="Refresh" title="重置" aria-label="重置字段映射" @click="resetAppFieldMapping(input.id)" />
               </div>
             </div>
           </div>
@@ -173,12 +181,23 @@ async function refreshTagsAfterCreate() {
 
           <article v-for="(block, index) in evaluatorBlocks" :key="block.key" class="evaluator-config-card" v-loading="block.loading">
             <div class="evaluator-config-head">
+              <button type="button" class="evaluator-collapse-button" @click="block.collapsed = !block.collapsed">
+                <el-icon>
+                  <ArrowRight v-if="block.collapsed" />
+                  <ArrowDown v-else />
+                </el-icon>
+                <strong>{{ block.evaluatorName || ('\u8bc4\u4f30\u5668' + (index + 1)) }}</strong>
+              </button>
               <strong>{{ block.evaluatorName || `评估器 ${index + 1}` }}</strong>
-              <el-button :icon="Delete" circle @click="removeEvaluator(index)" />
+              <div class="evaluator-card-actions">
+                <el-button class="bare-icon-button" :icon="Refresh" text title="重置" aria-label="重置评估器" @click="resetEvaluator(block)" />
+                <el-button class="bare-icon-button" :icon="Delete" text title="删除" aria-label="删除评估器" @click="removeEvaluator(index)" />
+              </div>
             </div>
 
+            <div v-show="!block.collapsed" class="evaluator-config-body">
             <div class="evaluator-config-grid">
-              <el-form-item>
+              <el-form-item class="evaluator-config-full">
                 <template #label>评估器类型 <span class="required-mark">*</span></template>
                 <el-radio-group v-model="block.evaluatorSource" class="plain-radio-group" @change="changeEvaluatorSource(block)">
                   <el-radio label="custom">自定义评估器</el-radio>
@@ -188,7 +207,7 @@ async function refreshTagsAfterCreate() {
 
               <template v-if="block.evaluatorSource === 'preset'">
                 <el-form-item label="分类">
-                  <el-select v-model="block.presetCategoryId" clearable @visible-change="handlePresetCategoryVisible" @change="changePresetCategory(block)">
+                  <el-select v-model="block.presetCategoryId" @visible-change="handlePresetCategoryVisible" @change="changePresetCategory(block)">
                     <el-option v-for="category in categoryOptions" :key="category.id || 'all'" :label="category.categoryName" :value="category.id" />
                   </el-select>
                 </el-form-item>
@@ -196,7 +215,6 @@ async function refreshTagsAfterCreate() {
                   <template #label>选择评估器 <span class="required-mark">*</span></template>
                   <el-select
                     v-model="block.evaluatorId"
-                    clearable
                     filterable
                     placeholder="请选择预置评估器"
                     @visible-change="handlePresetEvaluatorVisible(block, $event)"
@@ -205,11 +223,10 @@ async function refreshTagsAfterCreate() {
                     <el-option v-for="item in block.presetOptions" :key="item.id" :label="item.evaluatorName" :value="item.id" :disabled="item.evaluatorType === 'code'" />
                   </el-select>
                 </el-form-item>
-                <el-form-item v-if="block.evaluatorType === 'llm'">
+                <el-form-item v-if="block.evaluatorType === 'llm'" class="evaluator-config-full">
                   <template #label>选择模型 <span class="required-mark">*</span></template>
                   <el-select
                     v-model="block.modelId"
-                    clearable
                     filterable
                     :loading="modelLoading"
                     placeholder="请选择评估模型"
@@ -230,7 +247,6 @@ async function refreshTagsAfterCreate() {
                   <template #label>选择评估器 <span class="required-mark">*</span></template>
                   <el-select
                     v-model="block.evaluatorId"
-                    clearable
                     filterable
                     placeholder="请选择自定义评估器"
                     @visible-change="handleCustomEvaluatorVisible"
@@ -241,29 +257,35 @@ async function refreshTagsAfterCreate() {
                 </el-form-item>
                 <el-form-item>
                   <template #label>选择版本 <span class="required-mark">*</span></template>
-                  <el-select v-model="block.evaluatorVersionId" clearable placeholder="请选择版本" :disabled="!block.evaluatorId" @change="selectCustomVersion(block)">
+                  <el-select v-model="block.evaluatorVersionId" placeholder="请选择版本" :disabled="!block.evaluatorId" @change="selectCustomVersion(block)">
                     <el-option v-for="version in block.versions" :key="version.id" :label="version.versionName" :value="version.id" />
                   </el-select>
                 </el-form-item>
               </template>
             </div>
 
+            <button v-if="block.evaluatorName" type="button" class="evaluator-detail-toggle" @click="block.detailExpanded = !block.detailExpanded">
+              <span>评估器详情</span>
+              <el-icon>
+                <ArrowDown v-if="block.detailExpanded" />
+                <ArrowRight v-else />
+              </el-icon>
+            </button>
+
             <div v-if="block.params.length" class="param-mapping-list">
               <h3>字段映射</h3>
               <div v-for="param in block.params" :key="paramKey(param)" class="param-mapping-row">
-                <div class="param-cell">
-                  <strong>{{ param.paramName }}<span v-if="param.required" class="required-mark">*</span></strong>
-                  <span>{{ param.dataType }}</span>
+                <div class="param-cell plain-param-cell">
+                  <span>{{ param.paramName }}<span v-if="param.required" class="required-mark">*</span></span>
                 </div>
                 <span class="mapping-arrow">→</span>
-                <el-select v-model="block.paramMappings[paramKey(param)].sourceType" clearable class="mapping-source">
+                <el-select v-model="block.paramMappings[paramKey(param)].sourceType" class="mapping-source">
                   <el-option label="评测集" value="dataset_field" />
                   <el-option label="应用输出" value="app_output" :disabled="form.appType !== 'agent'" />
                 </el-select>
                 <el-select
                   v-if="block.paramMappings[paramKey(param)].sourceType === 'dataset_field'"
                   v-model="block.paramMappings[paramKey(param)].datasetFieldId"
-                  clearable
                   filterable
                   placeholder="请选择评测集字段"
                 >
@@ -272,7 +294,6 @@ async function refreshTagsAfterCreate() {
                 <el-select
                   v-else
                   v-model="block.paramMappings[paramKey(param)].appOutputName"
-                  clearable
                   placeholder="请选择应用输出字段"
                   :disabled="form.appType !== 'agent'"
                 >
@@ -283,21 +304,31 @@ async function refreshTagsAfterCreate() {
                     :value="output.fieldName"
                   />
                 </el-select>
+                <el-button class="toolbar-icon-button" :icon="Refresh" title="重置" aria-label="重置参数映射" @click="resetParamMapping(block, param)" />
               </div>
             </div>
 
-            <el-button v-if="block.evaluatorName" link type="primary" @click="block.detailExpanded = !block.detailExpanded">
-              {{ block.detailExpanded ? '收起评估器详情' : '查看评估器详情' }}
-            </el-button>
             <div v-if="block.detailExpanded" class="evaluator-inline-detail">
               <p>{{ block.description || '暂无描述' }}</p>
-              <div class="score-summary">
-                <span>类型：{{ block.evaluatorType || '-' }}</span>
-                <span>评分范围：{{ block.scoreMin ?? '-' }} - {{ block.scoreMax ?? '-' }}</span>
-                <span>通过阈值：{{ block.passThreshold ?? '-' }}</span>
-              </div>
-              <pre v-if="block.evaluatorType === 'llm'" class="code-block">{{ formatPromptBlock(block.prompt) }}</pre>
-              <pre v-else class="code-block">{{ block.executeCode }}</pre>
+              <template v-if="block.evaluatorType === 'llm'">
+                <div class="inline-detail-head">
+                  <span>Prompt</span>
+                  <el-button link type="primary" :icon="CopyDocument" @click="copyBlockPrompt(block)">复制</el-button>
+                </div>
+                <pre class="code-block">{{ formatPromptBlock(block.prompt) }}</pre>
+                <div class="score-summary">
+                  <span>评分范围：{{ block.scoreMin ?? '-' }} - {{ block.scoreMax ?? '-' }}</span>
+                  <span>通过阈值：{{ block.passThreshold ?? '-' }}</span>
+                </div>
+              </template>
+              <template v-else>
+                <pre class="code-block">{{ block.executeCode }}</pre>
+                <div class="score-summary">
+                  <span>评分范围：{{ block.scoreMin ?? '-' }} - {{ block.scoreMax ?? '-' }}</span>
+                  <span>通过阈值：{{ block.passThreshold ?? '-' }}</span>
+                </div>
+              </template>
+            </div>
             </div>
           </article>
         </div>
@@ -319,7 +350,7 @@ async function refreshTagsAfterCreate() {
                 </div>
                 <p>{{ tag.description || '暂无描述' }}</p>
               </div>
-              <el-button :icon="Delete" circle @click="removeTag(tag.id)" />
+              <el-button class="bare-icon-button" :icon="Delete" text title="移除" aria-label="移除标签" @click="removeTag(tag.id)" />
             </article>
           </div>
         </div>

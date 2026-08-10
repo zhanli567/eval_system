@@ -9,6 +9,15 @@ export const taskApi = {
     getTask(taskId, params) {
         return unwrap(http.get(`/tasks/${taskId}`, { params }));
     },
+    getMetricOverview(taskId) {
+        return unwrap(http.get(`/tasks/${taskId}/metrics/overview`));
+    },
+    getMetricScoreSummary(taskId) {
+        return unwrap(http.get(`/tasks/${taskId}/metrics/score-summary`));
+    },
+    getMetricItemDistribution(taskId) {
+        return unwrap(http.get(`/tasks/${taskId}/metrics/item-distribution`));
+    },
     getTaskCopyConfig(taskId) {
         return unwrap(http.get(`/tasks/${taskId}/copy-config`));
     },

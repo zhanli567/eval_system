@@ -477,14 +477,18 @@ public class TaskRepository {
         .set(EvalTaskTag::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
-  public void resetTaskItemsForRestart(String taskId, String appOutputStatus, String now) {
+  /**
+   * 将待重跑的任务数据行恢复为待执行状态，保留已完成与待标注的数据行。
+   *
+   * @param taskId 评测任务ID
+   * @param now 当前时间戳
+   */
+  public void prepareTaskItemsForRestart(String taskId, String now) {
     taskItemMapper.update(null, new LambdaUpdateWrapper<EvalTaskItem>()
         .eq(EvalTaskItem::getSpaceId, currentSpaceId())
         .eq(EvalTaskItem::getTaskId, taskId)
+        .in(EvalTaskItem::getStatus, List.of("running", "failed", "stopped"))
         .set(EvalTaskItem::getStatus, "pending")
-        .set(EvalTaskItem::getAppOutput, "")
-        .set(EvalTaskItem::getAppOutputStatus, appOutputStatus)
-        .set(EvalTaskItem::getAppErrorMessage, "")
         .set(EvalTaskItem::getStartedAt, "")
         .set(EvalTaskItem::getFinishedAt, "")
         .set(EvalTaskItem::getLastUpdatedBy, currentUserId())
@@ -492,10 +496,37 @@ public class TaskRepository {
         .set(EvalTaskItem::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
-  public void resetEvaluatorResultsForRestart(String taskId, String now) {
+  /**
+   * 将未完成的应用输出恢复为待执行状态，保留已完成的应用输出内容。
+   *
+   * @param taskId 评测任务ID
+   * @param appOutputStatus 应用输出待执行状态
+   * @param now 当前时间戳
+   */
+  public void prepareAppOutputsForRestart(String taskId, String appOutputStatus, String now) {
+    taskItemMapper.update(null, new LambdaUpdateWrapper<EvalTaskItem>()
+        .eq(EvalTaskItem::getSpaceId, currentSpaceId())
+        .eq(EvalTaskItem::getTaskId, taskId)
+        .in(EvalTaskItem::getAppOutputStatus, List.of("running", "failed", "stopped"))
+        .set(EvalTaskItem::getAppOutput, "")
+        .set(EvalTaskItem::getAppOutputStatus, appOutputStatus)
+        .set(EvalTaskItem::getAppErrorMessage, "")
+        .set(EvalTaskItem::getLastUpdatedBy, currentUserId())
+        .set(EvalTaskItem::getLastUpdatedByName, currentUserName())
+        .set(EvalTaskItem::getLastUpdatedDate, toLastUpdatedDate(now)));
+  }
+
+  /**
+   * 将未完成的评估器结果恢复为待执行状态，保留已完成的评估器结果。
+   *
+   * @param taskId 评测任务ID
+   * @param now 当前时间戳
+   */
+  public void prepareEvaluatorResultsForRestart(String taskId, String now) {
     evaluatorResultMapper.update(null, new LambdaUpdateWrapper<EvalTaskEvaluatorResult>()
         .eq(EvalTaskEvaluatorResult::getSpaceId, currentSpaceId())
         .eq(EvalTaskEvaluatorResult::getTaskId, taskId)
+        .ne(EvalTaskEvaluatorResult::getStatus, "completed")
         .set(EvalTaskEvaluatorResult::getStatus, "pending")
         .set(EvalTaskEvaluatorResult::getScore, null)
         .set(EvalTaskEvaluatorResult::getPassResult, "")
@@ -508,31 +539,21 @@ public class TaskRepository {
         .set(EvalTaskEvaluatorResult::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
-  public void resetTaskTagsForRestart(String taskId, String now) {
+  /**
+   * 将未完成的标签维度恢复为待标注状态，标签维度仅保留待标注与已标注两类状态。
+   *
+   * @param taskId 评测任务ID
+   * @param now 当前时间戳
+   */
+  public void prepareTaskTagsForRestart(String taskId, String now) {
     taskTagMapper.update(null, new LambdaUpdateWrapper<EvalTaskTag>()
         .eq(EvalTaskTag::getSpaceId, currentSpaceId())
         .eq(EvalTaskTag::getTaskId, taskId)
+        .ne(EvalTaskTag::getStatus, "completed")
         .set(EvalTaskTag::getStatus, "pending")
         .set(EvalTaskTag::getLastUpdatedBy, currentUserId())
         .set(EvalTaskTag::getLastUpdatedByName, currentUserName())
         .set(EvalTaskTag::getLastUpdatedDate, toLastUpdatedDate(now)));
-  }
-
-  public void resetTagResultsForRestart(String taskId, String now) {
-    tagResultMapper.update(null, new LambdaUpdateWrapper<EvalTaskTagResult>()
-        .eq(EvalTaskTagResult::getSpaceId, currentSpaceId())
-        .eq(EvalTaskTagResult::getTaskId, taskId)
-        .set(EvalTaskTagResult::getStatus, "pending")
-        .set(EvalTaskTagResult::getValueText, "")
-        .set(EvalTaskTagResult::getValueNumber, null)
-        .set(EvalTaskTagResult::getTagOptionId, "")
-        .set(EvalTaskTagResult::getPassResult, "")
-        .set(EvalTaskTagResult::getAnnotatorId, "")
-        .set(EvalTaskTagResult::getAnnotatorName, "")
-        .set(EvalTaskTagResult::getAnnotatedAt, "")
-        .set(EvalTaskTagResult::getLastUpdatedBy, currentUserId())
-        .set(EvalTaskTagResult::getLastUpdatedByName, currentUserName())
-        .set(EvalTaskTagResult::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   /**
@@ -547,15 +568,13 @@ public class TaskRepository {
     markTaskItemAppOutputsStopped(taskId, stoppedStatus, now);
     markTaskEvaluatorsStopped(taskId, stoppedStatus, now);
     markTaskEvaluatorResultsStopped(taskId, stoppedStatus, now);
-    markTaskTagsStopped(taskId, stoppedStatus, now);
-    markTaskTagResultsStopped(taskId, stoppedStatus, now);
   }
 
   private void markTaskItemsStopped(String taskId, String stoppedStatus, String now) {
     taskItemMapper.update(null, new LambdaUpdateWrapper<EvalTaskItem>()
         .eq(EvalTaskItem::getSpaceId, currentSpaceId())
         .eq(EvalTaskItem::getTaskId, taskId)
-        .notIn(EvalTaskItem::getStatus, List.of("completed", "failed", stoppedStatus))
+        .in(EvalTaskItem::getStatus, List.of("pending", "running"))
         .set(EvalTaskItem::getStatus, stoppedStatus)
         .set(EvalTaskItem::getFinishedAt, now)
         .set(EvalTaskItem::getLastUpdatedBy, currentUserId())
@@ -595,28 +614,6 @@ public class TaskRepository {
         .set(EvalTaskEvaluatorResult::getLastUpdatedBy, currentUserId())
         .set(EvalTaskEvaluatorResult::getLastUpdatedByName, currentUserName())
         .set(EvalTaskEvaluatorResult::getLastUpdatedDate, toLastUpdatedDate(now)));
-  }
-
-  private void markTaskTagsStopped(String taskId, String stoppedStatus, String now) {
-    taskTagMapper.update(null, new LambdaUpdateWrapper<EvalTaskTag>()
-        .eq(EvalTaskTag::getSpaceId, currentSpaceId())
-        .eq(EvalTaskTag::getTaskId, taskId)
-        .in(EvalTaskTag::getStatus, List.of("pending", "annotating"))
-        .set(EvalTaskTag::getStatus, stoppedStatus)
-        .set(EvalTaskTag::getLastUpdatedBy, currentUserId())
-        .set(EvalTaskTag::getLastUpdatedByName, currentUserName())
-        .set(EvalTaskTag::getLastUpdatedDate, toLastUpdatedDate(now)));
-  }
-
-  private void markTaskTagResultsStopped(String taskId, String stoppedStatus, String now) {
-    tagResultMapper.update(null, new LambdaUpdateWrapper<EvalTaskTagResult>()
-        .eq(EvalTaskTagResult::getSpaceId, currentSpaceId())
-        .eq(EvalTaskTagResult::getTaskId, taskId)
-        .eq(EvalTaskTagResult::getStatus, "pending")
-        .set(EvalTaskTagResult::getStatus, stoppedStatus)
-        .set(EvalTaskTagResult::getLastUpdatedBy, currentUserId())
-        .set(EvalTaskTagResult::getLastUpdatedByName, currentUserName())
-        .set(EvalTaskTagResult::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
   public void updateTaskItemRunResult(

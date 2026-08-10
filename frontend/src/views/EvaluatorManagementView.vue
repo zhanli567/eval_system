@@ -14,7 +14,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
       </div>
 
       <div v-if="activeTab === 'custom'" class="panel-toolbar table-toolbar evaluator-head-toolbar">
-        <el-select v-model="customType" clearable placeholder="全部类型" class="field-select" @change="searchCustom">
+        <el-select v-model="customType" clearable placeholder="全部类型" class="field-select evaluator-type-select" @change="searchCustom">
           <el-option label="LLM" value="llm" />
           <el-option label="Code" value="code" disabled />
         </el-select>

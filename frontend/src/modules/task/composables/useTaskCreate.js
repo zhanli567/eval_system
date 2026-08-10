@@ -32,7 +32,7 @@ const AGENT_OUTPUT_DESCRIPTIONS = {
 function createEvaluatorBlock() {
     return {
         key: `${Date.now()}-${Math.random()}`,
-        evaluatorSource: 'preset',
+        evaluatorSource: 'custom',
         presetCategoryId: '',
         evaluatorId: '',
         evaluatorVersionId: '',
@@ -48,6 +48,7 @@ function createEvaluatorBlock() {
         presetOptions: [],
         presetOptionsLoaded: false,
         versions: [],
+        collapsed: false,
         detailExpanded: false,
         loading: false
     };
@@ -297,7 +298,7 @@ function createTagLoaders(ctx) {
 function createEvaluatorLoaders(ctx) {
     async function loadCustomEvaluators() {
         const page = await evaluatorApi.listEvaluators({ page: 1, size: 100 });
-        ctx.state.customEvaluators.value = page.records;
+        ctx.state.customEvaluators.value = page.records.filter((evaluator) => evaluator.latestVersionId);
     }
     async function loadPresetCategories() {
         ctx.state.presetCategories.value = await evaluatorApi.listPresetCategories();
@@ -371,6 +372,7 @@ function createEvaluatorActions(ctx, loadActions) {
             clearEvaluatorDetail(block);
             return;
         }
+        block.detailExpanded = false;
         block.loading = true;
         try {
             await fillSelectedEvaluator(ctx, block);
@@ -380,8 +382,10 @@ function createEvaluatorActions(ctx, loadActions) {
         }
     }
     async function selectCustomVersion(block) {
-        if (!block.evaluatorVersionId)
+        if (!block.evaluatorVersionId) {
             return;
+        }
+        block.detailExpanded = false;
         block.loading = true;
         try {
             const detail = await evaluatorApi.getVersion(block.evaluatorVersionId);
@@ -404,6 +408,32 @@ function createEvaluatorActions(ctx, loadActions) {
         ctx.state.evaluatorBlocks.value.splice(index, 1);
     }
     return { changePresetCategory, changeEvaluatorSource, selectEvaluator, selectCustomVersion, addEvaluator, removeEvaluator };
+}
+
+function createEvaluatorResetActions(ctx) {
+    function resetEvaluator(block) {
+        const source = block.evaluatorSource;
+        Object.assign(block, createEvaluatorBlock(), {
+            key: block.key,
+            evaluatorSource: source
+        });
+    }
+    function resetParamMapping(block, param) {
+        block.paramMappings[paramKey(param)] = defaultParamMapping(ctx);
+    }
+    return { resetEvaluator, resetParamMapping };
+}
+
+function createEvaluatorPromptActions() {
+    async function copyBlockPrompt(block) {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(block.prompt || '');
+            ElMessage.success('Prompt已复制');
+        } else {
+            ElMessage.warning('当前浏览器不支持复制到剪贴板');
+        }
+    }
+    return { copyBlockPrompt };
 }
 
 async function fillSelectedEvaluator(ctx, block) {
@@ -475,6 +505,7 @@ function clearEvaluatorDetail(block) {
         passThreshold: undefined,
         params: [],
         paramMappings: {},
+        detailExpanded: false,
         versions: []
     });
     if (block.evaluatorSource !== 'preset') {
@@ -509,6 +540,27 @@ function createAppActions(ctx, loadActions) {
         normalizeParamOutputMappings(ctx);
     }
     return { selectAgent };
+}
+
+function createResetActions(ctx) {
+    function resetDatasetSelection() {
+        ctx.state.form.datasetId = '';
+        ctx.state.form.datasetVersionId = '';
+        ctx.state.versions.value = [];
+        ctx.state.fields.value = [];
+        clearAppFieldMappings(ctx);
+    }
+    function resetAgentSelection() {
+        ctx.state.form.appId = '';
+        ctx.state.form.appVersionId = '';
+        ctx.state.form.appAgentAlias = '';
+        clearAppFieldMappings(ctx);
+        normalizeParamOutputMappings(ctx);
+    }
+    function resetAppFieldMapping(inputId) {
+        ctx.state.appFieldMappings[inputId] = '';
+    }
+    return { resetDatasetSelection, resetAgentSelection, resetAppFieldMapping };
 }
 
 function selectDefaultAgent(ctx) {
@@ -796,27 +848,31 @@ function createSubmitActions(ctx) {
         if (!validate(ctx)) {
             return;
         } else {
-            ctx.state.saving.value = true;
-            try {
-                const name = ctx.state.form.taskName.trim();
-                const page = await taskApi.listTasks({ page: 1, size: 100, keyword: name });
-                if (page.records.some((task) => task.base.taskName === name)) {
-                    throw new Error('当前空间已存在同名评测任务');
-                } else {
-                    const created = await taskApi.createTask(taskPayload(ctx));
-                    ElMessage.success('评测任务已创建');
-                    await ctx.router.replace({ name: 'task-detail', params: { taskId: created.base.id } });
-                }
-            }
-            catch (error) {
-                ElMessage.error(getErrorMessage(error, '创建评测任务失败'));
-            }
-            finally {
-                ctx.state.saving.value = false;
-            }
+            await saveTask(ctx);
         }
     }
     return { submit };
+}
+
+async function saveTask(ctx) {
+    ctx.state.saving.value = true;
+    try {
+        const name = ctx.state.form.taskName.trim();
+        const page = await taskApi.listTasks({ page: 1, size: 100, keyword: name });
+        if (hasDuplicateTaskName(page.records, name)) {
+            ElMessage.warning('当前空间已存在同名评测任务');
+        } else {
+            const created = await taskApi.createTask(taskPayload(ctx));
+            ElMessage.success('评测任务已创建');
+            await ctx.router.replace({ name: 'task-detail', params: { taskId: created.base.id } });
+        }
+    } finally {
+        ctx.state.saving.value = false;
+    }
+}
+
+function hasDuplicateTaskName(tasks, name) {
+    return tasks.some((task) => task.base.taskName === name);
 }
 
 function taskPayload(ctx) {
@@ -1029,7 +1085,10 @@ export function useTaskCreate() {
     const loadActions = createLoadActions(ctx);
     const visibleHandlers = createVisibleHandlers(loadActions);
     const evaluatorActions = createEvaluatorActions(ctx, loadActions);
+    const evaluatorResetActions = createEvaluatorResetActions(ctx);
+    const evaluatorPromptActions = createEvaluatorPromptActions();
     const appActions = createAppActions(ctx, loadActions);
+    const resetActions = createResetActions(ctx);
     const tagActions = createTagActions(ctx, loadActions);
     const copyActions = createCopyActions(ctx, loadActions, appActions);
     const submitActions = createSubmitActions(ctx);
@@ -1076,6 +1135,9 @@ export function useTaskCreate() {
         ...loadActions,
         ...visibleHandlers,
         ...evaluatorActions,
+        ...evaluatorResetActions,
+        ...evaluatorPromptActions,
+        ...resetActions,
         ...tagActions,
         ...submitActions,
         paramKey,

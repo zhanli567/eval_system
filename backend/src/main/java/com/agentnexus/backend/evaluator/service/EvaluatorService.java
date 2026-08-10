@@ -6,14 +6,20 @@ import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorConfigBase;
 import com.agentnexus.backend.evaluator.api.dto.request.EvaluatorInput;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorParamDto;
 import com.agentnexus.backend.evaluator.api.dto.request.EvaluatorParamInput;
+import com.agentnexus.backend.evaluator.api.dto.request.EvaluatorTrialRequest;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorSummary;
+import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorTrialResponse;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorVersionDto;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetCategoryDto;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorDetail;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorSummary;
 import com.agentnexus.backend.evaluator.preset.PresetEvaluatorStore;
 import com.agentnexus.backend.evaluator.repository.EvaluatorRepository;
+import com.agentnexus.backend.remoteCall.api.dto.response.ModelChatResult;
+import com.agentnexus.backend.remoteCall.service.RemoteCallService;
 import com.agentnexus.backend.task.repository.TaskRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -47,15 +53,21 @@ public class EvaluatorService {
   private final EvaluatorRepository evaluatorRepository;
   private final PresetEvaluatorStore presetEvaluatorStore;
   private final TaskRepository taskRepository;
+  private final RemoteCallService remoteCallService;
+  private final ObjectMapper objectMapper;
 
   public EvaluatorService(
       EvaluatorRepository evaluatorRepository,
       PresetEvaluatorStore presetEvaluatorStore,
-      TaskRepository taskRepository
+      TaskRepository taskRepository,
+      RemoteCallService remoteCallService,
+      ObjectMapper objectMapper
   ) {
     this.evaluatorRepository = evaluatorRepository;
     this.presetEvaluatorStore = presetEvaluatorStore;
     this.taskRepository = taskRepository;
+    this.remoteCallService = remoteCallService;
+    this.objectMapper = objectMapper;
   }
 
   public PageResponse<EvaluatorSummary> listEvaluators(int page, int size, String evaluatorType, String keyword, String sortBy, String sortOrder) {
@@ -81,6 +93,34 @@ public class EvaluatorService {
 
   public PresetEvaluatorDetail getPresetEvaluator(String presetId) {
     return presetEvaluatorStore.getPresetEvaluator(presetId);
+  }
+
+  /**
+   * 使用当前页面配置进行LLM评估器试运行。
+   *
+   * @param request 试运行请求
+   * @return 试运行结果
+   */
+  public EvaluatorTrialResponse runTrial(EvaluatorTrialRequest request) {
+    if (request == null || request.evaluator() == null) {
+      throw new IllegalArgumentException("评估器试运行参数不能为空");
+    }
+    TrialEvaluator evaluator = normalizeTrialEvaluator(request.evaluator());
+    Map<String, Object> params = prepareTrialParams(evaluator.params(), request.paramValues());
+    String renderedPrompt = renderPrompt(evaluator.prompt(), params);
+    ModelChatResult response = remoteCallService.chatModel(evaluator.modelId(), evaluator.modelName(), renderedPrompt);
+    if (response == null || !StringUtils.hasText(response.outputText())) {
+      return new EvaluatorTrialResponse("", "fail", null, "", "模型对话接口未返回评估结果");
+    }
+    EvaluatorParseResult parsed = parseEvaluationOutput(response.outputText());
+    if (StringUtils.hasText(parsed.errorMessage())) {
+      return new EvaluatorTrialResponse(response.outputText(), "fail", null, "", parsed.errorMessage());
+    }
+    String result = parsed.score().compareTo(evaluator.passThreshold()) >= 0 ? "pass" : "fail";
+    String reason = scoreOutOfRange(parsed.score(), evaluator)
+        ? appendEvaluationNotice(parsed.reason(), "模型评估结果中的score超出评分范围")
+        : parsed.reason();
+    return new EvaluatorTrialResponse(response.outputText(), result, parsed.score(), reason, "");
   }
 
   @Transactional
@@ -483,6 +523,105 @@ public class EvaluatorService {
     }
   }
 
+  private TrialEvaluator normalizeTrialEvaluator(EvaluatorInput request) {
+    String evaluatorType = normalizeEvaluatorType(request.evaluatorType());
+    if (TYPE_CODE.equals(evaluatorType)) {
+      throw new IllegalArgumentException("暂不支持Code型评估器试运行");
+    }
+    BigDecimal scoreMin = request.scoreMin() == null ? DEFAULT_SCORE_MIN : request.scoreMin();
+    BigDecimal scoreMax = request.scoreMax() == null ? DEFAULT_SCORE_MAX : request.scoreMax();
+    BigDecimal passThreshold = request.passThreshold() == null ? DEFAULT_PASS_THRESHOLD : request.passThreshold();
+    validateScore(scoreMin, scoreMax, passThreshold);
+    String modelId = requireText(request.modelId(), "请选择模型");
+    String modelName = requireText(request.modelName(), "请选择模型");
+    String prompt = requireText(request.prompt(), "Prompt不能为空");
+    validateMaxLength(prompt, MAX_PROMPT_LENGTH, "Prompt不能超过2000个字符");
+    List<EvaluatorParamInput> params = normalizePromptParams(prompt, request.params());
+    return new TrialEvaluator(modelId, modelName, prompt, scoreMin, scoreMax, passThreshold, params);
+  }
+
+  private Map<String, Object> prepareTrialParams(List<EvaluatorParamInput> params, Map<String, String> values) {
+    Map<String, Object> prepared = new LinkedHashMap<>();
+    Map<String, String> safeValues = values == null ? Map.of() : values;
+    for (EvaluatorParamInput param : params) {
+      String value = safeValues.get(param.paramName());
+      if (!StringUtils.hasText(value) && StringUtils.hasText(param.defaultValue())) {
+        value = param.defaultValue();
+      }
+      prepared.put(param.paramName(), value == null ? "" : value);
+    }
+    return prepared;
+  }
+
+  private String renderPrompt(String prompt, Map<String, Object> params) {
+    if (!StringUtils.hasText(prompt)) {
+      return "";
+    }
+    Matcher matcher = PROMPT_PARAM_PATTERN.matcher(prompt);
+    StringBuffer rendered = new StringBuffer();
+    while (matcher.find()) {
+      Object value = params.get(matcher.group(1));
+      matcher.appendReplacement(rendered, Matcher.quoteReplacement(value == null ? "" : String.valueOf(value)));
+    }
+    matcher.appendTail(rendered);
+    return rendered.toString();
+  }
+
+  private EvaluatorParseResult parseEvaluationOutput(String outputText) {
+    if (!StringUtils.hasText(outputText)) {
+      return new EvaluatorParseResult(null, "", "模型评估结果为空");
+    }
+    String json = extractJson(outputText);
+    if (!StringUtils.hasText(json)) {
+      return new EvaluatorParseResult(null, "", "模型评估结果不是JSON格式");
+    }
+    try {
+      JsonNode root = objectMapper.readTree(json);
+      JsonNode scoreNode = root.get("score");
+      if (scoreNode == null || scoreNode.isNull()) {
+        return new EvaluatorParseResult(null, "", "模型评估结果缺少score字段");
+      }
+      BigDecimal score = scoreNode.isNumber()
+          ? scoreNode.decimalValue()
+          : new BigDecimal(scoreNode.asText().trim());
+      String reason = root.hasNonNull("reason") ? root.get("reason").asText() : outputText;
+      return new EvaluatorParseResult(score, reason, "");
+    } catch (Exception error) {
+      return new EvaluatorParseResult(null, "", "模型评估结果解析失败：" + error.getMessage());
+    }
+  }
+
+  private String extractJson(String outputText) {
+    String trimmed = outputText == null ? "" : outputText.trim();
+    if (trimmed.startsWith("```")) {
+      trimmed = trimmed.replaceFirst("^```[a-zA-Z]*\\s*", "");
+      int fenceIndex = trimmed.lastIndexOf("```");
+      if (fenceIndex >= 0) {
+        trimmed = trimmed.substring(0, fenceIndex).trim();
+      }
+    }
+    int start = trimmed.indexOf('{');
+    int end = trimmed.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      return trimmed.substring(start, end + 1);
+    }
+    return trimmed.startsWith("{") && trimmed.endsWith("}") ? trimmed : "";
+  }
+
+  private boolean scoreOutOfRange(BigDecimal score, TrialEvaluator evaluator) {
+    return score.compareTo(evaluator.scoreMin()) < 0 || score.compareTo(evaluator.scoreMax()) > 0;
+  }
+
+  private String appendEvaluationNotice(String reason, String notice) {
+    if (!StringUtils.hasText(notice)) {
+      return reason == null ? "" : reason;
+    }
+    if (!StringUtils.hasText(reason)) {
+      return notice;
+    }
+    return reason + "\n" + notice;
+  }
+
   private String id() {
     return UUID.randomUUID().toString().replace("-", "");
   }
@@ -503,6 +642,24 @@ public class EvaluatorService {
       BigDecimal scoreMax,
       BigDecimal passThreshold,
       List<EvaluatorParamInput> params
+  ) {
+  }
+
+  private record TrialEvaluator(
+      String modelId,
+      String modelName,
+      String prompt,
+      BigDecimal scoreMin,
+      BigDecimal scoreMax,
+      BigDecimal passThreshold,
+      List<EvaluatorParamInput> params
+  ) {
+  }
+
+  private record EvaluatorParseResult(
+      BigDecimal score,
+      String reason,
+      String errorMessage
   ) {
   }
 }

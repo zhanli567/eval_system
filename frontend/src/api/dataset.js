@@ -38,8 +38,8 @@ export const datasetApi = {
     updateRow(versionId, itemId, values) {
         return unwrap(http.post(`/datasets/versions/${versionId}/items/${itemId}`, { values }));
     },
-    deleteRow(versionId, itemId) {
-        return unwrap(http.post(`/datasets/versions/${versionId}/items/${itemId}/delete`));
+    deleteRows(versionId, itemIds) {
+        return unwrap(http.post(`/datasets/versions/${versionId}/items/delete`, { itemIds }));
     },
     publish(datasetId) {
         return unwrap(http.post(`/datasets/${datasetId}/publish`));

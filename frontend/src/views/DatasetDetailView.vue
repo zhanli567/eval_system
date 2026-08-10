@@ -5,7 +5,18 @@ import { ArrowDown, Delete, Plus, Refresh, Search } from '@element-plus/icons-vu
 import { useDatasetDetail } from '../modules/dataset/composables/useDatasetDetail';
 const route = useRoute();
 const datasetId = computed(() => String(route.params.datasetId ?? ''));
-const { detailLoading, datasetTitle, versions, activeVersionId, tablePage, tableSize, searchFieldId, searchKeyword, fieldVisible, rowVisible, rowEditingId, excelInput, coverExcelInput, draggedFieldIndex, dragOverFieldIndex, fieldForm, rowForm, activeVersion, isDraft, tableRows, tableTotal, fields, dataTableKey, loadDataset, selectVersion, loadDetail, changeTableSize, backToList, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, openFieldDialog, submitFields, openRowDialog, submitRow, removeRow, handleAddDataCommand, importExcel, coverExcel, publishDraft, removeVersion, coverDraft, formatTime } = useDatasetDetail(datasetId);
+const {
+  detailLoading, datasetTitle, versions, activeVersionId, tablePage, tableSize,
+  searchFieldId, searchKeyword, fieldVisible, rowVisible, rowEditingId,
+  selectedRows, batchDeleting, excelInput, coverExcelInput, draggedFieldIndex,
+  dragOverFieldIndex, fieldForm, rowForm, activeVersion, isDraft, tableRows,
+  tableTotal, fields, dataTableKey, loadDataset, selectVersion, loadDetail,
+  changeTableSize, backToList, addField, removeField, startFieldDrag,
+  enterFieldDrag, dropField, endFieldDrag, openFieldDialog, submitFields,
+  openRowDialog, submitRow, removeRow, handleSelectionChange,
+  removeSelectedRows, handleAddDataCommand, importExcel, coverExcel,
+  publishDraft, removeVersion, coverDraft, formatTime
+} = useDatasetDetail(datasetId);
 </script>
 
 <template>
@@ -52,6 +63,15 @@ const { detailLoading, datasetTitle, versions, activeVersionId, tablePage, table
         <div class="version-actions dataset-detail-actions">
           <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadDataset" />
           <template v-if="isDraft">
+            <el-button
+              type="danger"
+              plain
+              :disabled="!selectedRows.length"
+              :loading="batchDeleting"
+              @click="removeSelectedRows"
+            >
+              批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
+            </el-button>
             <el-button @click="openFieldDialog">编辑表头</el-button>
             <el-dropdown trigger="hover" @command="handleAddDataCommand">
               <el-button>
@@ -68,7 +88,12 @@ const { detailLoading, datasetTitle, versions, activeVersionId, tablePage, table
             </el-dropdown>
             <input ref="excelInput" class="hidden-file" type="file" accept=".xlsx,.xls" @change="importExcel" />
             <input ref="coverExcelInput" class="hidden-file" type="file" accept=".xlsx,.xls" @change="coverExcel" />
-            <el-button type="success" @click="publishDraft">发布</el-button>
+            <el-button
+              type="success"
+              :disabled="(activeVersion?.itemCount ?? 0) === 0"
+              title="草稿暂无数据时不能发布"
+              @click="publishDraft"
+            >发布</el-button>
           </template>
           <template v-else-if="activeVersion">
             <el-button @click="coverDraft(activeVersion)">覆盖当前草稿</el-button>
@@ -77,7 +102,17 @@ const { detailLoading, datasetTitle, versions, activeVersionId, tablePage, table
         </div>
       </div>
 
-      <el-table :key="dataTableKey" :data="tableRows" row-key="id" border height="100%" tooltip-effect="light" class="data-table">
+      <el-table
+        :key="dataTableKey"
+        :data="tableRows"
+        row-key="id"
+        border
+        height="100%"
+        tooltip-effect="light"
+        class="data-table"
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column v-if="isDraft" type="selection" width="52" fixed="left" :resizable="false" align="center" />
         <el-table-column type="index" label="序号" width="90" fixed="left" :resizable="false" align="center" />
         <el-table-column
           v-for="field in fields"

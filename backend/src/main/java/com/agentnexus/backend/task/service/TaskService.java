@@ -34,6 +34,11 @@ import com.agentnexus.backend.task.api.dto.request.TaskEvaluatorInput;
 import com.agentnexus.backend.task.api.dto.request.TaskEvaluatorParamMappingInput;
 import com.agentnexus.backend.task.api.dto.response.TaskEvaluatorResultDto;
 import com.agentnexus.backend.task.api.dto.response.TaskItemDetail;
+import com.agentnexus.backend.task.api.dto.response.TaskMetricDimensionScore;
+import com.agentnexus.backend.task.api.dto.response.TaskMetricItemDistribution;
+import com.agentnexus.backend.task.api.dto.response.TaskMetricOverview;
+import com.agentnexus.backend.task.api.dto.response.TaskMetricProgress;
+import com.agentnexus.backend.task.api.dto.response.TaskMetricScoreSummary;
 import com.agentnexus.backend.task.api.dto.response.TaskSummary;
 import com.agentnexus.backend.task.api.dto.response.TaskTagAnnotation;
 import com.agentnexus.backend.task.api.dto.response.TaskTagDimension;
@@ -46,12 +51,14 @@ import com.agentnexus.backend.task.repository.TaskItemRecord;
 import com.agentnexus.backend.task.repository.TaskRepository;
 import com.agentnexus.backend.task.repository.TaskTagBindingRecord;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -82,6 +89,8 @@ public class TaskService {
   private static final String EVALUATOR_CUSTOM = "custom";
   private static final String SOURCE_DATASET_FIELD = "dataset_field";
   private static final String SOURCE_APP_OUTPUT = "app_output";
+  private static final String METRIC_EVALUATOR = "evaluator";
+  private static final String METRIC_TAG = "tag";
   private static final List<String> SUPPORTED_FIELD_TYPES = List.of("string", "number", "boolean");
   private static final int MAX_DIMENSION_COUNT = 5;
   private static final Pattern PROMPT_PARAM_PATTERN = Pattern.compile("\\$\\{([a-zA-Z_][\\w]*)}");
@@ -163,6 +172,50 @@ public class TaskService {
         new PageResponse<>(buildItems(itemRecords, fieldById), total, safePage, safeSize));
   }
 
+  /**
+   * 查询评测任务指标统计概览。
+   *
+   * @param taskId 评测任务ID
+   * @return 指标统计概览
+   */
+  public TaskMetricOverview getMetricOverview(String taskId) {
+    findTask(taskId);
+    long totalCount = taskRepository.countTaskItems(taskId);
+    long incompleteCount = taskRepository.countUnfinishedTaskItems(taskId);
+    long completedCount = Math.max(totalCount - incompleteCount, 0);
+    List<TaskMetricDimensionScore> dimensions = buildMetricDimensions(taskId);
+    List<Double> passRates = dimensions.stream()
+        .map(TaskMetricDimensionScore::passRate)
+        .filter(Objects::nonNull)
+        .toList();
+    return new TaskMetricOverview(
+        averageRate(passRates),
+        passRates.size(),
+        new TaskMetricProgress(percent(completedCount, totalCount), totalCount, completedCount, incompleteCount));
+  }
+
+  /**
+   * 查询评测任务得分汇总。
+   *
+   * @param taskId 评测任务ID
+   * @return 得分汇总
+   */
+  public TaskMetricScoreSummary getMetricScoreSummary(String taskId) {
+    findTask(taskId);
+    return new TaskMetricScoreSummary(buildMetricDimensions(taskId));
+  }
+
+  /**
+   * 查询评测任务数据项分布。
+   *
+   * @param taskId 评测任务ID
+   * @return 数据项分布
+   */
+  public TaskMetricItemDistribution getMetricItemDistribution(String taskId) {
+    findTask(taskId);
+    return new TaskMetricItemDistribution(buildMetricDimensions(taskId));
+  }
+
   public CreateTaskRequest getTaskCopyConfig(String taskId) {
     TaskBase base = findTask(taskId);
     Map<String, List<TaskEvaluatorParamMappingRecord>> mappingsByEvaluator = taskRepository.listAllParamMappings(taskId)
@@ -231,10 +284,10 @@ public class TaskService {
 
     String startedAt = now();
     String appOutputStatus = APP_AGENT.equals(base.appType()) ? STATUS_PENDING : RESULT_SKIPPED;
-    taskRepository.resetTaskItemsForRestart(taskId, appOutputStatus, startedAt);
-    taskRepository.resetEvaluatorResultsForRestart(taskId, startedAt);
-    taskRepository.resetTaskTagsForRestart(taskId, startedAt);
-    taskRepository.resetTagResultsForRestart(taskId, startedAt);
+    taskRepository.prepareTaskItemsForRestart(taskId, startedAt);
+    taskRepository.prepareAppOutputsForRestart(taskId, appOutputStatus, startedAt);
+    taskRepository.prepareEvaluatorResultsForRestart(taskId, startedAt);
+    taskRepository.prepareTaskTagsForRestart(taskId, startedAt);
     taskRepository.updateTaskStatus(taskId, STATUS_RUNNING, startedAt, null, startedAt);
     for (TaskEvaluatorBindingRecord evaluator : taskRepository.listTaskEvaluatorBindings(taskId)) {
       taskRepository.updateTaskEvaluatorStatus(evaluator.id(), STATUS_RUNNING, startedAt);
@@ -329,6 +382,9 @@ public class TaskService {
         .stream()
         .collect(Collectors.groupingBy(TaskEvaluatorParamMappingRecord::taskEvaluatorId));
     context.valuesByItem = loadDatasetValues(context.items);
+    context.evaluatorResultsByItem = taskRepository.listEvaluatorResultsByTaskItemIds(context.items.stream().map(TaskItemRecord::id).toList())
+        .stream()
+        .collect(Collectors.groupingBy(TaskEvaluatorResultDto::taskItemId));
     return context;
   }
 
@@ -340,6 +396,10 @@ public class TaskService {
         return new TaskExecutionOutcome(hasTaskFailure, failedEvaluatorIds);
       }
       TaskItemExecutionContext itemContext = createItemExecutionContext(context, item);
+      if (!shouldExecuteTaskItem(itemContext)) {
+        refreshItemAndTaskStatus(context.base.id(), item.id(), now());
+        continue;
+      }
       ItemExecutionResult itemResult = executeTaskItem(itemContext);
       if (itemResult.failed()) {
         hasTaskFailure = true;
@@ -354,7 +414,14 @@ public class TaskService {
     itemContext.task = context;
     itemContext.item = item;
     itemContext.rowValues = context.valuesByItem.getOrDefault(item.datasetItemId(), Map.of());
+    itemContext.evaluatorResults = context.evaluatorResultsByItem.getOrDefault(item.id(), List.of())
+        .stream()
+        .collect(Collectors.toMap(TaskEvaluatorResultDto::taskEvaluatorId, Function.identity(), (left, right) -> left));
     return itemContext;
+  }
+
+  private boolean shouldExecuteTaskItem(TaskItemExecutionContext context) {
+    return shouldInvokeAgent(context) || context.task.evaluators.stream().anyMatch(evaluator -> shouldExecuteEvaluator(context, evaluator));
   }
 
   private void completeTaskExecution(TaskExecutionContext context, TaskExecutionOutcome outcome) {
@@ -398,16 +465,34 @@ public class TaskService {
       return new ItemExecutionResult(false, failedEvaluatorIds);
     }
 
-    AgentInvocationResult agentResult = invokeAgentSafely(context);
+    AgentInvocationResult agentResult = resolveAgentResult(context);
     if (!shouldContinueTaskExecution(context.task.base.id())) {
       return new ItemExecutionResult(false, failedEvaluatorIds);
     }
-    updateTaskItemAppResult(context.item, agentResult);
+    if (shouldInvokeAgent(context)) {
+      updateTaskItemAppResult(context.item, agentResult);
+    }
     if (!shouldContinueTaskExecution(context.task.base.id())) {
       return new ItemExecutionResult(false, failedEvaluatorIds);
     }
     boolean hasFailedEvaluator = evaluateItemEvaluators(context, agentResult, itemStartedAt, failedEvaluatorIds);
     return finishTaskItem(context, agentResult, hasFailedEvaluator, failedEvaluatorIds, itemStartedAt);
+  }
+
+  private AgentInvocationResult resolveAgentResult(TaskItemExecutionContext context) {
+    if (shouldInvokeAgent(context)) {
+      return invokeAgentSafely(context);
+    } else {
+      return new AgentInvocationResult(
+          context.item.appOutput() == null ? "" : context.item.appOutput(),
+          firstNonBlank(context.item.appOutputStatus(), RESULT_SKIPPED),
+          context.item.appErrorMessage() == null ? "" : context.item.appErrorMessage(),
+          extractStoredAppOutputs(context.item.appOutput()));
+    }
+  }
+
+  private boolean shouldInvokeAgent(TaskItemExecutionContext context) {
+    return APP_AGENT.equals(context.task.base.appType()) && !STATUS_COMPLETED.equals(context.item.appOutputStatus());
   }
 
   private AgentInvocationResult invokeAgentSafely(TaskItemExecutionContext context) {
@@ -454,6 +539,9 @@ public class TaskService {
   ) {
     boolean hasFailedEvaluator = false;
     for (TaskEvaluatorBindingRecord evaluator : context.task.evaluators) {
+      if (!shouldExecuteEvaluator(context, evaluator)) {
+        continue;
+      }
       if (!shouldContinueTaskExecution(context.task.base.id())) {
         return hasFailedEvaluator;
       }
@@ -468,6 +556,11 @@ public class TaskService {
       }
     }
     return hasFailedEvaluator;
+  }
+
+  private boolean shouldExecuteEvaluator(TaskItemExecutionContext context, TaskEvaluatorBindingRecord evaluator) {
+    TaskEvaluatorResultDto result = context.evaluatorResults.get(evaluator.id());
+    return result == null || !STATUS_COMPLETED.equals(result.status());
   }
 
   private EvaluationSimulationResult evaluateBoundEvaluator(
@@ -534,6 +627,9 @@ public class TaskService {
       String itemStartedAt
   ) {
     for (TaskEvaluatorBindingRecord evaluator : context.task.evaluators) {
+      if (!shouldExecuteEvaluator(context, evaluator)) {
+        continue;
+      }
       if (!shouldContinueTaskExecution(context.task.base.id())) {
         return;
       }
@@ -1121,6 +1217,96 @@ public class TaskService {
             Map.of(),
             Map.of())))
         .toList();
+  }
+
+  private List<TaskMetricDimensionScore> buildMetricDimensions(String taskId) {
+    List<TaskMetricDimensionScore> dimensions = new ArrayList<>();
+    buildEvaluatorDimensions(taskId).forEach(evaluator -> dimensions.add(toEvaluatorMetric(evaluator)));
+    taskRepository.listTagDimensions(taskId).forEach(tag -> dimensions.add(toTagMetric(tag)));
+    return dimensions;
+  }
+
+  private TaskMetricDimensionScore toEvaluatorMetric(TaskEvaluatorDimension evaluator) {
+    int passCount = safeCount(evaluator.passCount());
+    int completedCount = safeCount(evaluator.completedCount());
+    int totalCount = safeCount(evaluator.totalCount());
+    return new TaskMetricDimensionScore(
+        METRIC_EVALUATOR,
+        evaluator.taskEvaluatorId(),
+        safeText(evaluator.evaluatorName()),
+        safeText(evaluator.versionName()),
+        metricDisplayName(evaluator.evaluatorName(), evaluator.versionName()),
+        passCount,
+        failedCount(passCount, completedCount),
+        pendingCount(completedCount, totalCount),
+        completedCount,
+        totalCount,
+        evaluator.passRate(),
+        evaluator.displayOrder());
+  }
+
+  private TaskMetricDimensionScore toTagMetric(TaskTagDimension tag) {
+    int passCount = safeCount(tag.passCount());
+    int completedCount = safeCount(tag.completedCount());
+    int totalCount = safeCount(tag.totalCount());
+    return new TaskMetricDimensionScore(
+        METRIC_TAG,
+        tag.taskTagId(),
+        safeText(tag.tagName()),
+        safeText(tag.tagType()),
+        safeText(tag.tagName()),
+        passCount,
+        failedCount(passCount, completedCount),
+        pendingCount(completedCount, totalCount),
+        completedCount,
+        totalCount,
+        tag.passRate(),
+        tag.displayOrder());
+  }
+
+  private String metricDisplayName(String name, String versionName) {
+    if (!StringUtils.hasText(versionName)) {
+      return safeText(name);
+    } else {
+      return safeText(name) + " / " + versionName;
+    }
+  }
+
+  private String safeText(String value) {
+    return StringUtils.hasText(value) ? value : "-";
+  }
+
+  private int safeCount(Integer value) {
+    return value == null ? 0 : value;
+  }
+
+  private int failedCount(int passCount, int completedCount) {
+    return Math.max(completedCount - passCount, 0);
+  }
+
+  private int pendingCount(int completedCount, int totalCount) {
+    return Math.max(totalCount - completedCount, 0);
+  }
+
+  private Double averageRate(List<Double> values) {
+    if (values.isEmpty()) {
+      return null;
+    } else {
+      double sum = values.stream().mapToDouble(Double::doubleValue).sum();
+      return roundPercent(sum / values.size());
+    }
+  }
+
+  private Double percent(long numerator, long denominator) {
+    if (denominator <= 0) {
+      return null;
+    } else {
+      return roundPercent(numerator * 100.0 / denominator);
+    }
+  }
+
+  private Double roundPercent(double value) {
+    return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
   }
 
   private TaskEvaluatorDimension attachPresetEvaluatorDisplay(TaskEvaluatorDimension dimension) {
@@ -1720,7 +1906,7 @@ public class TaskService {
   private void refreshTaskTagStatus(String taskTagId, String now) {
     int total = taskRepository.countTagResults(taskTagId);
     int completed = taskRepository.countCompletedTagResults(taskTagId);
-    String status = completed == 0 ? STATUS_PENDING : (completed >= total ? STATUS_COMPLETED : "annotating");
+    String status = total > 0 && completed >= total ? STATUS_COMPLETED : STATUS_PENDING;
     taskRepository.updateTaskTagStatus(taskTagId, status, now);
   }
 
@@ -1938,12 +2124,14 @@ public class TaskService {
     private Map<String, EvaluationRuntimeConfig> evaluatorConfigs;
     private Map<String, List<TaskEvaluatorParamMappingRecord>> mappingsByEvaluator;
     private Map<String, Map<String, String>> valuesByItem;
+    private Map<String, List<TaskEvaluatorResultDto>> evaluatorResultsByItem;
   }
 
   private static final class TaskItemExecutionContext {
     private TaskExecutionContext task;
     private TaskItemRecord item;
     private Map<String, String> rowValues;
+    private Map<String, TaskEvaluatorResultDto> evaluatorResults;
   }
 
   private record TaskExecutionOutcome(

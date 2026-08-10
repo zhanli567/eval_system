@@ -2,6 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { TABLE_OVERFLOW_TOOLTIP_CLASS } from '../utils/tableOverflowTooltip';
 
+const OVERFLOW_TOLERANCE = 1;
+
 defineOptions({
     inheritAttrs: false
 });
@@ -22,6 +24,10 @@ const props = defineProps({
     tag: {
         type: String,
         default: 'span'
+    },
+    axis: {
+        type: String,
+        default: 'both'
     }
 });
 
@@ -37,9 +43,21 @@ const displayText = computed(() => {
 function updateOverflowState() {
     const el = resolveTextElement();
     if (el) {
-        isOverflow.value = el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight;
+        isOverflow.value = hasOverflow(el);
     } else {
         isOverflow.value = false;
+    }
+}
+
+function hasOverflow(el) {
+    const horizontalOverflow = el.scrollWidth > el.clientWidth + OVERFLOW_TOLERANCE;
+    const verticalOverflow = el.scrollHeight > el.clientHeight + OVERFLOW_TOLERANCE;
+    if (props.axis === 'horizontal') {
+        return horizontalOverflow;
+    } else if (props.axis === 'vertical') {
+        return verticalOverflow;
+    } else {
+        return horizontalOverflow || verticalOverflow;
     }
 }
 

@@ -15,6 +15,9 @@ export const evaluatorApi = {
     createEvaluator(data) {
         return unwrap(http.post('/evaluators', data));
     },
+    runTrial(data) {
+        return unwrap(http.post('/evaluators/trial', data));
+    },
     deleteEvaluator(evaluatorId) {
         return unwrap(http.post(`/evaluators/${evaluatorId}/delete`));
     },
