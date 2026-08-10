@@ -1,8 +1,9 @@
 <script setup>
 import { DataAnalysis, Plus, Refresh, Search } from '@element-plus/icons-vue';
+import ResourceDescriptionDialog from '../components/ResourceDescriptionDialog.vue';
 import { useEvaluatorManagement } from '../modules/evaluator/composables/useEvaluatorManagement';
 import { formatPromptBlock } from '../utils/textBlocks';
-const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, loadCustomEvaluators, searchCustom, changeCustomSize, toggleCustomSort, loadPresetEvaluators, searchPreset, changePresetSize, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, changePickerSize, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, typeLabel, formatTime } = useEvaluatorManagement();
+const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, descriptionDialogVisible, descriptionSaving, descriptionForm, loadCustomEvaluators, searchCustom, changeCustomSize, toggleCustomSort, loadPresetEvaluators, searchPreset, changePresetSize, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, changePickerSize, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, openDescriptionDialog, submitDescription, typeLabel, formatTime } = useEvaluatorManagement();
 </script>
 
 <template>
@@ -130,9 +131,10 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             <OverflowTooltip :content="formatTime(row.lastUpdatedDate)" />
           </template>
         </el-table-column>
-        <el-table-column column-key="actions" label="操作" width="140" fixed="right" :resizable="false" align="center">
+        <el-table-column column-key="actions" label="操作" width="180" fixed="right" :resizable="false" align="center">
           <template #default="{ row }">
             <el-button link type="primary" @click="editEvaluator(row)">详情</el-button>
+            <el-button link type="primary" @click.stop="openDescriptionDialog(row)">编辑</el-button>
             <el-button link type="danger" @click="removeEvaluator(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -349,4 +351,14 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
       </template>
     </div>
   </el-dialog>
+
+  <ResourceDescriptionDialog
+    v-model="descriptionDialogVisible"
+    title="编辑评估器描述"
+    name-label="评估器名称"
+    :name="descriptionForm.name"
+    :description="descriptionForm.description"
+    :saving="descriptionSaving"
+    @save="submitDescription"
+  />
 </template>

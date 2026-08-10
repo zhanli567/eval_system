@@ -2,6 +2,7 @@ import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { datasetApi } from '../../../api/dataset';
+import { useResourceDescriptionEdit } from '../../../composables/useResourceDescriptionEdit';
 import { formatDateTime } from '../../../utils/formatters';
 import { getErrorMessage, movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 
@@ -20,8 +21,12 @@ function addField(target) {
     if (target.length >= 10) {
         ElMessage.warning('评测集最多支持10列');
         return;
+    } else if (target.some((field) => !field.fieldName.trim() || !field.fieldType)) {
+        ElMessage.warning('请先完善已有列的列名和类型');
+        return;
+    } else {
+        target.push({ fieldName: '', fieldType: 'string', required: false, description: '' });
     }
-    target.push({ fieldName: '', fieldType: 'string', required: false, description: '' });
 }
 
 function removeField(target, index) {
@@ -150,6 +155,13 @@ export function useDatasetList() {
     const createForm = reactive({ name: '', description: '', fields: defaultFields() });
     const drag = createFieldDragState();
     const actions = createDatasetActions({ router, datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datasetKeyword, sortBy, sortOrder, createVisible, createForm });
+    const descriptionEdit = useResourceDescriptionEdit({
+        getId: (row) => row.id,
+        getName: (row) => row.name,
+        getDescription: (row) => row.description,
+        update: datasetApi.updateDescription,
+        reload: actions.loadDatasets
+    });
     onMounted(async () => {
         await actions.loadDatasets();
     });
@@ -167,6 +179,7 @@ export function useDatasetList() {
         draggedFieldIndex: drag.draggedFieldIndex,
         dragOverFieldIndex: drag.dragOverFieldIndex,
         createForm,
+        ...descriptionEdit,
         ...actions,
         addField,
         removeField,

@@ -1,6 +1,7 @@
 package com.agentnexus.backend.task.service;
 
 import com.agentnexus.backend.common.PageResponse;
+import com.agentnexus.backend.common.dto.DescriptionUpdateRequest;
 import com.agentnexus.backend.common.context.CurrentSpaceHolder;
 import com.agentnexus.backend.common.context.CurrentUserHolder;
 import com.agentnexus.backend.common.context.TaskCookieHolder;
@@ -164,12 +165,31 @@ public class TaskService {
     Map<String, FieldDto> fieldById = toFieldById(fields);
     List<TaskItemRecord> itemRecords = taskRepository.listTaskItems(taskId, safeSize, offset);
     long total = taskRepository.countTaskItems(taskId);
-    return new TaskDetail(
-        base,
-        fields,
-        buildEvaluatorDimensions(taskId, fieldById),
-        taskRepository.listTagDimensions(taskId),
-        new PageResponse<>(buildItems(itemRecords, fieldById), total, safePage, safeSize));
+	    return new TaskDetail(
+	        base,
+	        fields,
+	        buildEvaluatorDimensions(taskId, fieldById),
+	        taskRepository.listTagDimensions(taskId),
+	        new PageResponse<>(buildItems(itemRecords, fieldById), total, safePage, safeSize));
+  }
+
+  /**
+   * 更新评测任务描述。
+   *
+   * @param taskId 评测任务ID
+   * @param request 描述更新请求
+   * @return 更新后的评测任务详情
+   */
+  @Transactional
+  public TaskDetail updateDescription(String taskId, DescriptionUpdateRequest request) {
+    findTask(taskId);
+    if (!taskRepository.isTaskCreatedByCurrentUser(taskId)) {
+      throw new IllegalArgumentException("仅创建人可以修改评测任务描述");
+    } else {
+      String description = normalizeDescription(request == null ? null : request.description());
+      taskRepository.updateTaskDescription(taskId, description, now());
+      return getTask(taskId, 1, 10);
+    }
   }
 
   /**
@@ -817,10 +837,7 @@ public class TaskService {
     if (taskName.length() > 50) {
       throw new IllegalArgumentException("任务名称不能超过50个字符");
     }
-    String description = request.description() == null ? "" : request.description().trim();
-    if (description.length() > 200) {
-      throw new IllegalArgumentException("描述不能超过200个字符");
-    }
+    String description = normalizeDescription(request.description());
     String datasetId = requireText(request.datasetId(), "请选择评测集");
     String datasetVersionId = requireText(request.datasetVersionId(), "请选择评测集版本");
     DatasetVersionDto version = datasetRepository.findVersion(datasetVersionId);
@@ -1973,6 +1990,15 @@ public class TaskService {
       throw new IllegalArgumentException("应用类型仅支持不关联应用或智能体");
     }
     return normalized;
+  }
+
+  private String normalizeDescription(String description) {
+    String normalized = description == null ? "" : description.trim();
+    if (normalized.length() > 200) {
+      throw new IllegalArgumentException("描述不能超过200个字符");
+    } else {
+      return normalized;
+    }
   }
 
   private String normalizeEvaluatorSource(String source) {

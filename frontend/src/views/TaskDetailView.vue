@@ -131,7 +131,10 @@ const scoreChartOption = computed(() => ({
     grid: { left: 48, right: 24, top: 28, bottom: 52 },
     tooltip: {
         trigger: 'axis',
-        axisPointer: { type: 'shadow' },
+        axisPointer: {
+            type: 'shadow',
+            shadowStyle: { color: 'rgba(47, 140, 255, 0.08)' }
+        },
         formatter: scoreTooltip
     },
     xAxis: {
@@ -179,7 +182,10 @@ const distributionStackOption = computed(() => ({
     grid: { left: 46, right: 24, top: 42, bottom: 48 },
     tooltip: {
         trigger: 'axis',
-        axisPointer: { type: 'shadow' },
+        axisPointer: {
+            type: 'shadow',
+            shadowStyle: { color: 'rgba(69, 191, 143, 0.08)' }
+        },
         formatter: stackTooltip
     },
     xAxis: {
@@ -206,12 +212,17 @@ const distributionStackOption = computed(() => ({
 }));
 const distributionPieOption = computed(() => ({
     color: ['#45bf8f', '#ff6b6b', '#a8afbf'],
-    tooltip: { trigger: 'item' },
+    tooltip: {
+        trigger: 'item',
+        formatter: '{b}: {c}'
+    },
     legend: {
-        bottom: 0,
+        bottom: 10,
         left: 'center',
+        itemGap: 14,
         itemWidth: 10,
         itemHeight: 10,
+        selectedMode: false,
         textStyle: { color: '#6b7280' }
     },
     title: {
@@ -232,10 +243,15 @@ const distributionPieOption = computed(() => ({
     series: [
         {
             type: 'pie',
-            radius: ['48%', '70%'],
-            center: ['50%', '56%'],
-            avoidLabelOverlap: true,
-            label: { formatter: '{b}: {c}' },
+            radius: ['44%', '62%'],
+            center: ['50%', '54%'],
+            avoidLabelOverlap: false,
+            label: { show: false },
+            labelLine: { show: false },
+            emphasis: {
+                scale: true,
+                scaleSize: 4
+            },
             data: [
                 { name: '通过', value: selectedDistribution.value?.passCount ?? 0 },
                 { name: '未通过', value: selectedDistribution.value?.failedCount ?? 0 },
