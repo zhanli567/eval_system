@@ -1,6 +1,7 @@
 package com.agentnexus.backend.dataset.service;
 
 import com.agentnexus.backend.common.PageResponse;
+import com.agentnexus.backend.dataset.api.dto.request.BatchDeleteRowsRequest;
 import com.agentnexus.backend.dataset.api.dto.request.CreateDatasetRequest;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetSummary;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetVersionDto;
@@ -228,13 +229,43 @@ public class DatasetService {
     touchVersion(versionId);
   }
 
+  /**
+   * 批量删除评测集草稿数据。
+   *
+   * @param versionId 草稿版本ID
+   * @param request 批量删除请求
+   */
+  @Transactional
+  public void deleteRows(String versionId, BatchDeleteRowsRequest request) {
+    ensureDraft(versionId);
+    List<String> itemIds = normalizeItemIds(request);
+    if (itemIds.isEmpty()) {
+      throw new IllegalArgumentException("请选择需要删除的数据");
+    } else if (datasetRepository.countRowsByIds(versionId, itemIds) != itemIds.size()) {
+      throw new IllegalArgumentException("部分数据不存在，请刷新后重试");
+    } else {
+      datasetRepository.deleteCellsByItems(versionId, itemIds);
+      datasetRepository.deleteItems(versionId, itemIds);
+      updateItemCount(versionId);
+      touchVersion(versionId);
+    }
+  }
+
+  /**
+   * 发布当前评测集草稿。
+   *
+   * @param datasetId 评测集ID
+   * @return 新发布的版本
+   */
   @Transactional
   public DatasetVersionDto publish(String datasetId) {
     String draftVersionId = datasetRepository.findDraftVersionId(datasetId);
+    long draftItemCount = datasetRepository.countRows(draftVersionId);
+    ensureDraftHasRows(draftItemCount);
     int nextVersionNo = datasetRepository.nextVersionNo(datasetId);
     String newVersionId = id();
     String now = now();
-    datasetRepository.insertVersion(newVersionId, datasetId, nextVersionNo, datasetRepository.findVersionItemCount(draftVersionId), now);
+    datasetRepository.insertVersion(newVersionId, datasetId, nextVersionNo, Math.toIntExact(draftItemCount), now);
     copyVersionContent(draftVersionId, newVersionId);
     datasetRepository.refreshDatasetVersionStats(datasetId, now());
     return datasetRepository.findVersion(newVersionId);
@@ -576,6 +607,25 @@ public class DatasetService {
   private void ensureDraft(String versionId) {
     if (datasetRepository.findVersionNo(versionId) != 0) {
       throw new IllegalArgumentException("只有草稿版本允许修改");
+    }
+  }
+
+  private void ensureDraftHasRows(long itemCount) {
+    if (itemCount > 0) {
+      return;
+    } else {
+      throw new IllegalArgumentException("评测集草稿中暂无数据，不能发布");
+    }
+  }
+
+  private List<String> normalizeItemIds(BatchDeleteRowsRequest request) {
+    if (request == null || request.itemIds() == null) {
+      return List.of();
+    } else {
+      return request.itemIds().stream()
+          .filter(StringUtils::hasText)
+          .distinct()
+          .toList();
     }
   }
 

@@ -19,6 +19,8 @@ function createState() {
         fieldVisible: ref(false),
         rowVisible: ref(false),
         rowEditingId: ref(''),
+        selectedRows: ref([]),
+        batchDeleting: ref(false),
         excelInput: ref(),
         coverExcelInput: ref(),
         draggedFieldIndex: ref(null),
@@ -97,6 +99,7 @@ function createVersionActions(ctx) {
                 fieldId: ctx.state.searchFieldId.value || undefined,
                 keyword: ctx.state.searchKeyword.value || undefined
             });
+            ctx.state.selectedRows.value = [];
         }
         finally {
             ctx.state.detailLoading.value = false;
@@ -110,11 +113,16 @@ function createVersionActions(ctx) {
         ctx.router.push({ name: 'datasets' });
     }
     async function publishDraft() {
-        await ElMessageBox.confirm('发布后将生成新的只读版本，确定发布当前草稿吗？', '发布版本', { type: 'success' });
-        const version = await datasetApi.publish(ctx.datasetId.value);
-        ElMessage.success(`已发布${version.versionName}`);
-        await loadDatasetSummary();
-        await loadVersions(version.id);
+        if ((ctx.computed.activeVersion.value?.itemCount ?? 0) === 0) {
+            ElMessage.warning('评测集草稿中暂无数据，不能发布');
+        }
+        else {
+            await ElMessageBox.confirm('发布后将生成新的只读版本，确定发布当前草稿吗？', '发布版本', { type: 'success' });
+            const version = await datasetApi.publish(ctx.datasetId.value);
+            ElMessage.success(`已发布${version.versionName}`);
+            await loadDatasetSummary();
+            await loadVersions(version.id);
+        }
     }
     async function removeVersion(version) {
         await ElMessageBox.confirm(`确定删除 ${version.versionName} 吗？`, '删除版本', { type: 'warning' });
@@ -291,6 +299,37 @@ function createRowActions(ctx, versionActions, excelActions) {
     return { openRowDialog, submitRow, removeRow, handleAddDataCommand };
 }
 
+function createBatchRowActions(ctx, versionActions) {
+    function handleSelectionChange(rows) {
+        ctx.state.selectedRows.value = rows;
+    }
+    async function removeSelectedRows() {
+        const itemIds = ctx.state.selectedRows.value.map((row) => row.id);
+        if (!itemIds.length) {
+            ElMessage.warning('请选择需要删除的数据');
+        }
+        else {
+            await ElMessageBox.confirm(`确定删除选中的 ${itemIds.length} 条数据吗？`, '批量删除数据', { type: 'warning' });
+            ctx.state.batchDeleting.value = true;
+            await datasetApi.deleteRows(ctx.state.activeVersionId.value, itemIds)
+                .finally(() => {
+                    ctx.state.batchDeleting.value = false;
+                });
+            ElMessage.success(`已删除 ${itemIds.length} 条数据`);
+            adjustPageAfterDelete(ctx, itemIds.length);
+            await versionActions.loadDetail();
+            await versionActions.loadDatasetSummary();
+        }
+    }
+    return { handleSelectionChange, removeSelectedRows };
+}
+
+function adjustPageAfterDelete(ctx, deletedCount) {
+    const remainingCount = Math.max(ctx.computed.tableTotal.value - deletedCount, 0);
+    const maxPage = Math.max(Math.ceil(remainingCount / ctx.state.tableSize.value), 1);
+    ctx.state.tablePage.value = Math.min(ctx.state.tablePage.value, maxPage);
+}
+
 export function useDatasetDetail(datasetId) {
     const router = useRouter();
     const state = createState();
@@ -300,6 +339,7 @@ export function useDatasetDetail(datasetId) {
     const fieldActions = createFieldActions(ctx, versionActions);
     const excelActions = createExcelActions(ctx, versionActions);
     const rowActions = createRowActions(ctx, versionActions, excelActions);
+    const batchRowActions = createBatchRowActions(ctx, versionActions);
     watch(datasetId, async () => {
         await versionActions.loadDataset();
     }, { immediate: true });
@@ -310,6 +350,7 @@ export function useDatasetDetail(datasetId) {
         ...versionActions,
         ...fieldActions,
         ...rowActions,
+        ...batchRowActions,
         importExcel: excelActions.importExcel,
         coverExcel: excelActions.coverExcel,
         formatTime: formatDateTime

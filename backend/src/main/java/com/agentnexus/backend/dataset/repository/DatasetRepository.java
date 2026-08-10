@@ -348,6 +348,46 @@ public class DatasetRepository {
         .eq(EvalDatasetItem::getVersionId, versionId));
   }
 
+  /**
+   * 统计指定版本中匹配的数据数量。
+   *
+   * @param versionId 版本ID
+   * @param itemIds 数据ID列表
+   * @return 匹配的数据数量
+   */
+  public long countRowsByIds(String versionId, List<String> itemIds) {
+    return itemMapper.selectCount(new LambdaQueryWrapper<EvalDatasetItem>()
+        .eq(EvalDatasetItem::getSpaceId, currentSpaceId())
+        .eq(EvalDatasetItem::getVersionId, versionId)
+        .in(EvalDatasetItem::getId, itemIds));
+  }
+
+  /**
+   * 批量删除指定版本数据的单元格。
+   *
+   * @param versionId 版本ID
+   * @param itemIds 数据ID列表
+   */
+  public void deleteCellsByItems(String versionId, List<String> itemIds) {
+    cellMapper.delete(new LambdaQueryWrapper<EvalDatasetItemCell>()
+        .eq(EvalDatasetItemCell::getSpaceId, currentSpaceId())
+        .eq(EvalDatasetItemCell::getVersionId, versionId)
+        .in(EvalDatasetItemCell::getItemId, itemIds));
+  }
+
+  /**
+   * 批量删除指定版本的数据。
+   *
+   * @param versionId 版本ID
+   * @param itemIds 数据ID列表
+   */
+  public void deleteItems(String versionId, List<String> itemIds) {
+    itemMapper.delete(new LambdaQueryWrapper<EvalDatasetItem>()
+        .eq(EvalDatasetItem::getSpaceId, currentSpaceId())
+        .eq(EvalDatasetItem::getVersionId, versionId)
+        .in(EvalDatasetItem::getId, itemIds));
+  }
+
   public DatasetRowRecord findRow(String itemId) {
     EvalDatasetItem item = itemMapper.selectOne(new LambdaQueryWrapper<EvalDatasetItem>()
         .eq(EvalDatasetItem::getSpaceId, currentSpaceId())
@@ -362,15 +402,6 @@ public class DatasetRepository {
         .eq("space_id", currentSpaceId())
         .eq("dataset_id", datasetId));
     return version == null || version.getVersionNo() == null ? 1 : version.getVersionNo();
-  }
-
-  public int findVersionItemCount(String versionId) {
-    EvalDatasetVersion version = versionMapper.selectOne(new LambdaQueryWrapper<EvalDatasetVersion>()
-        .select(EvalDatasetVersion::getItemCount)
-        .eq(EvalDatasetVersion::getSpaceId, currentSpaceId())
-        .eq(EvalDatasetVersion::getId, versionId)
-        .last("LIMIT 1"));
-    return version == null || version.getItemCount() == null ? 0 : version.getItemCount();
   }
 
   public void deleteVersion(String versionId) {

@@ -2,6 +2,7 @@ package com.agentnexus.backend.dataset.api;
 
 import com.agentnexus.backend.common.ApiResponse;
 import com.agentnexus.backend.common.PageResponse;
+import com.agentnexus.backend.dataset.api.dto.request.BatchDeleteRowsRequest;
 import com.agentnexus.backend.dataset.api.dto.request.CreateDatasetRequest;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetSummary;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetVersionDto;
@@ -130,6 +131,23 @@ public class DatasetController {
   @Path("/versions/{versionId}/items/{itemId}/delete")
   public ApiResponse<Void> deleteRow(@PathParam("versionId") String versionId, @PathParam("itemId") String itemId) {
     datasetService.deleteRow(versionId, itemId);
+    return ApiResponse.ok(null);
+  }
+
+  /**
+   * 批量删除评测集草稿数据。
+   *
+   * @param versionId 草稿版本ID
+   * @param request 批量删除请求
+   * @return 空响应
+   */
+  @POST
+  @Path("/versions/{versionId}/items/batch-delete")
+  public ApiResponse<Void> deleteRows(
+      @PathParam("versionId") String versionId,
+      BatchDeleteRowsRequest request
+  ) {
+    datasetService.deleteRows(versionId, request);
     return ApiResponse.ok(null);
   }
 }

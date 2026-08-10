@@ -41,6 +41,9 @@ export const datasetApi = {
     deleteRow(versionId, itemId) {
         return unwrap(http.post(`/datasets/versions/${versionId}/items/${itemId}/delete`));
     },
+    deleteRows(versionId, itemIds) {
+        return unwrap(http.post(`/datasets/versions/${versionId}/items/batch-delete`, { itemIds }));
+    },
     publish(datasetId) {
         return unwrap(http.post(`/datasets/${datasetId}/publish`));
     },
