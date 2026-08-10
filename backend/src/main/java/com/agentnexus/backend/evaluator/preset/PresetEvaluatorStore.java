@@ -5,7 +5,6 @@ import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorParamDto;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetCategoryDto;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorDetail;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorSummary;
-import com.agentnexus.backend.evaluator.constant.EvaluatorErrorMessageConstants;
 import com.agentnexus.backend.evaluator.constant.EvaluatorParamTypeConstants;
 import com.agentnexus.backend.evaluator.constant.EvaluatorTargetConstants;
 import com.agentnexus.backend.evaluator.constant.EvaluatorTypeConstants;
@@ -77,10 +76,10 @@ public class PresetEvaluatorStore {
   }
 
   public PresetEvaluatorDetail getPresetEvaluator(String presetId) {
-    String safePresetId = requireText(presetId, EvaluatorErrorMessageConstants.PRESET_EVALUATOR_NOT_FOUND);
+    String safePresetId = requireText(presetId, "预置评估器不存在");
     PresetEvaluatorDefinition evaluator = evaluatorById.get(safePresetId);
     if (evaluator == null) {
-      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.PRESET_EVALUATOR_NOT_FOUND);
+      throw new IllegalArgumentException("预置评估器不存在");
     }
     return new PresetEvaluatorDetail(
         evaluator.id(),
@@ -115,7 +114,7 @@ public class PresetEvaluatorStore {
     List<EvaluatorParamDto> result = new ArrayList<>();
     int order = 1;
     for (PresetParamDefinition param : params) {
-      String paramName = requireText(param.paramName(), EvaluatorErrorMessageConstants.PRESET_PARAM_NAME_REQUIRED);
+      String paramName = requireText(param.paramName(), "预置评估器参数名不能为空");
       result.add(new EvaluatorParamDto(
           evaluator.id() + ":" + paramName,
           EvaluatorTargetConstants.PRESET,
@@ -151,10 +150,10 @@ public class PresetEvaluatorStore {
   private Map<String, PresetCategoryDefinition> indexCategories(List<PresetCategoryDefinition> categories) {
     Map<String, PresetCategoryDefinition> indexed = new LinkedHashMap<>();
     for (PresetCategoryDefinition category : categories) {
-      String id = requireText(category.id(), EvaluatorErrorMessageConstants.PRESET_CATEGORY_ID_REQUIRED);
-      requireText(category.categoryName(), EvaluatorErrorMessageConstants.PRESET_CATEGORY_NAME_REQUIRED);
+      String id = requireText(category.id(), "预置评估器分类ID不能为空");
+      requireText(category.categoryName(), "预置评估器分类名称不能为空");
       if (indexed.putIfAbsent(id, category) != null) {
-        throw new IllegalStateException(EvaluatorErrorMessageConstants.duplicatePresetCategoryId(id));
+        throw new IllegalStateException("预置评估器分类ID重复：" + id);
       }
     }
     return indexed;
@@ -165,20 +164,20 @@ public class PresetEvaluatorStore {
     for (PresetEvaluatorDefinition evaluator : evaluators) {
       validateEvaluator(evaluator);
       if (indexed.putIfAbsent(evaluator.id(), evaluator) != null) {
-        throw new IllegalStateException(EvaluatorErrorMessageConstants.duplicatePresetEvaluatorId(evaluator.id()));
+        throw new IllegalStateException("预置评估器ID重复：" + evaluator.id());
       }
     }
     return indexed;
   }
 
   private void validateEvaluator(PresetEvaluatorDefinition evaluator) {
-    requireText(evaluator.id(), EvaluatorErrorMessageConstants.PRESET_EVALUATOR_ID_REQUIRED);
-    requireText(evaluator.evaluatorName(), EvaluatorErrorMessageConstants.PRESET_EVALUATOR_NAME_REQUIRED);
+    requireText(evaluator.id(), "预置评估器ID不能为空");
+    requireText(evaluator.evaluatorName(), "预置评估器名称不能为空");
     if (!categoryById.containsKey(evaluator.categoryId())) {
-      throw new IllegalStateException(EvaluatorErrorMessageConstants.presetCategoryNotFound(evaluator.categoryId()));
+      throw new IllegalStateException("预置评估器分类不存在：" + evaluator.categoryId());
     }
     if (!EvaluatorTypeConstants.SUPPORTED_TYPES.contains(evaluator.evaluatorType())) {
-      throw new IllegalStateException(EvaluatorErrorMessageConstants.unsupportedPresetType(evaluator.id()));
+      throw new IllegalStateException("预置评估器类型仅支持llm/code：" + evaluator.id());
     }
     validateScore(evaluator);
     validateParams(evaluator);
@@ -189,40 +188,40 @@ public class PresetEvaluatorStore {
     BigDecimal max = evaluator.scoreMax();
     BigDecimal pass = evaluator.passThreshold();
     if (min == null || max == null || pass == null || min.compareTo(max) >= 0) {
-      throw new IllegalStateException(EvaluatorErrorMessageConstants.invalidPresetScoreRange(evaluator.id()));
+      throw new IllegalStateException("预置评估器评分范围不合法：" + evaluator.id());
     }
     if (pass.compareTo(min) < 0 || pass.compareTo(max) > 0) {
-      throw new IllegalStateException(EvaluatorErrorMessageConstants.invalidPresetThreshold(evaluator.id()));
+      throw new IllegalStateException("预置评估器通过阈值不在评分范围内：" + evaluator.id());
     }
   }
 
   private void validateParams(PresetEvaluatorDefinition evaluator) {
     if (EvaluatorTypeConstants.LLM.equals(evaluator.evaluatorType())) {
-      requireText(evaluator.prompt(), EvaluatorErrorMessageConstants.presetLlmPromptRequired(evaluator.id()));
+      requireText(evaluator.prompt(), "LLM预置评估器Prompt不能为空：" + evaluator.id());
       List<String> promptParams = extractPromptParamNames(evaluator.prompt());
       if (promptParams.isEmpty()) {
-        throw new IllegalStateException(EvaluatorErrorMessageConstants.presetLlmPromptParamRequired(evaluator.id()));
+        throw new IllegalStateException("LLM预置评估器Prompt至少需要一个${参数名}：" + evaluator.id());
       }
       Set<String> promptParamSet = new HashSet<>(promptParams);
       for (PresetParamDefinition param : evaluator.params()) {
         if (!promptParamSet.contains(param.paramName())) {
-          throw new IllegalStateException(EvaluatorErrorMessageConstants.presetLlmParamNotReferenced(param.paramName()));
+          throw new IllegalStateException("LLM预置评估器参数未在Prompt中引用：" + param.paramName());
         }
       }
     } else {
-      requireText(evaluator.executeCode(), EvaluatorErrorMessageConstants.presetCodeExecuteRequired(evaluator.id()));
+      requireText(evaluator.executeCode(), "Code预置评估器执行函数不能为空：" + evaluator.id());
       if (evaluator.params().isEmpty()) {
-        throw new IllegalStateException(EvaluatorErrorMessageConstants.presetCodeParamRequired(evaluator.id()));
+        throw new IllegalStateException("Code预置评估器至少需要一个参数：" + evaluator.id());
       }
     }
     Set<String> paramNames = new HashSet<>();
     for (PresetParamDefinition param : resolveParams(evaluator)) {
-      String paramName = requireText(param.paramName(), EvaluatorErrorMessageConstants.PRESET_PARAM_NAME_REQUIRED);
+      String paramName = requireText(param.paramName(), "预置评估器参数名不能为空");
       if (!PARAM_NAME_PATTERN.matcher(paramName).matches()) {
-        throw new IllegalStateException(EvaluatorErrorMessageConstants.invalidPresetParamName(paramName));
+        throw new IllegalStateException("预置评估器参数名不合法：" + paramName);
       }
       if (!paramNames.add(paramName)) {
-        throw new IllegalStateException(EvaluatorErrorMessageConstants.duplicatePresetParamName(paramName));
+        throw new IllegalStateException("预置评估器参数名重复：" + paramName);
       }
       normalizeParamType(param.dataType());
     }
@@ -243,7 +242,7 @@ public class PresetEvaluatorStore {
   private String normalizeParamType(String dataType) {
     String normalized = StringUtils.hasText(dataType) ? dataType.trim().toLowerCase(Locale.ROOT) : EvaluatorParamTypeConstants.STRING;
     if (!EvaluatorParamTypeConstants.SUPPORTED_TYPES.contains(normalized)) {
-      throw new IllegalStateException(EvaluatorErrorMessageConstants.unsupportedPresetParamType(dataType));
+      throw new IllegalStateException("预置评估器参数类型仅支持string/number/boolean：" + dataType);
     }
     return normalized;
   }

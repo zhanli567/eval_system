@@ -7,7 +7,6 @@ import com.agentnexus.backend.tag.api.dto.request.TagInput;
 import com.agentnexus.backend.tag.api.dto.response.TagOptionDto;
 import com.agentnexus.backend.tag.api.dto.request.TagOptionInput;
 import com.agentnexus.backend.tag.api.dto.response.TagSummary;
-import com.agentnexus.backend.tag.constant.TagErrorMessageConstants;
 import com.agentnexus.backend.tag.constant.TagOptionGroupConstants;
 import com.agentnexus.backend.tag.constant.TagTypeConstants;
 import com.agentnexus.backend.tag.repository.TagRepository;
@@ -53,7 +52,7 @@ public class TagService {
     String tagId = id();
     String now = now();
     if (tagRepository.countSameName(normalized.tagName()) > 0) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.DUPLICATE_TAG_NAME_IN_SPACE);
+      throw new IllegalArgumentException("当前空间已存在同名标签");
     } else {
       tagRepository.insertTag(
           tagId,
@@ -74,10 +73,10 @@ public class TagService {
     TagConfig existing = findExistingTag(tagId);
     NormalizedTag normalized = normalizeTagInput(request, existing.tagType());
     if (!existing.tagType().equals(normalized.tagType())) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.TAG_TYPE_CANNOT_MODIFY);
+      throw new IllegalArgumentException("标签类型创建后不能修改");
     }
     if (tagRepository.countSameNameExcept(normalized.tagName(), tagId) > 0) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.DUPLICATE_TAG_NAME);
+      throw new IllegalArgumentException("标签名称不能重复");
     }
 
     String now = now();
@@ -98,11 +97,11 @@ public class TagService {
   public void deleteTag(String tagId) {
     findExistingTag(tagId);
     if (!tagRepository.isTagCreatedByCurrentUser(tagId)) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.ONLY_CREATOR_CAN_DELETE_TAG);
+      throw new IllegalArgumentException("仅创建人可以删除标签");
     } else {
       List<String> taskNames = taskRepository.listTaskNamesByTagId(tagId);
       if (!taskNames.isEmpty()) {
-        throw new IllegalArgumentException(TagErrorMessageConstants.tagUsedByTasks(taskNames));
+        throw new IllegalArgumentException("标签已被评测任务“" + String.join("、", taskNames) + "”使用，不能删除");
       } else {
         tagRepository.deleteTag(tagId);
       }
@@ -125,18 +124,18 @@ public class TagService {
 
   private TagConfig findExistingTag(String tagId) {
     if (!StringUtils.hasText(tagId)) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.TAG_ID_REQUIRED);
+      throw new IllegalArgumentException("标签ID不能为空");
     }
     TagConfig config = tagRepository.findTagConfig(tagId);
     if (config == null) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.TAG_NOT_FOUND);
+      throw new IllegalArgumentException("标签不存在");
     }
     return config;
   }
 
   private NormalizedTag normalizeTagInput(TagInput request, String existingTagType) {
     if (request == null) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.TAG_REQUEST_REQUIRED);
+      throw new IllegalArgumentException("标签参数不能为空");
     }
     String tagName = normalizeTagName(request.tagName());
     String tagType = normalizeTagType(StringUtils.hasText(request.tagType()) ? request.tagType() : existingTagType);
@@ -163,11 +162,11 @@ public class TagService {
 
   private String normalizeTagName(String tagName) {
     if (!StringUtils.hasText(tagName)) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.TAG_NAME_REQUIRED);
+      throw new IllegalArgumentException("标签名称不能为空");
     }
     String normalized = tagName.trim();
     if (normalized.length() > 50) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.TAG_NAME_TOO_LONG);
+      throw new IllegalArgumentException("标签名称不能超过50个字符");
     }
     return normalized;
   }
@@ -175,7 +174,7 @@ public class TagService {
   private String normalizeDescription(String description) {
     String normalized = description == null ? "" : description.trim();
     if (normalized.length() > 200) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.TAG_DESCRIPTION_TOO_LONG);
+      throw new IllegalArgumentException("标签描述不能超过200个字符");
     }
     return normalized;
   }
@@ -189,18 +188,18 @@ public class TagService {
 
   private String normalizeTagType(String tagType) {
     if (!StringUtils.hasText(tagType)) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.TAG_TYPE_REQUIRED);
+      throw new IllegalArgumentException("标签类型不能为空");
     }
     String normalized = tagType.trim();
     if (!TagTypeConstants.SUPPORTED_TYPES.contains(normalized)) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.UNSUPPORTED_TAG_TYPE);
+      throw new IllegalArgumentException("标签类型仅支持category、boolean、number、text");
     }
     return normalized;
   }
 
   private List<TagOptionInput> normalizeCategoryOptions(List<TagOptionInput> options) {
     if (options == null || options.isEmpty()) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.CATEGORY_OPTIONS_REQUIRED);
+      throw new IllegalArgumentException("分类标签请至少配置一个Pass选项和一个Fail选项");
     }
     List<TagOptionInput> normalized = new ArrayList<>();
     Set<String> optionNames = new HashSet<>();
@@ -214,10 +213,10 @@ public class TagService {
       }
       String optionName = option.optionName().trim();
       if (optionName.length() > 50) {
-        throw new IllegalArgumentException(TagErrorMessageConstants.TAG_OPTION_TOO_LONG);
+        throw new IllegalArgumentException("标签选项不能超过50个字符");
       }
       if (!optionNames.add(optionName)) {
-        throw new IllegalArgumentException(TagErrorMessageConstants.TAG_OPTION_DUPLICATED);
+        throw new IllegalArgumentException("标签选项不能重复");
       }
       String optionGroup = normalizeOptionGroup(option.optionGroup());
       hasPass = hasPass || TagOptionGroupConstants.PASS.equals(optionGroup);
@@ -227,37 +226,37 @@ public class TagService {
       normalized.add(new TagOptionInput(option.id(), optionName, optionGroup));
     }
     if (!hasPass || !hasFail) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.CATEGORY_OPTIONS_REQUIRED);
+      throw new IllegalArgumentException("分类标签请至少配置一个Pass选项和一个Fail选项");
     }
     if (passCount > 5 || failCount > 5) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.CATEGORY_OPTION_LIMIT_EXCEEDED);
+      throw new IllegalArgumentException("Pass和Fail选项每组最多支持5个");
     }
     return normalized;
   }
 
   private String normalizeOptionGroup(String optionGroup) {
     if (!StringUtils.hasText(optionGroup)) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.OPTION_GROUP_REQUIRED);
+      throw new IllegalArgumentException("选项分组不能为空");
     }
     String normalized = optionGroup.trim();
     if (!TagOptionGroupConstants.SUPPORTED_GROUPS.contains(normalized)) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.UNSUPPORTED_OPTION_GROUP);
+      throw new IllegalArgumentException("选项分组仅支持pass、fail");
     }
     return normalized;
   }
 
   private void validateNumberConfig(Integer minValue, Integer maxValue, Integer passThreshold) {
     if (minValue == null || maxValue == null || passThreshold == null) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.NUMBER_TAG_SCORE_REQUIRED);
+      throw new IllegalArgumentException("数字标签请维护评分范围和通过阈值");
     }
     if (minValue <= 0 || maxValue <= 0 || passThreshold <= 0) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.NUMBER_TAG_SCORE_MUST_BE_POSITIVE);
+      throw new IllegalArgumentException("数字标签评分范围和通过阈值必须为正整数");
     }
     if (minValue >= maxValue) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.NUMBER_TAG_SCORE_RANGE_INVALID);
+      throw new IllegalArgumentException("数字标签评分范围最大值必须大于最小值");
     }
     if (passThreshold < minValue || passThreshold > maxValue) {
-      throw new IllegalArgumentException(TagErrorMessageConstants.NUMBER_TAG_THRESHOLD_INVALID);
+      throw new IllegalArgumentException("通过阈值必须介于评分范围最小值和最大值之间");
     }
   }
 
