@@ -6,7 +6,6 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.agentnexus.backend.common.context.CurrentSpaceHolder;
 import com.agentnexus.backend.common.context.CurrentUserHolder;
 import com.agentnexus.backend.common.security.CurrentUser;
-import com.agentnexus.backend.evaluator.constant.EvaluatorTargetConstants;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorConfigBase;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorParamDto;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorSummary;
@@ -122,7 +121,7 @@ public class EvaluatorRepository {
         .stream()
         .map(EvalEvaluatorVersion::getId)
         .toList();
-    versionIds.forEach(versionId -> deleteParams(EvaluatorTargetConstants.VERSION, versionId));
+    versionIds.forEach(versionId -> deleteParams("version", versionId));
     versionMapper.delete(new LambdaQueryWrapper<EvalEvaluatorVersion>()
         .eq(EvalEvaluatorVersion::getSpaceId, currentSpaceId())
         .eq(EvalEvaluatorVersion::getEvaluatorId, evaluatorId));

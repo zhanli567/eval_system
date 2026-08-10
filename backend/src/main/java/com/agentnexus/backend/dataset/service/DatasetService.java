@@ -10,9 +10,6 @@ import com.agentnexus.backend.dataset.api.dto.response.ImportRowsResult;
 import com.agentnexus.backend.dataset.api.dto.response.RowDto;
 import com.agentnexus.backend.dataset.api.dto.request.RowInput;
 import com.agentnexus.backend.dataset.api.dto.response.VersionDetail;
-import com.agentnexus.backend.dataset.constant.DatasetFieldValueConstants;
-import com.agentnexus.backend.dataset.constant.DatasetFieldTypeConstants;
-import com.agentnexus.backend.dataset.constant.DatasetSortConstants;
 import com.agentnexus.backend.dataset.repository.DatasetRepository;
 import com.agentnexus.backend.dataset.repository.DatasetRowRecord;
 import com.agentnexus.backend.task.repository.TaskRepository;
@@ -39,6 +36,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class DatasetService {
+  private static final List<String> SUPPORTED_FIELD_TYPES = List.of("string", "number", "boolean");
+
   private final DatasetRepository datasetRepository;
   private final TaskRepository taskRepository;
 
@@ -52,12 +51,8 @@ public class DatasetService {
     int safeSize = Math.min(Math.max(size, 1), 100);
     int offset = (safePage - 1) * safeSize;
     String like = "%" + (keyword == null ? "" : keyword.trim()) + "%";
-    String orderColumn = DatasetSortConstants.CREATED_DATE.equals(sortBy)
-        ? DatasetSortConstants.DATASET_CREATED_DATE_COLUMN
-        : DatasetSortConstants.DATASET_LAST_UPDATED_DATE_COLUMN;
-    String orderDirection = DatasetSortConstants.ASC.equalsIgnoreCase(sortOrder)
-        ? DatasetSortConstants.SQL_ASC
-        : DatasetSortConstants.SQL_DESC;
+    String orderColumn = "createdDate".equals(sortBy) ? "d.created_date" : "d.last_updated_date";
+    String orderDirection = "asc".equalsIgnoreCase(sortOrder) ? "ASC" : "DESC";
     List<DatasetSummary> records = datasetRepository.listDatasetSummaries(like, orderColumn, orderDirection, safeSize, offset);
     long total = datasetRepository.countDatasetSummaries(like);
     return new PageResponse<>(records, total, safePage, safeSize);
@@ -309,7 +304,7 @@ public class DatasetService {
       if (!names.add(field.fieldName().trim())) {
         throw new IllegalArgumentException("列名不能重复");
       }
-      if (!DatasetFieldTypeConstants.SUPPORTED_TYPES.contains(field.fieldType())) {
+      if (!SUPPORTED_FIELD_TYPES.contains(field.fieldType())) {
         throw new IllegalArgumentException("字段类型仅支持string、number、boolean");
       }
     }
@@ -469,16 +464,16 @@ public class DatasetService {
       }
       return;
     }
-    if (DatasetFieldTypeConstants.NUMBER.equals(field.fieldType())) {
+    if ("number".equals(field.fieldType())) {
       try {
         new BigDecimal(text);
       } catch (NumberFormatException exception) {
         throw new IllegalArgumentException(position + "应为数字");
       }
     }
-    if (DatasetFieldTypeConstants.BOOLEAN.equals(field.fieldType())
-        && !DatasetFieldValueConstants.BOOLEAN_TRUE.equalsIgnoreCase(text)
-        && !DatasetFieldValueConstants.BOOLEAN_FALSE.equalsIgnoreCase(text)) {
+    if ("boolean".equals(field.fieldType())
+        && !"true".equalsIgnoreCase(text)
+        && !"false".equalsIgnoreCase(text)) {
       throw new IllegalArgumentException(position + "应为布尔值true或false");
     }
   }

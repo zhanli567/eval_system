@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.agentnexus.backend.common.context.CurrentUserHolder;
 import com.agentnexus.backend.common.context.CurrentSpaceHolder;
 import com.agentnexus.backend.common.security.CurrentUser;
-import com.agentnexus.backend.tag.constant.TagSortConstants;
 import com.agentnexus.backend.tag.api.dto.response.TagConfig;
 import com.agentnexus.backend.tag.api.dto.response.TagOptionDto;
 import com.agentnexus.backend.tag.api.dto.response.TagSummary;
@@ -33,7 +32,7 @@ public class TagRepository {
 
   public List<TagSummary> listTags(String tagType, String like, String sortBy, String sortOrder, int size, int offset) {
     LambdaQueryWrapper<EvalTag> query = tagQuery(tagType, like);
-    boolean asc = TagSortConstants.ASC.equalsIgnoreCase(sortOrder);
+    boolean asc = "asc".equalsIgnoreCase(sortOrder);
     if ("createdDate".equals(sortBy)) {
       query.orderBy(true, asc, EvalTag::getCreatedDate);
     } else {

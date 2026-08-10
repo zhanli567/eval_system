@@ -5,9 +5,6 @@ import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorParamDto;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetCategoryDto;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorDetail;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorSummary;
-import com.agentnexus.backend.evaluator.constant.EvaluatorParamTypeConstants;
-import com.agentnexus.backend.evaluator.constant.EvaluatorTargetConstants;
-import com.agentnexus.backend.evaluator.constant.EvaluatorTypeConstants;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -24,6 +21,11 @@ import org.springframework.util.StringUtils;
 
 @Component
 public class PresetEvaluatorStore {
+  private static final String TYPE_LLM = "llm";
+  private static final String TYPE_CODE = "code";
+  private static final String TARGET_PRESET = "preset";
+  private static final String PARAM_TYPE_STRING = "string";
+  private static final List<String> SUPPORTED_PARAM_TYPES = List.of(PARAM_TYPE_STRING, "number", "boolean");
   private static final Pattern PROMPT_PARAM_PATTERN = Pattern.compile("\\$\\{([a-zA-Z_][\\w]*)}");
   private static final Pattern PARAM_NAME_PATTERN = Pattern.compile("[a-zA-Z_][\\w]*");
 
@@ -117,7 +119,7 @@ public class PresetEvaluatorStore {
       String paramName = requireText(param.paramName(), "预置评估器参数名不能为空");
       result.add(new EvaluatorParamDto(
           evaluator.id() + ":" + paramName,
-          EvaluatorTargetConstants.PRESET,
+          TARGET_PRESET,
           evaluator.id(),
           paramName,
           normalizeParamType(param.dataType()),
@@ -130,7 +132,7 @@ public class PresetEvaluatorStore {
   }
 
   private List<PresetParamDefinition> resolveParams(PresetEvaluatorDefinition evaluator) {
-    if (!EvaluatorTypeConstants.LLM.equals(evaluator.evaluatorType())) {
+    if (!TYPE_LLM.equals(evaluator.evaluatorType())) {
       return evaluator.params();
     }
     Map<String, PresetParamDefinition> configuredParams = new LinkedHashMap<>();
@@ -141,7 +143,7 @@ public class PresetEvaluatorStore {
     for (String paramName : extractPromptParamNames(evaluator.prompt())) {
       PresetParamDefinition configured = configuredParams.get(paramName);
       resolved.add(configured == null
-          ? new PresetParamDefinition(paramName, EvaluatorParamTypeConstants.STRING, "", true, "")
+          ? new PresetParamDefinition(paramName, PARAM_TYPE_STRING, "", true, "")
           : configured);
     }
     return resolved;
@@ -176,7 +178,7 @@ public class PresetEvaluatorStore {
     if (!categoryById.containsKey(evaluator.categoryId())) {
       throw new IllegalStateException("预置评估器分类不存在：" + evaluator.categoryId());
     }
-    if (!EvaluatorTypeConstants.SUPPORTED_TYPES.contains(evaluator.evaluatorType())) {
+    if (!List.of(TYPE_LLM, TYPE_CODE).contains(evaluator.evaluatorType())) {
       throw new IllegalStateException("预置评估器类型仅支持llm/code：" + evaluator.id());
     }
     validateScore(evaluator);
@@ -196,7 +198,7 @@ public class PresetEvaluatorStore {
   }
 
   private void validateParams(PresetEvaluatorDefinition evaluator) {
-    if (EvaluatorTypeConstants.LLM.equals(evaluator.evaluatorType())) {
+    if (TYPE_LLM.equals(evaluator.evaluatorType())) {
       requireText(evaluator.prompt(), "LLM预置评估器Prompt不能为空：" + evaluator.id());
       List<String> promptParams = extractPromptParamNames(evaluator.prompt());
       if (promptParams.isEmpty()) {
@@ -240,8 +242,8 @@ public class PresetEvaluatorStore {
   }
 
   private String normalizeParamType(String dataType) {
-    String normalized = StringUtils.hasText(dataType) ? dataType.trim().toLowerCase(Locale.ROOT) : EvaluatorParamTypeConstants.STRING;
-    if (!EvaluatorParamTypeConstants.SUPPORTED_TYPES.contains(normalized)) {
+    String normalized = StringUtils.hasText(dataType) ? dataType.trim().toLowerCase(Locale.ROOT) : PARAM_TYPE_STRING;
+    if (!SUPPORTED_PARAM_TYPES.contains(normalized)) {
       throw new IllegalStateException("预置评估器参数类型仅支持string/number/boolean：" + dataType);
     }
     return normalized;

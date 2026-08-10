@@ -2,7 +2,6 @@ package com.agentnexus.backend.remoteCall.service;
 
 import com.agentnexus.backend.common.context.CurrentSpaceHolder;
 import com.agentnexus.backend.common.context.TaskCookieHolder;
-import com.agentnexus.backend.dataset.constant.DatasetFieldTypeConstants;
 import com.agentnexus.backend.iam.IamTokenService;
 import com.agentnexus.backend.remoteCall.config.RemoteCallProperties;
 import com.agentnexus.backend.remoteCall.api.dto.request.AgentChatRequest;
@@ -38,17 +37,6 @@ import com.agentnexus.backend.remoteCall.api.dto.response.SuperAgentDetail;
 import com.agentnexus.backend.remoteCall.api.dto.response.SuperAgentInfo;
 import com.agentnexus.backend.remoteCall.api.dto.response.UICardDefinition;
 import com.agentnexus.backend.remoteCall.client.RemoteCallServiceClient;
-import com.agentnexus.backend.remoteCall.constant.AgentFieldDisplayConstants;
-import com.agentnexus.backend.remoteCall.constant.AgentInputFieldConstants;
-import com.agentnexus.backend.remoteCall.constant.AgentOutputFieldConstants;
-import com.agentnexus.backend.remoteCall.constant.ChatContentTypeConstants;
-import com.agentnexus.backend.remoteCall.constant.ChatRoleConstants;
-import com.agentnexus.backend.remoteCall.constant.RemoteCallDefaults;
-import com.agentnexus.backend.remoteCall.constant.RemoteCallHeaderConstants;
-import com.agentnexus.backend.remoteCall.constant.RemoteCallJsonFieldConstants;
-import com.agentnexus.backend.remoteCall.constant.RemoteCallMediaTypeConstants;
-import com.agentnexus.backend.remoteCall.constant.RemoteCallProtocolConstants;
-import com.agentnexus.backend.remoteCall.constant.RemoteCallStatusConstants;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -70,6 +58,15 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class RemoteCallService {
+  private static final String STATUS_COMPLETED = "completed";
+  private static final String STATUS_FAILED = "failed";
+  private static final String ROLE_ASSISTANT = "assistant";
+  private static final String IAM_AUTH_TYPE = "IAM";
+  private static final String STATUS_ACTIVE = "ACTIVE";
+  private static final String THINK_END_TAG = "</think>";
+  private static final String DEFAULT_AGENT_ALIAS = "router-agent";
+  private static final int DEFAULT_PAGE_SIZE = 10;
+  private static final int DEFAULT_CUR_PAGE = 1;
   private static final TypeReference<List<ToolCallDelta>> TOOL_CALLS_TYPE = new TypeReference<>() {
   };
   private static final TypeReference<List<ReferenceItem>> REFERENCES_TYPE = new TypeReference<>() {
@@ -97,21 +94,21 @@ public class RemoteCallService {
 
   public List<ModelInfo> listModels() {
     RemoteResponse<ListResult<ModelInfo>> response = remoteCallServiceClient.listModels(
-        RemoteCallDefaults.PAGE_SIZE,
-        RemoteCallDefaults.CUR_PAGE,
+        DEFAULT_PAGE_SIZE,
+        DEFAULT_CUR_PAGE,
         CurrentSpaceHolder.get());
     ensureSuccess("模型列表接口", response.status(), response.success());
     ListResult<ModelInfo> result = response.resultObjVO();
     List<ModelInfo> models = result == null || result.result() == null ? List.of() : result.result();
     return models.stream()
-        .filter(model -> RemoteCallDefaults.AUTH_TYPE_IAM.equalsIgnoreCase(model.authType()))
+        .filter(model -> IAM_AUTH_TYPE.equalsIgnoreCase(model.authType()))
         .toList();
   }
 
   public List<AgentDefinition> listAgents() {
     RemoteResponse<ListResult<SuperAgentInfo>> response = remoteCallServiceClient.listAgents(
-        RemoteCallDefaults.PAGE_SIZE,
-        RemoteCallDefaults.CUR_PAGE,
+        DEFAULT_PAGE_SIZE,
+        DEFAULT_CUR_PAGE,
         CurrentSpaceHolder.get());
     ensureSuccess("智能体列表接口", response.status(), response.success());
     ListResult<SuperAgentInfo> result = response.resultObjVO();
@@ -145,7 +142,7 @@ public class RemoteCallService {
       return List.of();
     }
     return result.result().stream()
-        .filter(space -> RemoteCallStatusConstants.ACTIVE.equalsIgnoreCase(space.status()))
+        .filter(space -> STATUS_ACTIVE.equalsIgnoreCase(space.status()))
         .toList();
   }
 
@@ -170,16 +167,16 @@ public class RemoteCallService {
     String token = requireText(iamTokenService.getToken(), "IAM token不能为空");
     HttpURLConnection connection = null;
     try {
-      connection = openConnection(properties.getIam().getUrl(), RemoteCallProtocolConstants.POST);
-      connection.setRequestProperty(RemoteCallHeaderConstants.ACCEPT, RemoteCallMediaTypeConstants.APPLICATION_JSON);
-      connection.setRequestProperty(RemoteCallHeaderConstants.CONTENT_TYPE, RemoteCallMediaTypeConstants.APPLICATION_JSON_UTF8);
-      connection.setRequestProperty(RemoteCallHeaderConstants.AUTHORIZATION, token);
+      connection = openConnection(properties.getIam().getUrl(), "POST");
+      connection.setRequestProperty("accept", "application/json");
+      connection.setRequestProperty("content-type", "application/json;charset=UTF-8");
+      connection.setRequestProperty("authorization", token);
       Map<String, Object> body = new LinkedHashMap<>();
-      body.put(RemoteCallJsonFieldConstants.MODEL, safeModelName);
-      body.put(RemoteCallJsonFieldConstants.MESSAGES, List.of(Map.of(
-          RemoteCallJsonFieldConstants.ROLE, ChatRoleConstants.USER,
-          RemoteCallJsonFieldConstants.CONTENT, message == null ? "" : message)));
-      body.put(RemoteCallJsonFieldConstants.STREAM, Boolean.FALSE);
+      body.put("model", safeModelName);
+      body.put("messages", List.of(Map.of(
+          "role", "user",
+          "content", message == null ? "" : message)));
+      body.put("stream", Boolean.FALSE);
       writeJson(connection, body);
       int statusCode = connection.getResponseCode();
       String responseBody = readAll(statusCode >= 200 && statusCode < 300 ? connection.getInputStream() : connection.getErrorStream());
@@ -199,12 +196,12 @@ public class RemoteCallService {
 
   private String parseIamModelOutput(String responseBody) throws IOException {
     JsonNode root = objectMapper.readTree(responseBody);
-    JsonNode choicesNode = root.get(RemoteCallJsonFieldConstants.CHOICES);
+    JsonNode choicesNode = root.get("choices");
     if (choicesNode == null || !choicesNode.isArray() || choicesNode.isEmpty()) {
       throw new IllegalStateException("IAM模型对话接口返回缺少choices");
     }
-    JsonNode messageNode = choicesNode.get(0).get(RemoteCallJsonFieldConstants.MESSAGE);
-    String content = textValue(messageNode, RemoteCallJsonFieldConstants.CONTENT);
+    JsonNode messageNode = choicesNode.get(0).get("message");
+    String content = textValue(messageNode, "content");
     if (!StringUtils.hasText(content)) {
       throw new IllegalStateException("IAM模型对话接口返回缺少message.content");
     }
@@ -213,9 +210,9 @@ public class RemoteCallService {
 
   private String cleanThinkContent(String content) {
     String safeContent = content == null ? "" : content;
-    int thinkEnd = safeContent.indexOf(RemoteCallProtocolConstants.THINK_END_TAG);
+    int thinkEnd = safeContent.indexOf(THINK_END_TAG);
     if (thinkEnd >= 0) {
-      return safeContent.substring(thinkEnd + RemoteCallProtocolConstants.THINK_END_TAG.length()).trim();
+      return safeContent.substring(thinkEnd + THINK_END_TAG.length()).trim();
     }
     return safeContent.trim();
   }
@@ -226,7 +223,7 @@ public class RemoteCallService {
       String agentAlias,
       AgentChatRequest request
   ) {
-    String safeAgentId = firstNonBlank(agentId, RemoteCallDefaults.AGENT_ALIAS);
+    String safeAgentId = firstNonBlank(agentId, DEFAULT_AGENT_ALIAS);
     String safeBundleId = requireText(bundleId, "Agent bundle ID cannot be blank");
     String safeAgentAlias = firstNonBlank(agentAlias, safeAgentId);
     long startedAt = System.currentTimeMillis();
@@ -241,14 +238,14 @@ public class RemoteCallService {
 
     HttpURLConnection connection = null;
     try {
-      connection = openConnection(chatUrl, RemoteCallProtocolConstants.POST);
-      connection.setRequestProperty(RemoteCallHeaderConstants.CONTENT_TYPE, RemoteCallMediaTypeConstants.APPLICATION_JSON_UTF8);
-      connection.setRequestProperty(RemoteCallHeaderConstants.ACCEPT, RemoteCallMediaTypeConstants.EVENT_STREAM_OR_JSON);
+      connection = openConnection(chatUrl, "POST");
+      connection.setRequestProperty("content-type", "application/json;charset=UTF-8");
+      connection.setRequestProperty("accept", "text/event-stream, application/json");
       chatCompletionHeaders().forEach(connection::setRequestProperty);
-      connection.setRequestProperty(RemoteCallHeaderConstants.SUPER_AGENT_ID, safeAgentId);
-      connection.setRequestProperty(RemoteCallHeaderConstants.BUNDLE_ID, safeBundleId);
+      connection.setRequestProperty("x-super-agent-id", safeAgentId);
+      connection.setRequestProperty("x-bundle-id", safeBundleId);
       if (StringUtils.hasText(agentAlias)) {
-        connection.setRequestProperty(RemoteCallHeaderConstants.AGENT_ALIAS, agentAlias.trim());
+        connection.setRequestProperty("x-agent-alias", agentAlias.trim());
       }
       writeJson(connection, outboundRequest);
       int statusCode = connection.getResponseCode();
@@ -272,7 +269,7 @@ public class RemoteCallService {
   private AgentDefinition toAgentDefinition(SuperAgentInfo agent) {
     String id = firstNonBlank(agent.superAgentId(), agent.name());
     String versionId = firstNonBlank(agent.currentBundleId(), agent.bundleVersion(), id);
-    String versionName = firstNonBlank(agent.bundleVersion(), agent.currentBundleId(), AgentFieldDisplayConstants.DEFAULT_VERSION_NAME);
+    String versionName = firstNonBlank(agent.bundleVersion(), agent.currentBundleId(), "当前版本");
     return new AgentDefinition(
         id,
         firstNonBlank(agent.displayName(), agent.name(), id),
@@ -280,13 +277,13 @@ public class RemoteCallService {
         firstNonBlank(agent.iconUrl()),
         List.of(new AgentVersion(versionId, versionName)),
         List.of(),
-        List.of(agentField(AgentInputFieldConstants.QUERY, AgentFieldDisplayConstants.QUERY_DESCRIPTION, 1)),
+        List.of(new AgentField("query", "query", "string", "用户输入或问题", 1)),
         List.of(
-            agentField(AgentOutputFieldConstants.TEXT, AgentFieldDisplayConstants.TEXT_DESCRIPTION, 1),
-            agentField(AgentOutputFieldConstants.REASONING, AgentFieldDisplayConstants.REASONING_DESCRIPTION, 2),
-            agentField(AgentOutputFieldConstants.DEBUG, AgentFieldDisplayConstants.DEBUG_DESCRIPTION, 3),
-            agentField(AgentOutputFieldConstants.ERROR, AgentFieldDisplayConstants.ERROR_DESCRIPTION, 4),
-            agentField(AgentOutputFieldConstants.RAW_TEXT, AgentFieldDisplayConstants.RAW_TEXT_DESCRIPTION, 5)));
+            new AgentField("text", "text", "string", "返回给用户的信息", 1),
+            new AgentField("reasoning", "reasoning", "string", "智能体思考过程", 2),
+            new AgentField("debug", "debug", "string", "智能体调试信息", 3),
+            new AgentField("error", "error", "string", "智能体错误信息", 4),
+            new AgentField("rawText", "rawText", "string", "消息合并后的原始文本", 5)));
   }
 
   private AgentDefinition toAgentDefinition(SuperAgentDetail agent) {
@@ -340,33 +337,29 @@ public class RemoteCallService {
   }
 
   private List<AgentField> defaultAgentInputs() {
-    return List.of(agentField(AgentInputFieldConstants.QUERY, AgentFieldDisplayConstants.QUERY_DESCRIPTION, 1));
+    return List.of(new AgentField("query", "query", "string", "User input or question", 1));
   }
 
   private List<AgentField> defaultAgentOutputs() {
     return List.of(
-        agentField(AgentOutputFieldConstants.TEXT, AgentFieldDisplayConstants.TEXT_DESCRIPTION, 1),
-        agentField(AgentOutputFieldConstants.REASONING, AgentFieldDisplayConstants.REASONING_DESCRIPTION, 2),
-        agentField(AgentOutputFieldConstants.DEBUG, AgentFieldDisplayConstants.DEBUG_DESCRIPTION, 3),
-        agentField(AgentOutputFieldConstants.ERROR, AgentFieldDisplayConstants.ERROR_DESCRIPTION, 4),
-        agentField(AgentOutputFieldConstants.RAW_TEXT, AgentFieldDisplayConstants.RAW_TEXT_DESCRIPTION, 5),
-        agentField(AgentOutputFieldConstants.SKILL_TRIGGER, AgentFieldDisplayConstants.SKILL_TRIGGER_DESCRIPTION, 6),
-        agentField(AgentOutputFieldConstants.REFERENCES, AgentFieldDisplayConstants.REFERENCES_DESCRIPTION, 7),
-        agentField(AgentOutputFieldConstants.TOOL_CALL, AgentFieldDisplayConstants.TOOL_CALL_DESCRIPTION, 8),
-        agentField(AgentOutputFieldConstants.TOOL_RESPONSE, AgentFieldDisplayConstants.TOOL_RESPONSE_DESCRIPTION, 9),
-        agentField(AgentOutputFieldConstants.GEN_UI, AgentFieldDisplayConstants.GEN_UI_DESCRIPTION, 10));
-  }
-
-  private AgentField agentField(String fieldName, String description, int displayOrder) {
-    return new AgentField(fieldName, fieldName, DatasetFieldTypeConstants.STRING, description, displayOrder);
+        new AgentField("text", "text", "string", "Agent answer", 1),
+        new AgentField("reasoning", "reasoning", "string", "Agent reasoning", 2),
+        new AgentField("debug", "debug", "string", "Agent debug information", 3),
+        new AgentField("error", "error", "string", "Agent error information", 4),
+        new AgentField("rawText", "rawText", "string", "Merged raw response text", 5),
+        new AgentField("skillTrigger", "skillTrigger", "string", "Triggered skill metadata", 6),
+        new AgentField("references", "references", "string", "Reference list", 7),
+        new AgentField("toolCall", "toolCall", "string", "Tool call messages", 8),
+        new AgentField("toolResponse", "toolResponse", "string", "Tool response messages", 9),
+        new AgentField("genUi", "genUi", "string", "Generated UI card definition", 10));
   }
 
   private Map<String, String> chatCompletionHeaders() {
     Map<String, String> headers = new LinkedHashMap<>();
-    headers.put(RemoteCallHeaderConstants.SPACE_ID, firstNonBlank(CurrentSpaceHolder.get()));
+    headers.put("x-space-id", firstNonBlank(CurrentSpaceHolder.get()));
     String taskCookie = TaskCookieHolder.get();
     if (StringUtils.hasText(taskCookie)) {
-      headers.put(RemoteCallHeaderConstants.COOKIE, taskCookie.trim());
+      headers.put("Cookie", taskCookie.trim());
     }
     return headers;
   }
@@ -376,7 +369,7 @@ public class RemoteCallService {
     connection.setRequestMethod(method);
     connection.setConnectTimeout(Math.max(properties.getConnectTimeoutMs(), 1));
     connection.setReadTimeout(Math.max(properties.getReadTimeoutMs(), 1));
-    if (RemoteCallProtocolConstants.POST.equalsIgnoreCase(method)) {
+    if ("POST".equalsIgnoreCase(method)) {
       connection.setDoOutput(true);
     }
     return connection;
@@ -385,8 +378,7 @@ public class RemoteCallService {
   private URI remoteUri(String url) {
     String safeUrl = requireText(url, "远程调用地址不能为空");
     URI uri = URI.create(safeUrl);
-    if (RemoteCallProtocolConstants.HTTP.equalsIgnoreCase(uri.getScheme())
-        || RemoteCallProtocolConstants.HTTPS.equalsIgnoreCase(uri.getScheme())) {
+    if ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme())) {
       return uri;
     } else {
       throw new IllegalStateException("远程调用地址仅支持HTTP或HTTPS：" + safeUrl);
@@ -402,7 +394,7 @@ public class RemoteCallService {
   }
 
   private void ensureSuccess(String name, String status, Boolean success) {
-    if (!RemoteCallStatusConstants.SUCCESS_CODE.equals(status) || Boolean.FALSE.equals(success)) {
+    if (!"200".equals(status) || Boolean.FALSE.equals(success)) {
       throw new IllegalStateException(name + "返回失败，status=" + status + "，success=" + success);
     }
   }
@@ -422,7 +414,7 @@ public class RemoteCallService {
       String line;
       while ((line = reader.readLine()) != null) {
         String payload = normalizeSsePayload(line);
-        if (!StringUtils.hasText(payload) || RemoteCallProtocolConstants.SSE_DONE_PAYLOAD.equals(payload)) {
+        if (!StringUtils.hasText(payload) || "[DONE]".equals(payload)) {
           continue;
         }
         aggregate.rawPayloads.add(payload);
@@ -438,11 +430,11 @@ public class RemoteCallService {
     }
 
     if (aggregate.choices.isEmpty() && StringUtils.hasText(plainText.toString())) {
-      aggregate.choices.add(choice(0, contentBlock(ChatContentTypeConstants.TEXT, plainText.toString())));
+      aggregate.choices.add(choice(0, contentBlock("text", plainText.toString())));
     }
     Map<String, String> outputs = buildAgentOutputs(aggregate.choices);
-    String rawOutput = firstNonBlank(outputs.get(AgentOutputFieldConstants.RAW_TEXT), String.join("\n", aggregate.rawPayloads));
-    String error = outputs.getOrDefault(AgentOutputFieldConstants.ERROR, "");
+    String rawOutput = firstNonBlank(outputs.get("rawText"), String.join("\n", aggregate.rawPayloads));
+    String error = outputs.getOrDefault("error", "");
     return new AgentChatResponse(
         firstNonBlank(aggregate.id, UUID.randomUUID().toString().replace("-", "")),
         firstNonBlank(aggregate.conversationId, fallbackConversationId),
@@ -453,7 +445,7 @@ public class RemoteCallService {
         aggregate.created == null ? System.currentTimeMillis() : aggregate.created,
         firstNonBlank(aggregate.model, ""),
         aggregate.choices,
-        StringUtils.hasText(error) ? RemoteCallStatusConstants.FAILED : RemoteCallStatusConstants.COMPLETED,
+        StringUtils.hasText(error) ? STATUS_FAILED : STATUS_COMPLETED,
         outputs,
         System.currentTimeMillis() - startedAt,
         error,
@@ -473,7 +465,7 @@ public class RemoteCallService {
         System.currentTimeMillis(),
         "",
         choices,
-        RemoteCallStatusConstants.FAILED,
+        STATUS_FAILED,
         outputs,
         System.currentTimeMillis() - startedAt,
         errorMessage,
@@ -482,17 +474,17 @@ public class RemoteCallService {
 
   private void mergeAgentPayload(RemoteAgentAggregate aggregate, String payload) throws IOException {
     JsonNode root = objectMapper.readTree(payload);
-    aggregate.id = firstNonBlank(textValue(root, RemoteCallJsonFieldConstants.ID), aggregate.id);
-    aggregate.conversationId = firstNonBlank(textValue(root, RemoteCallJsonFieldConstants.CONVERSATION_ID), aggregate.conversationId);
-    aggregate.masterAgent = firstNonBlank(textValue(root, RemoteCallJsonFieldConstants.MASTER_AGENT), aggregate.masterAgent);
-    aggregate.metaAgent = firstNonBlank(textValue(root, RemoteCallJsonFieldConstants.META_AGENT), aggregate.metaAgent);
-    aggregate.userId = firstNonBlank(textValue(root, RemoteCallJsonFieldConstants.USER_ID), aggregate.userId);
-    aggregate.object = firstNonBlank(textValue(root, RemoteCallJsonFieldConstants.OBJECT), aggregate.object);
-    aggregate.model = firstNonBlank(textValue(root, RemoteCallJsonFieldConstants.MODEL), aggregate.model);
-    if (root.hasNonNull(RemoteCallJsonFieldConstants.CREATED)) {
-      aggregate.created = root.get(RemoteCallJsonFieldConstants.CREATED).asLong();
+    aggregate.id = firstNonBlank(textValue(root, "id"), aggregate.id);
+    aggregate.conversationId = firstNonBlank(textValue(root, "conversationId"), aggregate.conversationId);
+    aggregate.masterAgent = firstNonBlank(textValue(root, "masterAgent"), aggregate.masterAgent);
+    aggregate.metaAgent = firstNonBlank(textValue(root, "metaAgent"), aggregate.metaAgent);
+    aggregate.userId = firstNonBlank(textValue(root, "userId"), aggregate.userId);
+    aggregate.object = firstNonBlank(textValue(root, "object"), aggregate.object);
+    aggregate.model = firstNonBlank(textValue(root, "model"), aggregate.model);
+    if (root.hasNonNull("created")) {
+      aggregate.created = root.get("created").asLong();
     }
-    JsonNode choicesNode = root.get(RemoteCallJsonFieldConstants.CHOICES);
+    JsonNode choicesNode = root.get("choices");
     if (choicesNode != null && choicesNode.isArray()) {
       for (JsonNode choiceNode : choicesNode) {
         aggregate.choices.add(parseChoice(choiceNode, aggregate.choices.size()));
@@ -501,20 +493,18 @@ public class RemoteCallService {
   }
 
   private Choice parseChoice(JsonNode choiceNode, int fallbackIndex) {
-    Integer index = choiceNode != null && choiceNode.hasNonNull(RemoteCallJsonFieldConstants.INDEX)
-        ? choiceNode.get(RemoteCallJsonFieldConstants.INDEX).asInt()
-        : fallbackIndex;
-    String finishReason = textValue(choiceNode, RemoteCallJsonFieldConstants.FINISH_REASON);
-    JsonNode deltaNode = choiceNode == null ? null : choiceNode.get(RemoteCallJsonFieldConstants.DELTA);
-    String role = firstNonBlank(textValue(deltaNode, RemoteCallJsonFieldConstants.ROLE), ChatRoleConstants.ASSISTANT);
-    List<DeltaContent> contents = parseDeltaContents(deltaNode == null ? null : deltaNode.get(RemoteCallJsonFieldConstants.CONTENT));
+    Integer index = choiceNode != null && choiceNode.hasNonNull("index") ? choiceNode.get("index").asInt() : fallbackIndex;
+    String finishReason = textValue(choiceNode, "finish_reason");
+    JsonNode deltaNode = choiceNode == null ? null : choiceNode.get("delta");
+    String role = firstNonBlank(textValue(deltaNode, "role"), ROLE_ASSISTANT);
+    List<DeltaContent> contents = parseDeltaContents(deltaNode == null ? null : deltaNode.get("content"));
     List<ToolCallDelta> toolCalls = null;
-    JsonNode toolCallsNode = deltaNode == null ? null : deltaNode.get(RemoteCallJsonFieldConstants.TOOL_CALLS);
+    JsonNode toolCallsNode = deltaNode == null ? null : deltaNode.get("tool_calls");
     if (toolCallsNode != null && !toolCallsNode.isNull()) {
       toolCalls = objectMapper.convertValue(toolCallsNode, TOOL_CALLS_TYPE);
     }
     Map<String, Object> extra = null;
-    JsonNode extraNode = deltaNode == null ? null : deltaNode.get(RemoteCallJsonFieldConstants.EXTRA);
+    JsonNode extraNode = deltaNode == null ? null : deltaNode.get("extra");
     if (extraNode != null && !extraNode.isNull()) {
       extra = objectMapper.convertValue(extraNode, EXTRA_TYPE);
     }
@@ -543,37 +533,29 @@ public class RemoteCallService {
     if (item.isTextual()) {
       return new TextContent(item.asText());
     }
-    String type = firstNonBlank(textValue(item, RemoteCallJsonFieldConstants.TYPE), ChatContentTypeConstants.TEXT);
-    String text = textValue(item, RemoteCallJsonFieldConstants.TEXT);
-    String reasoning = textValue(item, ChatContentTypeConstants.REASONING);
-    String error = textValue(item, ChatContentTypeConstants.ERROR);
-    String skillName = firstNonBlank(
-        textValue(item, RemoteCallJsonFieldConstants.SKILL_NAME),
-        textValue(item, RemoteCallJsonFieldConstants.SKILL_NAME_SNAKE));
-    String skillDesc = firstNonBlank(
-        textValue(item, RemoteCallJsonFieldConstants.SKILL_DESC),
-        textValue(item, RemoteCallJsonFieldConstants.SKILL_DESC_SNAKE));
-    String toolCallId = firstNonBlank(
-        textValue(item, RemoteCallJsonFieldConstants.TOOL_CALL_ID),
-        textValue(item, RemoteCallJsonFieldConstants.TOOL_CALL_ID_SNAKE));
-    String toolName = firstNonBlank(
-        textValue(item, RemoteCallJsonFieldConstants.TOOL_NAME),
-        textValue(item, RemoteCallJsonFieldConstants.TOOL_NAME_SNAKE));
-    String arguments = textValue(item, RemoteCallJsonFieldConstants.ARGUMENTS);
-    String response = textValue(item, RemoteCallJsonFieldConstants.RESPONSE);
-    List<ReferenceItem> references = parseReferences(item.get(RemoteCallJsonFieldConstants.REFERENCES));
+    String type = firstNonBlank(textValue(item, "type"), "text");
+    String text = textValue(item, "text");
+    String reasoning = textValue(item, "reasoning");
+    String error = textValue(item, "error");
+    String skillName = firstNonBlank(textValue(item, "skillName"), textValue(item, "skill_name"));
+    String skillDesc = firstNonBlank(textValue(item, "skillDesc"), textValue(item, "skill_desc"));
+    String toolCallId = firstNonBlank(textValue(item, "toolCallId"), textValue(item, "tool_call_id"));
+    String toolName = firstNonBlank(textValue(item, "toolName"), textValue(item, "tool_name"));
+    String arguments = textValue(item, "arguments");
+    String response = textValue(item, "response");
+    List<ReferenceItem> references = parseReferences(item.get("references"));
     UICardDefinition uiCardDefinition = parseUiCardDefinition(item);
     String normalizedType = normalizeAgentContentType(type.trim());
     String fallbackValue = firstNonEmpty(text, reasoning, error, firstNonTypeFieldValue(item));
     return switch (normalizedType) {
-      case ChatContentTypeConstants.REASONING -> new ReasoningContent(firstNonEmpty(reasoning, text, fallbackValue));
-      case ChatContentTypeConstants.DEBUG -> new DebugContent(firstNonEmpty(text, fallbackValue));
-      case ChatContentTypeConstants.ERROR -> new ErrorContent(firstNonEmpty(error, text, fallbackValue));
-      case ChatContentTypeConstants.SKILL_TRIGGER -> new SkillTriggerContent(skillName, skillDesc);
-      case ChatContentTypeConstants.REFERENCES -> new ReferencesContent(references);
-      case ChatContentTypeConstants.TOOL_CALL -> new ToolCallContent(toolCallId, toolName, arguments);
-      case ChatContentTypeConstants.TOOL_RESPONSE -> new ToolResponseContent(toolCallId, toolName, response);
-      case ChatContentTypeConstants.GEN_UI -> new GenUIContent(uiCardDefinition);
+      case "reasoning" -> new ReasoningContent(firstNonEmpty(reasoning, text, fallbackValue));
+      case "debug" -> new DebugContent(firstNonEmpty(text, fallbackValue));
+      case "error" -> new ErrorContent(firstNonEmpty(error, text, fallbackValue));
+      case "skill_trigger" -> new SkillTriggerContent(skillName, skillDesc);
+      case "references" -> new ReferencesContent(references);
+      case "tool_call" -> new ToolCallContent(toolCallId, toolName, arguments);
+      case "tool_response" -> new ToolResponseContent(toolCallId, toolName, response);
+      case "gen_ui" -> new GenUIContent(uiCardDefinition);
       default -> new TextContent(firstNonEmpty(text, fallbackValue));
     };
   }
@@ -589,12 +571,12 @@ public class RemoteCallService {
   }
 
   private UICardDefinition parseUiCardDefinition(JsonNode item) {
-    JsonNode uiCardNode = item == null ? null : item.get(RemoteCallJsonFieldConstants.UI_CARD_DEFINITION_LEGACY);
+    JsonNode uiCardNode = item == null ? null : item.get("uicardDefinition");
     if (uiCardNode == null || uiCardNode.isNull()) {
-      uiCardNode = item == null ? null : item.get(RemoteCallJsonFieldConstants.UI_CARD_DEFINITION);
+      uiCardNode = item == null ? null : item.get("uiCardDefinition");
     }
     if (uiCardNode == null || uiCardNode.isNull()) {
-      uiCardNode = item == null ? null : item.get(RemoteCallJsonFieldConstants.UI_CARD_DEFINITION_SNAKE);
+      uiCardNode = item == null ? null : item.get("ui_card_definition");
     }
     if (uiCardNode == null || uiCardNode.isNull()) {
       return null;
@@ -616,28 +598,28 @@ public class RemoteCallService {
       appendToolCalls(parts.toolCallParts, choice.getDelta().getTool_calls());
     }
     Map<String, String> outputs = new LinkedHashMap<>();
-    putIfText(outputs, AgentOutputFieldConstants.DEBUG, joinStreamParts(parts.debugParts));
-    putIfText(outputs, AgentOutputFieldConstants.REASONING, joinStreamParts(parts.reasoningParts));
-    putIfText(outputs, AgentOutputFieldConstants.TEXT, joinStreamParts(parts.textParts));
-    putIfText(outputs, AgentOutputFieldConstants.ERROR, joinStreamParts(parts.errorParts));
-    putIfText(outputs, AgentOutputFieldConstants.SKILL_TRIGGER, joinNonBlank("\n", parts.skillTriggerParts.toArray(String[]::new)));
-    putIfText(outputs, AgentOutputFieldConstants.REFERENCES, joinNonBlank("\n", parts.referenceParts.toArray(String[]::new)));
-    putIfText(outputs, AgentOutputFieldConstants.TOOL_CALL, joinNonBlank("\n", parts.toolCallParts.toArray(String[]::new)));
-    putIfText(outputs, AgentOutputFieldConstants.TOOL_RESPONSE, joinNonBlank("\n", parts.toolResponseParts.toArray(String[]::new)));
-    putIfText(outputs, AgentOutputFieldConstants.GEN_UI, joinNonBlank("\n", parts.genUiParts.toArray(String[]::new)));
-    putIfText(outputs, AgentOutputFieldConstants.ANSWER, firstNonBlank(outputs.get(AgentOutputFieldConstants.TEXT)));
-    putIfText(outputs, AgentOutputFieldConstants.CONTENT, firstNonBlank(outputs.get(AgentOutputFieldConstants.TEXT)));
-    putIfText(outputs, AgentOutputFieldConstants.RAW_TEXT, joinNonBlank(
+    putIfText(outputs, "debug", joinStreamParts(parts.debugParts));
+    putIfText(outputs, "reasoning", joinStreamParts(parts.reasoningParts));
+    putIfText(outputs, "text", joinStreamParts(parts.textParts));
+    putIfText(outputs, "error", joinStreamParts(parts.errorParts));
+    putIfText(outputs, "skillTrigger", joinNonBlank("\n", parts.skillTriggerParts.toArray(String[]::new)));
+    putIfText(outputs, "references", joinNonBlank("\n", parts.referenceParts.toArray(String[]::new)));
+    putIfText(outputs, "toolCall", joinNonBlank("\n", parts.toolCallParts.toArray(String[]::new)));
+    putIfText(outputs, "toolResponse", joinNonBlank("\n", parts.toolResponseParts.toArray(String[]::new)));
+    putIfText(outputs, "genUi", joinNonBlank("\n", parts.genUiParts.toArray(String[]::new)));
+    putIfText(outputs, "answer", firstNonBlank(outputs.get("text")));
+    putIfText(outputs, "content", firstNonBlank(outputs.get("text")));
+    putIfText(outputs, "rawText", joinNonBlank(
         "\n",
-        outputs.get(AgentOutputFieldConstants.DEBUG),
-        outputs.get(AgentOutputFieldConstants.REASONING),
-        outputs.get(AgentOutputFieldConstants.TEXT),
-        outputs.get(AgentOutputFieldConstants.SKILL_TRIGGER),
-        outputs.get(AgentOutputFieldConstants.REFERENCES),
-        outputs.get(AgentOutputFieldConstants.TOOL_CALL),
-        outputs.get(AgentOutputFieldConstants.TOOL_RESPONSE),
-        outputs.get(AgentOutputFieldConstants.GEN_UI),
-        outputs.get(AgentOutputFieldConstants.ERROR)));
+        outputs.get("debug"),
+        outputs.get("reasoning"),
+        outputs.get("text"),
+        outputs.get("skillTrigger"),
+        outputs.get("references"),
+        outputs.get("toolCall"),
+        outputs.get("toolResponse"),
+        outputs.get("genUi"),
+        outputs.get("error")));
     return outputs;
   }
 
@@ -650,23 +632,23 @@ public class RemoteCallService {
     if (value.isEmpty()) {
       return;
     }
-    if (ChatContentTypeConstants.DEBUG.equals(type)) {
+    if ("debug".equals(type)) {
       parts.debugParts.add(value);
-    } else if (ChatContentTypeConstants.REASONING.equals(type)) {
+    } else if ("reasoning".equals(type)) {
       parts.reasoningParts.add(value);
-    } else if (ChatContentTypeConstants.TEXT.equals(type)) {
+    } else if ("text".equals(type)) {
       parts.textParts.add(value);
-    } else if (ChatContentTypeConstants.ERROR.equals(type)) {
+    } else if ("error".equals(type)) {
       parts.errorParts.add(value);
-    } else if (ChatContentTypeConstants.SKILL_TRIGGER.equals(type)) {
+    } else if ("skill_trigger".equals(type)) {
       parts.skillTriggerParts.add(value);
-    } else if (ChatContentTypeConstants.REFERENCES.equals(type)) {
+    } else if ("references".equals(type)) {
       parts.referenceParts.add(value);
-    } else if (ChatContentTypeConstants.TOOL_CALL.equals(type)) {
+    } else if ("tool_call".equals(type)) {
       parts.toolCallParts.add(value);
-    } else if (ChatContentTypeConstants.TOOL_RESPONSE.equals(type)) {
+    } else if ("tool_response".equals(type)) {
       parts.toolResponseParts.add(value);
-    } else if (ChatContentTypeConstants.GEN_UI.equals(type)) {
+    } else if ("gen_ui".equals(type)) {
       parts.genUiParts.add(value);
     } else {
       parts.textParts.add(value);
@@ -680,14 +662,14 @@ public class RemoteCallService {
       return toJson(referencesContent.getReferences());
     } else if (content instanceof ToolCallContent toolCallContent) {
       return toJson(Map.of(
-          RemoteCallJsonFieldConstants.TOOL_CALL_ID, firstNonBlank(toolCallContent.getToolCallId()),
-          RemoteCallJsonFieldConstants.TOOL_NAME, firstNonBlank(toolCallContent.getToolName()),
-          RemoteCallJsonFieldConstants.ARGUMENTS, firstNonBlank(toolCallContent.getArguments())));
+          "toolCallId", firstNonBlank(toolCallContent.getToolCallId()),
+          "toolName", firstNonBlank(toolCallContent.getToolName()),
+          "arguments", firstNonBlank(toolCallContent.getArguments())));
     } else if (content instanceof ToolResponseContent toolResponseContent) {
       return toJson(Map.of(
-          RemoteCallJsonFieldConstants.TOOL_CALL_ID, firstNonBlank(toolResponseContent.getToolCallId()),
-          RemoteCallJsonFieldConstants.TOOL_NAME, firstNonBlank(toolResponseContent.getToolName()),
-          RemoteCallJsonFieldConstants.RESPONSE, firstNonBlank(toolResponseContent.getResponse())));
+          "toolCallId", firstNonBlank(toolResponseContent.getToolCallId()),
+          "toolName", firstNonBlank(toolResponseContent.getToolName()),
+          "response", firstNonBlank(toolResponseContent.getResponse())));
     } else if (content instanceof GenUIContent genUIContent) {
       return toJson(genUIContent.getUiCardDefinition());
     } else if (content instanceof DebugContent debugContent) {
@@ -729,12 +711,12 @@ public class RemoteCallService {
   private Choice choice(Integer index, DeltaContent content) {
     return new Choice(
         index,
-        new Delta(ChatRoleConstants.ASSISTANT, content == null ? List.of() : List.of(content), null, null),
+        new Delta(ROLE_ASSISTANT, content == null ? List.of() : List.of(content), null, null),
         null);
   }
 
   private DeltaContent contentBlock(String type, String text) {
-    if (ChatContentTypeConstants.ERROR.equals(type)) {
+    if ("error".equals(type)) {
       return new ErrorContent(text);
     } else {
       return new TextContent(text);
@@ -746,14 +728,14 @@ public class RemoteCallService {
   }
 
   private String normalizeAgentContentType(String type) {
-    if (isContentType(type, ChatContentTypeConstants.SKILL_TRIGGER, ChatContentTypeConstants.SKILL_TRIGGER_CAMEL)) {
-      return ChatContentTypeConstants.SKILL_TRIGGER;
-    } else if (isContentType(type, ChatContentTypeConstants.TOOL_CALL, ChatContentTypeConstants.TOOL_CALL_CAMEL)) {
-      return ChatContentTypeConstants.TOOL_CALL;
-    } else if (isContentType(type, ChatContentTypeConstants.TOOL_RESPONSE, ChatContentTypeConstants.TOOL_RESPONSE_CAMEL)) {
-      return ChatContentTypeConstants.TOOL_RESPONSE;
-    } else if (isContentType(type, ChatContentTypeConstants.GEN_UI, ChatContentTypeConstants.GEN_UI_CAMEL)) {
-      return ChatContentTypeConstants.GEN_UI;
+    if (isContentType(type, "skill_trigger", "skillTrigger")) {
+      return "skill_trigger";
+    } else if (isContentType(type, "tool_call", "toolCall")) {
+      return "tool_call";
+    } else if (isContentType(type, "tool_response", "toolResponse")) {
+      return "tool_response";
+    } else if (isContentType(type, "gen_ui", "genUi")) {
+      return "gen_ui";
     } else {
       return type;
     }
@@ -768,14 +750,11 @@ public class RemoteCallService {
       return "";
     }
     String trimmed = line.trim();
-    if (trimmed.startsWith(RemoteCallProtocolConstants.SSE_COMMENT_PREFIX)
-        || trimmed.startsWith(RemoteCallProtocolConstants.SSE_EVENT_PREFIX)
-        || trimmed.startsWith(RemoteCallProtocolConstants.SSE_ID_PREFIX)
-        || trimmed.startsWith(RemoteCallProtocolConstants.SSE_RETRY_PREFIX)) {
+    if (trimmed.startsWith(":") || trimmed.startsWith("event:") || trimmed.startsWith("id:") || trimmed.startsWith("retry:")) {
       return "";
     }
-    if (trimmed.startsWith(RemoteCallProtocolConstants.SSE_DATA_PREFIX)) {
-      return trimmed.substring(RemoteCallProtocolConstants.SSE_DATA_PREFIX.length()).trim();
+    if (trimmed.startsWith("data:")) {
+      return trimmed.substring("data:".length()).trim();
     }
     return trimmed;
   }
@@ -807,7 +786,7 @@ public class RemoteCallService {
     var fields = item.fields();
     while (fields.hasNext()) {
       Map.Entry<String, JsonNode> entry = fields.next();
-      if (!RemoteCallJsonFieldConstants.TYPE.equals(entry.getKey())) {
+      if (!"type".equals(entry.getKey())) {
         String value = scalarText(entry.getValue());
         if (StringUtils.hasText(value)) {
           return value;

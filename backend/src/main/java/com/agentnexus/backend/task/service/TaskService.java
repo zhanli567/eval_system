@@ -8,9 +8,6 @@ import com.agentnexus.backend.common.security.CurrentUser;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetSummary;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetVersionDto;
 import com.agentnexus.backend.dataset.api.dto.response.FieldDto;
-import com.agentnexus.backend.dataset.constant.DatasetFieldTypeConstants;
-import com.agentnexus.backend.evaluator.constant.EvaluationResultConstants;
-import com.agentnexus.backend.evaluator.constant.EvaluatorTypeConstants;
 import com.agentnexus.backend.dataset.repository.DatasetRepository;
 import com.agentnexus.backend.dataset.repository.DatasetRowRecord;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorConfig;
@@ -21,11 +18,8 @@ import com.agentnexus.backend.remoteCall.api.dto.request.AgentChatRequest;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentChatResponse;
 import com.agentnexus.backend.remoteCall.api.dto.request.AgentMessage;
 import com.agentnexus.backend.remoteCall.api.dto.response.ModelChatResult;
-import com.agentnexus.backend.remoteCall.constant.AgentOutputFieldConstants;
-import com.agentnexus.backend.remoteCall.constant.ChatRoleConstants;
 import com.agentnexus.backend.remoteCall.service.RemoteCallService;
 import com.agentnexus.backend.tag.api.dto.response.TagOptionDto;
-import com.agentnexus.backend.tag.constant.TagTypeConstants;
 import com.agentnexus.backend.tag.repository.TagRepository;
 import com.agentnexus.backend.task.api.dto.response.AnnotationDetail;
 import com.agentnexus.backend.task.api.dto.request.AppFieldMappingInput;
@@ -51,12 +45,6 @@ import com.agentnexus.backend.task.repository.TaskEvaluatorParamMappingRecord;
 import com.agentnexus.backend.task.repository.TaskItemRecord;
 import com.agentnexus.backend.task.repository.TaskRepository;
 import com.agentnexus.backend.task.repository.TaskTagBindingRecord;
-import com.agentnexus.backend.task.constant.TaskAppTypeConstants;
-import com.agentnexus.backend.task.constant.TaskDisplayConstants;
-import com.agentnexus.backend.task.constant.TaskEvaluatorSourceConstants;
-import com.agentnexus.backend.task.constant.TaskParamSourceConstants;
-import com.agentnexus.backend.task.constant.TaskSortConstants;
-import com.agentnexus.backend.task.constant.TaskStatusConstants;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -81,6 +69,20 @@ import org.springframework.core.task.TaskExecutor;
 
 @Service
 public class TaskService {
+  private static final String STATUS_PENDING = "pending";
+  private static final String STATUS_RUNNING = "running";
+  private static final String STATUS_COMPLETED = "completed";
+  private static final String STATUS_FAILED = "failed";
+  private static final String STATUS_STOPPED = "stopped";
+  private static final String ITEM_ANNOTATION_PENDING = "annotation_pending";
+  private static final String RESULT_SKIPPED = "skipped";
+  private static final String APP_NONE = "none";
+  private static final String APP_AGENT = "agent";
+  private static final String EVALUATOR_PRESET = "preset";
+  private static final String EVALUATOR_CUSTOM = "custom";
+  private static final String SOURCE_DATASET_FIELD = "dataset_field";
+  private static final String SOURCE_APP_OUTPUT = "app_output";
+  private static final List<String> SUPPORTED_FIELD_TYPES = List.of("string", "number", "boolean");
   private static final int MAX_DIMENSION_COUNT = 5;
   private static final Pattern PROMPT_PARAM_PATTERN = Pattern.compile("\\$\\{([a-zA-Z_][\\w]*)}");
 
@@ -116,12 +118,8 @@ public class TaskService {
     int offset = (safePage - 1) * safeSize;
     String normalizedStatus = normalizeOptionalStatus(status);
     String like = "%" + (keyword == null ? "" : keyword.trim()) + "%";
-    String orderColumn = TaskSortConstants.CREATED_DATE.equals(sortBy)
-        ? TaskSortConstants.TASK_CREATED_DATE_COLUMN
-        : TaskSortConstants.TASK_LAST_UPDATED_DATE_COLUMN;
-    String orderDirection = TaskSortConstants.ASC.equalsIgnoreCase(sortOrder)
-        ? TaskSortConstants.SQL_ASC
-        : TaskSortConstants.SQL_DESC;
+    String orderColumn = "createdDate".equals(sortBy) ? "t.created_date" : "t.last_updated_date";
+    String orderDirection = "asc".equalsIgnoreCase(sortOrder) ? "ASC" : "DESC";
     List<TaskSummary> records = taskRepository.listTaskBases(normalizedStatus, like, orderColumn, orderDirection, safeSize, offset)
         .stream()
         .map(this::toSummary)
@@ -224,22 +222,22 @@ public class TaskService {
   @Transactional
   public TaskDetail startTask(String taskId, String cookie) {
     TaskBase base = findTask(taskId);
-    if (TaskStatusConstants.RUNNING.equals(base.status())) {
+    if (STATUS_RUNNING.equals(base.status())) {
       return getTask(taskId, 1, 10);
     }
-    if (TaskStatusConstants.COMPLETED.equals(base.status())) {
+    if (STATUS_COMPLETED.equals(base.status())) {
       throw new IllegalArgumentException("评测完成的任务不能重新开始");
     }
 
     String startedAt = now();
-    String appOutputStatus = TaskAppTypeConstants.AGENT.equals(base.appType()) ? TaskStatusConstants.PENDING : TaskStatusConstants.SKIPPED;
+    String appOutputStatus = APP_AGENT.equals(base.appType()) ? STATUS_PENDING : RESULT_SKIPPED;
     taskRepository.prepareTaskItemsForRestart(taskId, startedAt);
     taskRepository.prepareAppOutputsForRestart(taskId, appOutputStatus, startedAt);
     taskRepository.prepareEvaluatorResultsForRestart(taskId, startedAt);
     taskRepository.prepareTaskTagsForRestart(taskId, startedAt);
-    taskRepository.updateTaskStatus(taskId, TaskStatusConstants.RUNNING, startedAt, null, startedAt);
+    taskRepository.updateTaskStatus(taskId, STATUS_RUNNING, startedAt, null, startedAt);
     for (TaskEvaluatorBindingRecord evaluator : taskRepository.listTaskEvaluatorBindings(taskId)) {
-      taskRepository.updateTaskEvaluatorStatus(evaluator.id(), TaskStatusConstants.RUNNING, startedAt);
+      taskRepository.updateTaskEvaluatorStatus(evaluator.id(), STATUS_RUNNING, startedAt);
     }
     scheduleTaskExecution(taskId, cookie);
     return getTask(taskId, 1, 10);
@@ -254,15 +252,15 @@ public class TaskService {
   @Transactional
   public TaskDetail stopTask(String taskId) {
     TaskBase task = findTask(taskId);
-    if (TaskStatusConstants.STOPPED.equals(task.status())) {
+    if (STATUS_STOPPED.equals(task.status())) {
       return getTask(taskId, 1, 10);
     }
-    if (!TaskStatusConstants.RUNNING.equals(task.status())) {
+    if (!STATUS_RUNNING.equals(task.status())) {
       throw new IllegalArgumentException("仅进行中的评测任务可以停止");
     }
     String stoppedAt = now();
-    taskRepository.updateTaskStatus(taskId, TaskStatusConstants.STOPPED, null, stoppedAt, stoppedAt);
-    taskRepository.markTaskStoppedChildren(taskId, TaskStatusConstants.STOPPED, stoppedAt);
+    taskRepository.updateTaskStatus(taskId, STATUS_STOPPED, null, stoppedAt, stoppedAt);
+    taskRepository.markTaskStoppedChildren(taskId, STATUS_STOPPED, stoppedAt);
     return getTask(taskId, 1, 10);
   }
 
@@ -318,7 +316,7 @@ public class TaskService {
 
   private TaskExecutionContext loadTaskExecutionContext(String taskId) {
     TaskBase base = findTask(taskId);
-    if (!TaskStatusConstants.RUNNING.equals(base.status())) {
+    if (!STATUS_RUNNING.equals(base.status())) {
       return null;
     }
     TaskExecutionContext context = new TaskExecutionContext();
@@ -379,7 +377,7 @@ public class TaskService {
       return;
     }
     String finalStatus = resolveFinalTaskStatus(context.base.id(), outcome.hasTaskFailure());
-    boolean finished = TaskStatusConstants.COMPLETED.equals(finalStatus) || TaskStatusConstants.FAILED.equals(finalStatus);
+    boolean finished = STATUS_COMPLETED.equals(finalStatus) || STATUS_FAILED.equals(finalStatus);
     taskRepository.updateTaskStatus(context.base.id(), finalStatus, null, finished ? now() : null, now());
   }
 
@@ -388,19 +386,19 @@ public class TaskService {
       if (!shouldContinueTaskExecution(context.base.id())) {
         return;
       }
-      String evaluatorStatus = failedEvaluatorIds.contains(evaluator.id()) ? TaskStatusConstants.FAILED : TaskStatusConstants.COMPLETED;
+      String evaluatorStatus = failedEvaluatorIds.contains(evaluator.id()) ? STATUS_FAILED : STATUS_COMPLETED;
       taskRepository.updateTaskEvaluatorStatus(evaluator.id(), evaluatorStatus, now());
     }
   }
 
   private String resolveFinalTaskStatus(String taskId, boolean hasTaskFailure) {
     if (hasTaskFailure) {
-      return TaskStatusConstants.FAILED;
+      return STATUS_FAILED;
     }
     boolean allChildrenCompleted = taskRepository.countUnfinishedTagResultsByTask(taskId) == 0
         && taskRepository.countUnfinishedEvaluatorResultsByTask(taskId) == 0
         && taskRepository.countUnfinishedTaskItems(taskId) == 0;
-    return allChildrenCompleted ? TaskStatusConstants.COMPLETED : TaskStatusConstants.RUNNING;
+    return allChildrenCompleted ? STATUS_COMPLETED : STATUS_RUNNING;
   }
 
   private ItemExecutionResult executeTaskItem(TaskItemExecutionContext context) {
@@ -409,7 +407,7 @@ public class TaskService {
       return new ItemExecutionResult(false, failedEvaluatorIds);
     }
     String itemStartedAt = now();
-    taskRepository.updateTaskItemStatus(context.item.id(), TaskStatusConstants.RUNNING, itemStartedAt);
+    taskRepository.updateTaskItemStatus(context.item.id(), STATUS_RUNNING, itemStartedAt);
     if (!shouldContinueTaskExecution(context.task.base.id())) {
       return new ItemExecutionResult(false, failedEvaluatorIds);
     }
@@ -434,15 +432,14 @@ public class TaskService {
     } else {
       return new AgentInvocationResult(
           context.item.appOutput() == null ? "" : context.item.appOutput(),
-          firstNonBlank(context.item.appOutputStatus(), TaskStatusConstants.SKIPPED),
+          firstNonBlank(context.item.appOutputStatus(), RESULT_SKIPPED),
           context.item.appErrorMessage() == null ? "" : context.item.appErrorMessage(),
           extractStoredAppOutputs(context.item.appOutput()));
     }
   }
 
   private boolean shouldInvokeAgent(TaskItemExecutionContext context) {
-    return TaskAppTypeConstants.AGENT.equals(context.task.base.appType())
-        && !TaskStatusConstants.COMPLETED.equals(context.item.appOutputStatus());
+    return APP_AGENT.equals(context.task.base.appType()) && !STATUS_COMPLETED.equals(context.item.appOutputStatus());
   }
 
   private AgentInvocationResult invokeAgentSafely(TaskItemExecutionContext context) {
@@ -472,7 +469,7 @@ public class TaskService {
       String itemStartedAt,
       Set<String> failedEvaluatorIds
   ) {
-    boolean hasFailedEvaluator = TaskStatusConstants.FAILED.equals(agentResult.status());
+    boolean hasFailedEvaluator = STATUS_FAILED.equals(agentResult.status());
     if (hasFailedEvaluator) {
       skipEvaluatorsAfterAgentFailure(context, failedEvaluatorIds, agentResult, itemStartedAt);
     } else {
@@ -510,7 +507,7 @@ public class TaskService {
 
   private boolean shouldExecuteEvaluator(TaskItemExecutionContext context, TaskEvaluatorBindingRecord evaluator) {
     TaskEvaluatorResultDto result = context.evaluatorResults.get(evaluator.id());
-    return result == null || !TaskStatusConstants.COMPLETED.equals(result.status());
+    return result == null || !STATUS_COMPLETED.equals(result.status());
   }
 
   private EvaluationSimulationResult evaluateBoundEvaluator(
@@ -532,7 +529,7 @@ public class TaskService {
       EvaluationSimulationResult result,
       Set<String> failedEvaluatorIds
   ) {
-    if (TaskStatusConstants.FAILED.equals(result.status())) {
+    if (STATUS_FAILED.equals(result.status())) {
       failedEvaluatorIds.add(evaluator.id());
       return true;
     } else {
@@ -551,9 +548,9 @@ public class TaskService {
       return new ItemExecutionResult(hasFailedEvaluator, failedEvaluatorIds);
     }
     String itemFinishedAt = now();
-    String itemStatus = hasFailedEvaluator ? TaskStatusConstants.FAILED : TaskStatusConstants.ANNOTATION_PENDING;
+    String itemStatus = hasFailedEvaluator ? STATUS_FAILED : ITEM_ANNOTATION_PENDING;
     if (taskRepository.countUnfinishedTagResultsByItem(context.item.id()) == 0 && !hasFailedEvaluator) {
-      itemStatus = TaskStatusConstants.COMPLETED;
+      itemStatus = STATUS_COMPLETED;
     }
     taskRepository.updateTaskItemRunResult(
         context.item.id(),
@@ -588,7 +585,7 @@ public class TaskService {
       taskRepository.updateEvaluatorResult(
           context.item.id(),
           evaluator.id(),
-          TaskStatusConstants.SKIPPED,
+          RESULT_SKIPPED,
           null,
           "",
           "",
@@ -625,11 +622,11 @@ public class TaskService {
     }
     String now = now();
     for (TaskEvaluatorBindingRecord evaluator : taskRepository.listTaskEvaluatorBindings(taskId)) {
-      taskRepository.updateTaskEvaluatorStatus(evaluator.id(), TaskStatusConstants.FAILED, now);
+      taskRepository.updateTaskEvaluatorStatus(evaluator.id(), STATUS_FAILED, now);
     }
     taskRepository.updateTaskStatus(
         taskId,
-        TaskStatusConstants.FAILED,
+        STATUS_FAILED,
         null,
         now,
         now);
@@ -640,7 +637,7 @@ public class TaskService {
     TaskBase task = findTask(taskId);
     if (!taskRepository.isTaskCreatedByCurrentUser(taskId)) {
       throw new IllegalArgumentException("仅创建人可以删除评测任务");
-    } else if (!TaskStatusConstants.DELETABLE_STATUSES.contains(task.status())) {
+    } else if (!List.of(STATUS_PENDING, STATUS_COMPLETED, STATUS_FAILED, STATUS_STOPPED).contains(task.status())) {
       throw new IllegalArgumentException("仅待执行、评测完成、评测失败和已中止的任务可删除");
     } else {
       taskRepository.deleteTask(taskId);
@@ -668,9 +665,9 @@ public class TaskService {
       String now = now();
       String taskTagId = id();
       int displayOrder = taskRepository.nextTaskTagDisplayOrder(taskId);
-      taskRepository.insertTaskTag(taskTagId, taskId, safeTagId, TaskStatusConstants.PENDING, displayOrder, now);
+      taskRepository.insertTaskTag(taskTagId, taskId, safeTagId, STATUS_PENDING, displayOrder, now);
       for (TaskItemRecord item : taskRepository.listAllTaskItems(taskId)) {
-        taskRepository.insertTagResult(id(), taskId, item.id(), taskTagId, TaskStatusConstants.PENDING, now);
+        taskRepository.insertTagResult(id(), taskId, item.id(), taskTagId, STATUS_PENDING, now);
       }
       taskRepository.updateTaskStatus(taskId, task.status(), null, null, now);
       return getTask(taskId, 1, 10);
@@ -717,7 +714,7 @@ public class TaskService {
   @Transactional
   public AnnotationDetail saveAnnotation(String taskId, String taskItemId, SaveAnnotationRequest request) {
     TaskBase task = findTask(taskId);
-    if (TaskStatusConstants.STOPPED.equals(task.status())) {
+    if (STATUS_STOPPED.equals(task.status())) {
       throw new IllegalArgumentException("已中止的评测任务不能继续标注");
     }
     TaskItemRecord item = findTaskItem(taskId, taskItemId);
@@ -741,7 +738,7 @@ public class TaskService {
       taskRepository.updateTagResult(
           item.id(),
           tag.id(),
-          TaskStatusConstants.COMPLETED,
+          STATUS_COMPLETED,
           annotation.valueText(),
           annotation.valueNumber(),
           annotation.tagOptionId(),
@@ -794,11 +791,11 @@ public class TaskService {
     }
 
     String appType = normalizeAppType(request.appType());
-    String appId = TaskAppTypeConstants.AGENT.equals(appType) ? requireText(request.appId(), "请选择智能体应用") : "";
-    String appName = TaskAppTypeConstants.AGENT.equals(appType) ? savedNameText(request.appName(), appId, 128) : "";
-    String appVersionId = TaskAppTypeConstants.AGENT.equals(appType) ? requireText(request.appVersionId(), "请选择智能体应用版本") : "";
-    String appVersionName = TaskAppTypeConstants.AGENT.equals(appType) ? savedNameText(request.appVersionName(), appVersionId, 128) : "";
-    String appAgentAlias = TaskAppTypeConstants.AGENT.equals(appType) && StringUtils.hasText(request.appAgentAlias())
+    String appId = APP_AGENT.equals(appType) ? requireText(request.appId(), "请选择智能体应用") : "";
+    String appName = APP_AGENT.equals(appType) ? savedNameText(request.appName(), appId, 128) : "";
+    String appVersionId = APP_AGENT.equals(appType) ? requireText(request.appVersionId(), "请选择智能体应用版本") : "";
+    String appVersionName = APP_AGENT.equals(appType) ? savedNameText(request.appVersionName(), appVersionId, 128) : "";
+    String appAgentAlias = APP_AGENT.equals(appType) && StringUtils.hasText(request.appAgentAlias())
         ? request.appAgentAlias().trim()
         : "";
     List<AppFieldMappingInput> appMappings = normalizeAppMappings(appType, request.appFieldMappings(), fieldById);
@@ -828,7 +825,7 @@ public class TaskService {
     EvalTask task = new EvalTask();
     task.setId(taskId);
     task.setTaskName(normalized.taskName());
-    task.setStatus(TaskStatusConstants.PENDING);
+    task.setStatus(STATUS_PENDING);
     task.setDescription(normalized.description());
     task.setDatasetId(normalized.datasetId());
     task.setDatasetVersionId(normalized.datasetVersionId());
@@ -849,7 +846,7 @@ public class TaskService {
       List<AppFieldMappingInput> mappings,
       Map<String, FieldDto> fieldById
   ) {
-    if (!TaskAppTypeConstants.AGENT.equals(appType)) {
+    if (!APP_AGENT.equals(appType)) {
       return List.of();
     }
     if (mappings == null || mappings.isEmpty()) {
@@ -865,8 +862,8 @@ public class TaskService {
       if (!appInputNames.add(appInputName)) {
         throw new IllegalArgumentException("应用入参不能重复映射");
       }
-      String appInputType = StringUtils.hasText(mapping.appInputType()) ? mapping.appInputType().trim() : DatasetFieldTypeConstants.STRING;
-      if (!DatasetFieldTypeConstants.SUPPORTED_TYPES.contains(appInputType)) {
+      String appInputType = StringUtils.hasText(mapping.appInputType()) ? mapping.appInputType().trim() : "string";
+      if (!SUPPORTED_FIELD_TYPES.contains(appInputType)) {
         throw new IllegalArgumentException("应用入参类型仅支持string/number/boolean");
       }
       String fieldId = requireText(mapping.datasetFieldId(), "请选择应用入参映射的评测集字段");
@@ -907,12 +904,12 @@ public class TaskService {
       String evaluatorVersionId = "";
       String modelId = "";
       String modelName = "";
-      if (TaskEvaluatorSourceConstants.PRESET.equals(source)) {
+      if (EVALUATOR_PRESET.equals(source)) {
         PresetEvaluatorDetail preset = evaluatorService.getPresetEvaluator(evaluatorId);
-        if (EvaluatorTypeConstants.CODE.equals(preset.evaluatorType())) {
+        if ("code".equals(preset.evaluatorType())) {
           throw new IllegalArgumentException("暂不支持Code型评估器");
         }
-        if (EvaluatorTypeConstants.LLM.equals(preset.evaluatorType())) {
+        if ("llm".equals(preset.evaluatorType())) {
           modelId = requireText(input.modelId(), "\u8bf7\u9009\u62e9\u9884\u7f6e\u8bc4\u4f30\u5668\u6a21\u578b");
           modelName = requireText(input.modelName(), "请选择预置评估器模型");
         }
@@ -931,7 +928,7 @@ public class TaskService {
         }
         modelId = config.modelId();
         modelName = config.modelName();
-        if (EvaluatorTypeConstants.CODE.equals(config.evaluatorType())) {
+        if ("code".equals(config.evaluatorType())) {
           throw new IllegalArgumentException("暂不支持Code型评估器");
         }
         if (!evaluatorId.equals(config.evaluatorId())) {
@@ -999,13 +996,13 @@ public class TaskService {
       String sourceType = normalizeSourceType(mapping.sourceType());
       String datasetFieldId = "";
       String appOutputName = "";
-      if (TaskParamSourceConstants.DATASET_FIELD.equals(sourceType)) {
+      if (SOURCE_DATASET_FIELD.equals(sourceType)) {
         datasetFieldId = requireText(mapping.datasetFieldId(), "请选择评测集字段");
         if (!fieldById.containsKey(datasetFieldId)) {
           throw new IllegalArgumentException("评估器字段映射的评测集字段不存在");
         }
       } else {
-        if (!TaskAppTypeConstants.AGENT.equals(appType)) {
+        if (!APP_AGENT.equals(appType)) {
           throw new IllegalArgumentException("未关联应用时不能映射到应用输出");
         }
         appOutputName = mapping.appOutputName() == null ? "" : mapping.appOutputName().trim();
@@ -1026,7 +1023,7 @@ public class TaskService {
     if (mapping == null || !StringUtils.hasText(mapping.sourceType())) {
       return true;
     }
-    return TaskParamSourceConstants.DATASET_FIELD.equals(mapping.sourceType().trim())
+    return SOURCE_DATASET_FIELD.equals(mapping.sourceType().trim())
         && !StringUtils.hasText(mapping.datasetFieldId());
   }
 
@@ -1081,7 +1078,7 @@ public class TaskService {
           evaluator.evaluatorVersionId(),
           evaluator.modelId(),
           evaluator.modelName(),
-          TaskStatusConstants.PENDING,
+          STATUS_PENDING,
           evaluator.displayOrder(),
           now);
       for (NormalizedParamMapping mapping : evaluator.paramMappings()) {
@@ -1108,7 +1105,7 @@ public class TaskService {
     for (String tagId : task.tagIds()) {
       String taskTagId = id();
       taskTagIds.add(taskTagId);
-      taskRepository.insertTaskTag(taskTagId, taskId, tagId, TaskStatusConstants.PENDING, order++, now);
+      taskRepository.insertTaskTag(taskTagId, taskId, tagId, STATUS_PENDING, order++, now);
     }
     return taskTagIds;
   }
@@ -1120,7 +1117,7 @@ public class TaskService {
       List<String> taskTagIds,
       String now
   ) {
-    String appOutputStatus = TaskAppTypeConstants.AGENT.equals(task.appType()) ? TaskStatusConstants.PENDING : TaskStatusConstants.SKIPPED;
+    String appOutputStatus = APP_AGENT.equals(task.appType()) ? STATUS_PENDING : RESULT_SKIPPED;
     for (DatasetRowRecord row : task.rows()) {
       String taskItemId = id();
       taskRepository.insertTaskItem(
@@ -1129,14 +1126,14 @@ public class TaskService {
           task.datasetVersionId(),
           row.id(),
           row.rowNo(),
-          TaskStatusConstants.PENDING,
+          STATUS_PENDING,
           appOutputStatus,
           now);
       for (String taskEvaluatorId : taskEvaluatorIds) {
-        taskRepository.insertEvaluatorResult(id(), taskId, taskItemId, taskEvaluatorId, TaskStatusConstants.PENDING, now);
+        taskRepository.insertEvaluatorResult(id(), taskId, taskItemId, taskEvaluatorId, STATUS_PENDING, now);
       }
       for (String taskTagId : taskTagIds) {
-        taskRepository.insertTagResult(id(), taskId, taskItemId, taskTagId, TaskStatusConstants.PENDING, now);
+        taskRepository.insertTagResult(id(), taskId, taskItemId, taskTagId, STATUS_PENDING, now);
       }
     }
   }
@@ -1170,14 +1167,14 @@ public class TaskService {
   }
 
   private TaskEvaluatorDimension attachPresetEvaluatorDisplay(TaskEvaluatorDimension dimension) {
-    if (!TaskEvaluatorSourceConstants.PRESET.equals(dimension.evaluatorSource())) {
+    if (!EVALUATOR_PRESET.equals(dimension.evaluatorSource())) {
       return dimension;
     }
     PresetEvaluatorDetail preset = findPresetQuietly(dimension.evaluatorId());
     if (preset == null) {
       return dimension;
     }
-    return dimension.withDisplay(preset.evaluatorName(), preset.evaluatorType(), TaskDisplayConstants.PRESET_VERSION_NAME);
+    return dimension.withDisplay(preset.evaluatorName(), preset.evaluatorType(), "预置");
   }
 
   private List<TaskItemDetail> buildItems(List<TaskItemRecord> itemRecords, Map<String, FieldDto> fieldById) {
@@ -1226,14 +1223,14 @@ public class TaskService {
       Map<String, TaskEvaluatorBindingRecord> evaluatorBindings
   ) {
     TaskEvaluatorBindingRecord binding = evaluatorBindings.get(result.taskEvaluatorId());
-    if (binding == null || !TaskEvaluatorSourceConstants.PRESET.equals(binding.evaluatorSource())) {
+    if (binding == null || !EVALUATOR_PRESET.equals(binding.evaluatorSource())) {
       return result;
     }
     PresetEvaluatorDetail preset = findPresetQuietly(binding.evaluatorId());
     if (preset == null) {
       return result;
     }
-    return result.withDisplay(preset.evaluatorName(), preset.evaluatorType(), TaskDisplayConstants.PRESET_VERSION_NAME);
+    return result.withDisplay(preset.evaluatorName(), preset.evaluatorType(), "预置");
   }
 
   private PresetEvaluatorDetail findPresetQuietly(String presetId) {
@@ -1290,7 +1287,7 @@ public class TaskService {
   }
 
   private String paramSourceName(TaskEvaluatorParamMappingRecord mapping, Map<String, FieldDto> fieldById) {
-    if (TaskParamSourceConstants.DATASET_FIELD.equals(mapping.sourceType())) {
+    if (SOURCE_DATASET_FIELD.equals(mapping.sourceType())) {
       FieldDto field = fieldById.get(mapping.datasetFieldId());
       if (field == null) {
         return firstNonBlank(mapping.datasetFieldId(), "评测集字段");
@@ -1309,17 +1306,11 @@ public class TaskService {
       Map<String, String> outputs = new LinkedHashMap<>();
       boolean parsedJson = putStoredJsonOutputs(outputs, appOutput);
       if (!parsedJson) {
-        putIfText(outputs, AgentOutputFieldConstants.RAW_TEXT, appOutput);
-        putIfText(outputs, AgentOutputFieldConstants.TEXT, appOutput);
+        putIfText(outputs, "rawText", appOutput);
+        putIfText(outputs, "text", appOutput);
       }
-      putIfText(outputs, AgentOutputFieldConstants.ANSWER, firstNonBlank(
-          outputs.get(AgentOutputFieldConstants.ANSWER),
-          outputs.get(AgentOutputFieldConstants.TEXT),
-          outputs.get(AgentOutputFieldConstants.CONTENT)));
-      putIfText(outputs, AgentOutputFieldConstants.CONTENT, firstNonBlank(
-          outputs.get(AgentOutputFieldConstants.CONTENT),
-          outputs.get(AgentOutputFieldConstants.TEXT),
-          outputs.get(AgentOutputFieldConstants.ANSWER)));
+      putIfText(outputs, "answer", firstNonBlank(outputs.get("answer"), outputs.get("text"), outputs.get("content")));
+      putIfText(outputs, "content", firstNonBlank(outputs.get("content"), outputs.get("text"), outputs.get("answer")));
       return outputs;
     }
   }
@@ -1385,7 +1376,7 @@ public class TaskService {
   private Map<String, EvaluationRuntimeConfig> loadEvaluatorRuntimeConfigs(List<TaskEvaluatorBindingRecord> evaluators) {
     Map<String, EvaluationRuntimeConfig> configs = new HashMap<>();
     for (TaskEvaluatorBindingRecord evaluator : evaluators) {
-      if (TaskEvaluatorSourceConstants.PRESET.equals(evaluator.evaluatorSource())) {
+      if (EVALUATOR_PRESET.equals(evaluator.evaluatorSource())) {
         PresetEvaluatorDetail preset = evaluatorService.getPresetEvaluator(evaluator.evaluatorId());
         configs.put(evaluator.id(), new EvaluationRuntimeConfig(
             preset.evaluatorName(),
@@ -1418,13 +1409,13 @@ public class TaskService {
 
   private AgentInvocationResult failedAgentResult(String message) {
     String error = StringUtils.hasText(message) ? message : "Agent execution failed";
-    Map<String, String> outputs = Map.of(AgentOutputFieldConstants.ERROR, error, AgentOutputFieldConstants.RAW_TEXT, error);
-    return new AgentInvocationResult(serializeAgentOutputs(outputs), TaskStatusConstants.FAILED, error, outputs);
+    Map<String, String> outputs = Map.of("error", error, "rawText", error);
+    return new AgentInvocationResult(serializeAgentOutputs(outputs), STATUS_FAILED, error, outputs);
   }
 
   private EvaluationSimulationResult failedEvaluationResult(String message) {
     return new EvaluationSimulationResult(
-        TaskStatusConstants.FAILED,
+        STATUS_FAILED,
         null,
         "",
         "",
@@ -1437,8 +1428,8 @@ public class TaskService {
       List<TaskAppFieldMappingRecord> appMappings,
       Map<String, String> values
   ) {
-    if (!TaskAppTypeConstants.AGENT.equals(base.appType())) {
-      return new AgentInvocationResult("", TaskStatusConstants.SKIPPED, "", Map.of());
+    if (!APP_AGENT.equals(base.appType())) {
+      return new AgentInvocationResult("", RESULT_SKIPPED, "", Map.of());
     }
     String content = buildAgentMessageContent(appMappings, values);
     AgentChatResponse response = remoteCallService.invokeAgent(
@@ -1447,30 +1438,30 @@ public class TaskService {
         base.appAgentAlias(),
         new AgentChatRequest(
             base.id() + "-" + item.id(),
-            List.of(new AgentMessage(ChatRoleConstants.USER, content)),
+            List.of(new AgentMessage("user", content)),
             true));
     if (response == null) {
       return failedAgentResult("Super智能体未返回结果");
     }
     Map<String, String> outputs = extractAgentOutputs(response);
     String storedContent = serializeAgentOutputs(outputs);
-    if (TaskStatusConstants.FAILED.equals(response.status())) {
+    if (STATUS_FAILED.equals(response.status())) {
       return new AgentInvocationResult(
           storedContent,
-          TaskStatusConstants.FAILED,
-          firstNonBlank(response.errorMessage(), outputs.get(AgentOutputFieldConstants.ERROR), outputs.get(AgentOutputFieldConstants.RAW_TEXT)),
+          STATUS_FAILED,
+          firstNonBlank(response.errorMessage(), outputs.get("error"), outputs.get("rawText")),
           outputs);
     }
-    if (StringUtils.hasText(outputs.get(AgentOutputFieldConstants.ERROR))) {
+    if (StringUtils.hasText(outputs.get("error"))) {
       return new AgentInvocationResult(
           storedContent,
-          TaskStatusConstants.FAILED,
-          outputs.get(AgentOutputFieldConstants.ERROR),
+          STATUS_FAILED,
+          outputs.get("error"),
           outputs);
     }
     return new AgentInvocationResult(
         storedContent,
-        TaskStatusConstants.COMPLETED,
+        STATUS_COMPLETED,
         "",
         outputs);
   }
@@ -1503,23 +1494,23 @@ public class TaskService {
   ) {
     if (config == null) {
       return new EvaluationSimulationResult(
-          TaskStatusConstants.FAILED,
+          STATUS_FAILED,
           null,
           "",
           "",
           "评估器配置不存在");
     }
-    if (EvaluatorTypeConstants.CODE.equals(config.evaluatorType())) {
+    if ("code".equals(config.evaluatorType())) {
       return new EvaluationSimulationResult(
-          TaskStatusConstants.FAILED,
+          STATUS_FAILED,
           null,
           "",
           "",
           "Code评估器暂未接入真实代码执行接口");
     }
-    if (!EvaluatorTypeConstants.LLM.equals(config.evaluatorType())) {
+    if (!"llm".equals(config.evaluatorType())) {
       return new EvaluationSimulationResult(
-          TaskStatusConstants.FAILED,
+          STATUS_FAILED,
           null,
           "",
           "",
@@ -1527,7 +1518,7 @@ public class TaskService {
     }
     if (!StringUtils.hasText(config.modelId())) {
       return new EvaluationSimulationResult(
-          TaskStatusConstants.FAILED,
+          STATUS_FAILED,
           null,
           "",
           "",
@@ -1535,7 +1526,7 @@ public class TaskService {
     }
     if (!StringUtils.hasText(config.modelName())) {
       return new EvaluationSimulationResult(
-          TaskStatusConstants.FAILED,
+          STATUS_FAILED,
           null,
           "",
           "",
@@ -1546,7 +1537,7 @@ public class TaskService {
     ModelChatResult response = remoteCallService.chatModel(config.modelId(), config.modelName(), renderedPrompt);
     if (response == null || !StringUtils.hasText(response.outputText())) {
       return new EvaluationSimulationResult(
-          TaskStatusConstants.FAILED,
+          STATUS_FAILED,
           null,
           "",
           "",
@@ -1555,7 +1546,7 @@ public class TaskService {
     EvaluationParseResult parsed = parseEvaluationOutput(response.outputText());
     if (StringUtils.hasText(parsed.errorMessage())) {
       return new EvaluationSimulationResult(
-          TaskStatusConstants.FAILED,
+          STATUS_FAILED,
           null,
           "",
           response.outputText(),
@@ -1564,7 +1555,7 @@ public class TaskService {
     BigDecimal score = parsed.score();
     if (score == null) {
       return new EvaluationSimulationResult(
-          TaskStatusConstants.FAILED,
+          STATUS_FAILED,
           null,
           "",
           "",
@@ -1573,9 +1564,9 @@ public class TaskService {
     String resultValue = score.compareTo(config.scoreMin()) < 0 || score.compareTo(config.scoreMax()) > 0
         ? appendEvaluationNotice(parsed.reason(), "模型评估结果中的score超出评分范围")
         : parsed.reason();
-    String passResult = score.compareTo(config.passThreshold()) >= 0 ? EvaluationResultConstants.PASS : EvaluationResultConstants.FAIL;
+    String passResult = score.compareTo(config.passThreshold()) >= 0 ? "pass" : "fail";
     return new EvaluationSimulationResult(
-        TaskStatusConstants.COMPLETED,
+        STATUS_COMPLETED,
         score,
         passResult,
         resultValue,
@@ -1623,7 +1614,7 @@ public class TaskService {
     if (mapping == null) {
       return "";
     }
-    if (TaskParamSourceConstants.APP_OUTPUT.equals(mapping.sourceType())) {
+    if (SOURCE_APP_OUTPUT.equals(mapping.sourceType())) {
       if (!StringUtils.hasText(mapping.appOutputName())) {
         return "";
       } else {
@@ -1642,17 +1633,9 @@ public class TaskService {
         }
       });
     }
-    putIfText(outputs, AgentOutputFieldConstants.RAW_TEXT, firstNonBlank(
-        outputs.get(AgentOutputFieldConstants.RAW_TEXT),
-        response.rawOutput()));
-    putIfText(outputs, AgentOutputFieldConstants.ANSWER, firstNonBlank(
-        outputs.get(AgentOutputFieldConstants.ANSWER),
-        outputs.get(AgentOutputFieldConstants.TEXT),
-        outputs.get(AgentOutputFieldConstants.CONTENT)));
-    putIfText(outputs, AgentOutputFieldConstants.CONTENT, firstNonBlank(
-        outputs.get(AgentOutputFieldConstants.CONTENT),
-        outputs.get(AgentOutputFieldConstants.TEXT),
-        outputs.get(AgentOutputFieldConstants.ANSWER)));
+    putIfText(outputs, "rawText", firstNonBlank(outputs.get("rawText"), response.rawOutput()));
+    putIfText(outputs, "answer", firstNonBlank(outputs.get("answer"), outputs.get("text"), outputs.get("content")));
+    putIfText(outputs, "content", firstNonBlank(outputs.get("content"), outputs.get("text"), outputs.get("answer")));
     return outputs;
   }
 
@@ -1719,16 +1702,14 @@ public class TaskService {
     }
     try {
       JsonNode root = objectMapper.readTree(json);
-      JsonNode scoreNode = root.get(EvaluationResultConstants.SCORE_FIELD);
+      JsonNode scoreNode = root.get("score");
       if (scoreNode == null || scoreNode.isNull()) {
         return new EvaluationParseResult(null, "", "模型评估结果缺少score字段");
       }
       BigDecimal score = scoreNode.isNumber()
           ? scoreNode.decimalValue()
           : new BigDecimal(scoreNode.asText().trim());
-      String reason = root.hasNonNull(EvaluationResultConstants.REASON_FIELD)
-          ? root.get(EvaluationResultConstants.REASON_FIELD).asText()
-          : outputText;
+      String reason = root.hasNonNull("reason") ? root.get("reason").asText() : outputText;
       return new EvaluationParseResult(score, reason, "");
     } catch (Exception e) {
       return new EvaluationParseResult(null, "", "模型评估结果解析失败：" + e.getMessage());
@@ -1753,11 +1734,11 @@ public class TaskService {
   }
 
   private NormalizedAnnotation normalizeAnnotation(TaskTagBindingRecord tag, TagAnnotationInput input) {
-    if (TagTypeConstants.TEXT.equals(tag.tagType())) {
+    if ("text".equals(tag.tagType())) {
       String value = requireText(input.valueText(), "请输入文本标签：" + tag.tagName());
-      return new NormalizedAnnotation(value, null, "", EvaluationResultConstants.PASS);
+      return new NormalizedAnnotation(value, null, "", "pass");
     }
-    if (TagTypeConstants.NUMBER.equals(tag.tagType())) {
+    if ("number".equals(tag.tagType())) {
       BigDecimal value = input.valueNumber();
       if (value == null) {
         throw new IllegalArgumentException("请输入数字标签：" + tag.tagName());
@@ -1768,9 +1749,7 @@ public class TaskService {
       if (tag.maxValue() != null && value.compareTo(BigDecimal.valueOf(tag.maxValue())) > 0) {
         throw new IllegalArgumentException("数字标签不能大于最大值：" + tag.tagName());
       }
-      String passResult = tag.passThreshold() != null && value.compareTo(BigDecimal.valueOf(tag.passThreshold())) >= 0
-          ? EvaluationResultConstants.PASS
-          : EvaluationResultConstants.FAIL;
+      String passResult = tag.passThreshold() != null && value.compareTo(BigDecimal.valueOf(tag.passThreshold())) >= 0 ? "pass" : "fail";
       return new NormalizedAnnotation("", value, "", passResult);
     }
     String optionId = requireText(input.tagOptionId(), "请选择标签选项：" + tag.tagName());
@@ -1784,27 +1763,27 @@ public class TaskService {
   private void refreshTaskTagStatus(String taskTagId, String now) {
     int total = taskRepository.countTagResults(taskTagId);
     int completed = taskRepository.countCompletedTagResults(taskTagId);
-    String status = total > 0 && completed >= total ? TaskStatusConstants.COMPLETED : TaskStatusConstants.PENDING;
+    String status = total > 0 && completed >= total ? STATUS_COMPLETED : STATUS_PENDING;
     taskRepository.updateTaskTagStatus(taskTagId, status, now);
   }
 
   private void refreshItemAndTaskStatus(String taskId, String taskItemId, String now) {
     TaskBase task = findTask(taskId);
-    if (TaskStatusConstants.STOPPED.equals(task.status())) {
+    if (STATUS_STOPPED.equals(task.status())) {
       return;
     }
     int unfinishedEvaluators = taskRepository.countUnfinishedEvaluatorResultsByItem(taskItemId);
     int unfinishedTags = taskRepository.countUnfinishedTagResultsByItem(taskItemId);
     if (unfinishedEvaluators == 0 && unfinishedTags == 0) {
-      taskRepository.updateTaskItemStatus(taskItemId, TaskStatusConstants.COMPLETED, now);
+      taskRepository.updateTaskItemStatus(taskItemId, STATUS_COMPLETED, now);
     } else if (unfinishedEvaluators == 0) {
-      taskRepository.updateTaskItemStatus(taskItemId, TaskStatusConstants.ANNOTATION_PENDING, now);
+      taskRepository.updateTaskItemStatus(taskItemId, ITEM_ANNOTATION_PENDING, now);
     }
     if (taskRepository.countUnfinishedTaskItems(taskId) == 0) {
-      taskRepository.updateTaskStatus(taskId, TaskStatusConstants.COMPLETED, null, now, now);
+      taskRepository.updateTaskStatus(taskId, STATUS_COMPLETED, null, now, now);
     } else {
-      if (TaskStatusConstants.PENDING.equals(task.status())) {
-        taskRepository.updateTaskStatus(taskId, TaskStatusConstants.RUNNING, now, null, now);
+      if (STATUS_PENDING.equals(task.status())) {
+        taskRepository.updateTaskStatus(taskId, STATUS_RUNNING, now, null, now);
       }
     }
   }
@@ -1836,7 +1815,7 @@ public class TaskService {
       return null;
     }
     String normalized = status.trim();
-    if (!TaskStatusConstants.SUPPORTED_TASK_STATUSES.contains(normalized)) {
+    if (!List.of(STATUS_PENDING, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED, STATUS_STOPPED).contains(normalized)) {
       throw new IllegalArgumentException("评测状态不支持");
     }
     return normalized;
@@ -1844,10 +1823,10 @@ public class TaskService {
 
   private String normalizeAppType(String appType) {
     if (!StringUtils.hasText(appType)) {
-      return TaskAppTypeConstants.NONE;
+      return APP_NONE;
     }
     String normalized = appType.trim();
-    if (!TaskAppTypeConstants.SUPPORTED_TYPES.contains(normalized)) {
+    if (!List.of(APP_NONE, APP_AGENT).contains(normalized)) {
       throw new IllegalArgumentException("应用类型仅支持不关联应用或智能体");
     }
     return normalized;
@@ -1855,7 +1834,7 @@ public class TaskService {
 
   private String normalizeEvaluatorSource(String source) {
     String normalized = requireText(source, "请选择评估器类型");
-    if (!TaskEvaluatorSourceConstants.SUPPORTED_SOURCES.contains(normalized)) {
+    if (!List.of(EVALUATOR_PRESET, EVALUATOR_CUSTOM).contains(normalized)) {
       throw new IllegalArgumentException("评估器类型仅支持预置或自定义");
     }
     return normalized;
@@ -1863,7 +1842,7 @@ public class TaskService {
 
   private String normalizeSourceType(String sourceType) {
     String normalized = requireText(sourceType, "请选择字段映射来源");
-    if (!TaskParamSourceConstants.SUPPORTED_SOURCES.contains(normalized)) {
+    if (!List.of(SOURCE_DATASET_FIELD, SOURCE_APP_OUTPUT).contains(normalized)) {
       throw new IllegalArgumentException("字段映射来源不支持");
     }
     return normalized;
@@ -1888,8 +1867,8 @@ public class TaskService {
       return true;
     }
     TaskBase task = taskRepository.findTaskBase(taskId);
-    if (task != null && TaskStatusConstants.STOPPED.equals(task.status())) {
-      taskRepository.markTaskStoppedChildren(taskId, TaskStatusConstants.STOPPED, now());
+    if (task != null && STATUS_STOPPED.equals(task.status())) {
+      taskRepository.markTaskStoppedChildren(taskId, STATUS_STOPPED, now());
     }
     return false;
   }

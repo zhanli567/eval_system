@@ -7,8 +7,6 @@ import com.agentnexus.backend.tag.api.dto.request.TagInput;
 import com.agentnexus.backend.tag.api.dto.response.TagOptionDto;
 import com.agentnexus.backend.tag.api.dto.request.TagOptionInput;
 import com.agentnexus.backend.tag.api.dto.response.TagSummary;
-import com.agentnexus.backend.tag.constant.TagOptionGroupConstants;
-import com.agentnexus.backend.tag.constant.TagTypeConstants;
 import com.agentnexus.backend.tag.repository.TagRepository;
 import com.agentnexus.backend.task.repository.TaskRepository;
 import java.util.ArrayList;
@@ -22,6 +20,9 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class TagService {
+  private static final List<String> SUPPORTED_TAG_TYPES = List.of("category", "boolean", "number", "text");
+  private static final List<String> SUPPORTED_OPTION_GROUPS = List.of("pass", "fail");
+
   private final TagRepository tagRepository;
   private final TaskRepository taskRepository;
 
@@ -145,13 +146,13 @@ public class TagService {
     Integer maxValue = null;
     Integer passThreshold = null;
     List<TagOptionInput> options = List.of();
-    if (TagTypeConstants.CATEGORY.equals(tagType)) {
+    if ("category".equals(tagType)) {
       options = normalizeCategoryOptions(request.options());
-    } else if (TagTypeConstants.BOOLEAN.equals(tagType)) {
+    } else if ("boolean".equals(tagType)) {
       options = List.of(
-          new TagOptionInput(null, TagOptionGroupConstants.TRUE_OPTION_NAME, TagOptionGroupConstants.PASS),
-          new TagOptionInput(null, TagOptionGroupConstants.FALSE_OPTION_NAME, TagOptionGroupConstants.FAIL));
-    } else if (TagTypeConstants.NUMBER.equals(tagType)) {
+          new TagOptionInput(null, "True", "pass"),
+          new TagOptionInput(null, "False", "fail"));
+    } else if ("number".equals(tagType)) {
       minValue = request.minValue();
       maxValue = request.maxValue();
       passThreshold = request.passThreshold();
@@ -191,7 +192,7 @@ public class TagService {
       throw new IllegalArgumentException("标签类型不能为空");
     }
     String normalized = tagType.trim();
-    if (!TagTypeConstants.SUPPORTED_TYPES.contains(normalized)) {
+    if (!SUPPORTED_TAG_TYPES.contains(normalized)) {
       throw new IllegalArgumentException("标签类型仅支持category、boolean、number、text");
     }
     return normalized;
@@ -219,10 +220,10 @@ public class TagService {
         throw new IllegalArgumentException("标签选项不能重复");
       }
       String optionGroup = normalizeOptionGroup(option.optionGroup());
-      hasPass = hasPass || TagOptionGroupConstants.PASS.equals(optionGroup);
-      hasFail = hasFail || TagOptionGroupConstants.FAIL.equals(optionGroup);
-      passCount += TagOptionGroupConstants.PASS.equals(optionGroup) ? 1 : 0;
-      failCount += TagOptionGroupConstants.FAIL.equals(optionGroup) ? 1 : 0;
+      hasPass = hasPass || "pass".equals(optionGroup);
+      hasFail = hasFail || "fail".equals(optionGroup);
+      passCount += "pass".equals(optionGroup) ? 1 : 0;
+      failCount += "fail".equals(optionGroup) ? 1 : 0;
       normalized.add(new TagOptionInput(option.id(), optionName, optionGroup));
     }
     if (!hasPass || !hasFail) {
@@ -239,7 +240,7 @@ public class TagService {
       throw new IllegalArgumentException("选项分组不能为空");
     }
     String normalized = optionGroup.trim();
-    if (!TagOptionGroupConstants.SUPPORTED_GROUPS.contains(normalized)) {
+    if (!SUPPORTED_OPTION_GROUPS.contains(normalized)) {
       throw new IllegalArgumentException("选项分组仅支持pass、fail");
     }
     return normalized;
@@ -261,7 +262,7 @@ public class TagService {
   }
 
   private void saveOptions(String tagId, String tagType, List<TagOptionInput> options, String now) {
-    if (!TagTypeConstants.CATEGORY.equals(tagType) && !TagTypeConstants.BOOLEAN.equals(tagType)) {
+    if (!"category".equals(tagType) && !"boolean".equals(tagType)) {
       return;
     }
     int order = 1;
