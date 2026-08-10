@@ -11,6 +11,7 @@ import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorSummary;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorTrialResponse;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorVersionDto;
 import com.agentnexus.backend.evaluator.constant.EvaluationResultConstants;
+import com.agentnexus.backend.evaluator.constant.EvaluatorErrorMessageConstants;
 import com.agentnexus.backend.evaluator.constant.EvaluatorParamTypeConstants;
 import com.agentnexus.backend.evaluator.constant.EvaluatorSortConstants;
 import com.agentnexus.backend.evaluator.constant.EvaluatorTargetConstants;
@@ -106,7 +107,7 @@ public class EvaluatorService {
    */
   public EvaluatorTrialResponse runTrial(EvaluatorTrialRequest request) {
     if (request == null || request.evaluator() == null) {
-      throw new IllegalArgumentException("评估器试运行参数不能为空");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.TRIAL_REQUEST_REQUIRED);
     }
     TrialEvaluator evaluator = normalizeTrialEvaluator(request.evaluator());
     Map<String, Object> params = prepareTrialParams(evaluator.params(), request.paramValues());
@@ -135,7 +136,7 @@ public class EvaluatorService {
     String versionId = id();
     String now = now();
     if (evaluatorRepository.existsEvaluatorName(normalized.evaluatorName())) {
-      throw new IllegalArgumentException("当前空间已存在同名评估器");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.DUPLICATE_EVALUATOR_NAME);
     } else {
       evaluatorRepository.insertEvaluator(evaluatorId, normalized.evaluatorName(), normalized.evaluatorType(), normalized.description(), versionId, now);
     }
@@ -162,7 +163,7 @@ public class EvaluatorService {
   public EvaluatorConfig getVersion(String versionId) {
     EvaluatorConfigBase base = evaluatorRepository.findVersionConfig(versionId);
     if (base == null) {
-      throw new IllegalArgumentException("评估器版本不存在");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.EVALUATOR_VERSION_NOT_FOUND);
     }
     return attachParams(base);
   }
@@ -171,7 +172,7 @@ public class EvaluatorService {
   public EvaluatorConfig updateDraft(String versionId, EvaluatorInput request) {
     EvaluatorConfig existing = getVersion(versionId);
     if (!Boolean.TRUE.equals(existing.draft())) {
-      throw new IllegalArgumentException("只有草稿版本允许修改");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.ONLY_DRAFT_VERSION_CAN_MODIFY);
     }
     NormalizedEvaluator normalized = normalizeEvaluatorInput(request, existing.evaluatorType());
     evaluatorRepository.updateEvaluatorBase(existing.evaluatorId(), normalized.evaluatorName(), normalized.description(), now());
@@ -195,11 +196,11 @@ public class EvaluatorService {
   public EvaluatorConfig publish(String evaluatorId) {
     String draftVersionId = evaluatorRepository.findDraftVersionId(evaluatorId);
     if (!StringUtils.hasText(draftVersionId)) {
-      throw new IllegalArgumentException("草稿版本不存在");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.DRAFT_VERSION_NOT_FOUND);
     }
     EvaluatorConfig draft = getVersion(draftVersionId);
     if (EvaluatorTypeConstants.CODE.equals(draft.evaluatorType())) {
-      throw new IllegalArgumentException("暂不支持Code型评估器");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.CODE_EVALUATOR_UNSUPPORTED);
     }
     int nextVersionNo = evaluatorRepository.nextVersionNo(evaluatorId);
     String newVersionId = id();
@@ -233,13 +234,13 @@ public class EvaluatorService {
   public void deleteEvaluator(String evaluatorId) {
     String evaluatorType = evaluatorRepository.findEvaluatorType(evaluatorId);
     if (!StringUtils.hasText(evaluatorType)) {
-      throw new IllegalArgumentException("评估器不存在");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.EVALUATOR_NOT_FOUND);
     } else if (!evaluatorRepository.isEvaluatorCreatedByCurrentUser(evaluatorId)) {
-      throw new IllegalArgumentException("仅创建人可以删除评估器");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.ONLY_CREATOR_CAN_DELETE_EVALUATOR);
     } else {
       List<String> taskNames = taskRepository.listTaskNamesByEvaluatorId(evaluatorId);
       if (!taskNames.isEmpty()) {
-        throw new IllegalArgumentException("评估器已被评测任务“" + String.join("、", taskNames) + "”使用，不能删除");
+        throw new IllegalArgumentException(EvaluatorErrorMessageConstants.evaluatorUsedByTasks(taskNames));
       } else {
         evaluatorRepository.deleteEvaluator(evaluatorId);
       }
@@ -250,13 +251,13 @@ public class EvaluatorService {
   public void deleteVersion(String versionId) {
     EvaluatorConfig version = getVersion(versionId);
     if (!evaluatorRepository.isVersionCreatedByCurrentUser(versionId)) {
-      throw new IllegalArgumentException("仅创建人可以删除评估器版本");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.ONLY_CREATOR_CAN_DELETE_EVALUATOR_VERSION);
     } else if (Boolean.TRUE.equals(version.draft())) {
-      throw new IllegalArgumentException("草稿版本不能删除");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.DRAFT_VERSION_CANNOT_DELETE);
     } else {
       List<String> taskNames = taskRepository.listTaskNamesByEvaluatorVersionId(versionId);
       if (!taskNames.isEmpty()) {
-        throw new IllegalArgumentException("评估器版本已被评测任务“" + String.join("、", taskNames) + "”使用，不能删除");
+        throw new IllegalArgumentException(EvaluatorErrorMessageConstants.evaluatorVersionUsedByTasks(taskNames));
       } else {
         evaluatorRepository.deleteVersion(versionId);
         List<EvaluatorVersionDto> remainingVersions = evaluatorRepository.listVersions(version.evaluatorId());
@@ -313,17 +314,17 @@ public class EvaluatorService {
 
   private NormalizedEvaluator normalizeEvaluatorInput(EvaluatorInput request, String existingType) {
     if (request == null) {
-      throw new IllegalArgumentException("评估器参数不能为空");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.EVALUATOR_REQUEST_REQUIRED);
     }
     String evaluatorName = normalizeName(request.evaluatorName());
     String evaluatorType = StringUtils.hasText(existingType)
         ? existingType
         : normalizeEvaluatorType(request.evaluatorType());
     if (StringUtils.hasText(request.evaluatorType()) && !evaluatorType.equals(request.evaluatorType().trim())) {
-      throw new IllegalArgumentException("评估器类型创建后不允许修改");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.EVALUATOR_TYPE_CANNOT_MODIFY);
     }
     if (EvaluatorTypeConstants.CODE.equals(evaluatorType)) {
-      throw new IllegalArgumentException("暂不支持Code型评估器");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.CODE_EVALUATOR_UNSUPPORTED);
     }
     String description = normalizeDescription(request.description());
     BigDecimal scoreMin = request.scoreMin() == null ? DEFAULT_SCORE_MIN : request.scoreMin();
@@ -338,13 +339,13 @@ public class EvaluatorService {
     List<EvaluatorParamInput> params = List.of();
     if (EvaluatorTypeConstants.LLM.equals(evaluatorType)) {
       modelId = request.modelId() == null ? "" : request.modelId().trim();
-      modelName = requireText(request.modelName(), "请选择模型");
-      prompt = requireText(request.prompt(), "Prompt不能为空");
-      validateMaxLength(prompt, MAX_PROMPT_LENGTH, "Prompt不能超过2000个字符");
+      modelName = requireText(request.modelName(), EvaluatorErrorMessageConstants.MODEL_REQUIRED);
+      prompt = requireText(request.prompt(), EvaluatorErrorMessageConstants.PROMPT_REQUIRED);
+      validateMaxLength(prompt, MAX_PROMPT_LENGTH, EvaluatorErrorMessageConstants.PROMPT_TOO_LONG);
       params = normalizePromptParams(prompt, request.params());
     } else {
-      executeCode = requireText(request.executeCode(), "执行函数不能为空");
-      validateMaxLength(executeCode, MAX_EXECUTE_CODE_LENGTH, "执行函数不能超过10000个字符");
+      executeCode = requireText(request.executeCode(), EvaluatorErrorMessageConstants.EXECUTE_CODE_REQUIRED);
+      validateMaxLength(executeCode, MAX_EXECUTE_CODE_LENGTH, EvaluatorErrorMessageConstants.EXECUTE_CODE_TOO_LONG);
       params = normalizeCodeParams(request.params());
     }
 
@@ -363,9 +364,9 @@ public class EvaluatorService {
   }
 
   private String normalizeName(String evaluatorName) {
-    String normalized = requireText(evaluatorName, "评估器名称不能为空");
+    String normalized = requireText(evaluatorName, EvaluatorErrorMessageConstants.EVALUATOR_NAME_REQUIRED);
     if (normalized.length() > 50) {
-      throw new IllegalArgumentException("评估器名称不能超过50个字符");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.EVALUATOR_NAME_TOO_LONG);
     }
     return normalized;
   }
@@ -373,7 +374,7 @@ public class EvaluatorService {
   private String normalizeDescription(String description) {
     String normalized = description == null ? "" : description.trim();
     if (normalized.length() > 200) {
-      throw new IllegalArgumentException("描述不能超过200个字符");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.DESCRIPTION_TOO_LONG);
     }
     return normalized;
   }
@@ -386,16 +387,16 @@ public class EvaluatorService {
   }
 
   private String normalizeEvaluatorType(String evaluatorType) {
-    String normalized = requireText(evaluatorType, "评估器类型不能为空").toLowerCase();
+    String normalized = requireText(evaluatorType, EvaluatorErrorMessageConstants.EVALUATOR_TYPE_REQUIRED).toLowerCase();
     if (!EvaluatorTypeConstants.SUPPORTED_TYPES.contains(normalized)) {
-      throw new IllegalArgumentException("评估器类型仅支持llm/code");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.UNSUPPORTED_EVALUATOR_TYPE);
     }
     return normalized;
   }
 
   private List<EvaluatorParamInput> normalizeCodeParams(List<EvaluatorParamInput> params) {
     if (params == null) {
-      throw new IllegalArgumentException("请至少配置一个变量");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.PARAM_REQUIRED);
     }
     List<EvaluatorParamInput> normalized = new ArrayList<>();
     Set<String> names = new HashSet<>();
@@ -405,10 +406,10 @@ public class EvaluatorService {
       }
       String paramName = param.paramName().trim();
       if (paramName.length() > 64) {
-        throw new IllegalArgumentException("变量名不能超过64个字符");
+        throw new IllegalArgumentException(EvaluatorErrorMessageConstants.PARAM_NAME_TOO_LONG);
       }
       if (!names.add(paramName)) {
-        throw new IllegalArgumentException("变量名不能重复");
+        throw new IllegalArgumentException(EvaluatorErrorMessageConstants.PARAM_NAME_DUPLICATED);
       }
       normalized.add(new EvaluatorParamInput(
           param.id(),
@@ -419,7 +420,7 @@ public class EvaluatorService {
           normalizeParamDescription(param.description())));
     }
     if (normalized.isEmpty()) {
-      throw new IllegalArgumentException("请至少配置一个变量");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.PARAM_REQUIRED);
     }
     return normalized;
   }
@@ -427,7 +428,7 @@ public class EvaluatorService {
   private List<EvaluatorParamInput> normalizePromptParams(String prompt, List<EvaluatorParamInput> params) {
     List<String> paramNames = extractPromptParamNames(prompt);
     if (paramNames.isEmpty()) {
-      throw new IllegalArgumentException("Prompt至少需要包含一个${参数名}参数");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.PROMPT_PARAM_REQUIRED);
     }
     Map<String, EvaluatorParamInput> providedParams = mapParamsByName(params);
     List<EvaluatorParamInput> normalized = new ArrayList<>();
@@ -472,7 +473,7 @@ public class EvaluatorService {
   private String normalizeParamType(String dataType) {
     String normalized = StringUtils.hasText(dataType) ? dataType.trim() : EvaluatorParamTypeConstants.STRING;
     if (!EvaluatorParamTypeConstants.SUPPORTED_TYPES.contains(normalized)) {
-      throw new IllegalArgumentException("变量类型仅支持string/number/boolean");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.UNSUPPORTED_PARAM_TYPE);
     }
     return normalized;
   }
@@ -484,17 +485,17 @@ public class EvaluatorService {
   private String normalizeParamDescription(String description) {
     String normalized = description == null ? "" : description.trim();
     if (normalized.length() > MAX_PARAM_DESCRIPTION_LENGTH) {
-      throw new IllegalArgumentException("变量描述不能超过200个字符");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.PARAM_DESCRIPTION_TOO_LONG);
     }
     return normalized;
   }
 
   private void validateScore(BigDecimal scoreMin, BigDecimal scoreMax, BigDecimal passThreshold) {
     if (scoreMin.compareTo(scoreMax) >= 0) {
-      throw new IllegalArgumentException("评分范围最大值必须大于最小值");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.SCORE_RANGE_INVALID);
     }
     if (passThreshold.compareTo(scoreMin) < 0 || passThreshold.compareTo(scoreMax) > 0) {
-      throw new IllegalArgumentException("通过阈值必须位于评分范围内");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.PASS_THRESHOLD_INVALID);
     }
   }
 
@@ -531,16 +532,16 @@ public class EvaluatorService {
   private TrialEvaluator normalizeTrialEvaluator(EvaluatorInput request) {
     String evaluatorType = normalizeEvaluatorType(request.evaluatorType());
     if (EvaluatorTypeConstants.CODE.equals(evaluatorType)) {
-      throw new IllegalArgumentException("暂不支持Code型评估器试运行");
+      throw new IllegalArgumentException(EvaluatorErrorMessageConstants.CODE_EVALUATOR_TRIAL_UNSUPPORTED);
     }
     BigDecimal scoreMin = request.scoreMin() == null ? DEFAULT_SCORE_MIN : request.scoreMin();
     BigDecimal scoreMax = request.scoreMax() == null ? DEFAULT_SCORE_MAX : request.scoreMax();
     BigDecimal passThreshold = request.passThreshold() == null ? DEFAULT_PASS_THRESHOLD : request.passThreshold();
     validateScore(scoreMin, scoreMax, passThreshold);
-    String modelId = requireText(request.modelId(), "请选择模型");
-    String modelName = requireText(request.modelName(), "请选择模型");
-    String prompt = requireText(request.prompt(), "Prompt不能为空");
-    validateMaxLength(prompt, MAX_PROMPT_LENGTH, "Prompt不能超过2000个字符");
+    String modelId = requireText(request.modelId(), EvaluatorErrorMessageConstants.MODEL_REQUIRED);
+    String modelName = requireText(request.modelName(), EvaluatorErrorMessageConstants.MODEL_REQUIRED);
+    String prompt = requireText(request.prompt(), EvaluatorErrorMessageConstants.PROMPT_REQUIRED);
+    validateMaxLength(prompt, MAX_PROMPT_LENGTH, EvaluatorErrorMessageConstants.PROMPT_TOO_LONG);
     List<EvaluatorParamInput> params = normalizePromptParams(prompt, request.params());
     return new TrialEvaluator(modelId, modelName, prompt, scoreMin, scoreMax, passThreshold, params);
   }

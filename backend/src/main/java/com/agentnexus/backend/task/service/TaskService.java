@@ -53,6 +53,7 @@ import com.agentnexus.backend.task.repository.TaskRepository;
 import com.agentnexus.backend.task.repository.TaskTagBindingRecord;
 import com.agentnexus.backend.task.constant.TaskAppTypeConstants;
 import com.agentnexus.backend.task.constant.TaskDisplayConstants;
+import com.agentnexus.backend.task.constant.TaskErrorMessageConstants;
 import com.agentnexus.backend.task.constant.TaskEvaluatorSourceConstants;
 import com.agentnexus.backend.task.constant.TaskParamSourceConstants;
 import com.agentnexus.backend.task.constant.TaskSortConstants;
@@ -136,7 +137,7 @@ public class TaskService {
     String taskId = id();
     String now = now();
     if (taskRepository.existsTaskName(normalized.taskName())) {
-      throw new IllegalArgumentException("当前空间已存在同名评测任务");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.DUPLICATE_TASK_NAME);
     } else {
       taskRepository.insertTask(toEvalTask(taskId, normalized), now);
     }
@@ -228,7 +229,7 @@ public class TaskService {
       return getTask(taskId, 1, 10);
     }
     if (TaskStatusConstants.COMPLETED.equals(base.status())) {
-      throw new IllegalArgumentException("评测完成的任务不能重新开始");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.COMPLETED_TASK_CANNOT_RESTART);
     }
 
     String startedAt = now();
@@ -258,7 +259,7 @@ public class TaskService {
       return getTask(taskId, 1, 10);
     }
     if (!TaskStatusConstants.RUNNING.equals(task.status())) {
-      throw new IllegalArgumentException("仅进行中的评测任务可以停止");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.ONLY_RUNNING_TASK_CAN_STOP);
     }
     String stoppedAt = now();
     taskRepository.updateTaskStatus(taskId, TaskStatusConstants.STOPPED, null, stoppedAt, stoppedAt);
@@ -639,9 +640,9 @@ public class TaskService {
   public void deleteTask(String taskId) {
     TaskBase task = findTask(taskId);
     if (!taskRepository.isTaskCreatedByCurrentUser(taskId)) {
-      throw new IllegalArgumentException("仅创建人可以删除评测任务");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.ONLY_CREATOR_CAN_DELETE_TASK);
     } else if (!TaskStatusConstants.DELETABLE_STATUSES.contains(task.status())) {
-      throw new IllegalArgumentException("仅待执行、评测完成、评测失败和已中止的任务可删除");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TASK_DELETE_STATUS_UNSUPPORTED);
     } else {
       taskRepository.deleteTask(taskId);
     }
@@ -657,13 +658,13 @@ public class TaskService {
   @Transactional
   public TaskDetail addTaskTag(String taskId, String tagId) {
     TaskBase task = findTask(taskId);
-    String safeTagId = requireText(tagId, "请选择标签");
+    String safeTagId = requireText(tagId, TaskErrorMessageConstants.TAG_SELECT_REQUIRED);
     if (tagRepository.findTagConfig(safeTagId) == null) {
-      throw new IllegalArgumentException("标签不存在");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TAG_NOT_FOUND);
     } else if (taskRepository.existsTaskTag(taskId, safeTagId)) {
-      throw new IllegalArgumentException("该任务已添加此标签");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TASK_TAG_DUPLICATED);
     } else if (taskRepository.listTaskTagBindings(taskId).size() >= MAX_DIMENSION_COUNT) {
-      throw new IllegalArgumentException("标签最多添加5个");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TASK_TAG_LIMIT_EXCEEDED);
     } else {
       String now = now();
       String taskTagId = id();
@@ -687,9 +688,9 @@ public class TaskService {
   @Transactional
   public TaskDetail deleteTaskTag(String taskId, String taskTagId) {
     TaskBase task = findTask(taskId);
-    String safeTaskTagId = requireText(taskTagId, "请选择标签");
+    String safeTaskTagId = requireText(taskTagId, TaskErrorMessageConstants.TAG_SELECT_REQUIRED);
     if (taskRepository.findTaskTagBinding(taskId, safeTaskTagId) == null) {
-      throw new IllegalArgumentException("任务标签不存在");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TASK_TAG_NOT_FOUND);
     }
     String now = now();
     taskRepository.deleteTaskTag(taskId, safeTaskTagId);
@@ -718,11 +719,11 @@ public class TaskService {
   public AnnotationDetail saveAnnotation(String taskId, String taskItemId, SaveAnnotationRequest request) {
     TaskBase task = findTask(taskId);
     if (TaskStatusConstants.STOPPED.equals(task.status())) {
-      throw new IllegalArgumentException("已中止的评测任务不能继续标注");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.STOPPED_TASK_CANNOT_ANNOTATE);
     }
     TaskItemRecord item = findTaskItem(taskId, taskItemId);
     if (request == null || request.tags() == null || request.tags().isEmpty()) {
-      throw new IllegalArgumentException("请提交标注结果");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.ANNOTATION_RESULT_REQUIRED);
     }
     Map<String, TaskTagBindingRecord> tagsById = taskRepository.listTaskTagBindings(taskId)
         .stream()
@@ -735,7 +736,7 @@ public class TaskService {
       }
       TaskTagBindingRecord tag = tagsById.get(input.taskTagId());
       if (tag == null) {
-        throw new IllegalArgumentException("标签不属于当前任务");
+        throw new IllegalArgumentException(TaskErrorMessageConstants.TAG_NOT_BELONG_TO_TASK);
       }
       NormalizedAnnotation annotation = normalizeAnnotation(tag, input);
       taskRepository.updateTagResult(
@@ -761,28 +762,28 @@ public class TaskService {
 
   private NormalizedTask normalizeCreateRequest(CreateTaskRequest request) {
     if (request == null) {
-      throw new IllegalArgumentException("评测任务参数不能为空");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TASK_REQUEST_REQUIRED);
     }
-    String taskName = requireText(request.taskName(), "任务名称不能为空");
+    String taskName = requireText(request.taskName(), TaskErrorMessageConstants.TASK_NAME_REQUIRED);
     if (taskName.length() > 50) {
-      throw new IllegalArgumentException("任务名称不能超过50个字符");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TASK_NAME_TOO_LONG);
     }
     String description = request.description() == null ? "" : request.description().trim();
     if (description.length() > 200) {
-      throw new IllegalArgumentException("描述不能超过200个字符");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.DESCRIPTION_TOO_LONG);
     }
-    String datasetId = requireText(request.datasetId(), "请选择评测集");
-    String datasetVersionId = requireText(request.datasetVersionId(), "请选择评测集版本");
+    String datasetId = requireText(request.datasetId(), TaskErrorMessageConstants.DATASET_SELECT_REQUIRED);
+    String datasetVersionId = requireText(request.datasetVersionId(), TaskErrorMessageConstants.DATASET_VERSION_SELECT_REQUIRED);
     DatasetVersionDto version = datasetRepository.findVersion(datasetVersionId);
     if (version == null || !datasetId.equals(version.datasetId())) {
-      throw new IllegalArgumentException("评测集版本不存在");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.DATASET_VERSION_NOT_FOUND);
     }
     if (Boolean.TRUE.equals(version.draft())) {
-      throw new IllegalArgumentException("评测任务请选择已发布的评测集版本");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.DATASET_VERSION_NOT_PUBLISHED);
     }
     DatasetSummary dataset = datasetRepository.findDatasetSummary(datasetId);
     if (dataset == null) {
-      throw new IllegalArgumentException("评测集不存在");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.DATASET_NOT_FOUND);
     }
     List<FieldDto> fields = datasetRepository.listFields(datasetVersionId);
     Map<String, FieldDto> fieldById = fields.stream()
@@ -790,13 +791,13 @@ public class TaskService {
         .collect(Collectors.toMap(FieldDto::id, Function.identity()));
     List<DatasetRowRecord> rows = datasetRepository.listAllRows(datasetVersionId);
     if (rows.isEmpty()) {
-      throw new IllegalArgumentException("评测集版本中暂无数据，不能创建任务");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.DATASET_VERSION_ITEM_REQUIRED);
     }
 
     String appType = normalizeAppType(request.appType());
-    String appId = TaskAppTypeConstants.AGENT.equals(appType) ? requireText(request.appId(), "请选择智能体应用") : "";
+    String appId = TaskAppTypeConstants.AGENT.equals(appType) ? requireText(request.appId(), TaskErrorMessageConstants.AGENT_APP_SELECT_REQUIRED) : "";
     String appName = TaskAppTypeConstants.AGENT.equals(appType) ? savedNameText(request.appName(), appId, 128) : "";
-    String appVersionId = TaskAppTypeConstants.AGENT.equals(appType) ? requireText(request.appVersionId(), "请选择智能体应用版本") : "";
+    String appVersionId = TaskAppTypeConstants.AGENT.equals(appType) ? requireText(request.appVersionId(), TaskErrorMessageConstants.AGENT_APP_VERSION_SELECT_REQUIRED) : "";
     String appVersionName = TaskAppTypeConstants.AGENT.equals(appType) ? savedNameText(request.appVersionName(), appVersionId, 128) : "";
     String appAgentAlias = TaskAppTypeConstants.AGENT.equals(appType) && StringUtils.hasText(request.appAgentAlias())
         ? request.appAgentAlias().trim()
@@ -805,7 +806,7 @@ public class TaskService {
     List<NormalizedEvaluator> evaluators = normalizeEvaluators(appType, request.evaluators(), fieldById, datasetVersionId);
     List<String> tagIds = normalizeTags(request.tagIds());
     if (evaluators.isEmpty() && tagIds.isEmpty()) {
-      throw new IllegalArgumentException("请至少添加一个评估器或标签");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.EVALUATOR_OR_TAG_REQUIRED);
     }
     return new NormalizedTask(
         taskName,
@@ -863,15 +864,15 @@ public class TaskService {
       }
       String appInputName = mapping.appInputName().trim();
       if (!appInputNames.add(appInputName)) {
-        throw new IllegalArgumentException("应用入参不能重复映射");
+        throw new IllegalArgumentException(TaskErrorMessageConstants.APP_FIELD_MAPPING_DUPLICATED);
       }
       String appInputType = StringUtils.hasText(mapping.appInputType()) ? mapping.appInputType().trim() : DatasetFieldTypeConstants.STRING;
       if (!DatasetFieldTypeConstants.SUPPORTED_TYPES.contains(appInputType)) {
-        throw new IllegalArgumentException("应用入参类型仅支持string/number/boolean");
+        throw new IllegalArgumentException(TaskErrorMessageConstants.APP_FIELD_TYPE_UNSUPPORTED);
       }
-      String fieldId = requireText(mapping.datasetFieldId(), "请选择应用入参映射的评测集字段");
+      String fieldId = requireText(mapping.datasetFieldId(), TaskErrorMessageConstants.APP_FIELD_MAPPING_FIELD_SELECT_REQUIRED);
       if (!fieldById.containsKey(fieldId)) {
-        throw new IllegalArgumentException("应用入参映射的评测集字段不存在");
+        throw new IllegalArgumentException(TaskErrorMessageConstants.APP_FIELD_MAPPING_DATASET_FIELD_NOT_FOUND);
       }
       normalized.add(new AppFieldMappingInput(
           mapping.appInputId() == null ? "" : mapping.appInputId().trim(),
@@ -892,7 +893,7 @@ public class TaskService {
       return List.of();
     }
     if (evaluators.size() > MAX_DIMENSION_COUNT) {
-      throw new IllegalArgumentException("评估器最多添加5个");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.EVALUATOR_LIMIT_EXCEEDED);
     }
     List<NormalizedEvaluator> normalized = new ArrayList<>();
     Set<String> duplicateGuard = new HashSet<>();
@@ -902,7 +903,7 @@ public class TaskService {
         continue;
       }
       String source = normalizeEvaluatorSource(input.evaluatorSource());
-      String evaluatorId = requireText(input.evaluatorId(), "请选择评估器");
+      String evaluatorId = requireText(input.evaluatorId(), TaskErrorMessageConstants.EVALUATOR_SELECT_REQUIRED);
       EvaluatorRuntimeDefinition definition;
       String evaluatorVersionId = "";
       String modelId = "";
@@ -910,11 +911,11 @@ public class TaskService {
       if (TaskEvaluatorSourceConstants.PRESET.equals(source)) {
         PresetEvaluatorDetail preset = evaluatorService.getPresetEvaluator(evaluatorId);
         if (EvaluatorTypeConstants.CODE.equals(preset.evaluatorType())) {
-          throw new IllegalArgumentException("暂不支持Code型评估器");
+          throw new IllegalArgumentException(TaskErrorMessageConstants.CODE_EVALUATOR_UNSUPPORTED);
         }
         if (EvaluatorTypeConstants.LLM.equals(preset.evaluatorType())) {
-          modelId = requireText(input.modelId(), "\u8bf7\u9009\u62e9\u9884\u7f6e\u8bc4\u4f30\u5668\u6a21\u578b");
-          modelName = requireText(input.modelName(), "请选择预置评估器模型");
+          modelId = requireText(input.modelId(), TaskErrorMessageConstants.PRESET_EVALUATOR_MODEL_SELECT_REQUIRED);
+          modelName = requireText(input.modelName(), TaskErrorMessageConstants.PRESET_EVALUATOR_MODEL_SELECT_REQUIRED);
         }
         definition = new EvaluatorRuntimeDefinition(
             preset.evaluatorName(),
@@ -924,18 +925,18 @@ public class TaskService {
             preset.passThreshold(),
             preset.params());
       } else {
-        evaluatorVersionId = requireText(input.evaluatorVersionId(), "请选择自定义评估器版本");
+        evaluatorVersionId = requireText(input.evaluatorVersionId(), TaskErrorMessageConstants.CUSTOM_EVALUATOR_VERSION_SELECT_REQUIRED);
         EvaluatorConfig config = evaluatorService.getVersion(evaluatorVersionId);
         if (Boolean.TRUE.equals(config.draft())) {
-          throw new IllegalArgumentException("评测任务请选择已发布的自定义评估器版本");
+          throw new IllegalArgumentException(TaskErrorMessageConstants.CUSTOM_EVALUATOR_VERSION_NOT_PUBLISHED);
         }
         modelId = config.modelId();
         modelName = config.modelName();
         if (EvaluatorTypeConstants.CODE.equals(config.evaluatorType())) {
-          throw new IllegalArgumentException("暂不支持Code型评估器");
+          throw new IllegalArgumentException(TaskErrorMessageConstants.CODE_EVALUATOR_UNSUPPORTED);
         }
         if (!evaluatorId.equals(config.evaluatorId())) {
-          throw new IllegalArgumentException("自定义评估器版本不属于所选评估器");
+          throw new IllegalArgumentException(TaskErrorMessageConstants.CUSTOM_EVALUATOR_VERSION_NOT_MATCHED);
         }
         definition = new EvaluatorRuntimeDefinition(
             config.evaluatorName(),
@@ -947,7 +948,7 @@ public class TaskService {
       }
       String duplicateKey = source + ":" + evaluatorId + ":" + evaluatorVersionId;
       if (!duplicateGuard.add(duplicateKey)) {
-        throw new IllegalArgumentException("评估器不能重复添加");
+        throw new IllegalArgumentException(TaskErrorMessageConstants.EVALUATOR_DUPLICATED);
       }
       List<NormalizedParamMapping> paramMappings = normalizeParamMappings(
           appType,
@@ -958,7 +959,7 @@ public class TaskService {
       normalized.add(new NormalizedEvaluator(source, evaluatorId, evaluatorVersionId, modelId, modelName, definition, paramMappings, order++));
     }
     if (normalized.isEmpty()) {
-      throw new IllegalArgumentException("请至少添加一个评估器");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.EVALUATOR_REQUIRED);
     }
     return normalized;
   }
@@ -988,7 +989,7 @@ public class TaskService {
       String key = paramKey(param.id(), param.paramName());
       TaskEvaluatorParamMappingInput mapping = provided.get(key);
       if (Boolean.TRUE.equals(param.required()) && mapping == null) {
-        throw new IllegalArgumentException("请完成评估器必填字段映射：" + param.paramName());
+        throw new IllegalArgumentException(TaskErrorMessageConstants.requiredEvaluatorMapping(param.paramName()));
       }
       if (mapping == null) {
         continue;
@@ -1000,13 +1001,13 @@ public class TaskService {
       String datasetFieldId = "";
       String appOutputName = "";
       if (TaskParamSourceConstants.DATASET_FIELD.equals(sourceType)) {
-        datasetFieldId = requireText(mapping.datasetFieldId(), "请选择评测集字段");
+        datasetFieldId = requireText(mapping.datasetFieldId(), TaskErrorMessageConstants.DATASET_FIELD_SELECT_REQUIRED);
         if (!fieldById.containsKey(datasetFieldId)) {
-          throw new IllegalArgumentException("评估器字段映射的评测集字段不存在");
+          throw new IllegalArgumentException(TaskErrorMessageConstants.EVALUATOR_DATASET_FIELD_NOT_FOUND);
         }
       } else {
         if (!TaskAppTypeConstants.AGENT.equals(appType)) {
-          throw new IllegalArgumentException("未关联应用时不能映射到应用输出");
+          throw new IllegalArgumentException(TaskErrorMessageConstants.APP_OUTPUT_MAPPING_UNSUPPORTED);
         }
         appOutputName = mapping.appOutputName() == null ? "" : mapping.appOutputName().trim();
       }
@@ -1035,17 +1036,17 @@ public class TaskService {
       return List.of();
     }
     if (tagIds.size() > MAX_DIMENSION_COUNT) {
-      throw new IllegalArgumentException("标签最多添加5个");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TASK_TAG_LIMIT_EXCEEDED);
     }
     List<String> normalized = new ArrayList<>();
     Set<String> duplicateGuard = new HashSet<>();
     for (String tagId : tagIds) {
-      String id = requireText(tagId, "请选择标签");
+      String id = requireText(tagId, TaskErrorMessageConstants.TAG_SELECT_REQUIRED);
       if (!duplicateGuard.add(id)) {
-        throw new IllegalArgumentException("标签不能重复添加");
+        throw new IllegalArgumentException(TaskErrorMessageConstants.TAG_DUPLICATED);
       }
       if (tagRepository.findTagConfig(id) == null) {
-        throw new IllegalArgumentException("标签不存在");
+        throw new IllegalArgumentException(TaskErrorMessageConstants.TAG_NOT_FOUND);
       }
       normalized.add(id);
     }
@@ -1754,30 +1755,30 @@ public class TaskService {
 
   private NormalizedAnnotation normalizeAnnotation(TaskTagBindingRecord tag, TagAnnotationInput input) {
     if (TagTypeConstants.TEXT.equals(tag.tagType())) {
-      String value = requireText(input.valueText(), "请输入文本标签：" + tag.tagName());
+      String value = requireText(input.valueText(), TaskErrorMessageConstants.textTagInputRequired(tag.tagName()));
       return new NormalizedAnnotation(value, null, "", EvaluationResultConstants.PASS);
     }
     if (TagTypeConstants.NUMBER.equals(tag.tagType())) {
       BigDecimal value = input.valueNumber();
       if (value == null) {
-        throw new IllegalArgumentException("请输入数字标签：" + tag.tagName());
+        throw new IllegalArgumentException(TaskErrorMessageConstants.numberTagInputRequired(tag.tagName()));
       }
       if (tag.minValue() != null && value.compareTo(BigDecimal.valueOf(tag.minValue())) < 0) {
-        throw new IllegalArgumentException("数字标签不能小于最小值：" + tag.tagName());
+        throw new IllegalArgumentException(TaskErrorMessageConstants.numberTagLessThanMin(tag.tagName()));
       }
       if (tag.maxValue() != null && value.compareTo(BigDecimal.valueOf(tag.maxValue())) > 0) {
-        throw new IllegalArgumentException("数字标签不能大于最大值：" + tag.tagName());
+        throw new IllegalArgumentException(TaskErrorMessageConstants.numberTagGreaterThanMax(tag.tagName()));
       }
       String passResult = tag.passThreshold() != null && value.compareTo(BigDecimal.valueOf(tag.passThreshold())) >= 0
           ? EvaluationResultConstants.PASS
           : EvaluationResultConstants.FAIL;
       return new NormalizedAnnotation("", value, "", passResult);
     }
-    String optionId = requireText(input.tagOptionId(), "请选择标签选项：" + tag.tagName());
+    String optionId = requireText(input.tagOptionId(), TaskErrorMessageConstants.tagOptionSelectRequired(tag.tagName()));
     TagOptionDto option = tagRepository.listOptions(tag.tagId()).stream()
         .filter(item -> optionId.equals(item.id()))
         .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("标签选项不存在：" + tag.tagName()));
+        .orElseThrow(() -> new IllegalArgumentException(TaskErrorMessageConstants.tagOptionNotFound(tag.tagName())));
     return new NormalizedAnnotation(option.optionName(), null, option.id(), option.optionGroup());
   }
 
@@ -1811,22 +1812,22 @@ public class TaskService {
 
   private TaskBase findTask(String taskId) {
     if (!StringUtils.hasText(taskId)) {
-      throw new IllegalArgumentException("评测任务ID不能为空");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TASK_ID_REQUIRED);
     }
     TaskBase task = taskRepository.findTaskBase(taskId);
     if (task == null) {
-      throw new IllegalArgumentException("评测任务不存在");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TASK_NOT_FOUND);
     }
     return task;
   }
 
   private TaskItemRecord findTaskItem(String taskId, String taskItemId) {
     if (!StringUtils.hasText(taskItemId)) {
-      throw new IllegalArgumentException("任务数据行ID不能为空");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TASK_ITEM_ID_REQUIRED);
     }
     TaskItemRecord item = taskRepository.findTaskItem(taskItemId);
     if (item == null || !taskId.equals(item.taskId())) {
-      throw new IllegalArgumentException("任务数据行不存在");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TASK_ITEM_NOT_FOUND);
     }
     return item;
   }
@@ -1837,7 +1838,7 @@ public class TaskService {
     }
     String normalized = status.trim();
     if (!TaskStatusConstants.SUPPORTED_TASK_STATUSES.contains(normalized)) {
-      throw new IllegalArgumentException("评测状态不支持");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.TASK_STATUS_UNSUPPORTED);
     }
     return normalized;
   }
@@ -1848,23 +1849,23 @@ public class TaskService {
     }
     String normalized = appType.trim();
     if (!TaskAppTypeConstants.SUPPORTED_TYPES.contains(normalized)) {
-      throw new IllegalArgumentException("应用类型仅支持不关联应用或智能体");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.APP_TYPE_UNSUPPORTED);
     }
     return normalized;
   }
 
   private String normalizeEvaluatorSource(String source) {
-    String normalized = requireText(source, "请选择评估器类型");
+    String normalized = requireText(source, TaskErrorMessageConstants.EVALUATOR_SOURCE_SELECT_REQUIRED);
     if (!TaskEvaluatorSourceConstants.SUPPORTED_SOURCES.contains(normalized)) {
-      throw new IllegalArgumentException("评估器类型仅支持预置或自定义");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.EVALUATOR_SOURCE_UNSUPPORTED);
     }
     return normalized;
   }
 
   private String normalizeSourceType(String sourceType) {
-    String normalized = requireText(sourceType, "请选择字段映射来源");
+    String normalized = requireText(sourceType, TaskErrorMessageConstants.PARAM_SOURCE_SELECT_REQUIRED);
     if (!TaskParamSourceConstants.SUPPORTED_SOURCES.contains(normalized)) {
-      throw new IllegalArgumentException("字段映射来源不支持");
+      throw new IllegalArgumentException(TaskErrorMessageConstants.PARAM_SOURCE_UNSUPPORTED);
     }
     return normalized;
   }

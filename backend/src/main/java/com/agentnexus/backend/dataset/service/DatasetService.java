@@ -10,6 +10,7 @@ import com.agentnexus.backend.dataset.api.dto.response.ImportRowsResult;
 import com.agentnexus.backend.dataset.api.dto.response.RowDto;
 import com.agentnexus.backend.dataset.api.dto.request.RowInput;
 import com.agentnexus.backend.dataset.api.dto.response.VersionDetail;
+import com.agentnexus.backend.dataset.constant.DatasetErrorMessageConstants;
 import com.agentnexus.backend.dataset.constant.DatasetFieldValueConstants;
 import com.agentnexus.backend.dataset.constant.DatasetFieldTypeConstants;
 import com.agentnexus.backend.dataset.constant.DatasetSortConstants;
@@ -66,7 +67,7 @@ public class DatasetService {
   @Transactional
   public DatasetSummary createDataset(CreateDatasetRequest request) {
     if (request == null) {
-      throw new IllegalArgumentException("评测集参数不能为空");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.DATASET_REQUEST_REQUIRED);
     }
     String name = normalizeDatasetName(request.name());
     String description = normalizeDescription(request.description());
@@ -74,7 +75,7 @@ public class DatasetService {
     String draftVersionId = id();
     String now = now();
     if (datasetRepository.existsDatasetName(name)) {
-      throw new IllegalArgumentException("当前空间已存在同名评测集");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.DUPLICATE_DATASET_NAME);
     } else {
       datasetRepository.insertDataset(datasetId, name, description, now);
     }
@@ -91,13 +92,13 @@ public class DatasetService {
   public void deleteDataset(String datasetId) {
     DatasetSummary dataset = datasetRepository.findDatasetSummary(datasetId);
     if (dataset == null) {
-      throw new IllegalArgumentException("评测集不存在");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.DATASET_NOT_FOUND);
     } else if (!datasetRepository.isDatasetCreatedByCurrentUser(datasetId)) {
-      throw new IllegalArgumentException("仅创建人可以删除评测集");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.ONLY_CREATOR_CAN_DELETE_DATASET);
     } else {
       List<String> taskNames = taskRepository.listTaskNamesByDatasetId(datasetId);
       if (!taskNames.isEmpty()) {
-        throw new IllegalArgumentException("评测集已被评测任务“" + String.join("、", taskNames) + "”使用，不能删除");
+        throw new IllegalArgumentException(DatasetErrorMessageConstants.datasetUsedByTasks(taskNames));
       } else {
         datasetRepository.deleteDataset(datasetId);
       }
@@ -188,7 +189,7 @@ public class DatasetService {
     validateExcelFile(file);
     List<FieldDto> fields = listFields(versionId);
     if (fields.isEmpty()) {
-      throw new IllegalArgumentException("请先维护表头");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.PLEASE_MAINTAIN_HEADER_FIRST);
     }
 
     List<Map<String, String>> rows = readExcelRows(file, fields);
@@ -202,7 +203,7 @@ public class DatasetService {
     validateExcelFile(file);
     List<FieldDto> fields = listFields(versionId);
     if (fields.isEmpty()) {
-      throw new IllegalArgumentException("请先维护表头");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.PLEASE_MAINTAIN_HEADER_FIRST);
     }
 
     List<Map<String, String>> rows = readExcelRows(file, fields);
@@ -249,15 +250,15 @@ public class DatasetService {
   public void deleteVersion(String versionId) {
     DatasetVersionDto version = datasetRepository.findVersion(versionId);
     if (version == null) {
-      throw new IllegalArgumentException("评测集版本不存在");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.DATASET_VERSION_NOT_FOUND);
     } else if (!datasetRepository.isVersionCreatedByCurrentUser(versionId)) {
-      throw new IllegalArgumentException("仅创建人可以删除评测集版本");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.ONLY_CREATOR_CAN_DELETE_DATASET_VERSION);
     } else if (version.draft()) {
-      throw new IllegalArgumentException("草稿版本不能删除");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.DRAFT_VERSION_CANNOT_DELETE);
     } else {
       List<String> taskNames = taskRepository.listTaskNamesByDatasetVersionId(versionId);
       if (!taskNames.isEmpty()) {
-        throw new IllegalArgumentException("评测集版本已被评测任务“" + String.join("、", taskNames) + "”使用，不能删除");
+        throw new IllegalArgumentException(DatasetErrorMessageConstants.datasetVersionUsedByTasks(taskNames));
       } else {
         datasetRepository.deleteVersion(versionId);
         datasetRepository.refreshDatasetVersionStats(version.datasetId(), now());
@@ -269,7 +270,7 @@ public class DatasetService {
   public DatasetVersionDto coverDraft(String datasetId, String sourceVersionId) {
     DatasetVersionDto source = datasetRepository.findVersion(sourceVersionId);
     if (source.draft()) {
-      throw new IllegalArgumentException("不能用草稿覆盖草稿");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.CANNOT_OVERWRITE_DRAFT_WITH_DRAFT);
     }
     String draftVersionId = datasetRepository.findDraftVersionId(datasetId);
     clearVersionContent(draftVersionId);
@@ -296,32 +297,32 @@ public class DatasetService {
 
   private void validateFields(List<FieldInput> fields) {
     if (fields == null || fields.isEmpty()) {
-      throw new IllegalArgumentException("请维护表头");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.PLEASE_MAINTAIN_HEADER);
     }
     if (fields.size() > 10) {
-      throw new IllegalArgumentException("评测集最多支持10列");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.DATASET_FIELD_LIMIT_EXCEEDED);
     }
     Set<String> names = new HashSet<>();
     for (FieldInput field : fields) {
       if (!StringUtils.hasText(field.fieldName())) {
-        throw new IllegalArgumentException("列名不能为空");
+        throw new IllegalArgumentException(DatasetErrorMessageConstants.FIELD_NAME_REQUIRED);
       }
       if (!names.add(field.fieldName().trim())) {
-        throw new IllegalArgumentException("列名不能重复");
+        throw new IllegalArgumentException(DatasetErrorMessageConstants.FIELD_NAME_DUPLICATED);
       }
       if (!DatasetFieldTypeConstants.SUPPORTED_TYPES.contains(field.fieldType())) {
-        throw new IllegalArgumentException("字段类型仅支持string、number、boolean");
+        throw new IllegalArgumentException(DatasetErrorMessageConstants.UNSUPPORTED_FIELD_TYPE);
       }
     }
   }
 
   private String normalizeDatasetName(String name) {
     if (!StringUtils.hasText(name)) {
-      throw new IllegalArgumentException("评测集名称不能为空");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.DATASET_NAME_REQUIRED);
     }
     String normalized = name.trim();
     if (normalized.length() > 50) {
-      throw new IllegalArgumentException("评测集名称不能超过50个字符");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.DATASET_NAME_TOO_LONG);
     }
     return normalized;
   }
@@ -329,18 +330,18 @@ public class DatasetService {
   private String normalizeDescription(String description) {
     String normalized = description == null ? "" : description.trim();
     if (normalized.length() > 200) {
-      throw new IllegalArgumentException("描述不能超过200个字符");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.DESCRIPTION_TOO_LONG);
     }
     return normalized;
   }
 
   private void validateExcelFile(MultipartFile file) {
     if (file == null || file.isEmpty()) {
-      throw new IllegalArgumentException("请上传Excel文件");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.EXCEL_FILE_REQUIRED);
     }
     String filename = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase();
     if (!filename.endsWith(".xlsx") && !filename.endsWith(".xls")) {
-      throw new IllegalArgumentException("仅支持xlsx或xls文件");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.UNSUPPORTED_EXCEL_FILE);
     }
   }
 
@@ -348,12 +349,12 @@ public class DatasetService {
     DataFormatter formatter = new DataFormatter();
     try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
       if (workbook.getNumberOfSheets() == 0) {
-        throw new IllegalArgumentException("Excel文件没有工作表");
+        throw new IllegalArgumentException(DatasetErrorMessageConstants.EXCEL_SHEET_REQUIRED);
       }
       Sheet sheet = workbook.getSheetAt(0);
       Row headerRow = sheet.getRow(0);
       if (headerRow == null) {
-        throw new IllegalArgumentException("Excel第一行必须是表头");
+        throw new IllegalArgumentException(DatasetErrorMessageConstants.EXCEL_HEADER_ROW_REQUIRED);
       }
       Map<CellPosition, String> mergedCellTextMap = buildMergedCellTextMap(sheet, formatter);
       Map<Integer, FieldDto> matchedColumns = mapExcelColumns(headerRow, fields, formatter, mergedCellTextMap);
@@ -380,7 +381,7 @@ public class DatasetService {
     } catch (IllegalArgumentException exception) {
       throw exception;
     } catch (Exception exception) {
-      throw new IllegalArgumentException("读取Excel文件失败");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.EXCEL_READ_FAILED);
     }
   }
 
@@ -393,7 +394,7 @@ public class DatasetService {
     Map<String, FieldDto> fieldByName = new LinkedHashMap<>();
     for (FieldDto field : fields) {
       if (fieldByName.putIfAbsent(field.fieldName(), field) != null) {
-        throw new IllegalArgumentException("评测集表头存在重复列名：" + field.fieldName());
+        throw new IllegalArgumentException(DatasetErrorMessageConstants.duplicateDatasetFieldName(field.fieldName()));
       }
     }
 
@@ -401,7 +402,7 @@ public class DatasetService {
     Set<String> matchedFieldIds = new HashSet<>();
     int lastCellNum = headerRow.getLastCellNum();
     if (lastCellNum < 0) {
-      throw new IllegalArgumentException("Excel第一行必须是表头");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.EXCEL_HEADER_ROW_REQUIRED);
     }
 
     Sheet sheet = headerRow.getSheet();
@@ -416,7 +417,7 @@ public class DatasetService {
         continue;
       }
       if (!matchedFieldIds.add(matchedField.id())) {
-        throw new IllegalArgumentException("Excel表头存在重复列：" + header);
+        throw new IllegalArgumentException(DatasetErrorMessageConstants.duplicateExcelHeader(header));
       }
       matchedColumns.put(columnIndex, matchedField);
     }
@@ -427,10 +428,10 @@ public class DatasetService {
         .map(FieldDto::fieldName)
         .toList();
     if (!missingRequiredFields.isEmpty()) {
-      throw new IllegalArgumentException("Excel缺少必填列：" + String.join("、", missingRequiredFields));
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.missingRequiredFields(missingRequiredFields));
     }
     if (matchedColumns.isEmpty()) {
-      throw new IllegalArgumentException("Excel表头未匹配到评测集字段");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.EXCEL_HEADER_NO_MATCHED_FIELD);
     }
     return matchedColumns;
   }
@@ -465,7 +466,7 @@ public class DatasetService {
     String text = value == null ? "" : value.trim();
     if (!StringUtils.hasText(text)) {
       if (Boolean.TRUE.equals(field.required())) {
-        throw new IllegalArgumentException(position + "不能为空");
+          throw new IllegalArgumentException(DatasetErrorMessageConstants.fieldValueRequired(position));
       }
       return;
     }
@@ -473,13 +474,13 @@ public class DatasetService {
       try {
         new BigDecimal(text);
       } catch (NumberFormatException exception) {
-        throw new IllegalArgumentException(position + "应为数字");
+        throw new IllegalArgumentException(DatasetErrorMessageConstants.fieldValueMustBeNumber(position));
       }
     }
     if (DatasetFieldTypeConstants.BOOLEAN.equals(field.fieldType())
         && !DatasetFieldValueConstants.BOOLEAN_TRUE.equalsIgnoreCase(text)
         && !DatasetFieldValueConstants.BOOLEAN_FALSE.equalsIgnoreCase(text)) {
-      throw new IllegalArgumentException(position + "应为布尔值true或false");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.fieldValueMustBeBoolean(position));
     }
   }
 
@@ -580,7 +581,7 @@ public class DatasetService {
 
   private void ensureDraft(String versionId) {
     if (datasetRepository.findVersionNo(versionId) != 0) {
-      throw new IllegalArgumentException("只有草稿版本允许修改");
+      throw new IllegalArgumentException(DatasetErrorMessageConstants.ONLY_DRAFT_VERSION_CAN_MODIFY);
     }
   }
 

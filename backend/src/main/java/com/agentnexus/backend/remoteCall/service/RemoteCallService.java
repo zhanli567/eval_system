@@ -44,6 +44,7 @@ import com.agentnexus.backend.remoteCall.constant.AgentOutputFieldConstants;
 import com.agentnexus.backend.remoteCall.constant.ChatContentTypeConstants;
 import com.agentnexus.backend.remoteCall.constant.ChatRoleConstants;
 import com.agentnexus.backend.remoteCall.constant.RemoteCallDefaults;
+import com.agentnexus.backend.remoteCall.constant.RemoteCallErrorMessageConstants;
 import com.agentnexus.backend.remoteCall.constant.RemoteCallHeaderConstants;
 import com.agentnexus.backend.remoteCall.constant.RemoteCallJsonFieldConstants;
 import com.agentnexus.backend.remoteCall.constant.RemoteCallMediaTypeConstants;
@@ -100,7 +101,7 @@ public class RemoteCallService {
         RemoteCallDefaults.PAGE_SIZE,
         RemoteCallDefaults.CUR_PAGE,
         CurrentSpaceHolder.get());
-    ensureSuccess("模型列表接口", response.status(), response.success());
+    ensureSuccess(RemoteCallErrorMessageConstants.MODEL_LIST_API_NAME, response.status(), response.success());
     ListResult<ModelInfo> result = response.resultObjVO();
     List<ModelInfo> models = result == null || result.result() == null ? List.of() : result.result();
     return models.stream()
@@ -113,7 +114,7 @@ public class RemoteCallService {
         RemoteCallDefaults.PAGE_SIZE,
         RemoteCallDefaults.CUR_PAGE,
         CurrentSpaceHolder.get());
-    ensureSuccess("智能体列表接口", response.status(), response.success());
+    ensureSuccess(RemoteCallErrorMessageConstants.AGENT_LIST_API_NAME, response.status(), response.success());
     ListResult<SuperAgentInfo> result = response.resultObjVO();
     if (result == null || result.result() == null) {
       return List.of();
@@ -126,11 +127,11 @@ public class RemoteCallService {
   }
 
   public List<AgentVersion> listAgentBundles(String agentId) {
-    String safeAgentId = requireText(agentId, "Agent ID cannot be blank");
+    String safeAgentId = requireText(agentId, RemoteCallErrorMessageConstants.AGENT_ID_REQUIRED);
     RemoteResponse<AgentBundleListResult> response = remoteCallServiceClient.listAgentBundles(
         safeAgentId,
         CurrentSpaceHolder.get());
-    ensureSuccess("Agent bundle list API", response.status(), response.success());
+    ensureSuccess(RemoteCallErrorMessageConstants.AGENT_BUNDLE_LIST_API_NAME, response.status(), response.success());
     return normalizeAgentBundles(response.resultObjVO());
   }
 
@@ -139,7 +140,7 @@ public class RemoteCallService {
         pageSize,
         curPage,
         firstNonBlank(cookie));
-    ensureSuccess("Space list API", response.status(), response.success());
+    ensureSuccess(RemoteCallErrorMessageConstants.SPACE_LIST_API_NAME, response.status(), response.success());
     ListResult<SpaceInfo> result = response.resultObjVO();
     if (result == null || result.result() == null) {
       return List.of();
@@ -150,11 +151,11 @@ public class RemoteCallService {
   }
 
   private SuperAgentDetail loadAgentDetail(String agentId) {
-    String safeAgentId = requireText(agentId, "Agent ID cannot be blank");
+    String safeAgentId = requireText(agentId, RemoteCallErrorMessageConstants.AGENT_ID_REQUIRED);
     RemoteResponse<SuperAgentDetail> response = remoteCallServiceClient.getAgentDetail(safeAgentId, CurrentSpaceHolder.get());
-    ensureSuccess("Agent detail API", response.status(), response.success());
+    ensureSuccess(RemoteCallErrorMessageConstants.AGENT_DETAIL_API_NAME, response.status(), response.success());
     if (response.resultObjVO() == null) {
-      throw new IllegalStateException("Agent detail API returned empty result");
+      throw new IllegalStateException(RemoteCallErrorMessageConstants.AGENT_DETAIL_EMPTY);
     }
     return response.resultObjVO();
   }
@@ -164,10 +165,10 @@ public class RemoteCallService {
   }
 
   private ModelChatResult chatIamModel(String modelId, String modelName, String message) {
-    requireText(modelId, "模型ID不能为空");
-    String safeModelName = requireText(modelName, "模型名称不能为空");
-    requireText(properties.getIam().getUrl(), "请配置IAM模型对话接口 remoteCall.iam.url");
-    String token = requireText(iamTokenService.getToken(), "IAM token不能为空");
+    requireText(modelId, RemoteCallErrorMessageConstants.MODEL_ID_REQUIRED);
+    String safeModelName = requireText(modelName, RemoteCallErrorMessageConstants.MODEL_NAME_REQUIRED);
+    requireText(properties.getIam().getUrl(), RemoteCallErrorMessageConstants.IAM_URL_REQUIRED);
+    String token = requireText(iamTokenService.getToken(), RemoteCallErrorMessageConstants.IAM_TOKEN_REQUIRED);
     HttpURLConnection connection = null;
     try {
       connection = openConnection(properties.getIam().getUrl(), RemoteCallProtocolConstants.POST);
@@ -184,12 +185,12 @@ public class RemoteCallService {
       int statusCode = connection.getResponseCode();
       String responseBody = readAll(statusCode >= 200 && statusCode < 300 ? connection.getInputStream() : connection.getErrorStream());
       if (statusCode < 200 || statusCode >= 300) {
-        throw new IllegalStateException("IAM模型对话接口调用失败，HTTP " + statusCode + "：" + truncate(responseBody, 500));
+        throw new IllegalStateException(RemoteCallErrorMessageConstants.iamChatHttpFailed(statusCode, truncate(responseBody, 500)));
       }
       String outputText = parseIamModelOutput(responseBody);
       return new ModelChatResult(modelId, outputText, String.valueOf(System.currentTimeMillis()));
     } catch (IOException e) {
-      throw new IllegalStateException("IAM模型对话接口调用失败：" + e.getMessage(), e);
+      throw new IllegalStateException(RemoteCallErrorMessageConstants.iamChatFailed(e.getMessage()), e);
     } finally {
       if (connection != null) {
         connection.disconnect();
@@ -201,12 +202,12 @@ public class RemoteCallService {
     JsonNode root = objectMapper.readTree(responseBody);
     JsonNode choicesNode = root.get(RemoteCallJsonFieldConstants.CHOICES);
     if (choicesNode == null || !choicesNode.isArray() || choicesNode.isEmpty()) {
-      throw new IllegalStateException("IAM模型对话接口返回缺少choices");
+      throw new IllegalStateException(RemoteCallErrorMessageConstants.IAM_CHAT_CHOICES_REQUIRED);
     }
     JsonNode messageNode = choicesNode.get(0).get(RemoteCallJsonFieldConstants.MESSAGE);
     String content = textValue(messageNode, RemoteCallJsonFieldConstants.CONTENT);
     if (!StringUtils.hasText(content)) {
-      throw new IllegalStateException("IAM模型对话接口返回缺少message.content");
+      throw new IllegalStateException(RemoteCallErrorMessageConstants.IAM_CHAT_MESSAGE_CONTENT_REQUIRED);
     }
     return cleanThinkContent(content);
   }
@@ -227,7 +228,7 @@ public class RemoteCallService {
       AgentChatRequest request
   ) {
     String safeAgentId = firstNonBlank(agentId, RemoteCallDefaults.AGENT_ALIAS);
-    String safeBundleId = requireText(bundleId, "Agent bundle ID cannot be blank");
+    String safeBundleId = requireText(bundleId, RemoteCallErrorMessageConstants.AGENT_BUNDLE_ID_REQUIRED);
     String safeAgentAlias = firstNonBlank(agentAlias, safeAgentId);
     long startedAt = System.currentTimeMillis();
     String conversationId = StringUtils.hasText(request == null ? null : request.conversationId())
@@ -237,7 +238,7 @@ public class RemoteCallService {
         conversationId,
         request == null || request.messages() == null ? List.of() : request.messages(),
         Boolean.TRUE);
-    String chatUrl = requireText(properties.getAgentChatUrl(), "Please configure agent chat API remoteCall.agent-chat-url");
+    String chatUrl = requireText(properties.getAgentChatUrl(), RemoteCallErrorMessageConstants.AGENT_CHAT_URL_REQUIRED);
 
     HttpURLConnection connection = null;
     try {
@@ -383,13 +384,13 @@ public class RemoteCallService {
   }
 
   private URI remoteUri(String url) {
-    String safeUrl = requireText(url, "远程调用地址不能为空");
+    String safeUrl = requireText(url, RemoteCallErrorMessageConstants.REMOTE_URL_REQUIRED);
     URI uri = URI.create(safeUrl);
     if (RemoteCallProtocolConstants.HTTP.equalsIgnoreCase(uri.getScheme())
         || RemoteCallProtocolConstants.HTTPS.equalsIgnoreCase(uri.getScheme())) {
       return uri;
     } else {
-      throw new IllegalStateException("远程调用地址仅支持HTTP或HTTPS：" + safeUrl);
+      throw new IllegalStateException(RemoteCallErrorMessageConstants.unsupportedRemoteUrl(safeUrl));
     }
   }
 
@@ -403,7 +404,7 @@ public class RemoteCallService {
 
   private void ensureSuccess(String name, String status, Boolean success) {
     if (!RemoteCallStatusConstants.SUCCESS_CODE.equals(status) || Boolean.FALSE.equals(success)) {
-      throw new IllegalStateException(name + "返回失败，status=" + status + "，success=" + success);
+      throw new IllegalStateException(RemoteCallErrorMessageConstants.remoteResponseFailed(name, status, success));
     }
   }
 
