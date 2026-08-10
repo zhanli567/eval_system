@@ -1,7 +1,8 @@
 <script setup>
 import { CircleCheck, CircleClose, Clock, Loading, Plus, Refresh, Search } from '@element-plus/icons-vue';
+import ResourceDescriptionDialog from '../components/ResourceDescriptionDialog.vue';
 import { useTaskManagement } from '../modules/task/composables/useTaskManagement';
-const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, statusOptions, loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, stopTask, isStartingTask, isStoppingTask, removeTask, canStartTask, canStopTask, canDeleteTask, toggleSort, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
+const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, statusOptions, descriptionDialogVisible, descriptionSaving, descriptionForm, loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, stopTask, isStartingTask, isStoppingTask, removeTask, canStartTask, canStopTask, canDeleteTask, openDescriptionDialog, submitDescription, toggleSort, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -169,9 +170,10 @@ function runTaskAction(row) {
           <OverflowTooltip :content="formatTime(row.base.lastUpdatedDate)" />
         </template>
       </el-table-column>
-      <el-table-column column-key="actions" label="操作" width="260" fixed="right" :resizable="false" align="center">
+      <el-table-column column-key="actions" label="操作" width="300" fixed="right" :resizable="false" align="center">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDetail(row)">详情</el-button>
+          <el-button link type="primary" @click.stop="openDescriptionDialog(row)">编辑</el-button>
           <el-button link type="primary" @click.stop="copyTask(row)">复制</el-button>
           <el-button
             link
@@ -199,4 +201,14 @@ function runTaskAction(row) {
       />
     </div>
   </section>
+
+  <ResourceDescriptionDialog
+    v-model="descriptionDialogVisible"
+    title="编辑任务描述"
+    name-label="任务名称"
+    :name="descriptionForm.name"
+    :description="descriptionForm.description"
+    :saving="descriptionSaving"
+    @save="submitDescription"
+  />
 </template>

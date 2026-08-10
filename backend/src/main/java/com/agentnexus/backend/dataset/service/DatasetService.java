@@ -1,6 +1,7 @@
 package com.agentnexus.backend.dataset.service;
 
 import com.agentnexus.backend.common.PageResponse;
+import com.agentnexus.backend.common.dto.DescriptionUpdateRequest;
 import com.agentnexus.backend.dataset.api.dto.request.CreateDatasetRequest;
 import com.agentnexus.backend.dataset.api.dto.request.DeleteRowsRequest;
 import com.agentnexus.backend.dataset.api.dto.request.FieldInput;
@@ -83,6 +84,27 @@ public class DatasetService {
 
   public DatasetSummary getDatasetSummary(String datasetId) {
     return datasetRepository.findDatasetSummary(datasetId);
+  }
+
+  /**
+   * 更新评测集描述。
+   *
+   * @param datasetId 评测集ID
+   * @param request 描述更新请求
+   * @return 更新后的评测集概要
+   */
+  @Transactional
+  public DatasetSummary updateDescription(String datasetId, DescriptionUpdateRequest request) {
+    DatasetSummary dataset = datasetRepository.findDatasetSummary(datasetId);
+    if (dataset == null) {
+      throw new IllegalArgumentException("评测集不存在");
+    } else if (!datasetRepository.isDatasetCreatedByCurrentUser(datasetId)) {
+      throw new IllegalArgumentException("仅创建人可以修改评测集描述");
+    } else {
+      String description = normalizeDescription(request == null ? null : request.description());
+      datasetRepository.updateDescription(datasetId, description);
+      return getDatasetSummary(datasetId);
+    }
   }
 
   @Transactional

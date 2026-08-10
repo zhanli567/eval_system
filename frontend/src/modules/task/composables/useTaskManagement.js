@@ -2,6 +2,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { taskApi } from '../../../api/task';
+import { useResourceDescriptionEdit } from '../../../composables/useResourceDescriptionEdit';
 import { formatDateTime } from '../../../utils/formatters';
 import { movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 import { TASK_STATUS_OPTIONS, statusLabel } from '../../../utils/taskLabels';
@@ -211,6 +212,13 @@ export function useTaskManagement() {
     const state = { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder };
     const ctx = { state, loading, pollTimer: undefined, startingTaskIds, stoppingTaskIds };
     const actions = createTaskManagementActions(ctx, router);
+    const descriptionEdit = useResourceDescriptionEdit({
+        getId: (row) => row.base.id,
+        getName: (row) => row.base.taskName,
+        getDescription: (row) => row.base.description,
+        update: taskApi.updateDescription,
+        reload: actions.loadTasks
+    });
     ctx.loadTasks = actions.loadTasks;
     onMounted(async () => {
         await actions.loadTasks();
@@ -232,6 +240,7 @@ export function useTaskManagement() {
         sortBy,
         sortOrder,
         statusOptions: TASK_STATUS_OPTIONS,
+        ...descriptionEdit,
         loadTasks: actions.loadTasks,
         searchTasks: actions.searchTasks,
         changeSize: actions.changeSize,

@@ -124,8 +124,7 @@ public class TagRepository {
       String description,
       Integer minValue,
       Integer maxValue,
-      Integer passThreshold,
-      String now
+      Integer passThreshold
   ) {
     tagMapper.update(null, new LambdaUpdateWrapper<EvalTag>()
         .eq(EvalTag::getSpaceId, currentSpaceId())
@@ -137,7 +136,7 @@ public class TagRepository {
         .set(EvalTag::getPassThreshold, passThreshold)
         .set(EvalTag::getLastUpdatedBy, currentUserId())
         .set(EvalTag::getLastUpdatedByName, currentUserName())
-        .set(EvalTag::getLastUpdatedDate, toLastUpdatedDate(now)));
+        .set(EvalTag::getLastUpdatedDate, LocalDateTime.now()));
   }
 
   public void deleteOptions(String tagId) {

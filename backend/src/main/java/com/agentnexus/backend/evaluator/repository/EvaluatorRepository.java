@@ -103,6 +103,22 @@ public class EvaluatorRepository {
         .set(EvalEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
+  /**
+   * 更新评估器描述。
+   *
+   * @param evaluatorId 评估器ID
+   * @param description 评估器描述
+   */
+  public void updateDescription(String evaluatorId, String description) {
+    evaluatorMapper.update(null, new LambdaUpdateWrapper<EvalEvaluator>()
+        .eq(EvalEvaluator::getSpaceId, currentSpaceId())
+        .eq(EvalEvaluator::getId, evaluatorId)
+        .set(EvalEvaluator::getDescription, description)
+        .set(EvalEvaluator::getLastUpdatedBy, currentUserId())
+        .set(EvalEvaluator::getLastUpdatedByName, currentUserName())
+        .set(EvalEvaluator::getLastUpdatedDate, LocalDateTime.now()));
+  }
+
   public void updateLatestVersion(String evaluatorId, String versionId, String now) {
     evaluatorMapper.update(null, new LambdaUpdateWrapper<EvalEvaluator>()
         .eq(EvalEvaluator::getSpaceId, currentSpaceId())

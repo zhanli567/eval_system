@@ -6,6 +6,9 @@ export const datasetApi = {
     createDataset(data) {
         return unwrap(http.post('/datasets', data));
     },
+    updateDescription(datasetId, description) {
+        return unwrap(http.post(`/datasets/${datasetId}/description`, { description }));
+    },
     deleteDataset(datasetId) {
         return unwrap(http.post(`/datasets/${datasetId}/delete`));
     },

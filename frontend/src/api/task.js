@@ -21,6 +21,9 @@ export const taskApi = {
     getTaskCopyConfig(taskId) {
         return unwrap(http.get(`/tasks/${taskId}/copy-config`));
     },
+    updateDescription(taskId, description) {
+        return unwrap(http.post(`/tasks/${taskId}/description`, { description }));
+    },
     startTask(taskId) {
         return unwrap(http.post(`/tasks/${taskId}/start`));
     },

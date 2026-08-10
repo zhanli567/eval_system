@@ -2,6 +2,7 @@ package com.agentnexus.backend.evaluator.api;
 
 import com.agentnexus.backend.common.ApiResponse;
 import com.agentnexus.backend.common.PageResponse;
+import com.agentnexus.backend.common.dto.DescriptionUpdateRequest;
 import com.agentnexus.backend.evaluator.api.dto.request.EvaluatorInput;
 import com.agentnexus.backend.evaluator.api.dto.request.EvaluatorTrialRequest;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorConfig;
@@ -72,6 +73,23 @@ public class EvaluatorController {
   @Path("")
   public ApiResponse<EvaluatorConfig> createEvaluator(EvaluatorInput request) {
     return ApiResponse.ok(evaluatorService.createEvaluator(request));
+  }
+
+  /**
+   * 更新评估器描述。
+   *
+   * @param evaluatorId 评估器ID
+   * @param request 描述更新请求
+   * @return 空响应
+   */
+  @POST
+  @Path("/{evaluatorId}/description")
+  public ApiResponse<Void> updateDescription(
+      @PathParam("evaluatorId") String evaluatorId,
+      DescriptionUpdateRequest request
+  ) {
+    evaluatorService.updateDescription(evaluatorId, request);
+    return ApiResponse.ok(null);
   }
 
   /**

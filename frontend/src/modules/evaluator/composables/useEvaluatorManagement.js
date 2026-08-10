@@ -2,6 +2,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { evaluatorApi } from '../../../api/evaluator';
+import { useResourceDescriptionEdit } from '../../../composables/useResourceDescriptionEdit';
 import { movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
 
@@ -212,6 +213,13 @@ export function useEvaluatorManagement() {
     ]);
     const ctx = { router, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, categories, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset };
     const actions = createEvaluatorActions(ctx);
+    const descriptionEdit = useResourceDescriptionEdit({
+        getId: (row) => row.id,
+        getName: (row) => row.evaluatorName,
+        getDescription: (row) => row.description,
+        update: evaluatorApi.updateDescription,
+        reload: actions.loadCustomEvaluators
+    });
     onMounted(async () => {
         await Promise.all([actions.loadCategories(), actions.loadCustomEvaluators()]);
         await actions.loadPresetEvaluators();
@@ -248,6 +256,7 @@ export function useEvaluatorManagement() {
         detailVisible,
         detailLoading,
         selectedPreset,
+        ...descriptionEdit,
         ...actions,
         typeLabel,
         formatTime: formatDateTime

@@ -1,6 +1,7 @@
 package com.agentnexus.backend.evaluator.service;
 
 import com.agentnexus.backend.common.PageResponse;
+import com.agentnexus.backend.common.dto.DescriptionUpdateRequest;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorConfig;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorConfigBase;
 import com.agentnexus.backend.evaluator.api.dto.request.EvaluatorInput;
@@ -148,6 +149,25 @@ public class EvaluatorService {
         now);
     saveParams(TARGET_VERSION, versionId, normalized.params(), now);
     return getVersion(versionId);
+  }
+
+  /**
+   * 更新评估器描述。
+   *
+   * @param evaluatorId 评估器ID
+   * @param request 描述更新请求
+   */
+  @Transactional
+  public void updateDescription(String evaluatorId, DescriptionUpdateRequest request) {
+    String evaluatorType = evaluatorRepository.findEvaluatorType(evaluatorId);
+    if (!StringUtils.hasText(evaluatorType)) {
+      throw new IllegalArgumentException("评估器不存在");
+    } else if (!evaluatorRepository.isEvaluatorCreatedByCurrentUser(evaluatorId)) {
+      throw new IllegalArgumentException("仅创建人可以修改评估器描述");
+    } else {
+      String description = normalizeDescription(request == null ? null : request.description());
+      evaluatorRepository.updateDescription(evaluatorId, description);
+    }
   }
 
   public List<EvaluatorVersionDto> listVersions(String evaluatorId) {

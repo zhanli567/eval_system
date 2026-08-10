@@ -80,15 +80,14 @@ public class TagService {
       throw new IllegalArgumentException("标签名称不能重复");
     }
 
-    String now = now();
     tagRepository.updateTag(
         tagId,
         normalized.tagName(),
         normalized.description(),
         normalized.minValue(),
         normalized.maxValue(),
-        normalized.passThreshold(),
-        now);
+        normalized.passThreshold());
+    String now = now();
     tagRepository.deleteOptions(tagId);
     saveOptions(tagId, normalized.tagType(), normalized.options(), now);
     return getTag(tagId);
