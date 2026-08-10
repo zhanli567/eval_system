@@ -1046,8 +1046,8 @@ h2 {
 .evaluator-trial-panel {
   position: sticky;
   top: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto minmax(0, 2fr) minmax(0, 1fr) auto;
   gap: 16px;
   align-self: stretch;
   height: 100%;
@@ -1073,8 +1073,8 @@ h2 {
 }
 
 .trial-param-list {
+  height: 100%;
   min-height: 0;
-  max-height: 300px;
   overflow-y: auto;
   padding: 14px;
   border: 1px solid var(--line);
@@ -1084,7 +1084,8 @@ h2 {
 
 .trial-empty {
   display: grid;
-  min-height: 300px;
+  height: 100%;
+  min-height: 0;
   place-items: center;
   padding: 28px 18px;
   border: 1px dashed var(--line);
@@ -1105,8 +1106,11 @@ h2 {
 }
 
 .trial-result-card {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1121,7 +1125,7 @@ h2 {
 }
 
 .trial-result-card pre {
-  max-height: 160px;
+  min-height: 0;
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
@@ -1144,7 +1148,6 @@ h2 {
 }
 
 .trial-run-button {
-  margin-top: auto;
   width: 100%;
   min-height: 42px;
   background: var(--accent);
