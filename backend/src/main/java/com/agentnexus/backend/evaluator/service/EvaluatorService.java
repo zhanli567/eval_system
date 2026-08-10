@@ -196,7 +196,6 @@ public class EvaluatorService {
     if (TYPE_CODE.equals(draft.evaluatorType())) {
       throw new IllegalArgumentException("暂不支持Code型评估器");
     }
-    ensureDraftPublishable(draft);
     int nextVersionNo = evaluatorRepository.nextVersionNo(evaluatorId);
     String newVersionId = id();
     String now = now();
@@ -223,28 +222,6 @@ public class EvaluatorService {
         .toList(), now);
     evaluatorRepository.updateLatestVersion(evaluatorId, newVersionId, now);
     return getVersion(newVersionId);
-  }
-
-  private void ensureDraftPublishable(EvaluatorConfig draft) {
-    if (draft == null || !StringUtils.hasText(draft.evaluatorType())) {
-      throw new IllegalArgumentException("草稿版本没有可发布的数据");
-    }
-    if (TYPE_LLM.equals(draft.evaluatorType())) {
-      requireText(draft.modelId(), "请选择模型");
-      requireText(draft.modelName(), "请选择模型");
-      String prompt = requireText(draft.prompt(), "Prompt不能为空");
-      validateMaxLength(prompt, MAX_PROMPT_LENGTH, "Prompt不能超过2000个字符");
-      List<EvaluatorParamDto> params = draft.params() == null ? List.of() : draft.params();
-      normalizePromptParams(prompt, params.stream()
-          .map(param -> new EvaluatorParamInput(
-              param.id(),
-              param.paramName(),
-              param.dataType(),
-              param.defaultValue(),
-              param.required(),
-              param.description()))
-          .toList());
-    }
   }
 
   @Transactional
