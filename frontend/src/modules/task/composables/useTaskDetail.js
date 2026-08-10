@@ -6,6 +6,7 @@ import { taskApi } from '../../../api/task';
 import { formatDateTime } from '../../../utils/formatters';
 import { passTagType, statusLabel, tagTypeLabel } from '../../../utils/taskLabels';
 import { formatTaskAppBinding } from '../../../utils/taskAppBinding';
+import { useTaskMetrics } from './useTaskMetrics';
 
 const STOPPABLE_STATUSES = ['running'];
 const TASK_TAG_TYPE_OPTIONS = [
@@ -25,6 +26,9 @@ async function loadTaskDetail(ctx, options = {}) {
     }
     try {
         ctx.detail.value = await taskApi.getTask(ctx.taskId.value, { page: ctx.page.value, size: ctx.size.value });
+        if (ctx.metrics.activeTab.value === 'metrics') {
+            await ctx.metrics.loadMetrics({ silent });
+        }
     } finally {
         if (!silent) {
             ctx.loading.value = false;
@@ -395,7 +399,8 @@ function cloneColumnSettings(settings) {
 export function useTaskDetail(taskId) {
     const router = useRouter();
     const state = createTaskDetailState();
-    const ctx = createContext(taskId, state);
+    const metrics = useTaskMetrics(taskId);
+    const ctx = createContext(taskId, state, metrics);
     const actions = createTaskDetailActions(ctx, router);
     const tagActions = createTagActions(ctx);
     const columnActions = createColumnActions(ctx);
@@ -453,6 +458,7 @@ function createTaskDetailReturn(ctx, computedValues, actions, tagActions, column
         ...actions,
         ...tagActions,
         ...columnActions,
+        ...ctx.metrics,
         formatAppBinding: formatTaskAppBinding,
         statusLabel,
         passTagType,
@@ -462,8 +468,8 @@ function createTaskDetailReturn(ctx, computedValues, actions, tagActions, column
     };
 }
 
-function createContext(taskId, state) {
-    return { taskId, ...state, pollTimer: undefined };
+function createContext(taskId, state, metrics) {
+    return { taskId, metrics, ...state, pollTimer: undefined };
 }
 
 function createComputedValues(detail, columnSettings, columnSettingDraft) {

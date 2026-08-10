@@ -1,7 +1,8 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { CircleCheck, CircleClose, Clock, Delete, Loading, Operation, PriceTag, Refresh } from '@element-plus/icons-vue';
+import EChartView from '../components/EChartView.vue';
 import TagCreateDialog from '../components/TagCreateDialog.vue';
 import TaskTagDrawer from '../components/TaskTagDrawer.vue';
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
@@ -33,7 +34,13 @@ const {
     columnSettingVisible,
     columnSettingItems,
     visibleTableColumns,
+    activeTab,
+    metricsLoading,
+    metricOverview,
+    metricScoreDimensions,
+    metricDistributionDimensions,
     loadDetail,
+    changeTaskDetailTab,
     loadAllTags,
     backToList,
     stopTask,
@@ -68,6 +75,179 @@ const statusIcons = {
     skipped: Clock,
     stopped: CircleClose
 };
+const selectedDistributionId = ref('');
+const progress = computed(() => metricOverview.value?.progress ?? {});
+const hasMetricDimensions = computed(() => metricScoreDimensions.value.length > 0);
+const selectedDistribution = computed(() => (
+    metricDistributionDimensions.value.find((item) => item.dimensionId === selectedDistributionId.value)
+    ?? metricDistributionDimensions.value[0]
+));
+const progressCards = computed(() => [
+    { label: '评测进度', value: metricPercent(progress.value.progressRate) },
+    { label: '评测集总量', value: metricNumber(progress.value.totalCount) },
+    { label: '未完成量', value: metricNumber(progress.value.incompleteCount) },
+    { label: '已完成量', value: metricNumber(progress.value.completedCount) }
+]);
+const gaugeOption = computed(() => ({
+    color: ['#2f8cff'],
+    series: [
+        {
+            type: 'gauge',
+            startAngle: 210,
+            endAngle: -30,
+            min: 0,
+            max: 100,
+            radius: '92%',
+            progress: {
+                show: true,
+                width: 16,
+                roundCap: true
+            },
+            axisLine: {
+                lineStyle: {
+                    width: 16,
+                    color: [[1, '#edf2fa']]
+                }
+            },
+            pointer: { show: false },
+            axisTick: { show: false },
+            splitLine: { show: false },
+            axisLabel: { show: false },
+            anchor: { show: false },
+            title: { show: false },
+            detail: {
+                offsetCenter: [0, '18%'],
+                color: '#202642',
+                fontSize: 32,
+                fontWeight: 700,
+                formatter: () => metricPercent(metricOverview.value?.overallScore)
+            },
+            data: [{ value: Number(metricOverview.value?.overallScore ?? 0) }]
+        }
+    ]
+}));
+const scoreChartOption = computed(() => ({
+    color: ['#2f8cff'],
+    grid: { left: 48, right: 24, top: 28, bottom: 52 },
+    tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: scoreTooltip
+    },
+    xAxis: {
+        type: 'category',
+        data: metricScoreDimensions.value.map(dimensionName),
+        axisTick: { show: false },
+        axisLabel: {
+            color: '#8d94a6',
+            interval: 0,
+            overflow: 'truncate',
+            width: 120
+        }
+    },
+    yAxis: {
+        type: 'value',
+        max: 100,
+        axisLabel: { formatter: '{value}%', color: '#8d94a6' },
+        splitLine: { lineStyle: { color: '#edf1f7' } }
+    },
+    series: [
+        {
+            name: '通过率',
+            type: 'bar',
+            barWidth: 28,
+            itemStyle: {
+                borderRadius: [6, 6, 0, 0],
+                color: (params) => (params.data.dimensionType === 'tag' ? '#45bf8f' : '#2f8cff')
+            },
+            data: metricScoreDimensions.value.map((item) => ({
+                value: item.passRate ?? 0,
+                dimensionType: item.dimensionType
+            }))
+        }
+    ]
+}));
+const distributionStackOption = computed(() => ({
+    color: ['#45bf8f', '#ff6b6b', '#a8afbf'],
+    legend: {
+        top: 0,
+        right: 8,
+        itemWidth: 10,
+        itemHeight: 10,
+        textStyle: { color: '#6b7280' }
+    },
+    grid: { left: 46, right: 24, top: 42, bottom: 48 },
+    tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: stackTooltip
+    },
+    xAxis: {
+        type: 'category',
+        data: metricDistributionDimensions.value.map(dimensionName),
+        axisTick: { show: false },
+        axisLabel: {
+            color: '#8d94a6',
+            interval: 0,
+            overflow: 'truncate',
+            width: 120
+        }
+    },
+    yAxis: {
+        type: 'value',
+        axisLabel: { color: '#8d94a6' },
+        splitLine: { lineStyle: { color: '#edf1f7' } }
+    },
+    series: [
+        stackSeries('通过', 'passCount'),
+        stackSeries('未通过', 'failedCount'),
+        stackSeries('未完成', 'pendingCount')
+    ]
+}));
+const distributionPieOption = computed(() => ({
+    color: ['#45bf8f', '#ff6b6b', '#a8afbf'],
+    tooltip: { trigger: 'item' },
+    legend: {
+        bottom: 0,
+        left: 'center',
+        itemWidth: 10,
+        itemHeight: 10,
+        textStyle: { color: '#6b7280' }
+    },
+    title: {
+        text: dimensionName(selectedDistribution.value),
+        subtext: '数据项分布',
+        left: 'center',
+        top: 16,
+        textStyle: {
+            color: '#202642',
+            fontSize: 15,
+            fontWeight: 700
+        },
+        subtextStyle: {
+            color: '#8d94a6',
+            fontSize: 12
+        }
+    },
+    series: [
+        {
+            type: 'pie',
+            radius: ['48%', '70%'],
+            center: ['50%', '56%'],
+            avoidLabelOverlap: true,
+            label: { formatter: '{b}: {c}' },
+            data: [
+                { name: '通过', value: selectedDistribution.value?.passCount ?? 0 },
+                { name: '未通过', value: selectedDistribution.value?.failedCount ?? 0 },
+                { name: '未完成', value: selectedDistribution.value?.pendingCount ?? 0 }
+            ]
+        }
+    ]
+}));
+watch(metricDistributionDimensions, (dimensions) => {
+    const exists = dimensions.some((item) => item.dimensionId === selectedDistributionId.value);
+    selectedDistributionId.value = exists ? selectedDistributionId.value : (dimensions[0]?.dimensionId ?? '');
+}, { immediate: true });
 function statusIcon(value) {
     return statusIcons[value] || Clock;
 }
@@ -147,11 +327,37 @@ function tagHeaderText(tag) {
 async function refreshTagsAfterCreate() {
     await loadAllTags();
 }
+function metricPercent(value) {
+    return value === undefined || value === null ? '-' : `${value}%`;
+}
+function metricNumber(value) {
+    return value === undefined || value === null ? '-' : value;
+}
+function dimensionName(item) {
+    return item?.displayName || item?.dimensionName || '-';
+}
+function stackSeries(name, field) {
+    return {
+        name,
+        type: 'bar',
+        stack: 'total',
+        barWidth: 28,
+        itemStyle: { borderRadius: name === '未完成' ? [6, 6, 0, 0] : 0 },
+        data: metricDistributionDimensions.value.map((item) => item[field] ?? 0)
+    };
+}
+function scoreTooltip(params) {
+    const item = params?.[0];
+    return item ? `${item.name}<br/>通过率：${item.value}%` : '';
+}
+function stackTooltip(params) {
+    return (params ?? []).map((item) => `${item.marker}${item.seriesName}：${item.value}`).join('<br/>');
+}
 </script>
 
 <template>
   <section class="task-detail-shell" v-loading="loading">
-    <section class="task-detail-card">
+    <section class="task-detail-card" :class="{ 'is-metrics': activeTab === 'metrics' }">
       <div class="embedded-page-title">
         <nav class="page-breadcrumb" aria-label="页面路径">
           <button type="button" class="page-breadcrumb-link" @click="backToList">评测任务</button>
@@ -160,9 +366,25 @@ async function refreshTagsAfterCreate() {
             <OverflowTooltip :content="base.taskName" tag="span" class="page-breadcrumb-current" />
           </template>
         </nav>
+        <div class="task-detail-tabs">
+          <button
+            type="button"
+            :class="{ active: activeTab === 'data' }"
+            @click="changeTaskDetailTab('data')"
+          >
+            数据明细
+          </button>
+          <button
+            type="button"
+            :class="{ active: activeTab === 'metrics' }"
+            @click="changeTaskDetailTab('metrics')"
+          >
+            指标统计
+          </button>
+        </div>
       </div>
 
-      <section class="task-basic-band">
+      <section v-if="activeTab === 'data'" class="task-basic-band">
         <h2>基础信息</h2>
         <div class="task-detail-info-grid">
           <div class="task-info-row task-info-row-primary">
@@ -241,7 +463,7 @@ async function refreshTagsAfterCreate() {
         </div>
       </section>
 
-      <section class="task-data-panel">
+      <section v-if="activeTab === 'data'" class="task-data-panel">
         <div class="panel-toolbar">
           <span class="meta">数据明细</span>
           <div class="table-toolbar-actions">
@@ -442,6 +664,55 @@ async function refreshTagsAfterCreate() {
             @current-change="loadDetail"
           />
         </div>
+      </section>
+      <section v-else class="task-metrics-panel" v-loading="metricsLoading">
+        <section class="metric-overview-grid">
+          <article class="metric-card metric-score-card">
+            <div class="metric-card-head">
+              <h3>综合得分</h3>
+              <span>{{ metricOverview?.scoredDimensionCount || 0 }} 个维度</span>
+            </div>
+            <EChartView class="metric-gauge-chart" :option="gaugeOption" />
+          </article>
+          <div class="metric-progress-grid">
+            <article v-for="card in progressCards" :key="card.label" class="metric-card metric-progress-item">
+              <span>{{ card.label }}</span>
+              <strong>{{ card.value }}</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="metric-card metric-chart-card">
+          <div class="metric-card-head">
+            <h3>得分汇总</h3>
+            <span>评估器 / 标签通过率</span>
+          </div>
+          <EChartView v-if="hasMetricDimensions" class="metric-bar-chart" :option="scoreChartOption" />
+          <el-empty v-else description="暂无指标数据" />
+        </section>
+
+        <section class="metric-card metric-chart-card">
+          <div class="metric-card-head">
+            <h3>得分明细 · 数据项分布</h3>
+            <el-select
+              v-model="selectedDistributionId"
+              class="metric-dimension-select"
+              placeholder="选择维度"
+            >
+              <el-option
+                v-for="item in metricDistributionDimensions"
+                :key="item.dimensionId"
+                :label="dimensionName(item)"
+                :value="item.dimensionId"
+              />
+            </el-select>
+          </div>
+          <div v-if="hasMetricDimensions" class="metric-distribution-grid">
+            <EChartView class="metric-stack-chart" :option="distributionStackOption" />
+            <EChartView class="metric-pie-chart" :option="distributionPieOption" />
+          </div>
+          <el-empty v-else description="暂无分布数据" />
+        </section>
       </section>
     </section>
     <TaskTagDrawer

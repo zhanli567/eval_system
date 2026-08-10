@@ -1877,8 +1877,40 @@ h2 {
   box-shadow: 0 12px 32px rgba(31, 41, 66, 0.06);
 }
 
+.task-detail-card.is-metrics {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.task-detail-tabs {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 4px;
+  border-radius: 8px;
+  background: #f5f7fb;
+}
+
+.task-detail-tabs button {
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.task-detail-tabs button.active {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 4px 12px rgba(31, 41, 66, 0.08);
+}
+
 .task-detail-card .task-basic-band,
-.task-detail-card .task-data-panel {
+.task-detail-card .task-data-panel,
+.task-detail-card .task-metrics-panel {
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -1898,6 +1930,115 @@ h2 {
   color: var(--ink);
   font-size: 16px;
   font-weight: 700;
+}
+
+.task-metrics-panel {
+  display: grid;
+  align-content: start;
+  gap: 20px;
+  min-width: 0;
+  min-height: 0;
+  padding: 22px;
+  overflow-y: auto;
+}
+
+.metric-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(420px, 1.6fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+.metric-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(31, 41, 66, 0.05);
+}
+
+.metric-score-card,
+.metric-chart-card {
+  padding: 18px;
+}
+
+.metric-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.metric-card-head h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.metric-card-head span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.metric-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  min-width: 0;
+}
+
+.metric-progress-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 182px;
+  padding: 18px 12px;
+  background: #f8fafc;
+}
+
+.metric-progress-item span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.metric-progress-item strong {
+  color: var(--ink);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.echart-view {
+  width: 100%;
+  height: 100%;
+  min-height: 220px;
+}
+
+.metric-gauge-chart {
+  height: 220px;
+}
+
+.metric-bar-chart,
+.metric-stack-chart {
+  height: 300px;
+}
+
+.metric-dimension-select {
+  width: 240px;
+}
+
+.metric-distribution-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.8fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+.metric-pie-chart {
+  height: 300px;
 }
 
 .task-create-main {
@@ -3254,6 +3395,15 @@ h2 {
     flex-wrap: wrap;
   }
 
+  .metric-overview-grid,
+  .metric-distribution-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-progress-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .task-create-main {
     padding-right: clamp(16px, 10vw, 120px);
     padding-left: clamp(16px, 10vw, 120px);
@@ -3460,6 +3610,10 @@ h2 {
 
   h1 {
     font-size: 22px;
+  }
+
+  .metric-progress-grid {
+    grid-template-columns: 1fr;
   }
 
   .app-body {

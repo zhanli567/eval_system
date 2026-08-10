@@ -6,6 +6,9 @@ import com.agentnexus.backend.task.api.dto.response.AnnotationDetail;
 import com.agentnexus.backend.task.api.dto.request.CreateTaskRequest;
 import com.agentnexus.backend.task.api.dto.request.SaveAnnotationRequest;
 import com.agentnexus.backend.task.api.dto.response.TaskDetail;
+import com.agentnexus.backend.task.api.dto.response.TaskMetricItemDistribution;
+import com.agentnexus.backend.task.api.dto.response.TaskMetricOverview;
+import com.agentnexus.backend.task.api.dto.response.TaskMetricScoreSummary;
 import com.agentnexus.backend.task.api.dto.response.TaskSummary;
 import com.agentnexus.backend.task.service.TaskService;
 import jakarta.ws.rs.DefaultValue;
@@ -55,6 +58,42 @@ public class TaskController {
       @QueryParam("size") @DefaultValue("10") int size
   ) {
     return ApiResponse.ok(taskService.getTask(taskId, page, size));
+  }
+
+  /**
+   * 查询评测任务指标统计概览。
+   *
+   * @param taskId 评测任务ID
+   * @return 指标统计概览
+   */
+  @GET
+  @Path("/{taskId}/metrics/overview")
+  public ApiResponse<TaskMetricOverview> getMetricOverview(@PathParam("taskId") String taskId) {
+    return ApiResponse.ok(taskService.getMetricOverview(taskId));
+  }
+
+  /**
+   * 查询评测任务得分汇总。
+   *
+   * @param taskId 评测任务ID
+   * @return 得分汇总
+   */
+  @GET
+  @Path("/{taskId}/metrics/score-summary")
+  public ApiResponse<TaskMetricScoreSummary> getMetricScoreSummary(@PathParam("taskId") String taskId) {
+    return ApiResponse.ok(taskService.getMetricScoreSummary(taskId));
+  }
+
+  /**
+   * 查询评测任务数据项分布。
+   *
+   * @param taskId 评测任务ID
+   * @return 数据项分布
+   */
+  @GET
+  @Path("/{taskId}/metrics/item-distribution")
+  public ApiResponse<TaskMetricItemDistribution> getMetricItemDistribution(@PathParam("taskId") String taskId) {
+    return ApiResponse.ok(taskService.getMetricItemDistribution(taskId));
   }
 
   @GET
