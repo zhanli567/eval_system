@@ -67,7 +67,7 @@ function createTaskDetailActions(ctx, router) {
             return;
         }
         await ElMessageBox.confirm(
-            '停止后将保留已完成结果，未执行或未完成的数据会标记为已中止。已中止任务可重新开始，重新开始会从头重跑。确定停止吗？',
+            '停止后将保留已完成结果，重新开始时仅继续未完成或失败的数据。确定停止吗？',
             '停止评测任务',
             { type: 'warning' }
         );

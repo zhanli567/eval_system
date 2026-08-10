@@ -418,11 +418,8 @@ async function refreshTagsAfterCreate() {
                   <span class="tag-result-separator">-</span>
                   <OverflowTooltip class="result-value tag-result-value" :content="tagResultValue(row, column.target.taskTagId)" />
                 </div>
-                <el-tag v-else-if="findTagResult(row, column.target.taskTagId)?.status === 'stopped'" type="info" effect="plain">
-                  <OverflowTooltip content="已中止" />
-                </el-tag>
                 <el-tag v-else type="info" effect="plain">
-                  <OverflowTooltip content="未标注" />
+                  <OverflowTooltip content="待标注" />
                 </el-tag>
               </template>
             </el-table-column>
