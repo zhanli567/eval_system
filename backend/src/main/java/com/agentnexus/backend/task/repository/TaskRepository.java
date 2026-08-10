@@ -557,23 +557,6 @@ public class TaskRepository {
   }
 
   /**
-   * 将历史中止的标签结果恢复为待标注状态，保留已标注内容。
-   *
-   * @param taskId 评测任务ID
-   * @param now 当前时间戳
-   */
-  public void prepareTagResultsForRestart(String taskId, String now) {
-    tagResultMapper.update(null, new LambdaUpdateWrapper<EvalTaskTagResult>()
-        .eq(EvalTaskTagResult::getSpaceId, currentSpaceId())
-        .eq(EvalTaskTagResult::getTaskId, taskId)
-        .eq(EvalTaskTagResult::getStatus, "stopped")
-        .set(EvalTaskTagResult::getStatus, "pending")
-        .set(EvalTaskTagResult::getLastUpdatedBy, currentUserId())
-        .set(EvalTaskTagResult::getLastUpdatedByName, currentUserName())
-        .set(EvalTaskTagResult::getLastUpdatedDate, toLastUpdatedDate(now)));
-  }
-
-  /**
    * 将评测任务下仍未结束的子记录标记为已中止。
    *
    * @param taskId 评测任务ID

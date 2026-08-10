@@ -235,7 +235,6 @@ public class TaskService {
     taskRepository.prepareAppOutputsForRestart(taskId, appOutputStatus, startedAt);
     taskRepository.prepareEvaluatorResultsForRestart(taskId, startedAt);
     taskRepository.prepareTaskTagsForRestart(taskId, startedAt);
-    taskRepository.prepareTagResultsForRestart(taskId, startedAt);
     taskRepository.updateTaskStatus(taskId, STATUS_RUNNING, startedAt, null, startedAt);
     for (TaskEvaluatorBindingRecord evaluator : taskRepository.listTaskEvaluatorBindings(taskId)) {
       taskRepository.updateTaskEvaluatorStatus(evaluator.id(), STATUS_RUNNING, startedAt);
