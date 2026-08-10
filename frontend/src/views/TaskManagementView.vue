@@ -123,7 +123,12 @@ function runTaskAction(row) {
       </el-table-column>
       <el-table-column prop="description" label="描述" min-width="260" :resizable="false">
         <template #default="{ row }">
-          <OverflowTooltip :content="row.base.description || '暂无描述'" />
+          <ResourceDescriptionCell
+            resource-type="task"
+            :resource-id="row.base.id"
+            :description="row.base.description"
+            @updated="() => loadTasks()"
+          />
         </template>
       </el-table-column>
       <el-table-column column-key="evaluators" label="评估器" min-width="220" :resizable="false">

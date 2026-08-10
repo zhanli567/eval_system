@@ -140,6 +140,16 @@ public class TagRepository {
         .set(EvalTag::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
+  public void updateTagDescription(String tagId, String description, String now) {
+    tagMapper.update(null, new LambdaUpdateWrapper<EvalTag>()
+        .eq(EvalTag::getSpaceId, currentSpaceId())
+        .eq(EvalTag::getId, tagId)
+        .set(EvalTag::getDescription, description)
+        .set(EvalTag::getLastUpdatedBy, currentUserId())
+        .set(EvalTag::getLastUpdatedByName, currentUserName())
+        .set(EvalTag::getLastUpdatedDate, toLastUpdatedDate(now)));
+  }
+
   public void deleteOptions(String tagId) {
     optionMapper.delete(new LambdaQueryWrapper<EvalTagOption>()
         .eq(EvalTagOption::getSpaceId, currentSpaceId())

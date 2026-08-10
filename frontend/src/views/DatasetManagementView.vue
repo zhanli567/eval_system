@@ -61,7 +61,12 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
       </el-table-column>
       <el-table-column prop="description" label="描述" min-width="280" :resizable="false">
         <template #default="{ row }">
-          <OverflowTooltip :content="row.description || '暂无描述'" />
+          <ResourceDescriptionCell
+            resource-type="dataset"
+            :resource-id="row.id"
+            :description="row.description"
+            @updated="() => loadDatasets()"
+          />
         </template>
       </el-table-column>
       <el-table-column prop="createdByName" label="创建人" min-width="140" :resizable="false" align="center">

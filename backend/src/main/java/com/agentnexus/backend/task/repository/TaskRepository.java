@@ -457,6 +457,16 @@ public class TaskRepository {
         .set(EvalTask::getLastUpdatedDate, toLastUpdatedDate(now)));
   }
 
+  public void updateTaskDescription(String taskId, String description, String now) {
+    taskMapper.update(null, new LambdaUpdateWrapper<EvalTask>()
+        .eq(EvalTask::getSpaceId, currentSpaceId())
+        .eq(EvalTask::getId, taskId)
+        .set(EvalTask::getDescription, description)
+        .set(EvalTask::getLastUpdatedBy, currentUserId())
+        .set(EvalTask::getLastUpdatedByName, currentUserName())
+        .set(EvalTask::getLastUpdatedDate, toLastUpdatedDate(now)));
+  }
+
   public void updateTaskEvaluatorStatus(String taskEvaluatorId, String status, String now) {
     taskEvaluatorMapper.update(null, new LambdaUpdateWrapper<EvalTaskEvaluator>()
         .eq(EvalTaskEvaluator::getSpaceId, currentSpaceId())

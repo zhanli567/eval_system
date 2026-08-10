@@ -60,7 +60,12 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
       </el-table-column>
       <el-table-column prop="description" label="描述" min-width="280" :resizable="false">
         <template #default="{ row }">
-          <OverflowTooltip :content="row.description || '暂无描述'" />
+          <ResourceDescriptionCell
+            resource-type="tag"
+            :resource-id="row.id"
+            :description="row.description"
+            @updated="() => loadTags()"
+          />
         </template>
       </el-table-column>
       <el-table-column prop="createdByName" label="创建人" min-width="140" :resizable="false" align="center">
