@@ -10,6 +10,11 @@ import com.agentnexus.backend.evaluator.api.dto.request.EvaluatorTrialRequest;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorSummary;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorTrialResponse;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorVersionDto;
+import com.agentnexus.backend.evaluator.constant.EvaluationResultConstants;
+import com.agentnexus.backend.evaluator.constant.EvaluatorParamTypeConstants;
+import com.agentnexus.backend.evaluator.constant.EvaluatorSortConstants;
+import com.agentnexus.backend.evaluator.constant.EvaluatorTargetConstants;
+import com.agentnexus.backend.evaluator.constant.EvaluatorTypeConstants;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetCategoryDto;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorDetail;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorSummary;
@@ -36,12 +41,6 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class EvaluatorService {
-  private static final String TYPE_LLM = "llm";
-  private static final String TYPE_CODE = "code";
-  private static final String TARGET_VERSION = "version";
-  private static final String PARAM_TYPE_STRING = "string";
-  private static final List<String> SUPPORTED_TYPES = List.of(TYPE_LLM, TYPE_CODE);
-  private static final List<String> SUPPORTED_PARAM_TYPES = List.of(PARAM_TYPE_STRING, "number", "boolean");
   private static final BigDecimal DEFAULT_SCORE_MIN = BigDecimal.ONE;
   private static final BigDecimal DEFAULT_SCORE_MAX = BigDecimal.valueOf(5);
   private static final BigDecimal DEFAULT_PASS_THRESHOLD = BigDecimal.valueOf(3);
@@ -76,8 +75,12 @@ public class EvaluatorService {
     int safeSize = Math.min(Math.max(size, 1), 100);
     int offset = (safePage - 1) * safeSize;
     String like = "%" + (keyword == null ? "" : keyword.trim()) + "%";
-    String orderColumn = "createdDate".equals(sortBy) ? "e.created_date" : "e.last_updated_date";
-    String orderDirection = "asc".equalsIgnoreCase(sortOrder) ? "ASC" : "DESC";
+    String orderColumn = EvaluatorSortConstants.CREATED_DATE.equals(sortBy)
+        ? EvaluatorSortConstants.EVALUATOR_CREATED_DATE_COLUMN
+        : EvaluatorSortConstants.EVALUATOR_LAST_UPDATED_DATE_COLUMN;
+    String orderDirection = EvaluatorSortConstants.ASC.equalsIgnoreCase(sortOrder)
+        ? EvaluatorSortConstants.SQL_ASC
+        : EvaluatorSortConstants.SQL_DESC;
     List<EvaluatorSummary> records = evaluatorRepository.listEvaluators(normalizedType, like, orderColumn, orderDirection, safeSize, offset);
     long total = evaluatorRepository.countEvaluators(normalizedType, like);
     return new PageResponse<>(records, total, safePage, safeSize);
@@ -110,13 +113,15 @@ public class EvaluatorService {
     String renderedPrompt = renderPrompt(evaluator.prompt(), params);
     ModelChatResult response = remoteCallService.chatModel(evaluator.modelId(), evaluator.modelName(), renderedPrompt);
     if (response == null || !StringUtils.hasText(response.outputText())) {
-      return new EvaluatorTrialResponse("", "fail", null, "", "模型对话接口未返回评估结果");
+      return new EvaluatorTrialResponse("", EvaluationResultConstants.FAIL, null, "", "模型对话接口未返回评估结果");
     }
     EvaluatorParseResult parsed = parseEvaluationOutput(response.outputText());
     if (StringUtils.hasText(parsed.errorMessage())) {
-      return new EvaluatorTrialResponse(response.outputText(), "fail", null, "", parsed.errorMessage());
+      return new EvaluatorTrialResponse(response.outputText(), EvaluationResultConstants.FAIL, null, "", parsed.errorMessage());
     }
-    String result = parsed.score().compareTo(evaluator.passThreshold()) >= 0 ? "pass" : "fail";
+    String result = parsed.score().compareTo(evaluator.passThreshold()) >= 0
+        ? EvaluationResultConstants.PASS
+        : EvaluationResultConstants.FAIL;
     String reason = scoreOutOfRange(parsed.score(), evaluator)
         ? appendEvaluationNotice(parsed.reason(), "模型评估结果中的score超出评分范围")
         : parsed.reason();
@@ -146,7 +151,7 @@ public class EvaluatorService {
         normalized.scoreMax(),
         normalized.passThreshold(),
         now);
-    saveParams(TARGET_VERSION, versionId, normalized.params(), now);
+    saveParams(EvaluatorTargetConstants.VERSION, versionId, normalized.params(), now);
     return getVersion(versionId);
   }
 
@@ -181,8 +186,8 @@ public class EvaluatorService {
         normalized.scoreMax(),
         normalized.passThreshold(),
         now);
-    evaluatorRepository.deleteParams(TARGET_VERSION, versionId);
-    saveParams(TARGET_VERSION, versionId, normalized.params(), now);
+    evaluatorRepository.deleteParams(EvaluatorTargetConstants.VERSION, versionId);
+    saveParams(EvaluatorTargetConstants.VERSION, versionId, normalized.params(), now);
     return getVersion(versionId);
   }
 
@@ -193,7 +198,7 @@ public class EvaluatorService {
       throw new IllegalArgumentException("草稿版本不存在");
     }
     EvaluatorConfig draft = getVersion(draftVersionId);
-    if (TYPE_CODE.equals(draft.evaluatorType())) {
+    if (EvaluatorTypeConstants.CODE.equals(draft.evaluatorType())) {
       throw new IllegalArgumentException("暂不支持Code型评估器");
     }
     int nextVersionNo = evaluatorRepository.nextVersionNo(evaluatorId);
@@ -211,7 +216,7 @@ public class EvaluatorService {
         draft.scoreMax(),
         draft.passThreshold(),
         now);
-    saveParams(TARGET_VERSION, newVersionId, draft.params().stream()
+    saveParams(EvaluatorTargetConstants.VERSION, newVersionId, draft.params().stream()
         .map(param -> new EvaluatorParamInput(
             null,
             param.paramName(),
@@ -281,12 +286,12 @@ public class EvaluatorService {
         base.passThreshold(),
         base.createdDate(),
         base.lastUpdatedDate(),
-        listEvaluatorParams(TARGET_VERSION, base.versionId(), base.evaluatorType(), base.prompt()));
+        listEvaluatorParams(EvaluatorTargetConstants.VERSION, base.versionId(), base.evaluatorType(), base.prompt()));
   }
 
   private List<EvaluatorParamDto> listEvaluatorParams(String targetType, String targetId, String evaluatorType, String prompt) {
     List<EvaluatorParamDto> params = evaluatorRepository.listParams(targetType, targetId);
-    if (!TYPE_LLM.equals(evaluatorType) || !params.isEmpty() || !StringUtils.hasText(prompt)) {
+    if (!EvaluatorTypeConstants.LLM.equals(evaluatorType) || !params.isEmpty() || !StringUtils.hasText(prompt)) {
       return params;
     }
     List<EvaluatorParamDto> extracted = new ArrayList<>();
@@ -297,7 +302,7 @@ public class EvaluatorService {
           targetType,
           targetId,
           paramName,
-          PARAM_TYPE_STRING,
+          EvaluatorParamTypeConstants.STRING,
           "",
           true,
           "",
@@ -317,7 +322,7 @@ public class EvaluatorService {
     if (StringUtils.hasText(request.evaluatorType()) && !evaluatorType.equals(request.evaluatorType().trim())) {
       throw new IllegalArgumentException("评估器类型创建后不允许修改");
     }
-    if (TYPE_CODE.equals(evaluatorType)) {
+    if (EvaluatorTypeConstants.CODE.equals(evaluatorType)) {
       throw new IllegalArgumentException("暂不支持Code型评估器");
     }
     String description = normalizeDescription(request.description());
@@ -331,7 +336,7 @@ public class EvaluatorService {
     String prompt = "";
     String executeCode = "";
     List<EvaluatorParamInput> params = List.of();
-    if (TYPE_LLM.equals(evaluatorType)) {
+    if (EvaluatorTypeConstants.LLM.equals(evaluatorType)) {
       modelId = request.modelId() == null ? "" : request.modelId().trim();
       modelName = requireText(request.modelName(), "请选择模型");
       prompt = requireText(request.prompt(), "Prompt不能为空");
@@ -382,7 +387,7 @@ public class EvaluatorService {
 
   private String normalizeEvaluatorType(String evaluatorType) {
     String normalized = requireText(evaluatorType, "评估器类型不能为空").toLowerCase();
-    if (!SUPPORTED_TYPES.contains(normalized)) {
+    if (!EvaluatorTypeConstants.SUPPORTED_TYPES.contains(normalized)) {
       throw new IllegalArgumentException("评估器类型仅支持llm/code");
     }
     return normalized;
@@ -431,7 +436,7 @@ public class EvaluatorService {
       normalized.add(new EvaluatorParamInput(
           provided == null ? null : provided.id(),
           paramName,
-          provided == null ? PARAM_TYPE_STRING : normalizeParamType(provided.dataType()),
+          provided == null ? EvaluatorParamTypeConstants.STRING : normalizeParamType(provided.dataType()),
           provided == null || provided.defaultValue() == null ? "" : provided.defaultValue(),
           provided == null ? true : normalizeRequired(provided.required()),
           provided == null ? "" : normalizeParamDescription(provided.description())));
@@ -465,8 +470,8 @@ public class EvaluatorService {
   }
 
   private String normalizeParamType(String dataType) {
-    String normalized = StringUtils.hasText(dataType) ? dataType.trim() : PARAM_TYPE_STRING;
-    if (!SUPPORTED_PARAM_TYPES.contains(normalized)) {
+    String normalized = StringUtils.hasText(dataType) ? dataType.trim() : EvaluatorParamTypeConstants.STRING;
+    if (!EvaluatorParamTypeConstants.SUPPORTED_TYPES.contains(normalized)) {
       throw new IllegalArgumentException("变量类型仅支持string/number/boolean");
     }
     return normalized;
@@ -525,7 +530,7 @@ public class EvaluatorService {
 
   private TrialEvaluator normalizeTrialEvaluator(EvaluatorInput request) {
     String evaluatorType = normalizeEvaluatorType(request.evaluatorType());
-    if (TYPE_CODE.equals(evaluatorType)) {
+    if (EvaluatorTypeConstants.CODE.equals(evaluatorType)) {
       throw new IllegalArgumentException("暂不支持Code型评估器试运行");
     }
     BigDecimal scoreMin = request.scoreMin() == null ? DEFAULT_SCORE_MIN : request.scoreMin();
@@ -577,14 +582,16 @@ public class EvaluatorService {
     }
     try {
       JsonNode root = objectMapper.readTree(json);
-      JsonNode scoreNode = root.get("score");
+      JsonNode scoreNode = root.get(EvaluationResultConstants.SCORE_FIELD);
       if (scoreNode == null || scoreNode.isNull()) {
         return new EvaluatorParseResult(null, "", "模型评估结果缺少score字段");
       }
       BigDecimal score = scoreNode.isNumber()
           ? scoreNode.decimalValue()
           : new BigDecimal(scoreNode.asText().trim());
-      String reason = root.hasNonNull("reason") ? root.get("reason").asText() : outputText;
+      String reason = root.hasNonNull(EvaluationResultConstants.REASON_FIELD)
+          ? root.get(EvaluationResultConstants.REASON_FIELD).asText()
+          : outputText;
       return new EvaluatorParseResult(score, reason, "");
     } catch (Exception error) {
       return new EvaluatorParseResult(null, "", "模型评估结果解析失败：" + error.getMessage());

@@ -1,5 +1,6 @@
 package com.agentnexus.backend.evaluator.preset;
 
+import com.agentnexus.backend.evaluator.constant.EvaluatorTypeConstants;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,16 +23,14 @@ public record PresetEvaluatorDefinition(
     String createdDate,
     String lastUpdatedDate
 ) {
-  private static final String TYPE_LLM = "llm";
-  private static final String TYPE_CODE = "code";
   private static final String BUILT_IN_TIME = "1781539200000";
 
   public static Builder llm(String id, String categoryId, String evaluatorName) {
-    return new Builder(id, categoryId, evaluatorName, TYPE_LLM);
+    return new Builder(id, categoryId, evaluatorName, EvaluatorTypeConstants.LLM);
   }
 
   public static Builder code(String id, String categoryId, String evaluatorName) {
-    return new Builder(id, categoryId, evaluatorName, TYPE_CODE);
+    return new Builder(id, categoryId, evaluatorName, EvaluatorTypeConstants.CODE);
   }
 
   public static class Builder {

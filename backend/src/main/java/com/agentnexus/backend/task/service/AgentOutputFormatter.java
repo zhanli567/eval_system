@@ -1,5 +1,6 @@
 package com.agentnexus.backend.task.service;
 
+import com.agentnexus.backend.remoteCall.constant.AgentOutputFieldConstants;
 import java.util.Map;
 import org.springframework.util.StringUtils;
 
@@ -12,18 +13,18 @@ final class AgentOutputFormatter {
       return "";
     }
     return cleanup(firstNonBlank(
-        outputs.get("text"),
-        outputs.get("content"),
-        outputs.get("answer"),
-        outputs.get("error"),
-        outputs.get("rawText"),
-        outputs.get("reasoning"),
-        outputs.get("debug"),
-        outputs.get("toolCall"),
-        outputs.get("toolResponse"),
-        outputs.get("skillTrigger"),
-        outputs.get("references"),
-        outputs.get("genUi")));
+        outputs.get(AgentOutputFieldConstants.TEXT),
+        outputs.get(AgentOutputFieldConstants.CONTENT),
+        outputs.get(AgentOutputFieldConstants.ANSWER),
+        outputs.get(AgentOutputFieldConstants.ERROR),
+        outputs.get(AgentOutputFieldConstants.RAW_TEXT),
+        outputs.get(AgentOutputFieldConstants.REASONING),
+        outputs.get(AgentOutputFieldConstants.DEBUG),
+        outputs.get(AgentOutputFieldConstants.TOOL_CALL),
+        outputs.get(AgentOutputFieldConstants.TOOL_RESPONSE),
+        outputs.get(AgentOutputFieldConstants.SKILL_TRIGGER),
+        outputs.get(AgentOutputFieldConstants.REFERENCES),
+        outputs.get(AgentOutputFieldConstants.GEN_UI)));
   }
 
   private static String cleanup(String value) {
