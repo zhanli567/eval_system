@@ -94,16 +94,6 @@ public class DatasetRepository {
     datasetMapper.insert(dataset);
   }
 
-  public void updateDatasetDescription(String datasetId, String description, String now) {
-    datasetMapper.update(null, new LambdaUpdateWrapper<EvalDataset>()
-        .eq(EvalDataset::getSpaceId, currentSpaceId())
-        .eq(EvalDataset::getId, datasetId)
-        .set(EvalDataset::getDescription, description)
-        .set(EvalDataset::getLastUpdatedBy, currentUserId())
-        .set(EvalDataset::getLastUpdatedByName, currentUserName())
-        .set(EvalDataset::getLastUpdatedDate, toLastUpdatedDate(now)));
-  }
-
   public void insertVersion(String versionId, String datasetId, int versionNo, int itemCount, String now) {
     EvalDatasetVersion version = new EvalDatasetVersion();
     version.setId(versionId);

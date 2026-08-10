@@ -4,7 +4,6 @@ import 'element-plus/dist/index.css';
 import * as ElementPlusIconsVue from '@element-plus/icons-vue';
 import App from './App.vue';
 import OverflowTooltip from './components/OverflowTooltip.vue';
-import ResourceDescriptionCell from './components/ResourceDescriptionCell.vue';
 import SortableHeader from './components/SortableHeader.vue';
 import router from './router';
 import { tableOverflowTooltipOptions } from './utils/tableOverflowTooltip';
@@ -14,7 +13,6 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component);
 }
 app.component('OverflowTooltip', OverflowTooltip);
-app.component('ResourceDescriptionCell', ResourceDescriptionCell);
 app.component('SortableHeader', SortableHeader);
 app.use(ElementPlus, {
     table: {
