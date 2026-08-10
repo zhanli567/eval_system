@@ -331,13 +331,6 @@ public class DatasetRepository {
         .eq(EvalDatasetItemCell::getItemId, itemId));
   }
 
-  public void deleteItem(String itemId, String versionId) {
-    itemMapper.delete(new LambdaQueryWrapper<EvalDatasetItem>()
-        .eq(EvalDatasetItem::getSpaceId, currentSpaceId())
-        .eq(EvalDatasetItem::getId, itemId)
-        .eq(EvalDatasetItem::getVersionId, versionId));
-  }
-
   /**
    * 统计指定版本中匹配的数据数量。
    *

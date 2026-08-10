@@ -2,17 +2,18 @@ package com.agentnexus.backend.dataset.api;
 
 import com.agentnexus.backend.common.ApiResponse;
 import com.agentnexus.backend.common.PageResponse;
-import com.agentnexus.backend.dataset.api.dto.request.BatchDeleteRowsRequest;
 import com.agentnexus.backend.dataset.api.dto.request.CreateDatasetRequest;
+import com.agentnexus.backend.dataset.api.dto.request.DeleteRowsRequest;
+import com.agentnexus.backend.dataset.api.dto.request.FieldInput;
+import com.agentnexus.backend.dataset.api.dto.request.RowInput;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetSummary;
 import com.agentnexus.backend.dataset.api.dto.response.DatasetVersionDto;
 import com.agentnexus.backend.dataset.api.dto.response.FieldDto;
-import com.agentnexus.backend.dataset.api.dto.request.FieldInput;
 import com.agentnexus.backend.dataset.api.dto.response.ImportRowsResult;
 import com.agentnexus.backend.dataset.api.dto.response.RowDto;
-import com.agentnexus.backend.dataset.api.dto.request.RowInput;
 import com.agentnexus.backend.dataset.api.dto.response.VersionDetail;
 import com.agentnexus.backend.dataset.service.DatasetService;
+
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.FormParam;
 import jakarta.ws.rs.GET;
@@ -20,10 +21,12 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
-import java.util.List;
+
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Component
 @ResponseBody
@@ -127,25 +130,18 @@ public class DatasetController {
     return ApiResponse.ok(datasetService.updateRow(versionId, itemId, request));
   }
 
-  @POST
-  @Path("/versions/{versionId}/items/{itemId}/delete")
-  public ApiResponse<Void> deleteRow(@PathParam("versionId") String versionId, @PathParam("itemId") String itemId) {
-    datasetService.deleteRow(versionId, itemId);
-    return ApiResponse.ok(null);
-  }
-
   /**
-   * 批量删除评测集草稿数据。
+   * 删除评测集草稿数据。
    *
    * @param versionId 草稿版本ID
-   * @param request 批量删除请求
+   * @param request 删除数据请求
    * @return 空响应
    */
   @POST
-  @Path("/versions/{versionId}/items/batch-delete")
+  @Path("/versions/{versionId}/items/delete")
   public ApiResponse<Void> deleteRows(
       @PathParam("versionId") String versionId,
-      BatchDeleteRowsRequest request
+      DeleteRowsRequest request
   ) {
     datasetService.deleteRows(versionId, request);
     return ApiResponse.ok(null);

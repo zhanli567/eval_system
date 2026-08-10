@@ -280,7 +280,7 @@ function createRowActions(ctx, versionActions, excelActions) {
         if (!requireActiveVersion(ctx.state))
             return;
         await ElMessageBox.confirm('确定删除该条数据吗？', '删除数据', { type: 'warning' });
-        await datasetApi.deleteRow(ctx.state.activeVersionId.value, row.id);
+        await datasetApi.deleteRows(ctx.state.activeVersionId.value, [row.id]);
         ElMessage.success('已删除');
         await versionActions.loadDetail();
         await versionActions.loadDatasetSummary();
