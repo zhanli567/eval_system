@@ -22,6 +22,7 @@ import com.agentnexus.backend.dataset.entity.EvalDatasetVersion;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,26 @@ public class DatasetRepository {
     this.fieldMapper = fieldMapper;
     this.itemMapper = itemMapper;
     this.cellMapper = cellMapper;
+  }
+
+  /**
+   * 待新增的评测集数据行。
+   *
+   * @param itemId 数据行ID
+   * @param rowNo 行号
+   */
+  public record DatasetItemInsert(String itemId, int rowNo) {
+  }
+
+  /**
+   * 待新增的评测集数据单元格。
+   *
+   * @param cellId 单元格ID
+   * @param itemId 数据行ID
+   * @param fieldId 字段ID
+   * @param cellValue 单元格值
+   */
+  public record DatasetCellInsert(String cellId, String itemId, String fieldId, String cellValue) {
   }
 
   public List<DatasetSummary> listDatasetSummaries(String like, String orderColumn, String orderDirection, int size, int offset) {
@@ -223,17 +244,42 @@ public class DatasetRepository {
       int displayOrder,
       String now
   ) {
-    EvalDatasetField field = new EvalDatasetField();
-    field.setId(fieldId);
-    field.setVersionId(versionId);
-    field.setFieldName(fieldName);
-    field.setFieldType(fieldType);
-    field.setIsRequired(required);
-    field.setDescription(description);
-    field.setDisplayOrder(displayOrder);
-    field.setLastUpdatedDate(toLastUpdatedDate(now));
-    fillCreated(field);
-    fieldMapper.insert(field);
+    FieldDto field = new FieldDto(
+        fieldId,
+        versionId,
+        fieldName,
+        fieldType,
+        required != 0,
+        description,
+        displayOrder);
+    insertFields(List.of(field), now);
+  }
+
+  /**
+   * 批量新增评测集字段。
+   *
+   * @param fields 字段列表
+   * @param now 更新时间
+   */
+  public void insertFields(List<FieldDto> fields, String now) {
+    List<EvalDatasetField> entities = new ArrayList<>();
+    LocalDateTime lastUpdatedDate = toLastUpdatedDate(now);
+    for (FieldDto field : fields == null ? List.<FieldDto>of() : fields) {
+      EvalDatasetField entity = new EvalDatasetField();
+      entity.setId(field.id());
+      entity.setVersionId(field.versionId());
+      entity.setFieldName(field.fieldName());
+      entity.setFieldType(field.fieldType());
+      entity.setIsRequired(bool(field.required()));
+      entity.setDescription(field.description());
+      entity.setDisplayOrder(field.displayOrder());
+      entity.setLastUpdatedDate(lastUpdatedDate);
+      fillCreated(entity);
+      entities.add(entity);
+    }
+    if (!entities.isEmpty()) {
+      fieldMapper.insertBatch(entities);
+    }
   }
 
   public void deleteFields(String versionId, List<String> fieldIds) {
@@ -310,25 +356,57 @@ public class DatasetRepository {
   }
 
   public void insertItem(String itemId, String versionId, int rowNo, String now) {
-    EvalDatasetItem item = new EvalDatasetItem();
-    item.setId(itemId);
-    item.setVersionId(versionId);
-    item.setRowNo(rowNo);
-    item.setLastUpdatedDate(toLastUpdatedDate(now));
-    fillCreated(item);
-    itemMapper.insert(item);
+    insertItems(versionId, List.of(new DatasetItemInsert(itemId, rowNo)), now);
   }
 
-  public void insertCell(String cellId, String versionId, String itemId, String fieldId, String cellValue, String now) {
-    EvalDatasetItemCell cell = new EvalDatasetItemCell();
-    cell.setId(cellId);
-    cell.setVersionId(versionId);
-    cell.setItemId(itemId);
-    cell.setFieldId(fieldId);
-    cell.setCellValue(cellValue);
-    cell.setLastUpdatedDate(toLastUpdatedDate(now));
-    fillCreated(cell);
-    cellMapper.insert(cell);
+  /**
+   * 批量新增评测集数据行。
+   *
+   * @param versionId 版本ID
+   * @param rows 数据行列表
+   * @param now 更新时间
+   */
+  public void insertItems(String versionId, List<DatasetItemInsert> rows, String now) {
+    List<EvalDatasetItem> items = new ArrayList<>();
+    LocalDateTime lastUpdatedDate = toLastUpdatedDate(now);
+    for (DatasetItemInsert row : rows == null ? List.<DatasetItemInsert>of() : rows) {
+      EvalDatasetItem item = new EvalDatasetItem();
+      item.setId(row.itemId());
+      item.setVersionId(versionId);
+      item.setRowNo(row.rowNo());
+      item.setLastUpdatedDate(lastUpdatedDate);
+      fillCreated(item);
+      items.add(item);
+    }
+    if (!items.isEmpty()) {
+      itemMapper.insertBatch(items);
+    }
+  }
+
+  /**
+   * 批量新增评测集数据单元格。
+   *
+   * @param versionId 版本ID
+   * @param values 单元格列表
+   * @param now 更新时间
+   */
+  public void insertCells(String versionId, List<DatasetCellInsert> values, String now) {
+    List<EvalDatasetItemCell> cells = new ArrayList<>();
+    LocalDateTime lastUpdatedDate = toLastUpdatedDate(now);
+    for (DatasetCellInsert value : values == null ? List.<DatasetCellInsert>of() : values) {
+      EvalDatasetItemCell cell = new EvalDatasetItemCell();
+      cell.setId(value.cellId());
+      cell.setVersionId(versionId);
+      cell.setItemId(value.itemId());
+      cell.setFieldId(value.fieldId());
+      cell.setCellValue(value.cellValue());
+      cell.setLastUpdatedDate(lastUpdatedDate);
+      fillCreated(cell);
+      cells.add(cell);
+    }
+    if (!cells.isEmpty()) {
+      cellMapper.insertBatch(cells);
+    }
   }
 
   public void updateItem(String itemId, String versionId, String now) {
@@ -604,6 +682,10 @@ public class DatasetRepository {
 
   private LocalDateTime toLastUpdatedDate(String now) {
     return LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(now)), ZoneId.systemDefault());
+  }
+
+  private int bool(Boolean value) {
+    return Boolean.TRUE.equals(value) ? 1 : 0;
   }
 
   private boolean hasLikeText(String like) {

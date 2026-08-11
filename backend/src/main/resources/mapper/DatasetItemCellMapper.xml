@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.agentnexus.backend.dataset.mapper.DatasetItemCellMapper">
+  <insert id="insertBatch">
+    INSERT INTO t_eval_dataset_item_cell (
+      id,
+      space_id,
+      version_id,
+      item_id,
+      field_id,
+      cell_value,
+      created_by_name,
+      created_by,
+      last_updated_by,
+      last_updated_by_name,
+      last_updated_date
+    )
+    VALUES
+    <foreach collection="cells" item="cell" separator=",">
+      (
+        #{cell.id},
+        #{cell.spaceId},
+        #{cell.versionId},
+        #{cell.itemId},
+        #{cell.fieldId},
+        #{cell.cellValue},
+        #{cell.createdByName},
+        #{cell.createdBy},
+        #{cell.lastUpdatedBy},
+        #{cell.lastUpdatedByName},
+        #{cell.lastUpdatedDate}
+      )
+    </foreach>
+  </insert>
+</mapper>

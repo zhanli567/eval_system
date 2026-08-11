@@ -220,6 +220,8 @@ public class DatasetService {
 
     List<Map<String, String>> rows = readExcelRows(file, fields);
     addRows(versionId, rows);
+    updateItemCount(versionId);
+    touchVersion(versionId);
     return new ImportRowsResult(rows.size());
   }
 
@@ -331,10 +333,9 @@ public class DatasetService {
     String now = now();
     Map<String, String> safeValues = values == null ? Map.of() : values;
     validateRowValues(fields, safeValues);
-    for (FieldDto field : fields) {
-      String cellValue = normalizeCellValue(safeValues.get(field.id()), field);
-      datasetRepository.insertCell(id(), versionId, itemId, field.id(), cellValue, now);
-    }
+    List<DatasetRepository.DatasetCellInsert> cells = new ArrayList<>();
+    appendCellInserts(fields, itemId, safeValues, cells);
+    datasetRepository.insertCells(versionId, cells, now);
   }
 
   private void validateRowValues(List<FieldDto> fields, Map<String, String> values) {
@@ -500,8 +501,31 @@ public class DatasetService {
   }
 
   private void addRows(String versionId, List<Map<String, String>> rows) {
+    List<FieldDto> fields = listFields(versionId);
+    String now = now();
+    int nextRowNo = datasetRepository.nextRowNo(versionId);
+    List<DatasetRepository.DatasetItemInsert> itemInserts = new ArrayList<>();
+    List<DatasetRepository.DatasetCellInsert> cellInserts = new ArrayList<>();
     for (Map<String, String> values : rows) {
-      addRow(versionId, new RowInput(null, values));
+      Map<String, String> safeValues = values == null ? Map.of() : values;
+      validateRowValues(fields, safeValues);
+      String itemId = id();
+      itemInserts.add(new DatasetRepository.DatasetItemInsert(itemId, nextRowNo++));
+      appendCellInserts(fields, itemId, safeValues, cellInserts);
+    }
+    datasetRepository.insertItems(versionId, itemInserts, now);
+    datasetRepository.insertCells(versionId, cellInserts, now);
+  }
+
+  private void appendCellInserts(
+      List<FieldDto> fields,
+      String itemId,
+      Map<String, String> values,
+      List<DatasetRepository.DatasetCellInsert> cells
+  ) {
+    for (FieldDto field : fields) {
+      String cellValue = normalizeCellValue(values.get(field.id()), field);
+      cells.add(new DatasetRepository.DatasetCellInsert(id(), itemId, field.id(), cellValue));
     }
   }
 
@@ -613,9 +637,10 @@ public class DatasetService {
 
   private void copyVersionContent(String sourceVersionId, String targetVersionId) {
     Map<String, FieldDto> targetFieldBySourceId = new LinkedHashMap<>();
+    List<FieldDto> targetFields = new ArrayList<>();
+    String fieldNow = now();
     for (FieldDto field : listFields(sourceVersionId)) {
       String newFieldId = id();
-      String now = now();
       FieldDto targetField = new FieldDto(
           newFieldId,
           targetVersionId,
@@ -625,38 +650,33 @@ public class DatasetService {
           field.description(),
           field.displayOrder());
       targetFieldBySourceId.put(field.id(), targetField);
-      datasetRepository.insertField(
-          newFieldId,
-          targetVersionId,
-          field.fieldName(),
-          field.fieldType(),
-          bool(field.required()),
-          field.description(),
-          field.displayOrder(),
-          now);
+      targetFields.add(targetField);
     }
+    datasetRepository.insertFields(targetFields, fieldNow);
 
     List<DatasetRowRecord> sourceRows = datasetRepository.listAllRows(sourceVersionId);
     Map<String, Map<String, String>> sourceValues = datasetRepository.loadValues(
         sourceRows.stream().map(DatasetRowRecord::id).toList());
+    String rowNow = now();
+    List<DatasetRepository.DatasetItemInsert> itemInserts = new ArrayList<>();
+    List<DatasetRepository.DatasetCellInsert> cellInserts = new ArrayList<>();
     for (DatasetRowRecord sourceRow : sourceRows) {
       String newItemId = id();
-      String now = now();
-      datasetRepository.insertItem(newItemId, targetVersionId, sourceRow.rowNo(), now);
+      itemInserts.add(new DatasetRepository.DatasetItemInsert(newItemId, sourceRow.rowNo()));
       Map<String, String> rowValues = sourceValues.getOrDefault(sourceRow.id(), Map.of());
       for (Map.Entry<String, String> entry : rowValues.entrySet()) {
         FieldDto targetField = targetFieldBySourceId.get(entry.getKey());
         if (targetField != null) {
-          datasetRepository.insertCell(
+          cellInserts.add(new DatasetRepository.DatasetCellInsert(
               id(),
-              targetVersionId,
               newItemId,
               targetField.id(),
-              normalizeCellValue(entry.getValue(), targetField),
-              now);
+              normalizeCellValue(entry.getValue(), targetField)));
         }
       }
     }
+    datasetRepository.insertItems(targetVersionId, itemInserts, rowNow);
+    datasetRepository.insertCells(targetVersionId, cellInserts, rowNow);
   }
 
   private void clearVersionContent(String versionId) {
@@ -665,9 +685,11 @@ public class DatasetService {
 
   private void addBlankCellsForNewField(String versionId, String fieldId) {
     String now = now();
+    List<DatasetRepository.DatasetCellInsert> cells = new ArrayList<>();
     for (String itemId : datasetRepository.listItemIds(versionId)) {
-      datasetRepository.insertCell(id(), versionId, itemId, fieldId, "", now);
+      cells.add(new DatasetRepository.DatasetCellInsert(id(), itemId, fieldId, ""));
     }
+    datasetRepository.insertCells(versionId, cells, now);
   }
 
   private void ensureDraft(String versionId) {
@@ -677,9 +699,7 @@ public class DatasetService {
   }
 
   private void ensureDraftHasRows(long itemCount) {
-    if (itemCount > 0) {
-      return;
-    } else {
+    if (itemCount <= 0) {
       throw new IllegalArgumentException("评测集草稿中暂无数据，不能发布");
     }
   }
