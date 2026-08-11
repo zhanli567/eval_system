@@ -182,13 +182,13 @@ public class TaskService {
    */
   @Transactional
   public TaskDetail updateDescription(String taskId, DescriptionUpdateRequest request) {
-    findTask(taskId);
-    if (!taskRepository.isTaskCreatedByCurrentUser(taskId)) {
+    TaskBase task = findTask(taskId);
+    if (!taskRepository.isTaskCreatedByCurrentUser(task.id())) {
       throw new IllegalArgumentException("仅创建人可以修改评测任务描述");
     } else {
       String description = normalizeDescription(request == null ? null : request.description());
-      taskRepository.updateTaskDescription(taskId, description);
-      return getTask(taskId, 1, 10);
+      taskRepository.updateTaskDescription(task.id(), description);
+      return getTask(task.id(), 1, 10);
     }
   }
 

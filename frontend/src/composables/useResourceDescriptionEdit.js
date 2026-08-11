@@ -1,5 +1,6 @@
 import { reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { getErrorMessage } from '../utils/composableHelpers';
 
 export function useResourceDescriptionEdit(options) {
     const dialogVisible = ref(false);
@@ -30,6 +31,8 @@ export function useResourceDescriptionEdit(options) {
             } else {
                 return;
             }
+        } catch (error) {
+            ElMessage.error(getErrorMessage(error, '描述更新失败'));
         } finally {
             saving.value = false;
         }
