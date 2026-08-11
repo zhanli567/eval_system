@@ -46,6 +46,8 @@ public class EvaluatorService {
   private static final BigDecimal DEFAULT_SCORE_MIN = BigDecimal.ONE;
   private static final BigDecimal DEFAULT_SCORE_MAX = BigDecimal.valueOf(5);
   private static final BigDecimal DEFAULT_PASS_THRESHOLD = BigDecimal.valueOf(3);
+  private static final BigDecimal SCORE_VALUE_MIN = BigDecimal.valueOf(-100000);
+  private static final BigDecimal SCORE_VALUE_MAX = BigDecimal.valueOf(100000);
   private static final int MAX_PROMPT_LENGTH = 2000;
   private static final int MAX_EXECUTE_CODE_LENGTH = 10000;
   private static final int MAX_PARAM_DESCRIPTION_LENGTH = 200;
@@ -505,11 +507,20 @@ public class EvaluatorService {
   }
 
   private void validateScore(BigDecimal scoreMin, BigDecimal scoreMax, BigDecimal passThreshold) {
+    validateScoreValue(scoreMin, "评分范围最小值");
+    validateScoreValue(scoreMax, "评分范围最大值");
+    validateScoreValue(passThreshold, "通过阈值");
     if (scoreMin.compareTo(scoreMax) >= 0) {
       throw new IllegalArgumentException("评分范围最大值必须大于最小值");
     }
     if (passThreshold.compareTo(scoreMin) < 0 || passThreshold.compareTo(scoreMax) > 0) {
       throw new IllegalArgumentException("通过阈值必须位于评分范围内");
+    }
+  }
+
+  private void validateScoreValue(BigDecimal value, String fieldName) {
+    if (value.compareTo(SCORE_VALUE_MIN) < 0 || value.compareTo(SCORE_VALUE_MAX) > 0) {
+      throw new IllegalArgumentException(fieldName + "必须在-100000到100000之间");
     }
   }
 

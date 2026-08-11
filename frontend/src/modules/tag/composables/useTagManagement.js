@@ -3,6 +3,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { tagApi } from '../../../api/tag';
 import { getErrorMessage, movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
+import { NUMBER_VALUE_RANGE_TEXT, hasNumberValueOutOfRange, isNumberValueMissing } from '../../../utils/numberRange';
 
 export const tagTypeOptions = [
     { label: '分类', value: 'category' },
@@ -74,8 +75,11 @@ function getCategoryOptionsError(form) {
 }
 
 function getNumberRangeError(form) {
-    if (!form.minValue || !form.maxValue || !form.passThreshold) {
+    const values = [form.minValue, form.maxValue, form.passThreshold];
+    if (values.some((value) => isNumberValueMissing(value))) {
         return '请维护评分范围和通过阈值';
+    } else if (hasNumberValueOutOfRange(values)) {
+        return `评分范围和通过阈值必须在${NUMBER_VALUE_RANGE_TEXT}之间`;
     } else if (form.minValue >= form.maxValue) {
         return '评分最大值必须大于最小值';
     } else if (form.passThreshold < form.minValue || form.passThreshold > form.maxValue) {

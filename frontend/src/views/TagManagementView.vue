@@ -1,6 +1,7 @@
 <script setup>
 import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useTagManagement } from '../modules/tag/composables/useTagManagement';
+import { NUMBER_VALUE_MAX, NUMBER_VALUE_MIN } from '../utils/numberRange';
 const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, sortBy, sortOrder, dialogVisible, detailDialogVisible, detailLoading, tagDetail, detailPassOptions, detailFailOptions, editing, dialogTitle, tagForm, tagTypeOptions, booleanOptions, loadTags, searchTags, changeTagSize, toggleSort, openCreateDialog, openDetailDialog, openEditDialog, submitTag, removeTag, addCategoryOption, removeCategoryOption, getTagTypeLabel, formatTime } = useTagManagement();
 </script>
 
@@ -199,9 +200,9 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
         <el-form-item>
           <template #label>评分范围 <span class="required-mark">*</span></template>
           <div class="range-row">
-            <el-input-number v-model="tagForm.minValue" :min="1" :precision="0" controls-position="right" placeholder="请输入最小值" />
+            <el-input-number v-model="tagForm.minValue" :min="NUMBER_VALUE_MIN" :max="NUMBER_VALUE_MAX" :precision="0" controls-position="right" placeholder="请输入最小值" />
             <span>-</span>
-            <el-input-number v-model="tagForm.maxValue" :min="1" :precision="0" controls-position="right" placeholder="请输入最大值" />
+            <el-input-number v-model="tagForm.maxValue" :min="NUMBER_VALUE_MIN" :max="NUMBER_VALUE_MAX" :precision="0" controls-position="right" placeholder="请输入最大值" />
           </div>
         </el-form-item>
         <el-form-item>
@@ -211,7 +212,8 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
           </template>
           <el-input-number
             v-model="tagForm.passThreshold"
-            :min="1"
+            :min="NUMBER_VALUE_MIN"
+            :max="NUMBER_VALUE_MAX"
             :precision="0"
             controls-position="right"
             class="wide-control"

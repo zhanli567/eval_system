@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { Delete, Plus } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { tagApi } from '../api/tag';
+import { NUMBER_VALUE_MAX, NUMBER_VALUE_MIN, NUMBER_VALUE_RANGE_TEXT, hasNumberValueOutOfRange, isNumberValueMissing } from '../utils/numberRange';
 
 const tagTypeOptions = [
     { label: '分类', value: 'category' },
@@ -76,8 +77,11 @@ function validateCategoryOptions() {
 }
 
 function validateNumberConfig() {
-    if (!form.minValue || !form.maxValue || !form.passThreshold) {
+    const values = [form.minValue, form.maxValue, form.passThreshold];
+    if (values.some((value) => isNumberValueMissing(value))) {
         return '请维护评分范围和通过阈值';
+    } else if (hasNumberValueOutOfRange(values)) {
+        return `评分范围和通过阈值必须在${NUMBER_VALUE_RANGE_TEXT}之间`;
     } else if (form.minValue >= form.maxValue) {
         return '评分最大值必须大于最小值';
     } else if (form.passThreshold < form.minValue || form.passThreshold > form.maxValue) {
@@ -224,9 +228,9 @@ async function submitTag() {
         <el-form-item>
           <template #label>评分范围 <span class="required-mark">*</span></template>
           <div class="range-row">
-            <el-input-number v-model="form.minValue" :min="1" :precision="0" controls-position="right" placeholder="最小值" />
+            <el-input-number v-model="form.minValue" :min="NUMBER_VALUE_MIN" :max="NUMBER_VALUE_MAX" :precision="0" controls-position="right" placeholder="最小值" />
             <span>-</span>
-            <el-input-number v-model="form.maxValue" :min="1" :precision="0" controls-position="right" placeholder="最大值" />
+            <el-input-number v-model="form.maxValue" :min="NUMBER_VALUE_MIN" :max="NUMBER_VALUE_MAX" :precision="0" controls-position="right" placeholder="最大值" />
           </div>
         </el-form-item>
         <el-form-item>
@@ -236,7 +240,8 @@ async function submitTag() {
           </template>
           <el-input-number
             v-model="form.passThreshold"
-            :min="1"
+            :min="NUMBER_VALUE_MIN"
+            :max="NUMBER_VALUE_MAX"
             :precision="0"
             controls-position="right"
             class="wide-control"

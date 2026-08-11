@@ -9,6 +9,7 @@ import com.agentnexus.backend.tag.api.dto.request.TagOptionInput;
 import com.agentnexus.backend.tag.api.dto.response.TagSummary;
 import com.agentnexus.backend.tag.repository.TagRepository;
 import com.agentnexus.backend.task.repository.TaskRepository;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -22,6 +23,8 @@ import org.springframework.util.StringUtils;
 public class TagService {
   private static final List<String> SUPPORTED_TAG_TYPES = List.of("category", "boolean", "number", "text");
   private static final List<String> SUPPORTED_OPTION_GROUPS = List.of("pass", "fail");
+  private static final BigDecimal NUMBER_VALUE_MIN = BigDecimal.valueOf(-100000);
+  private static final BigDecimal NUMBER_VALUE_MAX = BigDecimal.valueOf(100000);
 
   private final TagRepository tagRepository;
   private final TaskRepository taskRepository;
@@ -152,10 +155,13 @@ public class TagService {
           new TagOptionInput(null, "True", "pass"),
           new TagOptionInput(null, "False", "fail"));
     } else if ("number".equals(tagType)) {
-      minValue = request.minValue();
-      maxValue = request.maxValue();
-      passThreshold = request.passThreshold();
-      validateNumberConfig(minValue, maxValue, passThreshold);
+      NormalizedNumberConfig numberConfig = normalizeNumberConfig(
+          request.minValue(),
+          request.maxValue(),
+          request.passThreshold());
+      minValue = numberConfig.minValue();
+      maxValue = numberConfig.maxValue();
+      passThreshold = numberConfig.passThreshold();
     }
     return new NormalizedTag(tagName, tagType, description, minValue, maxValue, passThreshold, options);
   }
@@ -245,18 +251,30 @@ public class TagService {
     return normalized;
   }
 
-  private void validateNumberConfig(Integer minValue, Integer maxValue, Integer passThreshold) {
+  private NormalizedNumberConfig normalizeNumberConfig(BigDecimal minValue, BigDecimal maxValue, BigDecimal passThreshold) {
     if (minValue == null || maxValue == null || passThreshold == null) {
       throw new IllegalArgumentException("数字标签请维护评分范围和通过阈值");
     }
-    if (minValue <= 0 || maxValue <= 0 || passThreshold <= 0) {
-      throw new IllegalArgumentException("数字标签评分范围和通过阈值必须为正整数");
-    }
-    if (minValue >= maxValue) {
+    int normalizedMin = normalizeNumberValue(minValue, "评分范围最小值");
+    int normalizedMax = normalizeNumberValue(maxValue, "评分范围最大值");
+    int normalizedPass = normalizeNumberValue(passThreshold, "通过阈值");
+    if (normalizedMin >= normalizedMax) {
       throw new IllegalArgumentException("数字标签评分范围最大值必须大于最小值");
     }
-    if (passThreshold < minValue || passThreshold > maxValue) {
+    if (normalizedPass < normalizedMin || normalizedPass > normalizedMax) {
       throw new IllegalArgumentException("通过阈值必须介于评分范围最小值和最大值之间");
+    }
+    return new NormalizedNumberConfig(normalizedMin, normalizedMax, normalizedPass);
+  }
+
+  private int normalizeNumberValue(BigDecimal value, String fieldName) {
+    if (value.compareTo(NUMBER_VALUE_MIN) < 0 || value.compareTo(NUMBER_VALUE_MAX) > 0) {
+      throw new IllegalArgumentException(fieldName + "必须在-100000到100000之间");
+    }
+    try {
+      return value.intValueExact();
+    } catch (ArithmeticException error) {
+      throw new IllegalArgumentException(fieldName + "必须为整数", error);
     }
   }
 
@@ -286,6 +304,13 @@ public class TagService {
       Integer maxValue,
       Integer passThreshold,
       List<TagOptionInput> options
+  ) {
+  }
+
+  private record NormalizedNumberConfig(
+      Integer minValue,
+      Integer maxValue,
+      Integer passThreshold
   ) {
   }
 }

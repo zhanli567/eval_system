@@ -1,6 +1,7 @@
 <script setup>
 import { ChatDotRound, CopyDocument, Delete, Document, MagicStick, Plus, Promotion, Refresh, Tickets } from '@element-plus/icons-vue';
 import { useEvaluatorEditor } from '../modules/evaluator/composables/useEvaluatorEditor';
+import { NUMBER_VALUE_MAX, NUMBER_VALUE_MIN } from '../utils/numberRange';
 const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, trialLoading, trialResult, trialParamValues, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, removeVersion, switchType, addParam, removeParam, backToList, openPresetPicker, searchPreset, selectPresetCategory, changePresetPage, usePresetEvaluator, runTrial, clearTrialResult, copyPrompt, clearPrompt, formatTime } = useEvaluatorEditor();
 </script>
 
@@ -218,14 +219,14 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
               <h2 v-if="!isEdit">评分信息</h2>
               <el-form-item label="评分范围" required>
                 <div class="range-row">
-                  <el-input-number v-model="form.scoreMin" controls-position="right" class="quiet-input-number" :disabled="!canEdit" />
+                  <el-input-number v-model="form.scoreMin" :min="NUMBER_VALUE_MIN" :max="NUMBER_VALUE_MAX" controls-position="right" class="quiet-input-number" :disabled="!canEdit" />
                   <span>-</span>
-                  <el-input-number v-model="form.scoreMax" controls-position="right" class="quiet-input-number" :disabled="!canEdit" />
+                  <el-input-number v-model="form.scoreMax" :min="NUMBER_VALUE_MIN" :max="NUMBER_VALUE_MAX" controls-position="right" class="quiet-input-number" :disabled="!canEdit" />
                 </div>
               </el-form-item>
 
               <el-form-item label="通过阈值" required>
-                <el-input-number v-model="form.passThreshold" controls-position="right" class="wide-control quiet-input-number" :disabled="!canEdit" />
+                <el-input-number v-model="form.passThreshold" :min="NUMBER_VALUE_MIN" :max="NUMBER_VALUE_MAX" controls-position="right" class="wide-control quiet-input-number" :disabled="!canEdit" />
               </el-form-item>
             </div>
           </section>

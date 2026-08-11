@@ -5,6 +5,7 @@ import { evaluatorApi } from '../../../api/evaluator';
 import { remoteCallApi } from '../../../api/remoteCall';
 import { getErrorMessage } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
+import { NUMBER_VALUE_RANGE_TEXT, hasNumberValueOutOfRange, isNumberValueMissing } from '../../../utils/numberRange';
 import { formatPromptBlock } from '../../../utils/textBlocks';
 
 const DEFAULT_PROMPT = `你是一位专业的AI评估员。
@@ -134,8 +135,20 @@ function validateForm(form, models) {
         ElMessage.warning('请输入评估器名称');
         return false;
     }
-    if ([form.scoreMin, form.scoreMax, form.passThreshold].some((value) => value === null || value === undefined || Number.isNaN(Number(value)))) {
+    if (!validateScoreConfig(form)) {
+        return false;
+    }
+    return validateEvaluatorBody(form, models);
+}
+
+function validateScoreConfig(form) {
+    const values = [form.scoreMin, form.scoreMax, form.passThreshold];
+    if (values.some((value) => isNumberValueMissing(value))) {
         ElMessage.warning('请完善评分范围和通过阈值');
+        return false;
+    }
+    if (hasNumberValueOutOfRange(values)) {
+        ElMessage.warning(`评分范围和通过阈值必须在${NUMBER_VALUE_RANGE_TEXT}之间`);
         return false;
     }
     if (form.scoreMin >= form.scoreMax) {
@@ -146,7 +159,7 @@ function validateForm(form, models) {
         ElMessage.warning('通过阈值必须位于评分范围内');
         return false;
     }
-    return validateEvaluatorBody(form, models);
+    return true;
 }
 
 function validateEvaluatorBody(form, models) {
@@ -170,16 +183,7 @@ function validateEvaluatorBody(form, models) {
 }
 
 function validateTrialForm(form, models) {
-    if ([form.scoreMin, form.scoreMax, form.passThreshold].some((value) => value === null || value === undefined || Number.isNaN(Number(value)))) {
-        ElMessage.warning('请完善评分范围和通过阈值');
-        return false;
-    }
-    if (form.scoreMin >= form.scoreMax) {
-        ElMessage.warning('评分范围最大值必须大于最小值');
-        return false;
-    }
-    if (form.passThreshold < form.scoreMin || form.passThreshold > form.scoreMax) {
-        ElMessage.warning('通过阈值必须位于评分范围内');
+    if (!validateScoreConfig(form)) {
         return false;
     }
     return validateEvaluatorBody(form, models);
