@@ -234,8 +234,8 @@ const {
           clearable
           placeholder="请选择布尔值"
         >
-          <el-option label="true" value="true" />
-          <el-option label="false" value="false" />
+          <el-option label="TRUE" value="TRUE" />
+          <el-option label="FALSE" value="FALSE" />
         </el-select>
       </el-form-item>
     </el-form>

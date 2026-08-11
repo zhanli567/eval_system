@@ -142,6 +142,7 @@ public class DatasetService {
   public PageResponse<RowDto> listRows(String versionId, int page, int size, String fieldId, String keyword) {
     int offset = Math.max(page - 1, 0) * size;
     boolean searching = StringUtils.hasText(fieldId) && StringUtils.hasText(keyword);
+    List<FieldDto> fields = listFields(versionId);
     List<DatasetRowRecord> rowRecords;
     long total;
     if (searching) {
@@ -152,9 +153,15 @@ public class DatasetService {
       rowRecords = datasetRepository.listRows(versionId, size, offset);
       total = datasetRepository.countRows(versionId);
     }
-    Map<String, Map<String, String>> values = datasetRepository.loadValues(rowRecords.stream().map(DatasetRowRecord::id).toList());
+    Map<String, Map<String, String>> values = datasetRepository.loadValues(
+        rowRecords.stream().map(DatasetRowRecord::id).toList());
     List<RowDto> rows = rowRecords.stream()
-        .map(row -> new RowDto(row.id(), row.rowNo(), values.getOrDefault(row.id(), Map.of()), row.createdDate(), row.lastUpdatedDate()))
+        .map(row -> new RowDto(
+            row.id(),
+            row.rowNo(),
+            normalizeRowValues(fields, values.getOrDefault(row.id(), Map.of())),
+            row.createdDate(),
+            row.lastUpdatedDate()))
         .toList();
     return new PageResponse<>(rows, total, page, size);
   }
@@ -199,7 +206,7 @@ public class DatasetService {
     insertCells(versionId, itemId, request.values());
     updateItemCount(versionId);
     touchVersion(versionId);
-    return getRow(itemId);
+    return getRow(versionId, itemId);
   }
 
   @Transactional
@@ -241,7 +248,7 @@ public class DatasetService {
     datasetRepository.deleteCellsByItem(itemId);
     insertCells(versionId, itemId, request.values());
     touchVersion(versionId);
-    return getRow(itemId);
+    return getRow(versionId, itemId);
   }
 
   /**
@@ -325,7 +332,8 @@ public class DatasetService {
     Map<String, String> safeValues = values == null ? Map.of() : values;
     validateRowValues(fields, safeValues);
     for (FieldDto field : fields) {
-      datasetRepository.insertCell(id(), versionId, itemId, field.id(), safeValues.getOrDefault(field.id(), ""), now);
+      String cellValue = normalizeCellValue(safeValues.get(field.id()), field);
+      datasetRepository.insertCell(id(), versionId, itemId, field.id(), cellValue, now);
     }
   }
 
@@ -410,7 +418,7 @@ public class DatasetService {
         for (Map.Entry<Integer, FieldDto> entry : matchedColumns.entrySet()) {
           String value = getCellText(sheet, rowIndex, entry.getKey(), formatter, mergedCellTextMap);
           validateExcelCell(value, entry.getValue(), rowIndex + 1, entry.getKey() + 1);
-          values.put(entry.getValue().id(), value);
+          values.put(entry.getValue().id(), normalizeCellValue(value, entry.getValue()));
         }
         String rowKey = excelRowDuplicateKey(fields, values);
         if (rowKeys.add(rowKey)) {
@@ -520,7 +528,28 @@ public class DatasetService {
     if ("boolean".equals(field.fieldType())
         && !"true".equalsIgnoreCase(text)
         && !"false".equalsIgnoreCase(text)) {
-      throw new IllegalArgumentException(position + "应为布尔值true或false");
+      throw new IllegalArgumentException(position + "应为布尔值TRUE或FALSE");
+    }
+  }
+
+  private Map<String, String> normalizeRowValues(List<FieldDto> fields, Map<String, String> values) {
+    Map<String, String> normalized = new LinkedHashMap<>();
+    for (FieldDto field : fields) {
+      normalized.put(field.id(), normalizeCellValue(values.get(field.id()), field));
+    }
+    return normalized;
+  }
+
+  private String normalizeCellValue(String value, FieldDto field) {
+    String text = value == null ? "" : value.trim();
+    if (!"boolean".equals(field.fieldType()) || !StringUtils.hasText(text)) {
+      return value == null ? "" : value;
+    } else if ("true".equalsIgnoreCase(text)) {
+      return "TRUE";
+    } else if ("false".equalsIgnoreCase(text)) {
+      return "FALSE";
+    } else {
+      return text;
     }
   }
 
@@ -569,18 +598,33 @@ public class DatasetService {
   private record CellPosition(int rowIndex, int columnIndex) {
   }
 
-  private RowDto getRow(String itemId) {
+  private RowDto getRow(String versionId, String itemId) {
     DatasetRowRecord row = datasetRepository.findRow(itemId);
-    Map<String, String> values = datasetRepository.loadValues(List.of(itemId)).getOrDefault(itemId, Map.of());
-    return new RowDto(row.id(), row.rowNo(), values, row.createdDate(), row.lastUpdatedDate());
+    List<FieldDto> fields = listFields(versionId);
+    Map<String, String> values = datasetRepository.loadValues(List.of(itemId))
+        .getOrDefault(itemId, Map.of());
+    return new RowDto(
+        row.id(),
+        row.rowNo(),
+        normalizeRowValues(fields, values),
+        row.createdDate(),
+        row.lastUpdatedDate());
   }
 
   private void copyVersionContent(String sourceVersionId, String targetVersionId) {
-    Map<String, String> fieldIdMap = new LinkedHashMap<>();
+    Map<String, FieldDto> targetFieldBySourceId = new LinkedHashMap<>();
     for (FieldDto field : listFields(sourceVersionId)) {
       String newFieldId = id();
-      fieldIdMap.put(field.id(), newFieldId);
       String now = now();
+      FieldDto targetField = new FieldDto(
+          newFieldId,
+          targetVersionId,
+          field.fieldName(),
+          field.fieldType(),
+          field.required(),
+          field.description(),
+          field.displayOrder());
+      targetFieldBySourceId.put(field.id(), targetField);
       datasetRepository.insertField(
           newFieldId,
           targetVersionId,
@@ -593,16 +637,23 @@ public class DatasetService {
     }
 
     List<DatasetRowRecord> sourceRows = datasetRepository.listAllRows(sourceVersionId);
-    Map<String, Map<String, String>> sourceValues = datasetRepository.loadValues(sourceRows.stream().map(DatasetRowRecord::id).toList());
+    Map<String, Map<String, String>> sourceValues = datasetRepository.loadValues(
+        sourceRows.stream().map(DatasetRowRecord::id).toList());
     for (DatasetRowRecord sourceRow : sourceRows) {
       String newItemId = id();
       String now = now();
       datasetRepository.insertItem(newItemId, targetVersionId, sourceRow.rowNo(), now);
       Map<String, String> rowValues = sourceValues.getOrDefault(sourceRow.id(), Map.of());
       for (Map.Entry<String, String> entry : rowValues.entrySet()) {
-        String targetFieldId = fieldIdMap.get(entry.getKey());
-        if (targetFieldId != null) {
-          datasetRepository.insertCell(id(), targetVersionId, newItemId, targetFieldId, entry.getValue(), now);
+        FieldDto targetField = targetFieldBySourceId.get(entry.getKey());
+        if (targetField != null) {
+          datasetRepository.insertCell(
+              id(),
+              targetVersionId,
+              newItemId,
+              targetField.id(),
+              normalizeCellValue(entry.getValue(), targetField),
+              now);
         }
       }
     }
