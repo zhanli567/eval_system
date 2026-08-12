@@ -1555,6 +1555,10 @@ h2 {
   font-weight: 400;
 }
 
+.evaluator-param-title {
+  font-weight: 400;
+}
+
 .field-editor-list {
   display: grid;
   gap: 4px;

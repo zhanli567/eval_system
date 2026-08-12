@@ -92,17 +92,6 @@ public class EvaluatorRepository {
     evaluatorMapper.insert(evaluator);
   }
 
-  public void updateEvaluatorBase(String evaluatorId, String evaluatorName, String description, String now) {
-    evaluatorMapper.update(null, new LambdaUpdateWrapper<EvalEvaluator>()
-        .eq(EvalEvaluator::getSpaceId, currentSpaceId())
-        .eq(EvalEvaluator::getId, evaluatorId)
-        .set(EvalEvaluator::getEvaluatorName, evaluatorName)
-        .set(EvalEvaluator::getDescription, description)
-        .set(EvalEvaluator::getLastUpdatedBy, currentUserId())
-        .set(EvalEvaluator::getLastUpdatedByName, currentUserName())
-        .set(EvalEvaluator::getLastUpdatedDate, toLastUpdatedDate(now)));
-  }
-
   /**
    * 更新评估器描述。
    *

@@ -60,7 +60,7 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
         <h2 v-if="isEdit">配置</h2>
 
         <el-form label-position="top" class="evaluator-form">
-          <section :class="{ 'task-create-section': !isEdit }">
+          <section v-if="!isEdit" class="task-create-section">
             <div v-if="!isEdit" class="section-index">1</div>
             <div class="section-body">
               <h2 v-if="!isEdit">基本信息</h2>
@@ -161,7 +161,7 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
                   </div>
                 </el-form-item>
 
-                <div class="dialog-subtitle required-title">
+                <div class="dialog-subtitle required-title evaluator-param-title">
                   <span>Prompt 参数配置</span>
                 </div>
                 <div class="param-editor-list">

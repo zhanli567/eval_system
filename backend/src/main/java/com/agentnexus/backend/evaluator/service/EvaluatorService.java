@@ -191,7 +191,6 @@ public class EvaluatorService {
       throw new IllegalArgumentException("只有草稿版本允许修改");
     }
     NormalizedEvaluator normalized = normalizeEvaluatorInput(request, existing.evaluatorType());
-    evaluatorRepository.updateEvaluatorBase(existing.evaluatorId(), normalized.evaluatorName(), normalized.description(), now());
     String now = now();
     evaluatorRepository.updateDraftVersion(
         versionId,
@@ -332,7 +331,8 @@ public class EvaluatorService {
     if (request == null) {
       throw new IllegalArgumentException("评估器参数不能为空");
     }
-    String evaluatorName = normalizeName(request.evaluatorName());
+    boolean creating = !StringUtils.hasText(existingType);
+    String evaluatorName = creating ? normalizeName(request.evaluatorName()) : "";
     String evaluatorType = StringUtils.hasText(existingType)
         ? existingType
         : normalizeEvaluatorType(request.evaluatorType());
@@ -342,7 +342,7 @@ public class EvaluatorService {
     if (TYPE_CODE.equals(evaluatorType)) {
       throw new IllegalArgumentException("暂不支持Code型评估器");
     }
-    String description = normalizeDescription(request.description());
+    String description = creating ? normalizeDescription(request.description()) : "";
     BigDecimal scoreMin = request.scoreMin() == null ? DEFAULT_SCORE_MIN : request.scoreMin();
     BigDecimal scoreMax = request.scoreMax() == null ? DEFAULT_SCORE_MAX : request.scoreMax();
     BigDecimal passThreshold = request.passThreshold() == null ? DEFAULT_PASS_THRESHOLD : request.passThreshold();

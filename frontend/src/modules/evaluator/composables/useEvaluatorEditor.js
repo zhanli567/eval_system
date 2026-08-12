@@ -130,6 +130,13 @@ function payload(form, models) {
     };
 }
 
+function draftPayload(form, models) {
+    const data = payload(form, models);
+    delete data.evaluatorName;
+    delete data.description;
+    return data;
+}
+
 function validateForm(form, models) {
     if (!form.evaluatorName.trim()) {
         ElMessage.warning('请输入评估器名称');
@@ -380,7 +387,7 @@ function createSaveActions(ctx, router, versionActions) {
     async function submitDraft() {
         if (!ctx.canEdit.value || !ctx.activeVersionId.value)
             return;
-        const saved = await evaluatorApi.updateDraft(ctx.activeVersionId.value, payload(ctx.form, ctx.models));
+        const saved = await evaluatorApi.updateDraft(ctx.activeVersionId.value, draftPayload(ctx.form, ctx.models));
         ctx.activeDetail.value = saved;
         ElMessage.success('草稿已保存');
         await versionActions.loadVersions(saved.versionId);
@@ -409,7 +416,7 @@ function createSaveActions(ctx, router, versionActions) {
         try {
             if (!validateForm(ctx.form, ctx.models))
                 return;
-            await evaluatorApi.updateDraft(ctx.activeVersionId.value, payload(ctx.form, ctx.models));
+            await evaluatorApi.updateDraft(ctx.activeVersionId.value, draftPayload(ctx.form, ctx.models));
             const published = await evaluatorApi.publish(ctx.evaluatorId.value);
             ElMessage.success(`已发布${published.versionName}`);
             await versionActions.loadVersions(published.versionId);
