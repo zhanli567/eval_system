@@ -50,7 +50,10 @@ CREATE TABLE IF NOT EXISTS t_eval_evaluator_version (
   CONSTRAINT uq_t_eval_evaluator_version_no UNIQUE (evaluator_id, version_no),
   CONSTRAINT ck_t_eval_evaluator_version_no CHECK (version_no >= 0),
   CONSTRAINT ck_t_eval_evaluator_version_score CHECK (
-    score_min < score_max
+    score_min BETWEEN -100000 AND 100000
+    AND score_max BETWEEN -100000 AND 100000
+    AND pass_threshold BETWEEN -100000 AND 100000
+    AND score_min < score_max
     AND pass_threshold BETWEEN score_min AND score_max
   )
 );

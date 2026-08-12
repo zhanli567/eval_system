@@ -21,7 +21,9 @@ CREATE TABLE IF NOT EXISTS t_eval_tag (
       min_value IS NOT NULL
       AND max_value IS NOT NULL
       AND pass_threshold IS NOT NULL
-      AND min_value > 0
+      AND min_value BETWEEN -100000 AND 100000
+      AND max_value BETWEEN -100000 AND 100000
+      AND pass_threshold BETWEEN -100000 AND 100000
       AND max_value > min_value
       AND pass_threshold BETWEEN min_value AND max_value
     )

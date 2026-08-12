@@ -52,4 +52,45 @@ COMMENT ON COLUMN t_eval_task_item.app_output_status IS '应用调用状态：pe
 COMMENT ON COLUMN t_eval_task_evaluator_result.status IS '评估状态：pending待评估，running评估中，completed完成，failed失败，skipped跳过，stopped已中止';
 COMMENT ON COLUMN t_eval_task_tag_result.status IS '标注状态：pending待标注，completed已标注，stopped已中止';
 
+UPDATE t_eval_dataset_item_cell cell
+SET cell_value = CASE
+  WHEN LOWER(TRIM(cell.cell_value)) = 'true' THEN 'TRUE'
+  WHEN LOWER(TRIM(cell.cell_value)) = 'false' THEN 'FALSE'
+  ELSE cell.cell_value
+END
+FROM t_eval_dataset_field field
+WHERE cell.space_id = field.space_id
+  AND cell.field_id = field.id
+  AND field.field_type = 'boolean'
+  AND LOWER(TRIM(cell.cell_value)) IN ('true', 'false')
+  AND cell.cell_value NOT IN ('TRUE', 'FALSE');
+
+ALTER TABLE t_eval_tag DROP CONSTRAINT IF EXISTS ck_t_eval_tag_number_config;
+ALTER TABLE t_eval_tag
+  ADD CONSTRAINT ck_t_eval_tag_number_config
+  CHECK (
+    tag_type <> 'number'
+    OR (
+      min_value IS NOT NULL
+      AND max_value IS NOT NULL
+      AND pass_threshold IS NOT NULL
+      AND min_value BETWEEN -100000 AND 100000
+      AND max_value BETWEEN -100000 AND 100000
+      AND pass_threshold BETWEEN -100000 AND 100000
+      AND max_value > min_value
+      AND pass_threshold BETWEEN min_value AND max_value
+    )
+  );
+
+ALTER TABLE t_eval_evaluator_version DROP CONSTRAINT IF EXISTS ck_t_eval_evaluator_version_score;
+ALTER TABLE t_eval_evaluator_version
+  ADD CONSTRAINT ck_t_eval_evaluator_version_score
+  CHECK (
+    score_min BETWEEN -100000 AND 100000
+    AND score_max BETWEEN -100000 AND 100000
+    AND pass_threshold BETWEEN -100000 AND 100000
+    AND score_min < score_max
+    AND pass_threshold BETWEEN score_min AND score_max
+  );
+
 COMMIT;
