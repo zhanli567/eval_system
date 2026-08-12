@@ -233,7 +233,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
     </template>
   </el-dialog>
 
-  <el-dialog v-model="detailDialogVisible" title="标签详情" class="tag-dialog tag-detail-dialog fixed-dialog" style="--fixed-dialog-width: min(520px, 86vw); --fixed-dialog-height: min(660px, 82vh)" :close-on-click-modal="true">
+  <el-dialog v-model="detailDialogVisible" title="标签详情" class="tag-dialog tag-detail-dialog fixed-dialog" style="--fixed-dialog-width: min(580px, 86vw); --fixed-dialog-height: min(660px, 82vh)" :close-on-click-modal="true">
     <div v-loading="detailLoading" class="tag-detail-body">
       <template v-if="tagDetail">
         <el-descriptions :column="2" border class="tag-detail-descriptions">
