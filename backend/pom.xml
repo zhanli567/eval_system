@@ -18,9 +18,24 @@
   <properties>
     <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- 内网发布坐标变化时只需覆盖此属性，不把版本散落到业务代码中。 -->
+    <jiuwen.version>0.1.14-SP1-SNAPSHOT</jiuwen.version>
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>com.openjiuwen</groupId>
+      <artifactId>agent-core-java</artifactId>
+      <version>${jiuwen.version}</version>
+      <!-- 当前 Jiuwen 尚未拆出独立 evaluator artifact；Eval 只使用评测 API，
+           不继承 Agent Runtime、存储、MCP 等完整传递依赖。 -->
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
@@ -49,6 +64,11 @@
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 

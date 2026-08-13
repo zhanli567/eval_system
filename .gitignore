@@ -1,8 +1,12 @@
 .idea/
+.tools/
 
 backend/target/
+backend/.m2repo/
 frontend/node_modules/
 frontend/dist/
+frontend/.npm-cache/
+.pnpm-store/
 frontend/package-lock.json
 frontend/*.tsbuildinfo
 frontend/vite.config.d.ts
