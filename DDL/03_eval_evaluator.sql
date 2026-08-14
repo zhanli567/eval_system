@@ -10,9 +10,7 @@ CREATE TABLE IF NOT EXISTS t_eval_evaluator (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_evaluator_space_name UNIQUE (space_id, evaluator_name),
-  CONSTRAINT ck_t_eval_evaluator_type CHECK (evaluator_type IN ('llm', 'code'))
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_evaluator IS '自定义评估器主表';
@@ -46,16 +44,7 @@ CREATE TABLE IF NOT EXISTS t_eval_evaluator_version (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_evaluator_version_no UNIQUE (evaluator_id, version_no),
-  CONSTRAINT ck_t_eval_evaluator_version_no CHECK (version_no >= 0),
-  CONSTRAINT ck_t_eval_evaluator_version_score CHECK (
-    score_min BETWEEN -100000 AND 100000
-    AND score_max BETWEEN -100000 AND 100000
-    AND pass_threshold BETWEEN -100000 AND 100000
-    AND score_min < score_max
-    AND pass_threshold BETWEEN score_min AND score_max
-  )
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_evaluator_version IS '自定义评估器版本表';
@@ -93,13 +82,7 @@ CREATE TABLE IF NOT EXISTS t_eval_evaluator_param (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_evaluator_param_name UNIQUE (target_type, target_id, param_name),
-  CONSTRAINT uq_t_eval_evaluator_param_order UNIQUE (target_type, target_id, display_order),
-  CONSTRAINT ck_t_eval_evaluator_param_target CHECK (target_type = 'version'),
-  CONSTRAINT ck_t_eval_evaluator_param_data_type CHECK (data_type IN ('string', 'number', 'boolean')),
-  CONSTRAINT ck_t_eval_evaluator_param_required CHECK (is_required IN (0, 1)),
-  CONSTRAINT ck_t_eval_evaluator_param_order CHECK (display_order > 0)
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_evaluator_param IS '评估器参数配置表';
