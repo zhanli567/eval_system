@@ -18,11 +18,13 @@ import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.De
 import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.Delta;
 import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.DeltaContent;
 import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ErrorContent;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ExecutionMetricsContent;
 import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.GenUIContent;
 import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ReasoningContent;
 import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ReferencesContent;
 import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.SkillTriggerContent;
 import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.TextContent;
+import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.TrajectoryContent;
 import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ToolCallContent;
 import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ToolCallDelta;
 import com.agentnexus.backend.remoteCall.api.dto.response.ChatCompletionChunk.ToolResponseContent;
@@ -556,8 +558,51 @@ public class RemoteCallService {
       case "tool_call" -> new ToolCallContent(toolCallId, toolName, arguments);
       case "tool_response" -> new ToolResponseContent(toolCallId, toolName, response);
       case "gen_ui" -> new GenUIContent(uiCardDefinition);
+      case "trajectory" -> parseTrajectoryContent(item);
+      case "execution_metrics" -> parseExecutionMetricsContent(item);
       default -> new TextContent(firstNonEmpty(text, fallbackValue));
     };
+  }
+
+  @SuppressWarnings("unchecked")
+  private TrajectoryContent parseTrajectoryContent(JsonNode item) {
+    int sequence = item.has("sequence") ? item.get("sequence").asInt(0) : 0;
+    String eventType = textValue(item, "eventType");
+    String stage = textValue(item, "stage");
+    long timestamp = item.has("timestamp") ? item.get("timestamp").asLong(0) : 0;
+    String eventId = textValue(item, "eventId");
+    String parentId = textValue(item, "parentId");
+    Map<String, Object> payload = null;
+    JsonNode payloadNode = item.get("payload");
+    if (payloadNode != null && !payloadNode.isNull()) {
+      payload = objectMapper.convertValue(payloadNode, Map.class);
+    }
+    return new TrajectoryContent(sequence, eventType, stage, timestamp, eventId, parentId, payload);
+  }
+
+  @SuppressWarnings("unchecked")
+  private ExecutionMetricsContent parseExecutionMetricsContent(JsonNode item) {
+    long latencyMs = item.has("latencyMs") ? item.get("latencyMs").asLong(0) : 0;
+    int modelCallCount = item.has("modelCallCount") ? item.get("modelCallCount").asInt(0) : 0;
+    int toolCallCount = item.has("toolCallCount") ? item.get("toolCallCount").asInt(0) : 0;
+    Long inputTokens = item.has("inputTokens") && !item.get("inputTokens").isNull()
+        ? item.get("inputTokens").asLong()
+        : null;
+    Long outputTokens = item.has("outputTokens") && !item.get("outputTokens").isNull()
+        ? item.get("outputTokens").asLong()
+        : null;
+    Map<String, Object> attributes = null;
+    JsonNode attributesNode = item.get("attributes");
+    if (attributesNode != null && !attributesNode.isNull()) {
+      attributes = objectMapper.convertValue(attributesNode, Map.class);
+    }
+    return new ExecutionMetricsContent(
+        latencyMs,
+        modelCallCount,
+        toolCallCount,
+        inputTokens,
+        outputTokens,
+        attributes);
   }
 
   private List<ReferenceItem> parseReferences(JsonNode referencesNode) {
@@ -736,6 +781,8 @@ public class RemoteCallService {
       return "tool_response";
     } else if (isContentType(type, "gen_ui", "genUi")) {
       return "gen_ui";
+    } else if (isContentType(type, "execution_metrics", "executionMetrics")) {
+      return "execution_metrics";
     } else {
       return type;
     }
