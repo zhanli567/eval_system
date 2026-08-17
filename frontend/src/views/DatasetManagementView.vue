@@ -2,7 +2,7 @@
 import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import ResourceDescriptionDialog from '../components/ResourceDescriptionDialog.vue';
 import { useDatasetList } from '../modules/dataset/composables/useDatasetList';
-const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datasetKeyword, sortBy, sortOrder, createVisible, draggedFieldIndex, dragOverFieldIndex, createForm, descriptionDialogVisible, descriptionSaving, descriptionForm, loadDatasets, searchDatasets, changeDatasetSize, toggleSort, openDataset, openCreateDialog, submitCreate, removeDataset, openDescriptionDialog, submitDescription, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, formatTime } = useDatasetList();
+const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datasetKeyword, sortBy, sortOrder, createVisible, creating, draggedFieldIndex, dragOverFieldIndex, createForm, descriptionDialogVisible, descriptionSaving, descriptionForm, loadDatasets, searchDatasets, changeDatasetSize, toggleSort, openDataset, openCreateDialog, submitCreate, removeDataset, isDeletingDataset, openDescriptionDialog, submitDescription, addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, formatTime } = useDatasetList();
 </script>
 
 <template>
@@ -107,7 +107,7 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="openDataset(row)">详情</el-button>
           <el-button link type="primary" @click.stop="openDescriptionDialog(row)">编辑</el-button>
-          <el-button link type="danger" @click.stop="removeDataset(row)">删除</el-button>
+          <el-button link type="danger" :loading="isDeletingDataset(row.id)" :disabled="isDeletingDataset(row.id)" @click.stop="removeDataset(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -125,7 +125,7 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
     </div>
   </section>
 
-  <el-dialog v-model="createVisible" title="创建评测集" class="dataset-create-dialog fixed-dialog" style="--fixed-dialog-width: min(700px, 86vw); --fixed-dialog-height: min(760px, 86vh)" :close-on-click-modal="true">
+  <el-dialog v-model="createVisible" title="创建评测集" class="dataset-create-dialog fixed-dialog" style="--fixed-dialog-width: min(700px, 86vw); --fixed-dialog-height: min(760px, 86vh)" :close-on-click-modal="!creating">
     <el-form label-position="top">
       <el-form-item>
         <template #label>评测集名称 <span class="required-mark">*</span></template>
@@ -183,8 +183,8 @@ const { datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datase
       </div>
     </el-form>
     <template #footer>
-      <el-button @click="createVisible = false">取消</el-button>
-      <el-button type="primary" @click="submitCreate">创建</el-button>
+      <el-button :disabled="creating" @click="createVisible = false">取消</el-button>
+      <el-button type="primary" :loading="creating" @click="submitCreate">创建</el-button>
     </template>
   </el-dialog>
 

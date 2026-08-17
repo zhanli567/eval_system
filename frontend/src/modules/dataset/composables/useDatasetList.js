@@ -4,7 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { datasetApi } from '../../../api/dataset';
 import { useResourceDescriptionEdit } from '../../../composables/useResourceDescriptionEdit';
 import { formatDateTime } from '../../../utils/formatters';
-import { getErrorMessage, movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
+import { getErrorMessage, movePreviousPageIfLastRow, runExclusive, runExclusiveById, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 
 function defaultFields() {
     return [
@@ -99,7 +99,7 @@ function createDatasetActions(ctx) {
         if (!validateCreateForm(ctx.createForm)) {
             return;
         } else {
-            try {
+            await runExclusive(ctx.creating, async () => {
                 const name = ctx.createForm.name.trim();
                 const page = await datasetApi.listDatasets({ page: 1, size: 100, keyword: name });
                 if (page.records.some((dataset) => dataset.name === name)) {
@@ -114,19 +114,24 @@ function createDatasetActions(ctx) {
                     ElMessage.success('评测集已创建');
                     await ctx.router.push({ name: 'dataset-detail', params: { datasetId: created.id } });
                 }
-            } catch (error) {
+            }).catch((error) => {
                 ElMessage.error(getErrorMessage(error, '创建评测集失败'));
-            }
+            });
         }
     }
     async function removeDataset(row) {
-        await ElMessageBox.confirm(`确定删除评测集“${row.name}”吗？`, '删除评测集', { type: 'warning' });
-        await datasetApi.deleteDataset(row.id);
-        ElMessage.success('已删除');
-        movePreviousPageIfLastRow(ctx.datasets, ctx.datasetPage);
-        await loadDatasets();
+        await runExclusiveById(ctx.deletingIds, row.id, async () => {
+            await ElMessageBox.confirm(`确定删除评测集“${row.name}”吗？`, '删除评测集', { type: 'warning' });
+            await datasetApi.deleteDataset(row.id);
+            ElMessage.success('已删除');
+            movePreviousPageIfLastRow(ctx.datasets, ctx.datasetPage);
+            await loadDatasets();
+        });
     }
-    return { loadDatasets, searchDatasets, changeDatasetSize, toggleSort, openDataset, openCreateDialog, submitCreate, removeDataset };
+    function isDeletingDataset(datasetId) {
+        return ctx.deletingIds.value.includes(datasetId);
+    }
+    return { loadDatasets, searchDatasets, changeDatasetSize, toggleSort, openDataset, openCreateDialog, submitCreate, removeDataset, isDeletingDataset };
 }
 
 function validateCreateForm(createForm) {
@@ -152,9 +157,11 @@ export function useDatasetList() {
     const sortBy = ref('');
     const sortOrder = ref('');
     const createVisible = ref(false);
+    const creating = ref(false);
+    const deletingIds = ref([]);
     const createForm = reactive({ name: '', description: '', fields: defaultFields() });
     const drag = createFieldDragState();
-    const actions = createDatasetActions({ router, datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datasetKeyword, sortBy, sortOrder, createVisible, createForm });
+    const actions = createDatasetActions({ router, datasetLoading, datasets, datasetTotal, datasetPage, datasetSize, datasetKeyword, sortBy, sortOrder, createVisible, creating, deletingIds, createForm });
     const descriptionEdit = useResourceDescriptionEdit({
         getId: (row) => row.id,
         getName: (row) => row.name,
@@ -176,6 +183,8 @@ export function useDatasetList() {
         sortBy,
         sortOrder,
         createVisible,
+        creating,
+        deletingIds,
         draggedFieldIndex: drag.draggedFieldIndex,
         dragOverFieldIndex: drag.dragOverFieldIndex,
         createForm,

@@ -9,13 +9,15 @@ const {
   detailLoading, datasetTitle, versions, activeVersionId, tablePage, tableSize,
   searchFieldId, searchKeyword, fieldVisible, rowVisible, rowEditingId,
   selectedRows, batchDeleting, excelInput, coverExcelInput, draggedFieldIndex,
-  dragOverFieldIndex, fieldForm, rowForm, activeVersion, isDraft, tableRows,
+  dragOverFieldIndex, fieldSaving, rowSaving, excelImporting, excelCovering,
+  publishing, fieldForm, rowForm, activeVersion, isDraft, tableRows,
   tableTotal, fields, dataTableKey, loadDataset, selectVersion, loadDetail,
   changeTableSize, backToList, addField, removeField, startFieldDrag,
   enterFieldDrag, dropField, endFieldDrag, openFieldDialog, submitFields,
   openRowDialog, submitRow, removeRow, handleSelectionChange,
   removeSelectedRows, handleAddDataCommand, importExcel, coverExcel,
-  publishDraft, removeVersion, coverDraft, formatTime
+  publishDraft, removeVersion, coverDraft, isVersionOperating, isRowOperating,
+  detailOperating, formatTime
 } = useDatasetDetail(datasetId);
 </script>
 
@@ -39,6 +41,7 @@ const {
       <button
         v-for="version in versions"
         :key="version.id"
+        :disabled="detailOperating"
         class="version-item"
         :class="{ active: activeVersionId === version.id }"
         @click="selectVersion(version.id)"
@@ -51,30 +54,30 @@ const {
       </button>
     </aside>
 
-    <div class="version-content" v-loading="detailLoading">
+    <div class="version-content" v-loading="detailLoading || excelImporting || excelCovering">
       <div class="version-head dataset-detail-toolbar">
         <div class="dataset-detail-filters">
-          <el-select v-model="searchFieldId" clearable placeholder="全部" class="field-select">
+          <el-select v-model="searchFieldId" clearable placeholder="全部" class="field-select" :disabled="detailOperating">
             <el-option v-for="field in fields" :key="field.id" :label="field.fieldName" :value="field.id" />
           </el-select>
-          <el-input v-model="searchKeyword" clearable placeholder="请输入关键词" class="search-input" @keyup.enter="loadDetail" />
-          <el-button class="search-icon-button" :icon="Search" title="筛选" aria-label="筛选" @click="loadDetail" />
+          <el-input v-model="searchKeyword" clearable placeholder="请输入关键词" class="search-input" :disabled="detailOperating" @keyup.enter="loadDetail" />
+          <el-button class="search-icon-button" :icon="Search" title="筛选" aria-label="筛选" :disabled="detailOperating" @click="loadDetail" />
         </div>
         <div class="version-actions dataset-detail-actions">
-          <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadDataset" />
+          <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" :disabled="detailOperating" @click="loadDataset" />
           <template v-if="isDraft">
             <el-button
               type="danger"
               plain
-              :disabled="!selectedRows.length"
+              :disabled="!selectedRows.length || detailOperating"
               :loading="batchDeleting"
               @click="removeSelectedRows"
             >
               批量删除<span v-if="selectedRows.length">（{{ selectedRows.length }}）</span>
             </el-button>
-            <el-button @click="openFieldDialog">编辑表头</el-button>
-            <el-dropdown trigger="hover" @command="handleAddDataCommand">
-              <el-button>
+            <el-button :disabled="detailOperating" @click="openFieldDialog">编辑表头</el-button>
+            <el-dropdown trigger="hover" :disabled="detailOperating" @command="handleAddDataCommand">
+              <el-button :loading="excelImporting || excelCovering" :disabled="detailOperating">
                 添加数据
                 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
               </el-button>
@@ -90,14 +93,15 @@ const {
             <input ref="coverExcelInput" class="hidden-file" type="file" accept=".xlsx,.xls" @change="coverExcel" />
             <el-button
               type="success"
-              :disabled="(activeVersion?.itemCount ?? 0) === 0"
+              :loading="publishing"
+              :disabled="(activeVersion?.itemCount ?? 0) === 0 || detailOperating"
               title="草稿暂无数据时不能发布"
               @click="publishDraft"
             >发布</el-button>
           </template>
           <template v-else-if="activeVersion">
-            <el-button @click="coverDraft(activeVersion)">覆盖当前草稿</el-button>
-            <el-button type="danger" plain @click="removeVersion(activeVersion)">删除版本</el-button>
+            <el-button :loading="isVersionOperating(activeVersion.id)" :disabled="detailOperating" @click="coverDraft(activeVersion)">覆盖当前草稿</el-button>
+            <el-button type="danger" plain :loading="isVersionOperating(activeVersion.id)" :disabled="detailOperating" @click="removeVersion(activeVersion)">删除版本</el-button>
           </template>
         </div>
       </div>
@@ -131,8 +135,8 @@ const {
         </el-table-column>
         <el-table-column label="操作" width="130" fixed="right" :resizable="false" align="center">
           <template #default="{ row }">
-            <el-button link type="primary" :disabled="!isDraft" @click="openRowDialog(row)">编辑</el-button>
-            <el-button link type="danger" :disabled="!isDraft" @click="removeRow(row)">删除</el-button>
+            <el-button link type="primary" :disabled="!isDraft || detailOperating" @click="openRowDialog(row)">编辑</el-button>
+            <el-button link type="danger" :loading="isRowOperating(row.id)" :disabled="!isDraft || detailOperating" @click="removeRow(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -144,6 +148,7 @@ const {
           :page-sizes="[5, 10, 20]"
           layout="total, sizes, prev, pager, next, jumper"
           :total="tableTotal"
+          :disabled="detailOperating"
           @size-change="changeTableSize"
           @current-change="loadDetail"
         />
@@ -164,7 +169,7 @@ const {
     <el-empty class="embedded-empty" description="暂无版本数据" />
   </section>
 
-  <el-dialog v-model="fieldVisible" title="编辑表头" class="dataset-field-dialog fixed-dialog" style="--fixed-dialog-width: min(780px, 86vw); --fixed-dialog-height: min(640px, 86vh)" :close-on-click-modal="true">
+  <el-dialog v-model="fieldVisible" title="编辑表头" class="dataset-field-dialog fixed-dialog" style="--fixed-dialog-width: min(780px, 86vw); --fixed-dialog-height: min(640px, 86vh)" :close-on-click-modal="!fieldSaving">
     <div class="dialog-subtitle">
       <span>草稿表结构</span>
       <el-button link type="primary" :icon="Plus" @click="addField(fieldForm)">添加列</el-button>
@@ -205,12 +210,12 @@ const {
       </div>
     </div>
     <template #footer>
-      <el-button @click="fieldVisible = false">取消</el-button>
-      <el-button type="primary" @click="submitFields">保存</el-button>
+      <el-button :disabled="fieldSaving" @click="fieldVisible = false">取消</el-button>
+      <el-button type="primary" :loading="fieldSaving" @click="submitFields">保存</el-button>
     </template>
   </el-dialog>
 
-  <el-dialog v-model="rowVisible" :title="rowEditingId ? '编辑数据' : '新增数据'" class="dataset-row-dialog fixed-dialog" style="--fixed-dialog-width: min(780px, 86vw); --fixed-dialog-height: min(620px, 86vh)" :close-on-click-modal="true">
+  <el-dialog v-model="rowVisible" :title="rowEditingId ? '编辑数据' : '新增数据'" class="dataset-row-dialog fixed-dialog" style="--fixed-dialog-width: min(780px, 86vw); --fixed-dialog-height: min(620px, 86vh)" :close-on-click-modal="!rowSaving">
     <el-form label-position="top">
       <el-form-item v-for="field in fields" :key="field.id">
         <template #label>
@@ -240,8 +245,8 @@ const {
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="rowVisible = false">取消</el-button>
-      <el-button type="primary" @click="submitRow">保存</el-button>
+      <el-button :disabled="rowSaving" @click="rowVisible = false">取消</el-button>
+      <el-button type="primary" :loading="rowSaving" @click="submitRow">保存</el-button>
     </template>
   </el-dialog>
 </template>

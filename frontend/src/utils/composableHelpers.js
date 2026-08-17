@@ -24,6 +24,32 @@ export function movePreviousPageIfLastRow(records, page) {
     }
 }
 
+export async function runExclusive(busy, action) {
+    if (busy.value) {
+        return undefined;
+    }
+    busy.value = true;
+    try {
+        return await action();
+    }
+    finally {
+        busy.value = false;
+    }
+}
+
+export async function runExclusiveById(busyIds, id, action) {
+    if (!id || busyIds.value.includes(id)) {
+        return undefined;
+    }
+    busyIds.value = [...busyIds.value, id];
+    try {
+        return await action();
+    }
+    finally {
+        busyIds.value = busyIds.value.filter((item) => item !== id);
+    }
+}
+
 export function labelFromMap(map, value) {
     return value ? map[value] || value : '-';
 }

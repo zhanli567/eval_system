@@ -2,7 +2,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { datasetApi } from '../../../api/dataset';
-import { getErrorMessage } from '../../../utils/composableHelpers';
+import { getErrorMessage, runExclusive, runExclusiveById } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
 
 function createState() {
@@ -21,6 +21,13 @@ function createState() {
         rowEditingId: ref(''),
         selectedRows: ref([]),
         batchDeleting: ref(false),
+        fieldSaving: ref(false),
+        rowSaving: ref(false),
+        excelImporting: ref(false),
+        excelCovering: ref(false),
+        publishing: ref(false),
+        versionOperatingIds: ref([]),
+        rowOperatingIds: ref([]),
         excelInput: ref(),
         coverExcelInput: ref(),
         draggedFieldIndex: ref(null),
@@ -40,6 +47,15 @@ function createComputed(state) {
         tableRows: computed(() => state.detail.value?.rows.records ?? []),
         tableTotal: computed(() => state.detail.value?.rows.total ?? 0),
         fields,
+        detailOperating: computed(() => state.detailLoading.value
+            || state.batchDeleting.value
+            || state.fieldSaving.value
+            || state.rowSaving.value
+            || state.excelImporting.value
+            || state.excelCovering.value
+            || state.publishing.value
+            || state.versionOperatingIds.value.length > 0
+            || state.rowOperatingIds.value.length > 0),
         dataTableKey: computed(() => fields.value.map((field) => `${field.id}:${field.fieldName}:${field.required}:${field.displayOrder}`).join('|'))
     };
 }
@@ -117,27 +133,36 @@ function createVersionActions(ctx) {
             ElMessage.warning('评测集草稿中暂无数据，不能发布');
         }
         else {
-            await ElMessageBox.confirm('发布后将生成新的只读版本，确定发布当前草稿吗？', '发布版本', { type: 'success' });
-            const version = await datasetApi.publish(ctx.datasetId.value);
-            ElMessage.success(`已发布${version.versionName}`);
-            await loadDatasetSummary();
-            await loadVersions(version.id);
+            await runExclusive(ctx.state.publishing, async () => {
+                await ElMessageBox.confirm('发布后将生成新的只读版本，确定发布当前草稿吗？', '发布版本', { type: 'success' });
+                const version = await datasetApi.publish(ctx.datasetId.value);
+                ElMessage.success(`已发布${version.versionName}`);
+                await loadDatasetSummary();
+                await loadVersions(version.id);
+            });
         }
     }
     async function removeVersion(version) {
-        await ElMessageBox.confirm(`确定删除 ${version.versionName} 吗？`, '删除版本', { type: 'warning' });
-        await datasetApi.deleteVersion(version.id);
-        ElMessage.success('版本已删除');
-        await loadDatasetSummary();
-        await loadVersions();
+        await runExclusiveById(ctx.state.versionOperatingIds, version.id, async () => {
+            await ElMessageBox.confirm(`确定删除 ${version.versionName} 吗？`, '删除版本', { type: 'warning' });
+            await datasetApi.deleteVersion(version.id);
+            ElMessage.success('版本已删除');
+            await loadDatasetSummary();
+            await loadVersions();
+        });
     }
     async function coverDraft(version) {
-        await ElMessageBox.confirm(`确定用 ${version.versionName} 全量覆盖草稿吗？`, '覆盖草稿', { type: 'warning' });
-        const draft = await datasetApi.coverDraft(ctx.datasetId.value, version.id);
-        ElMessage.success('草稿已覆盖');
-        await loadVersions(draft.id);
+        await runExclusiveById(ctx.state.versionOperatingIds, version.id, async () => {
+            await ElMessageBox.confirm(`确定用 ${version.versionName} 全量覆盖草稿吗？`, '覆盖草稿', { type: 'warning' });
+            const draft = await datasetApi.coverDraft(ctx.datasetId.value, version.id);
+            ElMessage.success('草稿已覆盖');
+            await loadVersions(draft.id);
+        });
     }
-    return { loadDataset, loadDatasetSummary, loadVersions, selectVersion, loadDetail, changeTableSize, backToList, publishDraft, removeVersion, coverDraft };
+    function isVersionOperating(versionId) {
+        return ctx.state.versionOperatingIds.value.includes(versionId);
+    }
+    return { loadDataset, loadDatasetSummary, loadVersions, selectVersion, loadDetail, changeTableSize, backToList, publishDraft, removeVersion, coverDraft, isVersionOperating };
 }
 
 function createFieldActions(ctx, versionActions) {
@@ -181,50 +206,56 @@ function createFieldActions(ctx, versionActions) {
             ElMessage.warning('请完善列名');
             return;
         }
-        const savedFields = await datasetApi.replaceFields(ctx.state.activeVersionId.value, ctx.state.fieldForm.value);
-        if (ctx.state.detail.value) {
-            ctx.state.detail.value = { ...ctx.state.detail.value, fields: savedFields };
-        }
-        ctx.state.fieldVisible.value = false;
-        ElMessage.success('表头已保存');
-        await versionActions.loadDetail();
+        await runExclusive(ctx.state.fieldSaving, async () => {
+            const savedFields = await datasetApi.replaceFields(ctx.state.activeVersionId.value, ctx.state.fieldForm.value);
+            if (ctx.state.detail.value) {
+                ctx.state.detail.value = { ...ctx.state.detail.value, fields: savedFields };
+            }
+            ctx.state.fieldVisible.value = false;
+            ElMessage.success('表头已保存');
+            await versionActions.loadDetail();
+        });
     }
     return { addField, removeField, startFieldDrag, enterFieldDrag, dropField, endFieldDrag, openFieldDialog, submitFields };
 }
 
 function createExcelActions(ctx, versionActions) {
     function openExcelImport() {
-        if (canImportExcel(ctx)) {
+        if (canImportExcel(ctx) && !ctx.computed.detailOperating.value) {
             ctx.state.excelInput.value?.click();
         }
     }
     async function openExcelCover() {
-        if (!canImportExcel(ctx))
+        if (!canImportExcel(ctx) || ctx.computed.detailOperating.value)
             return;
         await ElMessageBox.confirm('全量覆盖会清空草稿现有数据，并以Excel数据为准，确定继续吗？', '全量覆盖', { type: 'warning' });
         ctx.state.coverExcelInput.value?.click();
     }
     async function importExcel(event) {
-        await submitExcel(event, (file) => datasetApi.importRows(ctx.state.activeVersionId.value, file), '已导入', '导入失败，请确认Excel包含所有必填列');
+        await submitExcel(event, ctx.state.excelImporting, (file) => datasetApi.importRows(ctx.state.activeVersionId.value, file), '已导入', '导入失败，请确认Excel包含所有必填列');
     }
     async function coverExcel(event) {
-        await submitExcel(event, (file) => datasetApi.coverRowsByExcel(ctx.state.activeVersionId.value, file), '已覆盖导入', '覆盖失败，请确认Excel包含所有必填列');
+        await submitExcel(event, ctx.state.excelCovering, (file) => datasetApi.coverRowsByExcel(ctx.state.activeVersionId.value, file), '已覆盖导入', '覆盖失败，请确认Excel包含所有必填列');
     }
-    async function submitExcel(event, action, successPrefix, fallback) {
-        if (!requireActiveVersion(ctx.state))
-            return;
+    async function submitExcel(event, loading, action, successPrefix, fallback) {
         const input = event.target;
-        const file = input.files?.[0];
-        if (!file)
-            return;
         try {
-            const result = await action(file);
-            ElMessage.success(`${successPrefix}${result.importedCount} 行`);
-            await versionActions.loadDetail();
-            await versionActions.loadDatasetSummary();
-        }
-        catch (error) {
-            ElMessage.error(getErrorMessage(error, fallback));
+            if (!requireActiveVersion(ctx.state))
+                return;
+            const file = input.files?.[0];
+            if (!file || loading.value)
+                return;
+            await runExclusive(loading, async () => {
+                try {
+                    const result = await action(file);
+                    ElMessage.success(`${successPrefix}${result.importedCount} 行`);
+                    await versionActions.loadDetail();
+                    await versionActions.loadDatasetSummary();
+                }
+                catch (error) {
+                    ElMessage.error(getErrorMessage(error, fallback));
+                }
+            });
         }
         finally {
             input.value = '';
@@ -262,10 +293,12 @@ function createRowActions(ctx, versionActions, excelActions) {
             ElMessage.warning(`请填写${missingField.fieldName}`);
             return;
         }
-        await saveRow();
-        ctx.state.rowVisible.value = false;
-        await versionActions.loadDetail();
-        await versionActions.loadDatasetSummary();
+        await runExclusive(ctx.state.rowSaving, async () => {
+            await saveRow();
+            ctx.state.rowVisible.value = false;
+            await versionActions.loadDetail();
+            await versionActions.loadDatasetSummary();
+        });
     }
     async function saveRow() {
         if (ctx.state.rowEditingId.value) {
@@ -279,11 +312,13 @@ function createRowActions(ctx, versionActions, excelActions) {
     async function removeRow(row) {
         if (!requireActiveVersion(ctx.state))
             return;
-        await ElMessageBox.confirm('确定删除该条数据吗？', '删除数据', { type: 'warning' });
-        await datasetApi.deleteRows(ctx.state.activeVersionId.value, [row.id]);
-        ElMessage.success('已删除');
-        await versionActions.loadDetail();
-        await versionActions.loadDatasetSummary();
+        await runExclusiveById(ctx.state.rowOperatingIds, row.id, async () => {
+            await ElMessageBox.confirm('确定删除该条数据吗？', '删除数据', { type: 'warning' });
+            await datasetApi.deleteRows(ctx.state.activeVersionId.value, [row.id]);
+            ElMessage.success('已删除');
+            await versionActions.loadDetail();
+            await versionActions.loadDatasetSummary();
+        });
     }
     async function handleAddDataCommand(command) {
         if (command === 'single') {
@@ -296,7 +331,10 @@ function createRowActions(ctx, versionActions, excelActions) {
             await excelActions.openExcelCover();
         }
     }
-    return { openRowDialog, submitRow, removeRow, handleAddDataCommand };
+    function isRowOperating(rowId) {
+        return ctx.state.rowOperatingIds.value.includes(rowId);
+    }
+    return { openRowDialog, submitRow, removeRow, handleAddDataCommand, isRowOperating };
 }
 
 function createBatchRowActions(ctx, versionActions) {
@@ -310,15 +348,13 @@ function createBatchRowActions(ctx, versionActions) {
         }
         else {
             await ElMessageBox.confirm(`确定删除选中的 ${itemIds.length} 条数据吗？`, '批量删除数据', { type: 'warning' });
-            ctx.state.batchDeleting.value = true;
-            await datasetApi.deleteRows(ctx.state.activeVersionId.value, itemIds)
-                .finally(() => {
-                    ctx.state.batchDeleting.value = false;
-                });
-            ElMessage.success(`已删除 ${itemIds.length} 条数据`);
-            adjustPageAfterDelete(ctx, itemIds.length);
-            await versionActions.loadDetail();
-            await versionActions.loadDatasetSummary();
+            await runExclusive(ctx.state.batchDeleting, async () => {
+                await datasetApi.deleteRows(ctx.state.activeVersionId.value, itemIds);
+                ElMessage.success(`已删除 ${itemIds.length} 条数据`);
+                adjustPageAfterDelete(ctx, itemIds.length);
+                await versionActions.loadDetail();
+                await versionActions.loadDatasetSummary();
+            });
         }
     }
     return { handleSelectionChange, removeSelectedRows };
