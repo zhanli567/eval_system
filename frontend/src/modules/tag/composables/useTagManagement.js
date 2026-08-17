@@ -1,7 +1,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { tagApi } from '../../../api/tag';
-import { getErrorMessage, movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
+import { getErrorMessage, movePreviousPageIfLastRow, runExclusive, runExclusiveById, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
 import { NUMBER_VALUE_RANGE_TEXT, hasNumberValueOutOfRange, isNumberValueMissing } from '../../../utils/numberRange';
 
@@ -142,27 +142,34 @@ function createTagDialogActions(ctx) {
         ctx.dialogVisible.value = true;
     }
     async function openEditDialog(row) {
-        const detail = await tagApi.getTag(row.id);
-        ctx.editingId.value = row.id;
-        fillForm(ctx.tagForm, detail);
-        ctx.dialogVisible.value = true;
+        await runExclusiveById(ctx.openingIds, row.id, async () => {
+            const detail = await tagApi.getTag(row.id);
+            ctx.editingId.value = row.id;
+            fillForm(ctx.tagForm, detail);
+            ctx.dialogVisible.value = true;
+        });
     }
     async function openDetailDialog(row) {
-        ctx.detailDialogVisible.value = true;
-        ctx.detailLoading.value = true;
-        ctx.tagDetail.value = null;
-        try {
-            ctx.tagDetail.value = await tagApi.getTag(row.id);
-        }
-        catch (error) {
-            ctx.detailDialogVisible.value = false;
-            ElMessage.error(getErrorMessage(error, '加载标签详情失败'));
-        }
-        finally {
-            ctx.detailLoading.value = false;
-        }
+        await runExclusiveById(ctx.openingIds, row.id, async () => {
+            ctx.detailDialogVisible.value = true;
+            ctx.detailLoading.value = true;
+            ctx.tagDetail.value = null;
+            try {
+                ctx.tagDetail.value = await tagApi.getTag(row.id);
+            }
+            catch (error) {
+                ctx.detailDialogVisible.value = false;
+                ElMessage.error(getErrorMessage(error, '加载标签详情失败'));
+            }
+            finally {
+                ctx.detailLoading.value = false;
+            }
+        });
     }
-    return { openCreateDialog, openEditDialog, openDetailDialog };
+    function isOpeningTag(tagId) {
+        return ctx.openingIds.value.includes(tagId);
+    }
+    return { openCreateDialog, openEditDialog, openDetailDialog, isOpeningTag };
 }
 
 function createTagSubmitActions(ctx, loadTags) {
@@ -171,10 +178,8 @@ function createTagSubmitActions(ctx, loadTags) {
         if (errorMessage) {
             ElMessage.error(errorMessage);
             return;
-        } else {
-            ctx.saving.value = true;
         }
-        try {
+        await runExclusive(ctx.saving, async () => {
             const name = ctx.tagForm.tagName.trim();
             const page = ctx.editingId.value
                 ? null
@@ -186,10 +191,7 @@ function createTagSubmitActions(ctx, loadTags) {
                 ctx.dialogVisible.value = false;
                 await loadTags();
             }
-        }
-        finally {
-            ctx.saving.value = false;
-        }
+        });
     }
     async function saveTag() {
         if (ctx.editingId.value) {
@@ -218,13 +220,18 @@ function createTagListActions(ctx, loadTags) {
         return loadTags();
     }
     async function removeTag(row) {
-        await ElMessageBox.confirm(`确定删除标签“${row.tagName}”吗？`, '删除标签', { type: 'warning' });
-        await tagApi.deleteTag(row.id);
-        ElMessage.success('已删除');
-        movePreviousPageIfLastRow(ctx.tags, ctx.tagPage);
-        await loadTags();
+        await runExclusiveById(ctx.deletingIds, row.id, async () => {
+            await ElMessageBox.confirm(`确定删除标签“${row.tagName}”吗？`, '删除标签', { type: 'warning' });
+            await tagApi.deleteTag(row.id);
+            ElMessage.success('已删除');
+            movePreviousPageIfLastRow(ctx.tags, ctx.tagPage);
+            await loadTags();
+        });
     }
-    return { searchTags, changeTagSize, toggleSort, removeTag };
+    function isDeletingTag(tagId) {
+        return ctx.deletingIds.value.includes(tagId);
+    }
+    return { searchTags, changeTagSize, toggleSort, removeTag, isDeletingTag };
 }
 
 function createTagOptionActions(ctx) {
@@ -263,13 +270,15 @@ export function useTagManagement() {
     const detailLoading = ref(false);
     const tagDetail = ref(null);
     const editingId = ref('');
+    const openingIds = ref([]);
+    const deletingIds = ref([]);
     const tagForm = reactive({});
     resetForm(tagForm);
     const editing = computed(() => Boolean(editingId.value));
     const dialogTitle = computed(() => (editing.value ? '编辑标签' : '创建标签'));
     const detailPassOptions = computed(() => tagDetail.value?.options.filter((option) => option.optionGroup === 'pass') ?? []);
     const detailFailOptions = computed(() => tagDetail.value?.options.filter((option) => option.optionGroup === 'fail') ?? []);
-    const ctx = { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, sortBy, sortOrder, dialogVisible, detailDialogVisible, detailLoading, tagDetail, editingId, tagForm };
+    const ctx = { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, sortBy, sortOrder, dialogVisible, detailDialogVisible, detailLoading, tagDetail, editingId, openingIds, deletingIds, tagForm };
     const actions = createTagActions(ctx);
     onMounted(async () => {
         await actions.loadTags();
@@ -290,6 +299,8 @@ export function useTagManagement() {
         detailDialogVisible,
         detailLoading,
         tagDetail,
+        openingIds,
+        deletingIds,
         detailPassOptions,
         detailFailOptions,
         editing,

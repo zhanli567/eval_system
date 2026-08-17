@@ -2,7 +2,7 @@
 import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useTagManagement } from '../modules/tag/composables/useTagManagement';
 import { NUMBER_VALUE_MAX, NUMBER_VALUE_MIN } from '../utils/numberRange';
-const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, sortBy, sortOrder, dialogVisible, detailDialogVisible, detailLoading, tagDetail, detailPassOptions, detailFailOptions, editing, dialogTitle, tagForm, tagTypeOptions, booleanOptions, loadTags, searchTags, changeTagSize, toggleSort, openCreateDialog, openDetailDialog, openEditDialog, submitTag, removeTag, addCategoryOption, removeCategoryOption, getTagTypeLabel, formatTime } = useTagManagement();
+const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, sortBy, sortOrder, dialogVisible, detailDialogVisible, detailLoading, tagDetail, detailPassOptions, detailFailOptions, editing, dialogTitle, tagForm, tagTypeOptions, booleanOptions, loadTags, searchTags, changeTagSize, toggleSort, openCreateDialog, openDetailDialog, openEditDialog, submitTag, removeTag, isOpeningTag, isDeletingTag, addCategoryOption, removeCategoryOption, getTagTypeLabel, formatTime } = useTagManagement();
 </script>
 
 <template>
@@ -104,9 +104,9 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
       </el-table-column>
       <el-table-column column-key="actions" label="操作" width="180" fixed="right" :resizable="false" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openDetailDialog(row)">详情</el-button>
-          <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
-          <el-button link type="danger" @click="removeTag(row)">删除</el-button>
+          <el-button link type="primary" :loading="isOpeningTag(row.id)" :disabled="isDeletingTag(row.id)" @click="openDetailDialog(row)">详情</el-button>
+          <el-button link type="primary" :loading="isOpeningTag(row.id)" :disabled="isDeletingTag(row.id)" @click="openEditDialog(row)">编辑</el-button>
+          <el-button link type="danger" :loading="isDeletingTag(row.id)" :disabled="isOpeningTag(row.id)" @click="removeTag(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -124,7 +124,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
     </div>
   </section>
 
-  <el-dialog v-model="dialogVisible" :title="dialogTitle" class="tag-dialog fixed-dialog" style="--fixed-dialog-width: min(520px, 86vw); --fixed-dialog-height: min(760px, 86vh)" :close-on-click-modal="true">
+  <el-dialog v-model="dialogVisible" :title="dialogTitle" class="tag-dialog fixed-dialog" style="--fixed-dialog-width: min(520px, 86vw); --fixed-dialog-height: min(760px, 86vh)" :close-on-click-modal="!saving">
     <el-form label-position="top" class="tag-form">
       <el-form-item>
         <template #label>标签名称 <span class="required-mark">*</span></template>
@@ -228,7 +228,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
     </el-form>
 
     <template #footer>
-      <el-button @click="dialogVisible = false">取消</el-button>
+      <el-button :disabled="saving" @click="dialogVisible = false">取消</el-button>
       <el-button type="primary" :loading="saving" @click="submitTag">确定</el-button>
     </template>
   </el-dialog>
