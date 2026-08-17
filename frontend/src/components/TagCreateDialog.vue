@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { Delete, Plus } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { tagApi } from '../api/tag';
+import { runExclusive } from '../utils/composableHelpers';
 import { NUMBER_VALUE_MAX, NUMBER_VALUE_MIN, NUMBER_VALUE_RANGE_TEXT, hasNumberValueOutOfRange, isNumberValueMissing } from '../utils/numberRange';
 
 const tagTypeOptions = [
@@ -134,15 +135,12 @@ async function submitTag() {
         ElMessage.error(errorMessage);
         return;
     }
-    saving.value = true;
-    try {
+    await runExclusive(saving, async () => {
         const created = await tagApi.createTag(buildPayload());
         ElMessage.success('标签已创建');
         visible.value = false;
         emit('created', created);
-    } finally {
-        saving.value = false;
-    }
+    });
 }
 </script>
 
@@ -152,7 +150,7 @@ async function submitTag() {
     title="创建标签"
     class="tag-dialog task-tag-create-dialog fixed-dialog"
     style="--fixed-dialog-width: min(680px, 86vw); --fixed-dialog-height: min(640px, 86vh)"
-    :close-on-click-modal="true"
+    :close-on-click-modal="!saving"
   >
     <el-form label-position="top" class="tag-form">
       <el-form-item>
@@ -256,7 +254,7 @@ async function submitTag() {
     </el-form>
 
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
+      <el-button :disabled="saving" @click="visible = false">取消</el-button>
       <el-button type="primary" :loading="saving" @click="submitTag">确定</el-button>
     </template>
   </el-dialog>

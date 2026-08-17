@@ -6,7 +6,7 @@ import { evaluatorApi } from '../../../api/evaluator';
 import { remoteCallApi } from '../../../api/remoteCall';
 import { tagApi } from '../../../api/tag';
 import { taskApi } from '../../../api/task';
-import { getErrorMessage } from '../../../utils/composableHelpers';
+import { getErrorMessage, runExclusive } from '../../../utils/composableHelpers';
 import { tagTypeLabel } from '../../../utils/taskLabels';
 
 const TASK_TAG_TYPE_OPTIONS = [
@@ -855,8 +855,7 @@ function createSubmitActions(ctx) {
 }
 
 async function saveTask(ctx) {
-    ctx.state.saving.value = true;
-    try {
+    await runExclusive(ctx.state.saving, async () => {
         const name = ctx.state.form.taskName.trim();
         const page = await taskApi.listTasks({ page: 1, size: 100, keyword: name });
         if (hasDuplicateTaskName(page.records, name)) {
@@ -866,9 +865,7 @@ async function saveTask(ctx) {
             ElMessage.success('评测任务已创建');
             await ctx.router.replace({ name: 'task-detail', params: { taskId: created.base.id } });
         }
-    } finally {
-        ctx.state.saving.value = false;
-    }
+    });
 }
 
 function hasDuplicateTaskName(tasks, name) {

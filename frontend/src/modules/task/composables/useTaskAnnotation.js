@@ -2,7 +2,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { taskApi } from '../../../api/task';
-import { getErrorMessage } from '../../../utils/composableHelpers';
+import { getErrorMessage, runExclusive } from '../../../utils/composableHelpers';
 import { passTagType, tagTypeLabel } from '../../../utils/taskLabels';
 
 function formValueByTag(tag) {
@@ -83,20 +83,15 @@ function createAnnotationActions(ctx, router) {
         if (!ctx.taskId.value || !ctx.taskItemId.value || !validate()) {
             return;
         }
-        ctx.saving.value = true;
-        try {
+        await runExclusive(ctx.saving, async () => {
             ctx.detail.value = await taskApi.saveAnnotation(ctx.taskId.value, ctx.taskItemId.value, {
                 tags: ctx.tags.value.map((tag) => annotationPayload(tag, ctx.form))
             });
             fillForm();
             ElMessage.success('标注已保存');
-        }
-        catch (error) {
+        }).catch((error) => {
             ElMessage.error(getErrorMessage(error, '保存标注失败'));
-        }
-        finally {
-            ctx.saving.value = false;
-        }
+        });
     }
     function validate() {
         const missingTag = ctx.tags.value.find((tag) => !hasTagValue(tag, ctx.form));
@@ -110,7 +105,7 @@ function createAnnotationActions(ctx, router) {
         router.push({ name: 'task-detail', params: { taskId: ctx.taskId.value } });
     }
     function goItem(targetItemId) {
-        if (targetItemId) {
+        if (targetItemId && !ctx.saving.value) {
             router.push({
                 name: 'task-annotation',
                 params: { taskId: ctx.taskId.value, taskItemId: targetItemId },

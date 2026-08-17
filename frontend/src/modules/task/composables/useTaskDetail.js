@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { tagApi } from '../../../api/tag';
 import { taskApi } from '../../../api/task';
+import { runExclusive } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
 import { passTagType, statusLabel, tagTypeLabel } from '../../../utils/taskLabels';
 import { formatTaskAppBinding } from '../../../utils/taskAppBinding';
@@ -70,19 +71,16 @@ function createTaskDetailActions(ctx, router) {
         if (!ctx.taskId.value) {
             return;
         }
-        await ElMessageBox.confirm(
-            '停止后将保留已完成结果，重新开始时仅继续未完成或失败的数据。确定停止吗？',
-            '停止评测任务',
-            { type: 'warning' }
-        );
-        ctx.stopping.value = true;
-        try {
+        await runExclusive(ctx.stopping, async () => {
+            await ElMessageBox.confirm(
+                '停止后将保留已完成结果，重新开始时仅继续未完成或失败的数据。确定停止吗？',
+                '停止评测任务',
+                { type: 'warning' }
+            );
             ctx.detail.value = await taskApi.stopTask(ctx.taskId.value);
             ElMessage.success('评测任务已停止');
             stopPolling();
-        } finally {
-            ctx.stopping.value = false;
-        }
+        });
     }
     function startPolling() {
         startTaskPolling(ctx);

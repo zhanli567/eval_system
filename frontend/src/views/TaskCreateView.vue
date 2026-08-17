@@ -21,6 +21,7 @@ const {
     tags,
     selectedTagIds,
     selectedTags,
+    canSubmit,
     tagTypeOptions,
     customEvaluators,
     categoryOptions,
@@ -83,8 +84,8 @@ async function refreshTagsAfterCreate() {
         <span class="page-breadcrumb-current">创建评测任务</span>
       </nav>
       <div class="embedded-title-actions">
-        <el-button @click="backToList">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="submit">创建</el-button>
+        <el-button :disabled="saving" @click="backToList">取消</el-button>
+        <el-button type="primary" :loading="saving" :disabled="saving || !canSubmit" @click="submit">创建</el-button>
       </div>
     </div>
 

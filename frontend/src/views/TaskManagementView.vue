@@ -2,7 +2,7 @@
 import { CircleCheck, CircleClose, Clock, Loading, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import ResourceDescriptionDialog from '../components/ResourceDescriptionDialog.vue';
 import { useTaskManagement } from '../modules/task/composables/useTaskManagement';
-const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, statusOptions, descriptionDialogVisible, descriptionSaving, descriptionForm, loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, stopTask, isStartingTask, isStoppingTask, removeTask, canStartTask, canStopTask, canDeleteTask, openDescriptionDialog, submitDescription, toggleSort, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
+const { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder, statusOptions, descriptionDialogVisible, descriptionSaving, descriptionForm, loadTasks, searchTasks, changeSize, openCreate, openDetail, copyTask, startTask, stopTask, isStartingTask, isStoppingTask, removeTask, isDeletingTask, canStartTask, canStopTask, canDeleteTask, openDescriptionDialog, submitDescription, toggleSort, formatAppBinding, statusLabel, formatTime } = useTaskManagement();
 const statusIcons = {
     pending: Clock,
     running: Loading,
@@ -184,7 +184,7 @@ function runTaskAction(row) {
           >
             {{ runTaskActionLabel(row) }}
           </el-button>
-          <el-button link type="danger" :disabled="!canDeleteTask(row)" @click.stop="removeTask(row)">删除</el-button>
+          <el-button link type="danger" :loading="isDeletingTask(row.base.id)" :disabled="!canDeleteTask(row) || isDeletingTask(row.base.id)" @click.stop="removeTask(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>

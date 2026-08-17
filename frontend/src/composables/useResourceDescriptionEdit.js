@@ -1,6 +1,6 @@
 import { reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { getErrorMessage } from '../utils/composableHelpers';
+import { getErrorMessage, runExclusive } from '../utils/composableHelpers';
 
 export function useResourceDescriptionEdit(options) {
     const dialogVisible = ref(false);
@@ -20,8 +20,7 @@ export function useResourceDescriptionEdit(options) {
             ElMessage.warning('描述不能超过200个字符');
             return;
         }
-        saving.value = true;
-        try {
+        await runExclusive(saving, async () => {
             await options.update(form.id, normalized);
             form.description = normalized;
             ElMessage.success('描述已更新');
@@ -31,11 +30,9 @@ export function useResourceDescriptionEdit(options) {
             } else {
                 return;
             }
-        } catch (error) {
+        }).catch((error) => {
             ElMessage.error(getErrorMessage(error, '描述更新失败'));
-        } finally {
-            saving.value = false;
-        }
+        });
     }
 
     return {

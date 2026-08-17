@@ -36,6 +36,9 @@ watch(
 );
 
 function submit() {
+    if (props.saving) {
+        return;
+    }
     emit('save', localDescription.value);
 }
 </script>
@@ -46,7 +49,7 @@ function submit() {
     :title="title"
     class="resource-description-dialog fixed-dialog"
     style="--fixed-dialog-width: min(460px, 86vw); --fixed-dialog-height: min(430px, 86vh)"
-    :close-on-click-modal="true"
+    :close-on-click-modal="!saving"
   >
     <el-form label-position="top" class="resource-description-form">
       <el-form-item :label="nameLabel">
@@ -64,7 +67,7 @@ function submit() {
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
+      <el-button :disabled="saving" @click="visible = false">取消</el-button>
       <el-button type="primary" :loading="saving" @click="submit">确定</el-button>
     </template>
   </el-dialog>

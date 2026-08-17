@@ -227,12 +227,12 @@ function tagHasAnnotation(tag) {
 
         <footer class="annotation-bottom-actions">
           <span class="annotation-item-counter">第 {{ item?.rowNo || '-' }} 条</span>
-          <el-button :disabled="!previousItemId" :icon="ArrowLeft" @click="goItem(previousItemId)">上一条</el-button>
-          <el-button :disabled="!nextItemId" @click="goItem(nextItemId)">
+          <el-button :disabled="!previousItemId || saving" :icon="ArrowLeft" @click="goItem(previousItemId)">上一条</el-button>
+          <el-button :disabled="!nextItemId || saving" @click="goItem(nextItemId)">
             下一条
             <el-icon class="el-icon--right"><ArrowRight /></el-icon>
           </el-button>
-          <el-button v-if="!readonlyMode && tags.length" type="primary" :loading="saving" :disabled="!!loadError || !item" @click="saveAnnotation">保存标注</el-button>
+          <el-button v-if="!readonlyMode && tags.length" type="primary" :loading="saving" :disabled="saving || !!loadError || !item" @click="saveAnnotation">保存标注</el-button>
         </footer>
       </aside>
     </template>

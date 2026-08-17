@@ -4,7 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { taskApi } from '../../../api/task';
 import { useResourceDescriptionEdit } from '../../../composables/useResourceDescriptionEdit';
 import { formatDateTime } from '../../../utils/formatters';
-import { movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
+import { movePreviousPageIfLastRow, runExclusiveById, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 import { TASK_STATUS_OPTIONS, statusLabel } from '../../../utils/taskLabels';
 import { formatTaskAppBinding } from '../../../utils/taskAppBinding';
 
@@ -118,6 +118,9 @@ function createTaskRouteActions(router) {
 
 function createTaskRunActions(ctx, loadTasks) {
     async function startTask(row) {
+        if (isStartingTask(row.base.id)) {
+            return;
+        }
         setStarting(row.base.id, true);
         try {
             await taskApi.startTask(row.base.id);
@@ -133,13 +136,16 @@ function createTaskRunActions(ctx, loadTasks) {
             ElMessage.warning('仅进行中的评测任务可以停止');
             return;
         }
-        await ElMessageBox.confirm(
-            '停止后将保留已完成结果，重新开始时仅继续未完成或失败的数据。确定停止吗？',
-            '停止评测任务',
-            { type: 'warning' }
-        );
+        if (isStoppingTask(row.base.id)) {
+            return;
+        }
         setStopping(row.base.id, true);
         try {
+            await ElMessageBox.confirm(
+                '停止后将保留已完成结果，重新开始时仅继续未完成或失败的数据。确定停止吗？',
+                '停止评测任务',
+                { type: 'warning' }
+            );
             await taskApi.stopTask(row.base.id);
             ElMessage.success('评测任务已停止');
             await loadTasks();
@@ -173,13 +179,18 @@ function createTaskRemoveActions(ctx, loadTasks) {
             ElMessage.warning('仅待执行、评测完成和评测失败的任务可删除');
             return;
         }
-        await ElMessageBox.confirm(`确定删除评测任务“${row.base.taskName}”吗？`, '删除评测任务', { type: 'warning' });
-        await taskApi.deleteTask(row.base.id);
-        ElMessage.success('已删除');
-        movePreviousPageIfLastRow(ctx.state.tasks, ctx.state.page);
-        await loadTasks();
+        await runExclusiveById(ctx.deletingTaskIds, row.base.id, async () => {
+            await ElMessageBox.confirm(`确定删除评测任务“${row.base.taskName}”吗？`, '删除评测任务', { type: 'warning' });
+            await taskApi.deleteTask(row.base.id);
+            ElMessage.success('已删除');
+            movePreviousPageIfLastRow(ctx.state.tasks, ctx.state.page);
+            await loadTasks();
+        });
     }
-    return { removeTask };
+    function isDeletingTask(taskId) {
+        return ctx.deletingTaskIds.value.includes(taskId);
+    }
+    return { removeTask, isDeletingTask };
 }
 
 function createTaskPollingActions(ctx) {
@@ -202,6 +213,7 @@ export function useTaskManagement() {
     const tasks = ref([]);
     const startingTaskIds = ref(new Set());
     const stoppingTaskIds = ref(new Set());
+    const deletingTaskIds = ref([]);
     const total = ref(0);
     const page = ref(1);
     const size = ref(10);
@@ -210,7 +222,7 @@ export function useTaskManagement() {
     const sortBy = ref('');
     const sortOrder = ref('');
     const state = { loading, tasks, total, page, size, keyword, status, sortBy, sortOrder };
-    const ctx = { state, loading, pollTimer: undefined, startingTaskIds, stoppingTaskIds };
+    const ctx = { state, loading, pollTimer: undefined, startingTaskIds, stoppingTaskIds, deletingTaskIds };
     const actions = createTaskManagementActions(ctx, router);
     const descriptionEdit = useResourceDescriptionEdit({
         getId: (row) => row.base.id,
@@ -232,6 +244,7 @@ export function useTaskManagement() {
         tasks,
         startingTaskIds,
         stoppingTaskIds,
+        deletingTaskIds,
         total,
         page,
         size,
@@ -252,6 +265,7 @@ export function useTaskManagement() {
         isStartingTask: actions.isStartingTask,
         isStoppingTask: actions.isStoppingTask,
         removeTask: actions.removeTask,
+        isDeletingTask: actions.isDeletingTask,
         canStartTask: actions.canStartTask,
         canStopTask: actions.canStopTask,
         canDeleteTask: actions.canDeleteTask,
