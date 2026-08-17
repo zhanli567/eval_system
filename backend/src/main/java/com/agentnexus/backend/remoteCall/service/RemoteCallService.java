@@ -73,6 +73,10 @@ public class RemoteCallService {
   };
   private static final TypeReference<List<ReferenceItem>> REFERENCES_TYPE = new TypeReference<>() {
   };
+  private static final TypeReference<List<Map<String, Object>>> TRAJECTORY_TYPE = new TypeReference<>() {
+  };
+  private static final TypeReference<Map<String, Object>> METRICS_TYPE = new TypeReference<>() {
+  };
   private static final TypeReference<Map<String, Object>> EXTRA_TYPE = new TypeReference<>() {
   };
 
@@ -435,6 +439,8 @@ public class RemoteCallService {
       aggregate.choices.add(choice(0, contentBlock("text", plainText.toString())));
     }
     Map<String, String> outputs = buildAgentOutputs(aggregate.choices);
+    List<Map<String, Object>> trajectory = parseTrajectoryOutput(outputs.get("trajectory"));
+    Map<String, Object> metrics = parseMetricsOutput(outputs.get("executionMetrics"));
     String rawOutput = firstNonBlank(outputs.get("rawText"), String.join("\n", aggregate.rawPayloads));
     String error = outputs.getOrDefault("error", "");
     return new AgentChatResponse(
@@ -449,6 +455,8 @@ public class RemoteCallService {
         aggregate.choices,
         StringUtils.hasText(error) ? STATUS_FAILED : STATUS_COMPLETED,
         outputs,
+        trajectory,
+        metrics,
         System.currentTimeMillis() - startedAt,
         error,
         rawOutput);
@@ -469,6 +477,8 @@ public class RemoteCallService {
         choices,
         STATUS_FAILED,
         outputs,
+        List.of(),
+        Map.of(),
         System.currentTimeMillis() - startedAt,
         errorMessage,
         errorMessage);
@@ -665,7 +675,35 @@ public class RemoteCallService {
         outputs.get("toolResponse"),
         outputs.get("genUi"),
         outputs.get("error")));
+    if (!parts.trajectoryParts.isEmpty()) {
+      outputs.put("trajectory", "[" + String.join(",", parts.trajectoryParts) + "]");
+    }
+    if (!parts.executionMetricsParts.isEmpty()) {
+      outputs.put("executionMetrics", parts.executionMetricsParts.getLast());
+    }
     return outputs;
+  }
+
+  private List<Map<String, Object>> parseTrajectoryOutput(String value) {
+    if (!StringUtils.hasText(value)) {
+      return List.of();
+    }
+    try {
+      return objectMapper.readValue(value, TRAJECTORY_TYPE);
+    } catch (Exception e) {
+      return List.of();
+    }
+  }
+
+  private Map<String, Object> parseMetricsOutput(String value) {
+    if (!StringUtils.hasText(value)) {
+      return Map.of();
+    }
+    try {
+      return objectMapper.readValue(value, METRICS_TYPE);
+    } catch (Exception e) {
+      return Map.of();
+    }
   }
 
   private void appendContentPart(AgentOutputParts parts, DeltaContent content) {
@@ -695,6 +733,10 @@ public class RemoteCallService {
       parts.toolResponseParts.add(value);
     } else if ("gen_ui".equals(type)) {
       parts.genUiParts.add(value);
+    } else if ("trajectory".equals(type)) {
+      parts.trajectoryParts.add(value);
+    } else if ("execution_metrics".equals(type)) {
+      parts.executionMetricsParts.add(value);
     } else {
       parts.textParts.add(value);
     }
@@ -931,6 +973,8 @@ public class RemoteCallService {
     private final List<String> toolCallParts = new ArrayList<>();
     private final List<String> toolResponseParts = new ArrayList<>();
     private final List<String> genUiParts = new ArrayList<>();
+    private final List<String> trajectoryParts = new ArrayList<>();
+    private final List<String> executionMetricsParts = new ArrayList<>();
   }
 
   private static class RemoteAgentAggregate {
