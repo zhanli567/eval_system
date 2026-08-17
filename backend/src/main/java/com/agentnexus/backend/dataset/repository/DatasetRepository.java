@@ -27,11 +27,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
+/**
+ * 评测集数据持久化访问，负责评测集、版本、字段和数据行的数据库读写。
+ *
+ * <p>创建日期：2026-08-17</p>
+ */
 @Repository
 public class DatasetRepository {
+  private static final int MAX_BATCH_PARAMETERS = 60000;
+  private static final int DATASET_ITEM_PARAMETER_COUNT = 9;
+  private static final int DATASET_ITEM_CELL_PARAMETER_COUNT = 11;
+
   private final DatasetMapper datasetMapper;
   private final DatasetVersionMapper versionMapper;
   private final DatasetFieldMapper fieldMapper;
@@ -379,7 +389,7 @@ public class DatasetRepository {
       items.add(item);
     }
     if (!items.isEmpty()) {
-      itemMapper.insertBatch(items);
+      insertBatchByParameterBudget(items, DATASET_ITEM_PARAMETER_COUNT, itemMapper::insertBatch);
     }
   }
 
@@ -405,7 +415,7 @@ public class DatasetRepository {
       cells.add(cell);
     }
     if (!cells.isEmpty()) {
-      cellMapper.insertBatch(cells);
+      insertBatchByParameterBudget(cells, DATASET_ITEM_CELL_PARAMETER_COUNT, cellMapper::insertBatch);
     }
   }
 
@@ -664,6 +674,18 @@ public class DatasetRepository {
     cell.setCreatedByName(currentUserName());
     cell.setLastUpdatedBy(currentUserId());
     cell.setLastUpdatedByName(currentUserName());
+  }
+
+  private <T> void insertBatchByParameterBudget(
+      List<T> records,
+      int parametersPerRecord,
+      Consumer<List<T>> inserter
+  ) {
+    int batchSize = Math.max(1, MAX_BATCH_PARAMETERS / parametersPerRecord);
+    for (int fromIndex = 0; fromIndex < records.size(); fromIndex += batchSize) {
+      int toIndex = Math.min(fromIndex + batchSize, records.size());
+      inserter.accept(records.subList(fromIndex, toIndex));
+    }
   }
 
   private String currentSpaceId() {
