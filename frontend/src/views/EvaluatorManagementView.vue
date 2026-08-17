@@ -3,7 +3,7 @@ import { DataAnalysis, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import ResourceDescriptionDialog from '../components/ResourceDescriptionDialog.vue';
 import { useEvaluatorManagement } from '../modules/evaluator/composables/useEvaluatorManagement';
 import { formatPromptBlock } from '../utils/textBlocks';
-const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, descriptionDialogVisible, descriptionSaving, descriptionForm, loadCustomEvaluators, searchCustom, changeCustomSize, toggleCustomSort, loadPresetEvaluators, searchPreset, changePresetSize, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, changePickerSize, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, openDescriptionDialog, submitDescription, typeLabel, formatTime } = useEvaluatorManagement();
+const { activeTab, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, categoryOptions, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, descriptionDialogVisible, descriptionSaving, descriptionForm, loadCustomEvaluators, searchCustom, changeCustomSize, toggleCustomSort, loadPresetEvaluators, searchPreset, changePresetSize, selectPresetCategory, openPicker, loadPickerPresets, searchPicker, changePickerSize, selectPickerCategory, viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, isOpeningPreset, isDeletingEvaluator, openDescriptionDialog, submitDescription, typeLabel, formatTime } = useEvaluatorManagement();
 </script>
 
 <template>
@@ -135,7 +135,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
           <template #default="{ row }">
             <el-button link type="primary" @click="editEvaluator(row)">详情</el-button>
             <el-button link type="primary" @click.stop="openDescriptionDialog(row)">编辑</el-button>
-            <el-button link type="danger" @click="removeEvaluator(row)">删除</el-button>
+            <el-button link type="danger" :loading="isDeletingEvaluator(row.id)" :disabled="isDeletingEvaluator(row.id)" @click="removeEvaluator(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -182,7 +182,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
               <p>{{ preset.description || '暂无描述' }}</p>
               <div class="preset-card-actions">
                 <el-button link type="primary" :disabled="preset.evaluatorType === 'code'" @click.stop="createFromPreset(preset.id)">基于预置创建</el-button>
-                <el-button link type="primary" @click.stop="viewPreset(preset.id)">查看详情</el-button>
+                <el-button link type="primary" :loading="isOpeningPreset(preset.id)" :disabled="isOpeningPreset(preset.id)" @click.stop="viewPreset(preset.id)">查看详情</el-button>
               </div>
             </article>
           </div>
@@ -256,7 +256,7 @@ const { activeTab, customLoading, customEvaluators, customTotal, customPage, cus
             <p>{{ preset.description || '暂无描述' }}</p>
             <div class="preset-card-actions">
               <el-button link type="primary" :disabled="preset.evaluatorType === 'code'" @click.stop="createFromPreset(preset.id)">基于预置创建</el-button>
-              <el-button link type="primary" @click.stop="viewPreset(preset.id)">查看详情</el-button>
+              <el-button link type="primary" :loading="isOpeningPreset(preset.id)" :disabled="isOpeningPreset(preset.id)" @click.stop="viewPreset(preset.id)">查看详情</el-button>
             </div>
           </article>
         </div>

@@ -2,7 +2,7 @@
 import { ChatDotRound, CopyDocument, Delete, Document, MagicStick, Plus, Promotion, Refresh, Tickets } from '@element-plus/icons-vue';
 import { useEvaluatorEditor } from '../modules/evaluator/composables/useEvaluatorEditor';
 import { NUMBER_VALUE_MAX, NUMBER_VALUE_MIN } from '../utils/numberRange';
-const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, trialLoading, trialResult, trialParamValues, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, removeVersion, switchType, addParam, removeParam, backToList, openPresetPicker, searchPreset, selectPresetCategory, changePresetPage, usePresetEvaluator, runTrial, clearTrialResult, copyPrompt, clearPrompt, formatTime } = useEvaluatorEditor();
+const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, trialLoading, trialResult, trialParamValues, isUsingPreset, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, removeVersion, isDeletingVersion, switchType, addParam, removeParam, backToList, openPresetPicker, searchPreset, selectPresetCategory, changePresetPage, usePresetEvaluator, runTrial, clearTrialResult, copyPrompt, clearPrompt, formatTime } = useEvaluatorEditor();
 </script>
 
 <template>
@@ -19,14 +19,14 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
         <template v-if="isEdit">
           <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="refreshEditor" />
           <template v-if="activeVersion?.draft">
-            <el-button :loading="saving" type="primary" :disabled="!canEdit || form.evaluatorType === 'code'" @click="submit">保存草稿</el-button>
-            <el-button type="success" :icon="Promotion" :loading="publishing" :disabled="!canEdit || form.evaluatorType === 'code'" @click="publishDraft">发布</el-button>
+            <el-button :loading="saving" type="primary" :disabled="saving || publishing || !canEdit || form.evaluatorType === 'code'" @click="submit">保存草稿</el-button>
+            <el-button type="success" :icon="Promotion" :loading="publishing" :disabled="saving || publishing || !canEdit || form.evaluatorType === 'code'" @click="publishDraft">发布</el-button>
           </template>
-          <el-button v-else-if="activeVersion" type="danger" plain :icon="Delete" @click="removeVersion(activeVersion)">删除版本</el-button>
+          <el-button v-else-if="activeVersion" type="danger" plain :icon="Delete" :loading="isDeletingVersion(activeVersion.id)" :disabled="isDeletingVersion(activeVersion.id)" @click="removeVersion(activeVersion)">删除版本</el-button>
         </template>
         <template v-else>
           <el-button @click="backToList">取消</el-button>
-          <el-button type="primary" :loading="saving" :disabled="form.evaluatorType === 'code'" @click="submit">创建</el-button>
+          <el-button type="primary" :loading="saving" :disabled="saving || form.evaluatorType === 'code'" @click="submit">创建</el-button>
         </template>
       </div>
     </div>
@@ -269,7 +269,7 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
             Prompt 中暂无可试运行参数
           </div>
         </div>
-        <el-button class="trial-run-button" type="primary" :loading="trialLoading" @click="runTrial">
+        <el-button class="trial-run-button" type="primary" :loading="trialLoading" :disabled="trialLoading" @click="runTrial">
           <el-icon><Promotion /></el-icon>
           <span>开始运行</span>
         </el-button>
@@ -315,7 +315,7 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
               </div>
               <p>{{ preset.description || '暂无描述' }}</p>
               <div class="preset-card-actions">
-                <el-button link type="primary" :disabled="preset.evaluatorType === 'code'" @click.stop="usePresetEvaluator(preset.id)">使用此评估器</el-button>
+                <el-button link type="primary" :loading="isUsingPreset(preset.id)" :disabled="preset.evaluatorType === 'code' || isUsingPreset(preset.id)" @click.stop="usePresetEvaluator(preset.id)">使用此评估器</el-button>
               </div>
             </article>
             <el-empty v-if="!presetEvaluators.length && !presetLoading" description="暂无预置评估器" :image-size="80" />

@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { evaluatorApi } from '../../../api/evaluator';
 import { useResourceDescriptionEdit } from '../../../composables/useResourceDescriptionEdit';
-import { movePreviousPageIfLastRow, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
+import { movePreviousPageIfLastRow, runExclusiveById, sortParams, toggleDescSort } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
 
 function presetParams(page, size, categoryId, keyword) {
@@ -126,14 +126,16 @@ function createPickerActions(ctx) {
 
 function createEvaluatorNavigationActions(ctx) {
     async function viewPreset(presetId) {
-        ctx.detailVisible.value = true;
-        ctx.detailLoading.value = true;
-        try {
-            ctx.selectedPreset.value = await evaluatorApi.getPresetEvaluator(presetId);
-        }
-        finally {
-            ctx.detailLoading.value = false;
-        }
+        await runExclusiveById(ctx.openingPresetIds, presetId, async () => {
+            ctx.detailVisible.value = true;
+            ctx.detailLoading.value = true;
+            try {
+                ctx.selectedPreset.value = await evaluatorApi.getPresetEvaluator(presetId);
+            }
+            finally {
+                ctx.detailLoading.value = false;
+            }
+        });
     }
     function createCustom() {
         ctx.pickerVisible.value = false;
@@ -153,17 +155,25 @@ function createEvaluatorNavigationActions(ctx) {
         ctx.router.push({ name: 'evaluator-edit', params: { evaluatorId: row.id } });
     }
     async function removeEvaluator(row) {
-        await ElMessageBox.confirm(`确定删除评估器“${row.evaluatorName}”吗？`, '删除评估器', { type: 'warning' });
-        await evaluatorApi.deleteEvaluator(row.id);
-        ElMessage.success('已删除');
-        movePreviousPageIfLastRow(ctx.customEvaluators, ctx.customPage);
-        await loadCustomEvaluators();
+        await runExclusiveById(ctx.deletingEvaluatorIds, row.id, async () => {
+            await ElMessageBox.confirm(`确定删除评估器“${row.evaluatorName}”吗？`, '删除评估器', { type: 'warning' });
+            await evaluatorApi.deleteEvaluator(row.id);
+            ElMessage.success('已删除');
+            movePreviousPageIfLastRow(ctx.customEvaluators, ctx.customPage);
+            await loadCustomEvaluators();
+        });
     }
     async function loadCustomEvaluators() {
         const customActions = createCustomActions(ctx);
         await customActions.loadCustomEvaluators();
     }
-    return { viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator };
+    function isOpeningPreset(presetId) {
+        return ctx.openingPresetIds.value.includes(presetId);
+    }
+    function isDeletingEvaluator(evaluatorId) {
+        return ctx.deletingEvaluatorIds.value.includes(evaluatorId);
+    }
+    return { viewPreset, createCustom, createFromPreset, editEvaluator, removeEvaluator, isOpeningPreset, isDeletingEvaluator };
 }
 
 function findPreset(ctx, presetId) {
@@ -207,11 +217,13 @@ export function useEvaluatorManagement() {
     const detailVisible = ref(false);
     const detailLoading = ref(false);
     const selectedPreset = ref(null);
+    const openingPresetIds = ref([]);
+    const deletingEvaluatorIds = ref([]);
     const categoryOptions = computed(() => [
         { id: '', categoryName: '全部分类', displayOrder: 0 },
         ...categories.value
     ]);
-    const ctx = { router, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, categories, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset };
+    const ctx = { router, customLoading, customEvaluators, customTotal, customPage, customSize, customKeyword, customType, customSortBy, customSortOrder, categories, activeCategoryId, presetLoading, presetEvaluators, presetTotal, presetPage, presetSize, presetKeyword, pickerVisible, pickerCategoryId, pickerKeyword, pickerPage, pickerSize, pickerTotal, pickerLoading, pickerPresets, detailVisible, detailLoading, selectedPreset, openingPresetIds, deletingEvaluatorIds };
     const actions = createEvaluatorActions(ctx);
     const descriptionEdit = useResourceDescriptionEdit({
         getId: (row) => row.id,
@@ -256,6 +268,8 @@ export function useEvaluatorManagement() {
         detailVisible,
         detailLoading,
         selectedPreset,
+        openingPresetIds,
+        deletingEvaluatorIds,
         ...descriptionEdit,
         ...actions,
         typeLabel,

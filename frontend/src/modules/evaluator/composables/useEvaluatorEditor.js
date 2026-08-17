@@ -3,7 +3,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { evaluatorApi } from '../../../api/evaluator';
 import { remoteCallApi } from '../../../api/remoteCall';
-import { getErrorMessage } from '../../../utils/composableHelpers';
+import { getErrorMessage, runExclusive, runExclusiveById } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
 import { NUMBER_VALUE_RANGE_TEXT, hasNumberValueOutOfRange, isNumberValueMissing } from '../../../utils/numberRange';
 import { formatPromptBlock } from '../../../utils/textBlocks';
@@ -336,15 +336,17 @@ async function selectPresetCategory(ctx, categoryId) {
 }
 
 async function usePresetEvaluator(ctx, presetId) {
-    const detail = await evaluatorApi.getPresetEvaluator(presetId);
-    if (detail.evaluatorType === 'code') {
-        ElMessage.warning('暂不支持Code型评估器');
-    } else {
-        fillForm(ctx.form, detail);
-        ensureParamsByType(ctx.form);
-        syncTrialParamValues(ctx.form, ctx.trialParamValues);
-        ctx.presetPickerVisible.value = false;
-    }
+    await runExclusiveById(ctx.usingPresetIds, presetId, async () => {
+        const detail = await evaluatorApi.getPresetEvaluator(presetId);
+        if (detail.evaluatorType === 'code') {
+            ElMessage.warning('暂不支持Code型评估器');
+        } else {
+            fillForm(ctx.form, detail);
+            ensureParamsByType(ctx.form);
+            syncTrialParamValues(ctx.form, ctx.trialParamValues);
+            ctx.presetPickerVisible.value = false;
+        }
+    });
 }
 
 function createTrialActions(ctx) {
@@ -352,16 +354,13 @@ function createTrialActions(ctx) {
         if (!validateTrialForm(ctx.form, ctx.models)) {
             return;
         }
-        ctx.trialLoading.value = true;
-        ctx.trialResult.value = null;
-        try {
+        await runExclusive(ctx.trialLoading, async () => {
+            ctx.trialResult.value = null;
             ctx.trialResult.value = await evaluatorApi.runTrial({
                 evaluator: payload(ctx.form, ctx.models),
                 paramValues: { ...ctx.trialParamValues }
             });
-        } finally {
-            ctx.trialLoading.value = false;
-        }
+        });
     }
     function clearTrialResult() {
         ctx.trialResult.value = null;
@@ -373,16 +372,11 @@ function createSaveActions(ctx, router, versionActions) {
     async function submit() {
         if (!validateForm(ctx.form, ctx.models))
             return;
-        ctx.saving.value = true;
-        try {
+        await runExclusive(ctx.saving, async () => {
             ctx.isEdit.value ? await submitDraft() : await createEvaluator();
-        }
-        catch (error) {
+        }).catch((error) => {
             ElMessage.error(getErrorMessage(error, ctx.isEdit.value ? '保存草稿失败' : '创建评估器失败'));
-        }
-        finally {
-            ctx.saving.value = false;
-        }
+        });
     }
     async function submitDraft() {
         if (!ctx.canEdit.value || !ctx.activeVersionId.value)
@@ -411,30 +405,37 @@ function createSaveActions(ctx, router, versionActions) {
             ElMessage.warning('当前版本不可发布');
             return;
         }
-        await ElMessageBox.confirm('发布后将生成新的只读版本，确定发布当前草稿吗？', '发布版本', { type: 'success' });
-        ctx.publishing.value = true;
-        try {
+        await runExclusive(ctx.publishing, async () => {
+            await ElMessageBox.confirm('发布后将生成新的只读版本，确定发布当前草稿吗？', '发布版本', { type: 'success' });
             if (!validateForm(ctx.form, ctx.models))
                 return;
             await evaluatorApi.updateDraft(ctx.activeVersionId.value, draftPayload(ctx.form, ctx.models));
             const published = await evaluatorApi.publish(ctx.evaluatorId.value);
             ElMessage.success(`已发布${published.versionName}`);
             await versionActions.loadVersions(published.versionId);
-        }
-        catch (error) {
-            ElMessage.error(getErrorMessage(error, '发布版本失败'));
-        }
-        finally {
-            ctx.publishing.value = false;
-        }
+        }).catch((error) => {
+            showErrorIfNotCanceled(error, '发布版本失败');
+        });
     }
     async function removeVersion(version) {
-        await ElMessageBox.confirm(`确定删除 ${version.versionName} 吗？`, '删除版本', { type: 'warning' });
-        await evaluatorApi.deleteVersion(version.id);
-        ElMessage.success('版本已删除');
-        await versionActions.loadVersions();
+        await runExclusiveById(ctx.deletingVersionIds, version.id, async () => {
+            await ElMessageBox.confirm(`确定删除 ${version.versionName} 吗？`, '删除版本', { type: 'warning' });
+            await evaluatorApi.deleteVersion(version.id);
+            ElMessage.success('版本已删除');
+            await versionActions.loadVersions();
+        });
     }
-    return { submit, publishDraft, removeVersion };
+    function isDeletingVersion(versionId) {
+        return ctx.deletingVersionIds.value.includes(versionId);
+    }
+    return { submit, publishDraft, removeVersion, isDeletingVersion };
+}
+
+function showErrorIfNotCanceled(error, fallback) {
+    if (error === 'cancel' || error === 'close') {
+        return;
+    }
+    ElMessage.error(getErrorMessage(error, fallback));
 }
 
 function createFormActions(ctx, router) {
@@ -531,6 +532,7 @@ export function useEvaluatorEditor() {
     const loading = ref(false);
     const saving = ref(false);
     const publishing = ref(false);
+    const deletingVersionIds = ref([]);
     const versions = ref([]);
     const activeVersionId = ref('');
     const activeDetail = ref(null);
@@ -545,6 +547,7 @@ export function useEvaluatorEditor() {
     const presetKeyword = ref('');
     const presetCategoryId = ref('');
     const presetLoading = ref(false);
+    const usingPresetIds = ref([]);
     const trialLoading = ref(false);
     const trialResult = ref(null);
     const trialParamValues = reactive({});
@@ -569,8 +572,12 @@ export function useEvaluatorEditor() {
     const activeVersion = computed(() => versions.value.find((item) => item.id === activeVersionId.value));
     const promptParams = computed(() => promptParamsValue(form));
     const modelOptions = computed(() => modelOptionsValue(form, models));
-    const ctx = { loading, saving, publishing, versions, activeVersionId, activeDetail, models, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, trialLoading, trialResult, trialParamValues, form, evaluatorId, presetId, isEdit, canEdit };
+    const ctx = { loading, saving, publishing, deletingVersionIds, versions, activeVersionId, activeDetail, models, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, usingPresetIds, trialLoading, trialResult, trialParamValues, form, evaluatorId, presetId, isEdit, canEdit };
     const actions = createEvaluatorEditorActions(ctx, router);
+
+    function isUsingPreset(presetId) {
+        return usingPresetIds.value.includes(presetId);
+    }
 
     onMounted(async () => {
         await initEditor(actions, isEdit, presetId, form);
@@ -588,6 +595,7 @@ export function useEvaluatorEditor() {
         loading,
         saving,
         publishing,
+        deletingVersionIds,
         versions,
         activeVersionId,
         activeDetail,
@@ -608,9 +616,11 @@ export function useEvaluatorEditor() {
         presetKeyword,
         presetCategoryId,
         presetLoading,
+        usingPresetIds,
         trialLoading,
         trialResult,
         trialParamValues,
+        isUsingPreset,
         ...actions,
         formatTime: formatDateTime
     };
