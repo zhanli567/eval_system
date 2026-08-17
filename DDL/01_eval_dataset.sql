@@ -10,9 +10,7 @@ CREATE TABLE IF NOT EXISTS t_eval_dataset (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_dataset_space_name UNIQUE (space_id, name),
-  CONSTRAINT ck_t_eval_dataset_published_count CHECK (published_version_count >= 0)
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_dataset IS '评测集主表';
@@ -40,10 +38,7 @@ CREATE TABLE IF NOT EXISTS t_eval_dataset_version (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_dataset_version_dataset_no UNIQUE (dataset_id, version_no),
-  CONSTRAINT ck_t_eval_dataset_version_no CHECK (version_no >= 0),
-  CONSTRAINT ck_t_eval_dataset_version_item_count CHECK (item_count >= 0)
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_dataset_version IS '评测集版本表';
@@ -73,11 +68,7 @@ CREATE TABLE IF NOT EXISTS t_eval_dataset_field (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_dataset_field_name UNIQUE (version_id, field_name),
-  CONSTRAINT ck_t_eval_dataset_field_type CHECK (field_type IN ('string', 'number', 'boolean')),
-  CONSTRAINT ck_t_eval_dataset_field_required CHECK (is_required IN (0, 1)),
-  CONSTRAINT ck_t_eval_dataset_field_order CHECK (display_order > 0)
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_dataset_field IS '评测集字段表';
@@ -106,9 +97,7 @@ CREATE TABLE IF NOT EXISTS t_eval_dataset_item (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_dataset_item_row UNIQUE (version_id, row_no),
-  CONSTRAINT ck_t_eval_dataset_item_row_no CHECK (row_no > 0)
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_dataset_item IS '评测集数据行表';
@@ -135,8 +124,7 @@ CREATE TABLE IF NOT EXISTS t_eval_dataset_item_cell (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_dataset_item_cell_field UNIQUE (item_id, field_id)
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_dataset_item_cell IS '评测集数据单元格表';

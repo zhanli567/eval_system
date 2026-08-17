@@ -20,11 +20,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_task_space_name UNIQUE (space_id, task_name),
-  CONSTRAINT ck_t_eval_task_status CHECK (status IN ('pending', 'running', 'completed', 'failed', 'stopped')),
-  CONSTRAINT ck_t_eval_task_app_type CHECK (app_type IN ('none', 'agent')),
-  CONSTRAINT ck_t_eval_task_item_count CHECK (item_count >= 0)
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_task IS '评测任务主表';
@@ -66,11 +62,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task_app_field_mapping (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_task_app_field_input UNIQUE (task_id, app_input_name),
-  CONSTRAINT uq_t_eval_task_app_field_order UNIQUE (task_id, display_order),
-  CONSTRAINT ck_t_eval_task_app_field_type CHECK (app_input_type IN ('string', 'number', 'boolean')),
-  CONSTRAINT ck_t_eval_task_app_field_order CHECK (display_order > 0)
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_task_app_field_mapping IS '评测任务应用入参字段映射表';
@@ -106,12 +98,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task_evaluator (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_task_evaluator_binding UNIQUE (task_id, evaluator_source, evaluator_id, evaluator_version_id),
-  CONSTRAINT uq_t_eval_task_evaluator_order UNIQUE (task_id, display_order),
-  CONSTRAINT ck_t_eval_task_evaluator_source CHECK (evaluator_source IN ('preset', 'custom')),
-  CONSTRAINT ck_t_eval_task_evaluator_status CHECK (status IN ('pending', 'running', 'completed', 'failed', 'stopped')),
-  CONSTRAINT ck_t_eval_task_evaluator_order CHECK (display_order > 0)
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_task_evaluator IS '评测任务评估器绑定表';
@@ -149,11 +136,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task_evaluator_param_mapping (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_task_evaluator_param_name UNIQUE (task_evaluator_id, param_name),
-  CONSTRAINT uq_t_eval_task_evaluator_param_order UNIQUE (task_evaluator_id, display_order),
-  CONSTRAINT ck_t_eval_task_evaluator_param_source CHECK (source_type IN ('dataset_field', 'app_output')),
-  CONSTRAINT ck_t_eval_task_evaluator_param_order CHECK (display_order > 0)
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_task_evaluator_param_mapping IS '评测任务评估器参数映射表';
@@ -187,11 +170,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task_tag (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_task_tag_binding UNIQUE (task_id, tag_id),
-  CONSTRAINT uq_t_eval_task_tag_order UNIQUE (task_id, display_order),
-  CONSTRAINT ck_t_eval_task_tag_status CHECK (status IN ('pending', 'annotating', 'completed', 'stopped')),
-  CONSTRAINT ck_t_eval_task_tag_order CHECK (display_order > 0)
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_task_tag IS '评测任务标签绑定表';
@@ -226,12 +205,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task_item (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_task_item_dataset_item UNIQUE (task_id, dataset_item_id),
-  CONSTRAINT uq_t_eval_task_item_row UNIQUE (task_id, row_no),
-  CONSTRAINT ck_t_eval_task_item_row_no CHECK (row_no > 0),
-  CONSTRAINT ck_t_eval_task_item_status CHECK (status IN ('pending', 'running', 'annotation_pending', 'completed', 'failed', 'stopped')),
-  CONSTRAINT ck_t_eval_task_item_app_status CHECK (app_output_status IN ('pending', 'running', 'completed', 'failed', 'skipped', 'stopped'))
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_task_item IS '评测任务数据行结果表';
@@ -272,10 +246,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task_evaluator_result (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_task_evaluator_result_item UNIQUE (task_item_id, task_evaluator_id),
-  CONSTRAINT ck_t_eval_task_evaluator_result_status CHECK (status IN ('pending', 'running', 'completed', 'failed', 'skipped', 'stopped')),
-  CONSTRAINT ck_t_eval_task_evaluator_result_pass CHECK (pass_result IN ('', 'pass', 'fail'))
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_task_evaluator_result IS '评测任务评估器结果表';
@@ -317,10 +288,7 @@ CREATE TABLE IF NOT EXISTS t_eval_task_tag_result (
   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   last_updated_by VARCHAR(36) NOT NULL DEFAULT '',
   last_updated_by_name VARCHAR(100) NOT NULL DEFAULT '',
-  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT uq_t_eval_task_tag_result_item UNIQUE (task_item_id, task_tag_id),
-  CONSTRAINT ck_t_eval_task_tag_result_status CHECK (status IN ('pending', 'completed', 'stopped')),
-  CONSTRAINT ck_t_eval_task_tag_result_pass CHECK (pass_result IN ('', 'pass', 'fail'))
+  last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 COMMENT ON TABLE t_eval_task_tag_result IS '评测任务人工标签结果表';
