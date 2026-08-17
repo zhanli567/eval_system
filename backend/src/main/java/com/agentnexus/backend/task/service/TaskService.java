@@ -15,6 +15,12 @@ import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorConfig;
 import com.agentnexus.backend.evaluator.api.dto.response.EvaluatorParamDto;
 import com.agentnexus.backend.evaluator.api.dto.response.PresetEvaluatorDetail;
 import com.agentnexus.backend.evaluator.service.EvaluatorService;
+import com.agentnexus.backend.evaluation.EvaluationEngine;
+import com.agentnexus.backend.evaluation.EvaluationOutcome;
+import com.agentnexus.backend.evaluation.EvaluationRequest;
+import com.agentnexus.backend.evaluation.EvaluatorSnapshot;
+import com.agentnexus.backend.evaluation.jiuwen.JiuwenEvaluationEngine;
+import com.agentnexus.backend.evaluation.jiuwen.JiuwenEvaluationRequestFactory;
 import com.agentnexus.backend.remoteCall.api.dto.request.AgentChatRequest;
 import com.agentnexus.backend.remoteCall.api.dto.response.AgentChatResponse;
 import com.agentnexus.backend.remoteCall.api.dto.request.AgentMessage;
@@ -103,6 +109,8 @@ public class TaskService {
   private final RemoteCallService remoteCallService;
   private final ObjectMapper objectMapper;
   private final TaskExecutor taskExecutor;
+  private final EvaluationEngine jiuwenEvaluationEngine;
+  private final JiuwenEvaluationRequestFactory jiuwenRequestFactory;
 
   public TaskService(
       TaskRepository taskRepository,
@@ -120,6 +128,8 @@ public class TaskService {
     this.remoteCallService = remoteCallService;
     this.objectMapper = objectMapper;
     this.taskExecutor = taskExecutor;
+    this.jiuwenEvaluationEngine = new JiuwenEvaluationEngine();
+    this.jiuwenRequestFactory = new JiuwenEvaluationRequestFactory();
   }
 
   public PageResponse<TaskSummary> listTasks(int page, int size, String status, String keyword, String sortBy, String sortOrder) {
@@ -507,7 +517,9 @@ public class TaskService {
           context.item.appOutput() == null ? "" : context.item.appOutput(),
           firstNonBlank(context.item.appOutputStatus(), RESULT_SKIPPED),
           context.item.appErrorMessage() == null ? "" : context.item.appErrorMessage(),
-          extractStoredAppOutputs(context.item.appOutput()));
+          extractStoredAppOutputs(context.item.appOutput()),
+          List.of(),
+          Map.of());
     }
   }
 
@@ -591,6 +603,9 @@ public class TaskService {
     EvaluationRuntimeConfig config = context.task.evaluatorConfigs.get(evaluator.id());
     List<TaskEvaluatorParamMappingRecord> mappings = context.task.mappingsByEvaluator.getOrDefault(evaluator.id(), List.of());
     try {
+      if (isJiuwenEvaluator(config)) {
+        return evaluateWithJiuwen(context, config, agentResult);
+      }
       return evaluateWithRemoteCall(config, mappings, context.rowValues, agentResult.outputs());
     } catch (Exception e) {
       return failedEvaluationResult("Evaluator execution failed: " + safeErrorMessage(e));
@@ -1570,7 +1585,13 @@ public class TaskService {
   private AgentInvocationResult failedAgentResult(String message) {
     String error = StringUtils.hasText(message) ? message : "Agent execution failed";
     Map<String, String> outputs = Map.of("error", error, "rawText", error);
-    return new AgentInvocationResult(serializeAgentOutputs(outputs), STATUS_FAILED, error, outputs);
+    return new AgentInvocationResult(
+        serializeAgentOutputs(outputs),
+        STATUS_FAILED,
+        error,
+        outputs,
+        List.of(),
+        Map.of());
   }
 
   private EvaluationSimulationResult failedEvaluationResult(String message) {
@@ -1589,7 +1610,7 @@ public class TaskService {
       Map<String, String> values
   ) {
     if (!APP_AGENT.equals(base.appType())) {
-      return new AgentInvocationResult("", RESULT_SKIPPED, "", Map.of());
+      return new AgentInvocationResult("", RESULT_SKIPPED, "", Map.of(), List.of(), Map.of());
     }
     String content = buildAgentMessageContent(appMappings, values);
     AgentChatResponse response = remoteCallService.invokeAgent(
@@ -1610,20 +1631,26 @@ public class TaskService {
           storedContent,
           STATUS_FAILED,
           firstNonBlank(response.errorMessage(), outputs.get("error"), outputs.get("rawText")),
-          outputs);
+          outputs,
+          response.trajectory(),
+          response.metrics());
     }
     if (StringUtils.hasText(outputs.get("error"))) {
       return new AgentInvocationResult(
           storedContent,
           STATUS_FAILED,
           outputs.get("error"),
-          outputs);
+          outputs,
+          response.trajectory(),
+          response.metrics());
     }
     return new AgentInvocationResult(
         storedContent,
         STATUS_COMPLETED,
         "",
-        outputs);
+        outputs,
+        response.trajectory(),
+        response.metrics());
   }
 
   private String buildAgentMessageContent(
@@ -1731,6 +1758,42 @@ public class TaskService {
         passResult,
         resultValue,
         "");
+  }
+
+  private boolean isJiuwenEvaluator(EvaluationRuntimeConfig config) {
+    return config != null && "exact_match".equals(config.evaluatorType());
+  }
+
+  private EvaluationSimulationResult evaluateWithJiuwen(
+      TaskItemExecutionContext context,
+      EvaluationRuntimeConfig config,
+      AgentInvocationResult agentResult
+  ) {
+    EvaluatorSnapshot snapshot = new EvaluatorSnapshot(
+        context.item.id(),
+        config.evaluatorType(),
+        config.modelId(),
+        config.modelName(),
+        config.prompt(),
+        config.executeCode(),
+        config.scoreMin(),
+        config.scoreMax(),
+        config.passThreshold(),
+        Map.of());
+    EvaluationRequest request = jiuwenRequestFactory.create(
+        context.item.id(),
+        context.rowValues,
+        agentResult.outputs(),
+        agentResult.trajectory(),
+        agentResult.metrics(),
+        snapshot);
+    EvaluationOutcome outcome = jiuwenEvaluationEngine.evaluate(request);
+    return new EvaluationSimulationResult(
+        outcome.status(),
+        outcome.rawScore(),
+        outcome.passResult(),
+        outcome.reason(),
+        outcome.errorMessage());
   }
 
   private String appendEvaluationNotice(String reason, String notice) {
@@ -2138,7 +2201,9 @@ public class TaskService {
       String content,
       String status,
       String errorMessage,
-      Map<String, String> outputs
+      Map<String, String> outputs,
+      List<Map<String, Object>> trajectory,
+      Map<String, Object> metrics
   ) {
   }
 

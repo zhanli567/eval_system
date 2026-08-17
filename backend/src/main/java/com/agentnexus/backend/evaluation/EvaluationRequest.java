@@ -1,6 +1,8 @@
 package com.agentnexus.backend.evaluation;
 
 import java.util.List;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -18,9 +20,9 @@ public record EvaluationRequest(
     caseId = requireText(caseId, "caseId");
     inputs = requireNonEmptyMap(inputs, "inputs");
     labels = requireNonEmptyMap(labels, "labels");
-    prediction = prediction == null ? Map.of() : Map.copyOf(prediction);
-    trajectory = trajectory == null ? List.of() : trajectory.stream().map(Map::copyOf).toList();
-    metrics = metrics == null ? Map.of() : Map.copyOf(metrics);
+    prediction = immutableMap(prediction);
+    trajectory = trajectory == null ? List.of() : trajectory.stream().map(EvaluationRequest::immutableMap).toList();
+    metrics = immutableMap(metrics);
     evaluator = Objects.requireNonNull(evaluator, "evaluator");
   }
 
@@ -28,7 +30,13 @@ public record EvaluationRequest(
     if (value == null || value.isEmpty()) {
       throw new IllegalArgumentException(name + " must not be empty");
     }
-    return Map.copyOf(value);
+    return immutableMap(value);
+  }
+
+  private static Map<String, Object> immutableMap(Map<String, Object> value) {
+    return value == null
+        ? Map.of()
+        : Collections.unmodifiableMap(new LinkedHashMap<>(value));
   }
 
   private static String requireText(String value, String name) {

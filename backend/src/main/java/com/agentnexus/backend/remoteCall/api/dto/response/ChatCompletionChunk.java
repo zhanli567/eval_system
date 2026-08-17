@@ -254,6 +254,90 @@ public class ChatCompletionChunk {
   }
 
   /**
+   * Agent trajectory content block.
+   */
+  @Getter
+  public static class TrajectoryContent extends DeltaContent {
+    private final int sequence;
+    private final String eventType;
+    private final String stage;
+    private final long timestamp;
+    private final String eventId;
+    private final String parentId;
+    private final Map<String, Object> payload;
+
+    /**
+     * Creates a trajectory content block.
+     *
+     * @param sequence event sequence
+     * @param eventType event type
+     * @param stage event stage
+     * @param timestamp event timestamp
+     * @param eventId event id
+     * @param parentId parent event id
+     * @param payload event payload
+     */
+    public TrajectoryContent(
+        int sequence,
+        String eventType,
+        String stage,
+        long timestamp,
+        String eventId,
+        String parentId,
+        Map<String, Object> payload
+    ) {
+      super("trajectory");
+      this.sequence = sequence;
+      this.eventType = eventType;
+      this.stage = stage;
+      this.timestamp = timestamp;
+      this.eventId = eventId;
+      this.parentId = parentId;
+      this.payload = payload == null ? Map.of() : Map.copyOf(payload);
+    }
+  }
+
+  /**
+   * Execution metrics content block.
+   */
+  @Getter
+  public static class ExecutionMetricsContent extends DeltaContent {
+    private final long latencyMs;
+    private final int modelCallCount;
+    private final int toolCallCount;
+    private final Long inputTokens;
+    private final Long outputTokens;
+    private final Map<String, Object> attributes;
+
+    /**
+     * Creates an execution metrics content block.
+     *
+     * @param latencyMs execution latency in milliseconds
+     * @param modelCallCount model call count
+     * @param toolCallCount tool call count
+     * @param inputTokens input token count
+     * @param outputTokens output token count
+     * @param attributes additional metrics attributes
+     */
+    public ExecutionMetricsContent(
+        long latencyMs,
+        int modelCallCount,
+        int toolCallCount,
+        Long inputTokens,
+        Long outputTokens,
+        Map<String, Object> attributes
+    ) {
+      super("execution_metrics");
+      this.latencyMs = latencyMs;
+      this.modelCallCount = modelCallCount;
+      this.toolCallCount = toolCallCount;
+      this.inputTokens = inputTokens;
+      this.outputTokens = outputTokens;
+      this.attributes = attributes == null ? Map.of() : Map.copyOf(attributes);
+    }
+  }
+
+  /**
    * Streaming tool call delta.
    */
   @Data
