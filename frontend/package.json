@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "test": "node tests/textBlocks.test.mjs && node tests/composableHelpers.test.mjs && node tests/datasetLoadingState.test.mjs && node tests/tagLoadingState.test.mjs && node tests/evaluatorLoadingState.test.mjs && node tests/taskLoadingState.test.mjs && node tests/annotationTagLayout.test.mjs",
+    "test": "node tests/textBlocks.test.mjs && node tests/composableHelpers.test.mjs && node tests/datasetLoadingState.test.mjs && node tests/tagLoadingState.test.mjs && node tests/evaluatorLoadingState.test.mjs && node tests/taskLoadingState.test.mjs && node tests/annotationTagLayout.test.mjs && node tests/evaluatorToolbarLayout.test.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },

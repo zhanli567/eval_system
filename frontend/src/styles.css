@@ -483,14 +483,16 @@ h2 {
   gap: 14px;
   margin-bottom: 16px;
   min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
   flex-wrap: nowrap;
 }
 
 .evaluator-head-toolbar {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   justify-content: flex-end;
   margin-bottom: 0;
-  min-width: 0;
+  min-width: max-content;
 }
 
 .panel-toolbar.evaluator-head-toolbar {
@@ -498,11 +500,15 @@ h2 {
 }
 
 .evaluator-head-toolbar .search-input {
-  flex: 0 1 300px;
+  flex: 0 0 clamp(200px, 22vw, 300px);
+  width: clamp(200px, 22vw, 300px);
+  min-width: 200px;
+  max-width: 300px;
 }
 
 .evaluator-head-toolbar .evaluator-type-select {
-  flex: 0 0 150px;
+  flex: 0 0 140px;
+  min-width: 140px;
 }
 
 .evaluator-panel.fill-workspace .preset-layout {
