@@ -1,7 +1,6 @@
 package com.agentnexus.backend.evaluation.jiuwen;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.agentnexus.backend.evaluation.EvaluatorSnapshot;
 import com.openjiuwen.agent_evolving.evaluator.MetricEvaluator;
@@ -19,14 +18,15 @@ class JiuwenEvaluatorFactoryTest {
   }
 
   @Test
-  void rejectsEvaluatorTypesThatAreNotConnectedYet() {
-    EvaluatorSnapshot snapshot = snapshot("llm", Map.of());
+  void createsScoreLlmEvaluatorForLlm() {
+    EvaluatorSnapshot snapshot = snapshot("llm", Map.of("renderedPrompt", "judge this answer"));
 
-    assertThrows(UnsupportedOperationException.class, () -> new JiuwenEvaluatorFactory().create(snapshot));
+    assertInstanceOf(ScoreLlmEvaluator.class, new JiuwenEvaluatorFactory((modelId, modelName, prompt) -> "{}").create(snapshot));
   }
 
   private EvaluatorSnapshot snapshot(String type, Map<String, Object> options) {
     return new EvaluatorSnapshot(
-        "v1", type, "", "", "", "", BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.ONE, options);
+        "v1", type, "judge-model-id", "judge-model", "", "",
+        BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.ONE, options);
   }
 }

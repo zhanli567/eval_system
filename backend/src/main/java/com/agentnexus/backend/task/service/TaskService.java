@@ -128,7 +128,8 @@ public class TaskService {
     this.remoteCallService = remoteCallService;
     this.objectMapper = objectMapper;
     this.taskExecutor = taskExecutor;
-    this.jiuwenEvaluationEngine = new JiuwenEvaluationEngine();
+    this.jiuwenEvaluationEngine = new JiuwenEvaluationEngine(
+        (modelId, modelName, prompt) -> remoteCallService.chatModel(modelId, modelName, prompt).outputText());
     this.jiuwenRequestFactory = new JiuwenEvaluationRequestFactory();
   }
 
@@ -604,7 +605,7 @@ public class TaskService {
     List<TaskEvaluatorParamMappingRecord> mappings = context.task.mappingsByEvaluator.getOrDefault(evaluator.id(), List.of());
     try {
       if (isJiuwenEvaluator(config)) {
-        return evaluateWithJiuwen(context, config, agentResult);
+        return evaluateWithJiuwen(context, config, mappings, agentResult);
       }
       return evaluateWithRemoteCall(config, mappings, context.rowValues, agentResult.outputs());
     } catch (Exception e) {
@@ -1761,14 +1762,16 @@ public class TaskService {
   }
 
   private boolean isJiuwenEvaluator(EvaluationRuntimeConfig config) {
-    return config != null && "exact_match".equals(config.evaluatorType());
+    return config != null && ("exact_match".equals(config.evaluatorType()) || "llm".equals(config.evaluatorType()));
   }
 
   private EvaluationSimulationResult evaluateWithJiuwen(
       TaskItemExecutionContext context,
       EvaluationRuntimeConfig config,
+      List<TaskEvaluatorParamMappingRecord> mappings,
       AgentInvocationResult agentResult
   ) {
+    Map<String, Object> options = jiuwenEvaluatorOptions(config, mappings, context.rowValues, agentResult.outputs());
     EvaluatorSnapshot snapshot = new EvaluatorSnapshot(
         context.item.id(),
         config.evaluatorType(),
@@ -1779,7 +1782,7 @@ public class TaskService {
         config.scoreMin(),
         config.scoreMax(),
         config.passThreshold(),
-        Map.of());
+        options);
     EvaluationRequest request = jiuwenRequestFactory.create(
         context.item.id(),
         context.rowValues,
@@ -1794,6 +1797,27 @@ public class TaskService {
         outcome.passResult(),
         outcome.reason(),
         outcome.errorMessage());
+  }
+
+  private Map<String, Object> jiuwenEvaluatorOptions(
+      EvaluationRuntimeConfig config,
+      List<TaskEvaluatorParamMappingRecord> mappings,
+      Map<String, String> values,
+      Map<String, String> appOutputs
+  ) {
+    Map<String, Object> options = new LinkedHashMap<>();
+    if ("llm".equals(config.evaluatorType())) {
+      if (!StringUtils.hasText(config.modelId())) {
+        throw new IllegalStateException("LLM评估器未绑定模型");
+      }
+      if (!StringUtils.hasText(config.modelName())) {
+        throw new IllegalStateException("LLM评估器未绑定模型名称");
+      }
+      Map<String, Object> preparedParams = prepareEvaluationInput(config, mappings, values, appOutputs);
+      options.put("renderedPrompt", renderPrompt(config.prompt(), preparedParams));
+      options.put("preparedParams", preparedParams);
+    }
+    return options;
   }
 
   private String appendEvaluationNotice(String reason, String notice) {
