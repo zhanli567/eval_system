@@ -38,6 +38,12 @@ import org.springframework.util.StringUtils;
  */
 @Repository
 public class DatasetRepository {
+  /**
+   * PostgreSQL/JDBC 单条 PreparedStatement 最多支持 65535 个绑定参数。
+   *
+   * <p>批量导入 Excel 时会按“每行参数数 * 行数”拼接批量 SQL，因此这里用 60000
+   * 作为安全参数预算，再结合每类记录的参数个数计算实际批次大小，避免单条 SQL 超过数据库限制。</p>
+   */
   private static final int MAX_BATCH_PARAMETERS = 60000;
   private static final int DATASET_ITEM_PARAMETER_COUNT = 9;
   private static final int DATASET_ITEM_CELL_PARAMETER_COUNT = 11;
