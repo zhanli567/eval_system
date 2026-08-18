@@ -3093,6 +3093,7 @@ h2 {
 
 .annotation-form-section {
   flex: 1 1 auto;
+  overflow: hidden;
   padding: 24px var(--annotation-pane-x);
   border-bottom: 1px solid var(--line);
 }
@@ -3324,14 +3325,15 @@ h2 {
 }
 
 .annotation-tag-form {
-  display: grid;
-  align-content: start;
+  display: flex;
   flex: 1 1 auto;
-  gap: 0;
+  flex-direction: column;
   margin-right: calc(var(--annotation-pane-x) * -1);
   min-height: 0;
+  overscroll-behavior: contain;
   overflow-y: auto;
   padding-right: var(--annotation-pane-x);
+  scrollbar-gutter: stable;
 }
 
 .annotation-tag-empty {
@@ -3346,7 +3348,7 @@ h2 {
   display: grid;
   flex: 0 0 auto;
   gap: 10px;
-  min-height: 0;
+  min-height: max-content;
   padding: 14px 0;
   border-bottom: 1px solid var(--line);
 }
