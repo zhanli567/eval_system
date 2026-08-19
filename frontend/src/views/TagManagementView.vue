@@ -282,11 +282,11 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
           <h3>布尔选项</h3>
           <div class="detail-option-grid">
             <div class="detail-option-card pass">
-              <strong>True</strong>
+              <strong>TRUE</strong>
               <el-tag type="success" effect="plain">Pass</el-tag>
             </div>
             <div class="detail-option-card fail">
-              <strong>False</strong>
+              <strong>FALSE</strong>
               <el-tag type="danger" effect="plain">Fail</el-tag>
             </div>
           </div>

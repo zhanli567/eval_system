@@ -13,8 +13,8 @@ export const tagTypeOptions = [
 ];
 
 const booleanOptions = [
-    { optionName: 'True', optionGroup: 'pass' },
-    { optionName: 'False', optionGroup: 'fail' }
+    { optionName: 'TRUE', optionGroup: 'pass' },
+    { optionName: 'FALSE', optionGroup: 'fail' }
 ];
 
 function resetForm(form) {

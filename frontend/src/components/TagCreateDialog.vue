@@ -13,8 +13,8 @@ const tagTypeOptions = [
     { label: '文本', value: 'text' }
 ];
 const booleanOptions = [
-    { optionName: 'True', optionGroup: 'pass' },
-    { optionName: 'False', optionGroup: 'fail' }
+    { optionName: 'TRUE', optionGroup: 'pass' },
+    { optionName: 'FALSE', optionGroup: 'fail' }
 ];
 
 const props = defineProps({

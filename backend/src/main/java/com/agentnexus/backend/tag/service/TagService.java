@@ -152,8 +152,8 @@ public class TagService {
       options = normalizeCategoryOptions(request.options());
     } else if ("boolean".equals(tagType)) {
       options = List.of(
-          new TagOptionInput(null, "True", "pass"),
-          new TagOptionInput(null, "False", "fail"));
+          new TagOptionInput(null, "TRUE", "pass"),
+          new TagOptionInput(null, "FALSE", "fail"));
     } else if ("number".equals(tagType)) {
       NormalizedNumberConfig numberConfig = normalizeNumberConfig(
           request.minValue(),

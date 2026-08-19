@@ -278,6 +278,10 @@ function tagResultValue(row, taskTagId) {
     if (!result) {
         return '-';
     }
+    if (result.tagType === 'boolean') {
+        const value = result.optionName || result.valueText;
+        return value ? String(value).toUpperCase() : '-';
+    }
     return result.optionName || result.valueText || (result.valueNumber ?? '-');
 }
 function findEvaluatorResult(row, taskEvaluatorId) {

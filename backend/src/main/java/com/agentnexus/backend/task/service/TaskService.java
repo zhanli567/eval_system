@@ -58,6 +58,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -742,7 +743,7 @@ public class TaskService {
       for (TaskItemRecord item : taskRepository.listAllTaskItems(taskId)) {
         taskRepository.insertTagResult(id(), taskId, item.id(), taskTagId, STATUS_PENDING, now);
       }
-      taskRepository.updateTaskStatus(taskId, task.status(), null, null, now);
+      refreshTaskAfterTagChange(task, now);
       return getTask(taskId, 1, 10);
     }
   }
@@ -761,9 +762,10 @@ public class TaskService {
     if (taskRepository.findTaskTagBinding(taskId, safeTaskTagId) == null) {
       throw new IllegalArgumentException("任务标签不存在");
     }
+    ensureTaskKeepsEvaluationDimension(taskId, safeTaskTagId);
     String now = now();
     taskRepository.deleteTaskTag(taskId, safeTaskTagId);
-    taskRepository.updateTaskStatus(taskId, task.status(), null, null, now);
+    refreshTaskAfterTagChange(task, now);
     return getTask(taskId, 1, 10);
   }
 
@@ -1917,7 +1919,51 @@ public class TaskService {
         .filter(item -> optionId.equals(item.id()))
         .findFirst()
         .orElseThrow(() -> new IllegalArgumentException("标签选项不存在：" + tag.tagName()));
-    return new NormalizedAnnotation(option.optionName(), null, option.id(), option.optionGroup());
+    String optionName = normalizeBooleanOptionText(tag.tagType(), option.optionName());
+    return new NormalizedAnnotation(optionName, null, option.id(), option.optionGroup());
+  }
+
+  private void ensureTaskKeepsEvaluationDimension(String taskId, String removedTaskTagId) {
+    boolean hasEvaluator = !taskRepository.listTaskEvaluatorBindings(taskId).isEmpty();
+    boolean hasRemainingTag = taskRepository.listTaskTagBindings(taskId)
+        .stream()
+        .anyMatch(tag -> !Objects.equals(tag.id(), removedTaskTagId));
+    if (!hasEvaluator && !hasRemainingTag) {
+      throw new IllegalArgumentException("评测任务至少需要保留一个评估器或标签");
+    }
+  }
+
+  private void refreshTaskAfterTagChange(TaskBase task, String now) {
+    if (!List.of(STATUS_RUNNING, STATUS_COMPLETED).contains(task.status())) {
+      taskRepository.updateTaskStatus(task.id(), task.status(), null, null, now);
+    } else {
+      for (TaskItemRecord item : taskRepository.listAllTaskItems(task.id())) {
+        refreshTaskItemStatusAfterTagChange(item.id(), now);
+      }
+      String status = resolveFinalTaskStatus(task.id(), false);
+      String finishedAt = STATUS_COMPLETED.equals(status) ? now : "";
+      taskRepository.updateTaskStatus(task.id(), status, null, finishedAt, now);
+    }
+  }
+
+  private void refreshTaskItemStatusAfterTagChange(String taskItemId, String now) {
+    int unfinishedEvaluators = taskRepository.countUnfinishedEvaluatorResultsByItem(taskItemId);
+    int unfinishedTags = taskRepository.countUnfinishedTagResultsByItem(taskItemId);
+    if (unfinishedEvaluators == 0 && unfinishedTags == 0) {
+      taskRepository.updateTaskItemStatus(taskItemId, STATUS_COMPLETED, now);
+    } else if (unfinishedEvaluators == 0) {
+      taskRepository.updateTaskItemStatus(taskItemId, ITEM_ANNOTATION_PENDING, now);
+    } else {
+      // 评估器尚未结束时保留当前数据行状态，避免覆盖失败或执行中状态。
+    }
+  }
+
+  private String normalizeBooleanOptionText(String tagType, String optionName) {
+    if ("boolean".equals(tagType) && StringUtils.hasText(optionName)) {
+      return optionName.trim().toUpperCase(Locale.ROOT);
+    } else {
+      return optionName;
+    }
   }
 
   private void refreshTaskTagStatus(String taskTagId, String now) {

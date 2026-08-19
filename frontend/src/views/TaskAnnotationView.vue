@@ -61,6 +61,12 @@ function evaluatorPassScoreLabel(result) {
 function evaluatorPassScoreClass(result) {
     return `is-${result?.passResult || 'empty'}`;
 }
+function optionDisplayName(tag, option) {
+    if (tag.tagType === 'boolean') {
+        return String(option.optionName ?? '').toUpperCase();
+    }
+    return option.optionName;
+}
 function toggleEvaluatorPanel() {
     evaluatorPanelExpanded.value = !evaluatorPanelExpanded.value;
 }
@@ -161,7 +167,7 @@ function tagHasAnnotation(tag) {
               />
               <el-radio-group v-else-if="tag.tagType === 'boolean'" v-model="form[tag.taskTagId]" class="option-radio-group">
                 <el-radio-button v-for="option in tag.options" :key="option.id" :label="option.id">
-                  {{ option.optionName }}
+                  {{ optionDisplayName(tag, option) }}
                 </el-radio-button>
               </el-radio-group>
               <el-select v-else v-model="form[tag.taskTagId]" clearable placeholder="请选择分类" class="wide-control">
