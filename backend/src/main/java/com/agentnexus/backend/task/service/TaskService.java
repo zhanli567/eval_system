@@ -1806,6 +1806,10 @@ public class TaskService {
       Map<String, String> appOutputs
   ) {
     Map<String, Object> options = new LinkedHashMap<>();
+    Map<String, Object> preparedParams = prepareEvaluationInput(config, mappings, values, appOutputs);
+    if (!preparedParams.isEmpty()) {
+      options.put("preparedParams", preparedParams);
+    }
     if ("llm".equals(config.evaluatorType())) {
       if (!StringUtils.hasText(config.modelId())) {
         throw new IllegalStateException("LLM评估器未绑定模型");
@@ -1813,9 +1817,7 @@ public class TaskService {
       if (!StringUtils.hasText(config.modelName())) {
         throw new IllegalStateException("LLM评估器未绑定模型名称");
       }
-      Map<String, Object> preparedParams = prepareEvaluationInput(config, mappings, values, appOutputs);
       options.put("renderedPrompt", renderPrompt(config.prompt(), preparedParams));
-      options.put("preparedParams", preparedParams);
     }
     return options;
   }

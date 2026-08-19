@@ -38,10 +38,11 @@ import org.springframework.util.StringUtils;
 @Service
 public class EvaluatorService {
   private static final String TYPE_LLM = "llm";
+  private static final String TYPE_EXACT_MATCH = "exact_match";
   private static final String TYPE_CODE = "code";
   private static final String TARGET_VERSION = "version";
   private static final String PARAM_TYPE_STRING = "string";
-  private static final List<String> SUPPORTED_TYPES = List.of(TYPE_LLM, TYPE_CODE);
+  private static final List<String> SUPPORTED_TYPES = List.of(TYPE_LLM, TYPE_EXACT_MATCH, TYPE_CODE);
   private static final List<String> SUPPORTED_PARAM_TYPES = List.of(PARAM_TYPE_STRING, "number", "boolean");
   private static final BigDecimal DEFAULT_SCORE_MIN = BigDecimal.ONE;
   private static final BigDecimal DEFAULT_SCORE_MAX = BigDecimal.valueOf(5);
@@ -108,8 +109,24 @@ public class EvaluatorService {
     if (request == null || request.evaluator() == null) {
       throw new IllegalArgumentException("评估器试运行参数不能为空");
     }
+    String evaluatorType = normalizeEvaluatorType(request.evaluator().evaluatorType());
     TrialEvaluator evaluator = normalizeTrialEvaluator(request.evaluator());
     Map<String, Object> params = prepareTrialParams(evaluator.params(), request.paramValues());
+    if (TYPE_EXACT_MATCH.equals(evaluatorType)) {
+      boolean matched = exactMatch(
+          String.valueOf(params.getOrDefault("expected", "")),
+          String.valueOf(params.getOrDefault("actual", "")));
+      BigDecimal normalizedScore = matched ? BigDecimal.ONE : BigDecimal.ZERO;
+      BigDecimal score = evaluator.scoreMin().add(
+          evaluator.scoreMax().subtract(evaluator.scoreMin()).multiply(normalizedScore));
+      String reason = matched ? "expected 与 actual 完全匹配" : "expected 与 actual 不匹配";
+      return new EvaluatorTrialResponse(
+          "{\"score\":" + score.stripTrailingZeros().toPlainString() + ",\"reason\":\"" + reason + "\"}",
+          score.compareTo(evaluator.passThreshold()) >= 0 ? "pass" : "fail",
+          score,
+          reason,
+          "");
+    }
     String renderedPrompt = renderPrompt(evaluator.prompt(), params);
     ModelChatResult response = remoteCallService.chatModel(evaluator.modelId(), evaluator.modelName(), renderedPrompt);
     if (response == null || !StringUtils.hasText(response.outputText())) {
@@ -359,6 +376,8 @@ public class EvaluatorService {
       prompt = requireText(request.prompt(), "Prompt不能为空");
       validateMaxLength(prompt, MAX_PROMPT_LENGTH, "Prompt不能超过2000个字符");
       params = normalizePromptParams(prompt, request.params());
+    } else if (TYPE_EXACT_MATCH.equals(evaluatorType)) {
+      params = normalizeExactMatchParams(request.params());
     } else {
       executeCode = requireText(request.executeCode(), "执行函数不能为空");
       validateMaxLength(executeCode, MAX_EXECUTE_CODE_LENGTH, "执行函数不能超过10000个字符");
@@ -405,7 +424,23 @@ public class EvaluatorService {
   private String normalizeEvaluatorType(String evaluatorType) {
     String normalized = requireText(evaluatorType, "评估器类型不能为空").toLowerCase();
     if (!SUPPORTED_TYPES.contains(normalized)) {
-      throw new IllegalArgumentException("评估器类型仅支持llm/code");
+      throw new IllegalArgumentException("评估器类型仅支持llm/exact_match/code");
+    }
+    return normalized;
+  }
+
+  private List<EvaluatorParamInput> normalizeExactMatchParams(List<EvaluatorParamInput> params) {
+    Map<String, EvaluatorParamInput> provided = mapParamsByName(params);
+    List<EvaluatorParamInput> normalized = new ArrayList<>();
+    for (String name : List.of("expected", "actual")) {
+      EvaluatorParamInput param = provided.get(name);
+      normalized.add(new EvaluatorParamInput(
+          param == null ? null : param.id(),
+          name,
+          PARAM_TYPE_STRING,
+          param == null || param.defaultValue() == null ? "" : param.defaultValue(),
+          true,
+          param == null ? "" : normalizeParamDescription(param.description())));
     }
     return normalized;
   }
@@ -563,6 +598,10 @@ public class EvaluatorService {
     BigDecimal scoreMax = request.scoreMax() == null ? DEFAULT_SCORE_MAX : request.scoreMax();
     BigDecimal passThreshold = request.passThreshold() == null ? DEFAULT_PASS_THRESHOLD : request.passThreshold();
     validateScore(scoreMin, scoreMax, passThreshold);
+    if (TYPE_EXACT_MATCH.equals(evaluatorType)) {
+      return new TrialEvaluator("", "", "", scoreMin, scoreMax, passThreshold,
+          normalizeExactMatchParams(request.params()));
+    }
     String modelId = requireText(request.modelId(), "请选择模型");
     String modelName = requireText(request.modelName(), "请选择模型");
     String prompt = requireText(request.prompt(), "Prompt不能为空");
@@ -596,6 +635,10 @@ public class EvaluatorService {
     }
     matcher.appendTail(rendered);
     return rendered.toString();
+  }
+
+  private boolean exactMatch(String expected, String actual) {
+    return expected.trim().equals(actual.trim());
   }
 
   private EvaluatorParseResult parseEvaluationOutput(String outputText) {

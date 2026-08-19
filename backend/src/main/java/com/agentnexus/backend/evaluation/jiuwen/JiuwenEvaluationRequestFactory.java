@@ -25,6 +25,7 @@ public final class JiuwenEvaluationRequestFactory {
     if (outputs != null) {
       prediction.putAll(outputs);
     }
+    applyPreparedExactMatchAnswers(evaluator, caseValues, prediction);
     return new EvaluationRequest(
         caseId,
         caseValues,
@@ -33,5 +34,25 @@ public final class JiuwenEvaluationRequestFactory {
         trajectory,
         metrics,
         evaluator);
+  }
+
+  private void applyPreparedExactMatchAnswers(
+      EvaluatorSnapshot evaluator,
+      Map<String, Object> labels,
+      Map<String, Object> prediction
+  ) {
+    if (!"exact_match".equals(evaluator.evaluatorType())) {
+      return;
+    }
+    Object prepared = evaluator.options().get("preparedParams");
+    if (!(prepared instanceof Map<?, ?> preparedParams)) {
+      return;
+    }
+    if (preparedParams.containsKey("expected")) {
+      labels.put("answer", preparedParams.get("expected"));
+    }
+    if (preparedParams.containsKey("actual")) {
+      prediction.put("answer", preparedParams.get("actual"));
+    }
   }
 }
