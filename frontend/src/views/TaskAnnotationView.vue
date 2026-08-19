@@ -13,8 +13,8 @@ import {
     PriceTag
 } from '@element-plus/icons-vue';
 import { useTaskAnnotation } from '../modules/task/composables/useTaskAnnotation';
+import { passResultLabel, statusLabel } from '../utils/taskLabels';
 import { formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
-import { statusLabel } from '../utils/taskLabels';
 import { renderSafeMarkdown } from '../utils/markdownRenderer';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
@@ -34,10 +34,6 @@ const EVALUATOR_STATUS_LABELS = {
     running: '进行中',
     skipped: '跳过'
 };
-const PASS_RESULT_LABELS = {
-    pass: 'Pass',
-    fail: 'Fail'
-};
 function formatNameVersion(name, version) {
     return `${name || '-'} / ${version || '-'}`;
 }
@@ -54,7 +50,7 @@ function evaluatorStatusClass(result) {
     return `is-${result?.status || 'pending'}`;
 }
 function evaluatorPassScoreLabel(result) {
-    const resultText = PASS_RESULT_LABELS[result?.passResult] || '-';
+    const resultText = passResultLabel(result?.passResult);
     const scoreText = evaluatorScoreLabel(result);
     return resultText === '-' ? '-' : `${resultText}: ${scoreText}`;
 }
@@ -64,8 +60,12 @@ function evaluatorPassScoreClass(result) {
 function optionDisplayName(tag, option) {
     if (tag.tagType === 'boolean') {
         return String(option.optionName ?? '').toUpperCase();
+    } else {
+        return option.optionName;
     }
-    return option.optionName;
+}
+function booleanOptionClass(option) {
+    return option.optionGroup === 'pass' ? 'boolean-option-pass' : 'boolean-option-fail';
 }
 function toggleEvaluatorPanel() {
     evaluatorPanelExpanded.value = !evaluatorPanelExpanded.value;
@@ -166,7 +166,12 @@ function tagHasAnnotation(tag) {
                 class="wide-control"
               />
               <el-radio-group v-else-if="tag.tagType === 'boolean'" v-model="form[tag.taskTagId]" class="option-radio-group">
-                <el-radio-button v-for="option in tag.options" :key="option.id" :label="option.id">
+                <el-radio-button
+                  v-for="option in tag.options"
+                  :key="option.id"
+                  :label="option.id"
+                  :class="booleanOptionClass(option)"
+                >
                   {{ optionDisplayName(tag, option) }}
                 </el-radio-button>
               </el-radio-group>
@@ -174,13 +179,13 @@ function tagHasAnnotation(tag) {
                 <el-option
                   v-for="option in tag.options"
                   :key="option.id"
-                  :label="`${option.optionName} · ${option.optionGroup === 'pass' ? 'Pass' : 'Fail'}`"
+                  :label="`${option.optionName} · ${passResultLabel(option.optionGroup)}`"
                   :value="option.id"
                 />
               </el-select>
 
               <div v-if="tag.result?.status === 'completed'" class="annotation-current-result">
-                <el-tag :type="passTagType(tag.result.passResult)" effect="plain">{{ tag.result.passResult }}</el-tag>
+                <el-tag :type="passTagType(tag.result.passResult)" effect="plain">{{ passResultLabel(tag.result.passResult) }}</el-tag>
                 <span>已标注</span>
               </div>
             </div>

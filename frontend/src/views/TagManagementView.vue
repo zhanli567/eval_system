@@ -2,6 +2,7 @@
 import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { useTagManagement } from '../modules/tag/composables/useTagManagement';
 import { NUMBER_VALUE_MAX, NUMBER_VALUE_MIN } from '../utils/numberRange';
+import { passResultLabel } from '../utils/taskLabels';
 const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagType, sortBy, sortOrder, dialogVisible, detailDialogVisible, detailLoading, tagDetail, detailPassOptions, detailFailOptions, editing, dialogTitle, tagForm, tagTypeOptions, booleanOptions, loadTags, searchTags, changeTagSize, toggleSort, openCreateDialog, openDetailDialog, openEditDialog, submitTag, removeTag, isOpeningTag, isDeletingTag, addCategoryOption, removeCategoryOption, getTagTypeLabel, formatTime } = useTagManagement();
 </script>
 
@@ -150,7 +151,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
       <div v-if="tagForm.tagType === 'category'" class="tag-config-grid">
         <section class="option-group-card pass">
           <div class="option-group-head">
-            <strong>Pass <span class="required-mark">*</span></strong>
+            <strong>PASS <span class="required-mark">*</span></strong>
             <el-button link type="primary" :icon="Plus" @click="addCategoryOption('pass')">添加标签</el-button>
           </div>
           <div class="option-list">
@@ -169,7 +170,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
 
         <section class="option-group-card fail">
           <div class="option-group-head">
-            <strong>Fail <span class="required-mark">*</span></strong>
+            <strong>FAIL <span class="required-mark">*</span></strong>
             <el-button link type="primary" :icon="Plus" @click="addCategoryOption('fail')">添加标签</el-button>
           </div>
           <div class="option-list">
@@ -191,7 +192,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
         <div v-for="option in booleanOptions" :key="option.optionName" class="boolean-row">
           <span>{{ option.optionName }}</span>
           <el-tag :type="option.optionGroup === 'pass' ? 'success' : 'danger'" effect="plain">
-            {{ option.optionGroup === 'pass' ? 'Pass' : 'Fail' }}
+            {{ passResultLabel(option.optionGroup) }}
           </el-tag>
         </div>
       </div>
@@ -208,7 +209,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
         <el-form-item>
           <template #label>
             通过阈值 <span class="required-mark">*</span>
-            <span class="label-tip">大于等于该阈值为Pass</span>
+            <span class="label-tip">大于等于该阈值为PASS</span>
           </template>
           <el-input-number
             v-model="tagForm.passThreshold"
@@ -248,7 +249,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
           <h3>标签选项</h3>
           <div class="detail-option-grid">
             <div class="detail-option-card pass">
-              <strong>Pass</strong>
+              <strong>PASS</strong>
               <div class="detail-tag-list">
                 <el-tag
                   v-for="(option, index) in detailPassOptions"
@@ -262,7 +263,7 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
               </div>
             </div>
             <div class="detail-option-card fail">
-              <strong>Fail</strong>
+              <strong>FAIL</strong>
               <div class="detail-tag-list">
                 <el-tag
                   v-for="(option, index) in detailFailOptions"
@@ -283,11 +284,11 @@ const { tagLoading, saving, tags, tagTotal, tagPage, tagSize, tagKeyword, tagTyp
           <div class="detail-option-grid">
             <div class="detail-option-card pass">
               <strong>TRUE</strong>
-              <el-tag type="success" effect="plain">Pass</el-tag>
+              <el-tag type="success" effect="plain">PASS</el-tag>
             </div>
             <div class="detail-option-card fail">
               <strong>FALSE</strong>
-              <el-tag type="danger" effect="plain">Fail</el-tag>
+              <el-tag type="danger" effect="plain">FAIL</el-tag>
             </div>
           </div>
         </section>

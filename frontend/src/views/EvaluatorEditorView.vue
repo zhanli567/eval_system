@@ -2,6 +2,7 @@
 import { ChatDotRound, CopyDocument, Delete, Document, MagicStick, Plus, Promotion, Refresh, Tickets } from '@element-plus/icons-vue';
 import { useEvaluatorEditor } from '../modules/evaluator/composables/useEvaluatorEditor';
 import { NUMBER_VALUE_MAX, NUMBER_VALUE_MIN } from '../utils/numberRange';
+import { passResultLabel } from '../utils/taskLabels';
 const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, trialLoading, trialResult, trialParamValues, isUsingPreset, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, removeVersion, isDeletingVersion, switchType, addParam, removeParam, backToList, openPresetPicker, searchPreset, selectPresetCategory, changePresetPage, usePresetEvaluator, runTrial, clearTrialResult, copyPrompt, clearPrompt, formatTime } = useEvaluatorEditor();
 </script>
 
@@ -239,7 +240,7 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
         </div>
         <div v-if="trialResult" class="trial-result-card">
           <div class="trial-result-head">
-            <span :class="['trial-result-badge', trialResult.result === 'pass' ? 'pass' : 'fail']">{{ trialResult.result === 'pass' ? 'Pass' : 'Fail' }}</span>
+            <span :class="['trial-result-badge', trialResult.result === 'pass' ? 'pass' : 'fail']">{{ passResultLabel(trialResult.result) }}</span>
             <strong>{{ trialResult.score ?? '-' }}</strong>
           </div>
           <p v-if="trialResult.errorMessage">{{ trialResult.errorMessage }}</p>

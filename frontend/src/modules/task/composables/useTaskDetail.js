@@ -3,13 +3,11 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { tagApi } from '../../../api/tag';
 import { taskApi } from '../../../api/task';
-import { runExclusive } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
 import { passTagType, statusLabel, tagTypeLabel } from '../../../utils/taskLabels';
 import { formatTaskAppBinding } from '../../../utils/taskAppBinding';
 import { useTaskMetrics } from './useTaskMetrics';
 
-const STOPPABLE_STATUSES = ['running'];
 const TASK_TAG_TYPE_OPTIONS = [
     { value: 'category', label: '分类' },
     { value: 'boolean', label: '布尔' },
@@ -67,21 +65,6 @@ function createTaskDetailActions(ctx, router) {
     function backToList() {
         router.push({ name: 'tasks' });
     }
-    async function stopTask() {
-        if (!ctx.taskId.value) {
-            return;
-        }
-        await runExclusive(ctx.stopping, async () => {
-            await ElMessageBox.confirm(
-                '停止后将保留已完成结果，重新开始时仅继续未完成或失败的数据。确定停止吗？',
-                '停止评测任务',
-                { type: 'warning' }
-            );
-            ctx.detail.value = await taskApi.stopTask(ctx.taskId.value);
-            ElMessage.success('评测任务已停止');
-            stopPolling();
-        });
-    }
     function startPolling() {
         startTaskPolling(ctx);
     }
@@ -96,7 +79,7 @@ function createTaskDetailActions(ctx, router) {
             query: { mode }
         });
     }
-    return { loadDetail, changeSize, backToList, stopTask, startPolling, stopPolling, openAnnotation };
+    return { loadDetail, changeSize, backToList, startPolling, stopPolling, openAnnotation };
 }
 
 function createTagActions(ctx) {
@@ -411,7 +394,6 @@ export function useTaskDetail(taskId) {
 function createTaskDetailState() {
     return {
         loading: ref(false),
-        stopping: ref(false),
         detail: ref(),
         page: ref(1),
         size: ref(10),
@@ -478,7 +460,6 @@ function createComputedValues(detail, columnSettings, columnSettingDraft) {
         tags: computed(() => taskTags(detail.value)),
         rows: computed(() => taskRows(detail.value)),
         total: computed(() => taskTotal(detail.value)),
-        canStopTask: computed(() => STOPPABLE_STATUSES.includes(base.value?.status)),
         selectedTagIds: computed(() => taskTags(detail.value).map((tag) => tag.tagId)),
         columnSettingItems: computed(() => hydrateColumnSettings(columnSettingDraft.value, detail.value)),
         visibleTableColumns: computed(() => hydrateColumnSettings(columnSettings.value, detail.value).filter((column) => column.visible))
@@ -488,7 +469,6 @@ function createComputedValues(detail, columnSettings, columnSettingDraft) {
 function refsToReturn(ctx) {
     return {
         loading: ctx.loading,
-        stopping: ctx.stopping,
         page: ctx.page,
         size: ctx.size,
         tagDrawerVisible: ctx.tagDrawerVisible,

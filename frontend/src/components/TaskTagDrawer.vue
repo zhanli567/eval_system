@@ -130,7 +130,8 @@ function changeSize(value) {
         <el-button
           v-if="isSelected(tag)"
           plain
-          :type="selectedMode === 'disabled' ? 'info' : 'primary'"
+          :type="selectedMode === 'disabled' ? 'info' : 'danger'"
+          class="task-tag-action-button"
           :loading="isOperating(tag)"
           :disabled="selectedMode === 'disabled' || isOperating(tag)"
           @click="handleSelectedClick(tag)"
@@ -141,6 +142,7 @@ function changeSize(value) {
           v-else
           plain
           type="primary"
+          class="task-tag-action-button"
           :loading="isOperating(tag)"
           :disabled="isOperating(tag)"
           @click="emit('add', tag)"

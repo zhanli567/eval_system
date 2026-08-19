@@ -68,7 +68,7 @@ function getFormError(form) {
 
 function getCategoryOptionsError(form) {
     if (!cleanOptions(form.passOptions).length || !cleanOptions(form.failOptions).length) {
-        return '分类标签请至少配置一个Pass选项和一个Fail选项';
+        return '分类标签请至少配置一个PASS选项和一个FAIL选项';
     } else {
         return '';
     }
@@ -238,7 +238,7 @@ function createTagOptionActions(ctx) {
     function addCategoryOption(group) {
         const target = group === 'pass' ? ctx.tagForm.passOptions : ctx.tagForm.failOptions;
         if (target.length >= 5) {
-            ElMessage.warning('Pass和Fail选项每组最多支持5个');
+            ElMessage.warning('PASS和FAIL选项每组最多支持5个');
             return;
         }
         target.push('');

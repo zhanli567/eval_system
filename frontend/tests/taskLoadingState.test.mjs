@@ -26,9 +26,9 @@ assert.ok(createComposable.includes('runExclusive(ctx.state.saving'), 'task crea
 assert.ok(createTemplate.includes(':disabled="saving || !canSubmit"'), 'task create button should be disabled while saving or invalid');
 assert.ok(createTemplate.includes(':disabled="saving"'), 'task create cancel should be disabled while saving');
 
-assert.ok(detailComposable.includes('runExclusive(ctx.stopping'), 'task detail stop should be guarded by stopping state');
-assert.ok(detailTemplate.includes(':loading="stopping"'), 'task detail stop button should show loading');
-assert.ok(detailTemplate.includes(':disabled="stopping"'), 'task detail stop button should be disabled while stopping');
+assert.ok(!detailComposable.includes('ctx.stopping'), 'task detail should not keep unused stop loading state');
+assert.ok(!detailTemplate.includes('停止任务'), 'task detail should not expose stop action');
+assert.ok(!detailTemplate.includes(':loading="stopping"'), 'task detail should not keep stop loading binding');
 
 assert.ok(annotationComposable.includes('runExclusive(ctx.saving'), 'task annotation save should be guarded by saving state');
 assert.ok(annotationComposable.includes('targetItemId && !ctx.saving.value'), 'task annotation navigation should be blocked while saving');

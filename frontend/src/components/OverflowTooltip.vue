@@ -28,6 +28,10 @@ const props = defineProps({
     axis: {
         type: String,
         default: 'both'
+    },
+    showAfter: {
+        type: Number,
+        default: 360
     }
 });
 
@@ -106,6 +110,7 @@ watch(displayText, () => {
     effect="light"
     :popper-class="TABLE_OVERFLOW_TOOLTIP_CLASS"
     :disabled="!isOverflow"
+    :show-after="showAfter"
   >
     <component :is="tag" ref="textRef" v-bind="$attrs" class="overflow-tooltip-text">
       <slot>{{ displayText }}</slot>

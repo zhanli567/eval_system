@@ -2645,6 +2645,10 @@ h2 {
   white-space: nowrap;
 }
 
+.task-tag-action-button {
+  min-width: 72px;
+}
+
 .tag-type-text {
   flex: 0 0 auto;
   padding: 2px 8px;
@@ -3386,6 +3390,18 @@ h2 {
   border-left: 1px solid var(--el-border-color, #dcdfe6);
   border-radius: 6px;
   box-shadow: none;
+}
+
+.option-radio-group .boolean-option-pass.is-active .el-radio-button__inner {
+  border-color: #55b989;
+  background: #e9f8ef;
+  color: #2f9d67;
+}
+
+.option-radio-group .boolean-option-fail.is-active .el-radio-button__inner {
+  border-color: #ff8a8a;
+  background: #fff1f1;
+  color: #ff4d4f;
 }
 
 .annotation-current-result {

@@ -22,6 +22,10 @@ const TAG_TYPE_LABELS = {
     number: '数字',
     text: '文本'
 };
+const PASS_RESULT_LABELS = {
+    pass: 'PASS',
+    fail: 'FAIL'
+};
 
 export function statusLabel(value) {
     return labelFromMap(TASK_STATUS_LABELS, value);
@@ -29,6 +33,10 @@ export function statusLabel(value) {
 
 export function passTagType(value) {
     return value === 'pass' ? 'success' : value === 'fail' ? 'danger' : 'info';
+}
+
+export function passResultLabel(value) {
+    return labelFromMap(PASS_RESULT_LABELS, value);
 }
 
 export function tagTypeLabel(value) {

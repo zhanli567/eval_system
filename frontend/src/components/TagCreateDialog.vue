@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus';
 import { tagApi } from '../api/tag';
 import { runExclusive } from '../utils/composableHelpers';
 import { NUMBER_VALUE_MAX, NUMBER_VALUE_MIN, NUMBER_VALUE_RANGE_TEXT, hasNumberValueOutOfRange, isNumberValueMissing } from '../utils/numberRange';
+import { passResultLabel } from '../utils/taskLabels';
 
 const tagTypeOptions = [
     { label: '分类', value: 'category' },
@@ -71,7 +72,7 @@ function validateForm() {
 
 function validateCategoryOptions() {
     if (!cleanOptions(form.passOptions).length || !cleanOptions(form.failOptions).length) {
-        return '分类标签请至少配置一个Pass选项和一个Fail选项';
+        return '分类标签请至少配置一个PASS选项和一个FAIL选项';
     } else {
         return '';
     }
@@ -114,7 +115,7 @@ function buildCategoryOptions() {
 function addCategoryOption(group) {
     const target = group === 'pass' ? form.passOptions : form.failOptions;
     if (target.length >= 5) {
-        ElMessage.warning('Pass和Fail选项每组最多支持5个');
+        ElMessage.warning('PASS和FAIL选项每组最多支持5个');
         return;
     }
     target.push('');
@@ -177,7 +178,7 @@ async function submitTag() {
       <div v-if="form.tagType === 'category'" class="tag-config-grid">
         <section class="option-group-card pass">
           <div class="option-group-head">
-            <strong>Pass <span class="required-mark">*</span></strong>
+            <strong>PASS <span class="required-mark">*</span></strong>
             <el-button link type="primary" :icon="Plus" @click="addCategoryOption('pass')">添加标签</el-button>
           </div>
           <div class="option-list">
@@ -195,7 +196,7 @@ async function submitTag() {
         </section>
         <section class="option-group-card fail">
           <div class="option-group-head">
-            <strong>Fail <span class="required-mark">*</span></strong>
+            <strong>FAIL <span class="required-mark">*</span></strong>
             <el-button link type="primary" :icon="Plus" @click="addCategoryOption('fail')">添加标签</el-button>
           </div>
           <div class="option-list">
@@ -217,7 +218,7 @@ async function submitTag() {
         <div v-for="option in booleanOptions" :key="option.optionName" class="boolean-row">
           <span>{{ option.optionName }}</span>
           <el-tag :type="option.optionGroup === 'pass' ? 'success' : 'danger'" effect="plain">
-            {{ option.optionGroup === 'pass' ? 'Pass' : 'Fail' }}
+            {{ passResultLabel(option.optionGroup) }}
           </el-tag>
         </div>
       </div>
@@ -234,7 +235,7 @@ async function submitTag() {
         <el-form-item>
           <template #label>
             通过阈值 <span class="required-mark">*</span>
-            <span class="label-tip">大于等于该阈值为Pass</span>
+            <span class="label-tip">大于等于该阈值为PASS</span>
           </template>
           <el-input-number
             v-model="form.passThreshold"

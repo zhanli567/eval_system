@@ -6,12 +6,12 @@ import EChartView from '../components/EChartView.vue';
 import TagCreateDialog from '../components/TagCreateDialog.vue';
 import TaskTagDrawer from '../components/TaskTagDrawer.vue';
 import { useTaskDetail } from '../modules/task/composables/useTaskDetail';
+import { passResultLabel } from '../utils/taskLabels';
 import { formatAgentOutputValue, formatAppOutput, formatEvaluatorReason } from '../utils/taskDisplay';
 const route = useRoute();
 const taskId = computed(() => String(route.params.taskId ?? ''));
 const {
     loading,
-    stopping,
     page,
     size,
     base,
@@ -19,7 +19,6 @@ const {
     tags,
     rows,
     total,
-    canStopTask,
     tagDrawerVisible,
     tagKeyword,
     tagTypeFilter,
@@ -43,7 +42,6 @@ const {
     changeTaskDetailTab,
     loadAllTags,
     backToList,
-    stopTask,
     openAnnotation,
     changeSize,
     openTagDrawer,
@@ -307,7 +305,7 @@ function evaluatorResultLabel(result) {
     if (!result) {
         return '-';
     }
-    return result.passResult || (result.score != null ? '已评分' : '-');
+    return result.passResult ? passResultLabel(result.passResult) : (result.score != null ? '已评分' : '-');
 }
 function evaluatorColumnLabel(evaluator) {
     return formatNameVersion(evaluator.evaluatorName, evaluator.versionName);
@@ -534,17 +532,6 @@ function stackTooltip(params) {
               </div>
             </el-popover>
             <el-button class="toolbar-icon-button" :icon="Refresh" title="刷新" aria-label="刷新" @click="loadDetail()" />
-            <el-button
-              v-if="canStopTask"
-              type="danger"
-              plain
-              :icon="CircleClose"
-              :loading="stopping"
-              :disabled="stopping"
-              @click="stopTask"
-            >
-              停止任务
-            </el-button>
           </div>
         </div>
 
@@ -655,7 +642,7 @@ function stackTooltip(params) {
               <template #default="{ row }">
                 <div v-if="findTagResult(row, column.target.taskTagId)?.status === 'completed'" class="tag-result-cell">
                   <el-tag class="tag-result-status" :type="passTagType(findTagResult(row, column.target.taskTagId)?.passResult)" effect="plain">
-                    <OverflowTooltip :content="findTagResult(row, column.target.taskTagId)?.passResult || '-'" />
+                    <OverflowTooltip :content="passResultLabel(findTagResult(row, column.target.taskTagId)?.passResult)" />
                   </el-tag>
                   <span class="tag-result-separator">-</span>
                   <OverflowTooltip class="result-value tag-result-value" :content="tagResultValue(row, column.target.taskTagId)" />

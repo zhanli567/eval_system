@@ -205,13 +205,11 @@ public class TaskService {
     long incompleteCount = taskRepository.countUnfinishedTaskItems(taskId);
     long completedCount = Math.max(totalCount - incompleteCount, 0);
     List<TaskMetricDimensionScore> dimensions = buildMetricDimensions(taskId);
-    List<Double> passRates = dimensions.stream()
-        .map(TaskMetricDimensionScore::passRate)
-        .filter(Objects::nonNull)
-        .toList();
+    long passCount = sumMetricPassCount(dimensions);
+    long failedCount = sumMetricFailedCount(dimensions);
     return new TaskMetricOverview(
-        averageRate(passRates),
-        passRates.size(),
+        percent(passCount, passCount + failedCount),
+        Math.toIntExact(countScoredDimensions(dimensions)),
         new TaskMetricProgress(percent(completedCount, totalCount), totalCount, completedCount, incompleteCount));
   }
 
@@ -1307,13 +1305,24 @@ public class TaskService {
     return Math.max(totalCount - completedCount, 0);
   }
 
-  private Double averageRate(List<Double> values) {
-    if (values.isEmpty()) {
-      return null;
-    } else {
-      double sum = values.stream().mapToDouble(Double::doubleValue).sum();
-      return roundPercent(sum / values.size());
-    }
+  private long sumMetricPassCount(List<TaskMetricDimensionScore> dimensions) {
+    return dimensions.stream()
+        .map(TaskMetricDimensionScore::passCount)
+        .mapToLong(this::safeCount)
+        .sum();
+  }
+
+  private long sumMetricFailedCount(List<TaskMetricDimensionScore> dimensions) {
+    return dimensions.stream()
+        .map(TaskMetricDimensionScore::failedCount)
+        .mapToLong(this::safeCount)
+        .sum();
+  }
+
+  private long countScoredDimensions(List<TaskMetricDimensionScore> dimensions) {
+    return dimensions.stream()
+        .filter(dimension -> safeCount(dimension.passCount()) + safeCount(dimension.failedCount()) > 0)
+        .count();
   }
 
   private Double percent(long numerator, long denominator) {
