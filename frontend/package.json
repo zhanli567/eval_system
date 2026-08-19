@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "test": "node tests/textBlocks.test.mjs",
+    "test": "node tests/textBlocks.test.mjs && node tests/evaluatorTypes.test.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },

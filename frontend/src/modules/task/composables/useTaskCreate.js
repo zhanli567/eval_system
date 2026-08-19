@@ -8,6 +8,7 @@ import { tagApi } from '../../../api/tag';
 import { taskApi } from '../../../api/task';
 import { getErrorMessage } from '../../../utils/composableHelpers';
 import { tagTypeLabel } from '../../../utils/taskLabels';
+import { evaluatorTypeLabel, requiresJudgeModel } from '../../../utils/evaluatorTypes';
 
 const TASK_TAG_TYPE_OPTIONS = [
     { value: 'category', label: '分类' },
@@ -28,6 +29,11 @@ const AGENT_OUTPUT_DESCRIPTIONS = {
     toolResponse: '工具响应信息',
     genUi: '生成式UI信息'
 };
+
+const STRUCTURED_AGENT_OUTPUTS = [
+    { fieldName: 'trajectory', description: 'Jiuwen workflow 执行轨迹', fieldType: 'json' },
+    { fieldName: 'executionMetrics', description: 'Jiuwen workflow 执行指标', fieldType: 'json' }
+];
 
 function createEvaluatorBlock() {
     return {
@@ -105,7 +111,10 @@ function createComputedValues(state) {
     const selectedVersion = computed(() => state.versions.value.find((item) => item.id === state.form.datasetVersionId));
     const selectedAgent = computed(() => state.agentDetails[state.form.appId] || state.agents.value.find((agent) => agent.id === state.form.appId));
     const agentVersions = computed(() => state.form.appId ? state.agentBundleVersions[state.form.appId] || [] : []);
-    const agentOutputs = computed(() => selectedAgent.value?.outputs || defaultAgentOutputs());
+    const agentOutputs = computed(() => [
+        ...(selectedAgent.value?.outputs || defaultAgentOutputs()),
+        ...STRUCTURED_AGENT_OUTPUTS
+    ]);
     return {
         selectedVersion,
         publishedVersions: computed(() => state.versions.value.filter((item) => !item.draft).sort((a, b) => b.versionNo - a.versionNo)),
@@ -489,6 +498,7 @@ function fillEvaluatorBase(block, detail) {
     block.prompt = detail.prompt;
     block.executeCode = detail.executeCode;
     block.params = detail.params;
+    block.metricLabel = evaluatorTypeLabel(detail.evaluatorType);
 }
 
 function clearEvaluatorDetail(block) {
@@ -1035,7 +1045,7 @@ function validateEvaluator(ctx, block) {
 }
 
 function validatePresetModel(ctx, block) {
-    if (block.evaluatorSource !== 'preset' || block.evaluatorType !== 'llm') {
+    if (!requiresJudgeModel(block.evaluatorType)) {
         return true;
     }
     if (!block.modelId) {
@@ -1143,6 +1153,7 @@ export function useTaskCreate() {
         paramKey,
         fieldTypeLabel,
         agentOutputLabel,
+        evaluatorTypeLabel,
         tagTypeLabel,
         backToList
     };

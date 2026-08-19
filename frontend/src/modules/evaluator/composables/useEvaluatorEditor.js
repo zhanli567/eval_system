@@ -7,6 +7,13 @@ import { getErrorMessage } from '../../../utils/composableHelpers';
 import { formatDateTime } from '../../../utils/formatters';
 import { NUMBER_VALUE_RANGE_TEXT, hasNumberValueOutOfRange, isNumberValueMissing } from '../../../utils/numberRange';
 import { formatPromptBlock } from '../../../utils/textBlocks';
+import {
+    EVALUATOR_TYPE_CODE,
+    EVALUATOR_TYPE_EXACT_MATCH,
+    EVALUATOR_TYPE_LLM,
+    defaultParamsForEvaluatorType,
+    requiresJudgeModel
+} from '../../../utils/evaluatorTypes';
 
 const DEFAULT_PROMPT = `你是一位专业的AI评估员。
 请根据评分标准评估回复质量。
@@ -26,10 +33,7 @@ const DEFAULT_CODE = `def evaluate(expected, actual):
     return {"score": score, "reason": "完全一致" if score == 5 else "内容不一致"}`;
 
 function defaultParams() {
-    return [
-        { paramName: 'expected', dataType: 'string', defaultValue: '', required: true, description: '预期输出' },
-        { paramName: 'actual', dataType: 'string', defaultValue: '', required: true, description: '实际输出' }
-    ];
+    return defaultParamsForEvaluatorType(EVALUATOR_TYPE_LLM);
 }
 
 function createParam(paramName = '') {
@@ -51,15 +55,18 @@ function cloneParam(param) {
 function fillForm(form, config) {
     form.evaluatorName = config.evaluatorName;
     form.description = config.description;
-    form.evaluatorType = config.evaluatorType;
+    form.evaluatorType = config.evaluatorType || EVALUATOR_TYPE_LLM;
     form.modelId = config.modelId || '';
     form.modelName = config.modelName || '';
-    form.prompt = formatPromptBlock(config.prompt || DEFAULT_PROMPT);
+    form.prompt = formatPromptBlock(config.prompt || (form.evaluatorType === EVALUATOR_TYPE_LLM ? DEFAULT_PROMPT : ''));
     form.executeCode = config.executeCode || DEFAULT_CODE;
     form.scoreMin = Number(config.scoreMin ?? 1);
     form.scoreMax = Number(config.scoreMax ?? 5);
     form.passThreshold = Number(config.passThreshold ?? 3);
-    form.params = config.params.map(cloneParam);
+    form.params = (config.params || []).map(cloneParam);
+    if (!form.params.length) {
+        form.params = defaultParamsForEvaluatorType(form.evaluatorType);
+    }
 }
 
 function syncPromptParams(form) {
@@ -73,11 +80,14 @@ function syncPromptParams(form) {
 }
 
 function ensureParamsByType(form) {
-    if (form.evaluatorType === 'llm') {
+    if (form.evaluatorType === EVALUATOR_TYPE_LLM) {
         syncPromptParams(form);
     }
-    if (!form.params.length && form.evaluatorType === 'code') {
-        form.params = defaultParams();
+    if (!form.params.length && form.evaluatorType === EVALUATOR_TYPE_EXACT_MATCH) {
+        form.params = defaultParamsForEvaluatorType(EVALUATOR_TYPE_EXACT_MATCH);
+    }
+    if (!form.params.length && form.evaluatorType === EVALUATOR_TYPE_CODE) {
+        form.params = defaultParamsForEvaluatorType(EVALUATOR_TYPE_CODE);
     }
 }
 
@@ -114,15 +124,15 @@ function toParamPayload(param) {
 }
 
 function payload(form, models) {
-    const params = form.evaluatorType === 'llm' ? syncPromptParams(form) : form.params;
+    const params = form.evaluatorType === EVALUATOR_TYPE_LLM ? syncPromptParams(form) : form.params;
     return {
         evaluatorName: form.evaluatorName.trim(),
         evaluatorType: form.evaluatorType,
         description: form.description.trim(),
-        modelId: form.evaluatorType === 'llm' ? form.modelId : '',
-        modelName: form.evaluatorType === 'llm' ? selectedModelName(form, models) : '',
-        prompt: form.evaluatorType === 'llm' ? form.prompt : '',
-        executeCode: form.evaluatorType === 'code' ? form.executeCode : '',
+        modelId: requiresJudgeModel(form.evaluatorType) ? form.modelId : '',
+        modelName: requiresJudgeModel(form.evaluatorType) ? selectedModelName(form, models) : '',
+        prompt: form.evaluatorType === EVALUATOR_TYPE_LLM ? form.prompt : '',
+        executeCode: form.evaluatorType === EVALUATOR_TYPE_CODE ? form.executeCode : '',
         scoreMin: Number(form.scoreMin),
         scoreMax: Number(form.scoreMax),
         passThreshold: Number(form.passThreshold),
@@ -170,9 +180,16 @@ function validateScoreConfig(form) {
 }
 
 function validateEvaluatorBody(form, models) {
-    if (form.evaluatorType === 'code') {
+    if (form.evaluatorType === EVALUATOR_TYPE_CODE) {
         ElMessage.warning('暂不支持Code型评估器');
         return false;
+    }
+    if (form.evaluatorType === EVALUATOR_TYPE_EXACT_MATCH) {
+        if (form.params.length < 2 || form.params[0]?.paramName !== 'expected' || form.params[1]?.paramName !== 'actual') {
+            ElMessage.warning('精确匹配需要 expected 和 actual 两个参数');
+            return false;
+        }
+        return true;
     }
     if (!form.prompt.trim()) {
         ElMessage.warning('请输入Prompt');
@@ -439,10 +456,20 @@ function createSaveActions(ctx, router, versionActions) {
 
 function createFormActions(ctx, router) {
     function switchType(type) {
-        if (type === 'code' || !ctx.canEdit.value || (ctx.isEdit.value && ctx.activeDetail.value?.evaluatorType !== type))
+        if (![EVALUATOR_TYPE_LLM, EVALUATOR_TYPE_EXACT_MATCH].includes(type)
+            || !ctx.canEdit.value
+            || (ctx.isEdit.value && ctx.activeDetail.value?.evaluatorType !== type))
             return;
         ctx.form.evaluatorType = type;
-        syncPromptParams(ctx.form);
+        if (type === EVALUATOR_TYPE_LLM) {
+            ctx.form.prompt = DEFAULT_PROMPT;
+            syncPromptParams(ctx.form);
+        } else {
+            ctx.form.prompt = '';
+            ctx.form.params = defaultParamsForEvaluatorType(type);
+            ctx.form.modelId = '';
+            ctx.form.modelName = '';
+        }
     }
     function addParam() {
         ctx.form.params.push(createParam());
@@ -471,7 +498,7 @@ function createFormActions(ctx, router) {
 }
 
 function canEditValue(isEdit, activeDetail, evaluatorType) {
-    return (!isEdit || Boolean(activeDetail?.draft)) && evaluatorType !== 'code';
+    return (!isEdit || Boolean(activeDetail?.draft)) && evaluatorType !== EVALUATOR_TYPE_CODE;
 }
 
 function pageTitleValue(isEdit, evaluatorName) {
@@ -479,7 +506,7 @@ function pageTitleValue(isEdit, evaluatorName) {
 }
 
 function promptParamsValue(form) {
-    return form.evaluatorType === 'llm' ? form.params : [];
+    return form.evaluatorType === EVALUATOR_TYPE_LLM ? form.params : [];
 }
 
 function modelOptionsValue(form, models) {
@@ -506,7 +533,7 @@ async function initEditor(actions, isEdit, presetId, form) {
 }
 
 function syncPromptWhenLlm(form) {
-    if (form.evaluatorType === 'llm') {
+    if (form.evaluatorType === EVALUATOR_TYPE_LLM) {
         syncPromptParams(form);
     }
 }
@@ -551,7 +578,7 @@ export function useEvaluatorEditor() {
     const form = reactive({
         evaluatorName: '',
         description: '',
-        evaluatorType: 'llm',
+        evaluatorType: EVALUATOR_TYPE_LLM,
         modelId: '',
         modelName: '',
         prompt: DEFAULT_PROMPT,
@@ -559,7 +586,7 @@ export function useEvaluatorEditor() {
         scoreMin: 1,
         scoreMax: 5,
         passThreshold: 3,
-        params: defaultParams()
+        params: defaultParamsForEvaluatorType(EVALUATOR_TYPE_LLM)
     });
     const evaluatorId = computed(() => String(route.params.evaluatorId ?? ''));
     const presetId = computed(() => String(route.query.presetId ?? ''));

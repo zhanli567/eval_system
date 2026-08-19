@@ -1,5 +1,5 @@
 <script setup>
-import { ChatDotRound, CopyDocument, Delete, Document, MagicStick, Plus, Promotion, Refresh, Tickets } from '@element-plus/icons-vue';
+import { ChatDotRound, CopyDocument, Delete, Document, MagicStick, Plus, Promotion, Refresh, Tickets, Switch } from '@element-plus/icons-vue';
 import { useEvaluatorEditor } from '../modules/evaluator/composables/useEvaluatorEditor';
 import { NUMBER_VALUE_MAX, NUMBER_VALUE_MIN } from '../utils/numberRange';
 const { loading, saving, publishing, versions, activeVersionId, form, isEdit, canEdit, pageTitle, activeVersion, promptParams, modelOptions, modelLoading, presetPickerVisible, presetCategories, presetEvaluators, presetPage, presetSize, presetTotal, presetKeyword, presetCategoryId, presetLoading, trialLoading, trialResult, trialParamValues, handleModelVisibleChange, refreshEditor, selectVersion, submit, publishDraft, removeVersion, switchType, addParam, removeParam, backToList, openPresetPicker, searchPreset, selectPresetCategory, changePresetPage, usePresetEvaluator, runTrial, clearTrialResult, copyPrompt, clearPrompt, formatTime } = useEvaluatorEditor();
@@ -85,8 +85,8 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
             <div v-if="!isEdit" class="section-index">2</div>
             <div class="section-body">
               <h2 v-if="!isEdit">评估器信息</h2>
-              <el-form-item label="创建方式" required>
-                <div class="method-grid">
+                  <el-form-item label="Metric 类型" required>
+                    <div class="method-grid">
                   <button
                     type="button"
                     class="method-card"
@@ -97,8 +97,22 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
                     <span class="method-card-icon">
                       <el-icon><ChatDotRound /></el-icon>
                     </span>
-                    <strong>LLM</strong>
-                    <span>通过 Prompt 设计规则，让大模型判断预期输出和实际输出的差异</span>
+                    <strong>模型裁判</strong>
+                    <span>Jiuwen Metric 调用模型，根据 Prompt 对输入和输出进行评分</span>
+                    <i class="method-card-check" />
+                  </button>
+                  <button
+                    type="button"
+                    class="method-card"
+                    :class="{ active: form.evaluatorType === 'exact_match', disabled: !canEdit && form.evaluatorType !== 'exact_match' }"
+                    :disabled="!canEdit && form.evaluatorType !== 'exact_match'"
+                    @click="switchType('exact_match')"
+                  >
+                    <span class="method-card-icon">
+                      <el-icon><Switch /></el-icon>
+                    </span>
+                    <strong>精确匹配</strong>
+                    <span>Jiuwen ExactMatchMetric，不调用模型，直接比较 expected 和 actual</span>
                     <i class="method-card-check" />
                   </button>
                   <button
@@ -179,6 +193,22 @@ const { loading, saving, publishing, versions, activeVersionId, form, isEdit, ca
                 </div>
               </template>
 
+              <template v-else-if="form.evaluatorType === 'exact_match'">
+                <div class="metric-info-panel">
+                  <strong>ExactMatchMetric</strong>
+                  <span>不调用模型，执行时比较 expected 与 actual，并将 Jiuwen 的 0～1 结果映射到当前评分范围。</span>
+                </div>
+                <el-form-item label="匹配规则">
+                  <div class="metric-rule-summary">忽略首尾空白后比较文本。当前规则由 Jiuwen ExactMatchMetric 固定执行。</div>
+                </el-form-item>
+                <div class="param-editor-list">
+                  <div v-for="param in form.params" :key="param.paramName" class="param-editor param-editor-llm">
+                    <el-input v-model="param.paramName" disabled />
+                    <el-input v-model="param.description" disabled />
+                    <el-checkbox v-model="param.required" disabled>必填</el-checkbox>
+                  </div>
+                </div>
+              </template>
               <template v-else>
                 <div class="dialog-subtitle required-title">
                   <span>代码入参设置</span>

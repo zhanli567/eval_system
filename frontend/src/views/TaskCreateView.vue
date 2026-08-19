@@ -64,6 +64,7 @@ const {
     paramKey,
     fieldTypeLabel,
     agentOutputLabel,
+    evaluatorTypeLabel,
     tagTypeLabel,
     backToList
 } = useTaskCreate();
@@ -220,7 +221,13 @@ async function refreshTagsAfterCreate() {
                     @visible-change="handlePresetEvaluatorVisible(block, $event)"
                     @change="selectEvaluator(block)"
                   >
-                    <el-option v-for="item in block.presetOptions" :key="item.id" :label="item.evaluatorName" :value="item.id" :disabled="item.evaluatorType === 'code'" />
+                    <el-option
+                      v-for="item in block.presetOptions"
+                      :key="item.id"
+                      :label="`${item.evaluatorName} · ${evaluatorTypeLabel(item.evaluatorType)}`"
+                      :value="item.id"
+                      :disabled="item.evaluatorType === 'code'"
+                    />
                   </el-select>
                 </el-form-item>
                 <el-form-item v-if="block.evaluatorType === 'llm'" class="evaluator-config-full">
@@ -252,7 +259,13 @@ async function refreshTagsAfterCreate() {
                     @visible-change="handleCustomEvaluatorVisible"
                     @change="selectEvaluator(block)"
                   >
-                    <el-option v-for="item in customEvaluators" :key="item.id" :label="item.evaluatorName" :value="item.id" :disabled="item.evaluatorType === 'code'" />
+                    <el-option
+                      v-for="item in customEvaluators"
+                      :key="item.id"
+                      :label="`${item.evaluatorName} · ${evaluatorTypeLabel(item.evaluatorType)}`"
+                      :value="item.id"
+                      :disabled="item.evaluatorType === 'code'"
+                    />
                   </el-select>
                 </el-form-item>
                 <el-form-item>
@@ -319,6 +332,16 @@ async function refreshTagsAfterCreate() {
                   <el-button link type="primary" :icon="CopyDocument" @click="copyBlockPrompt(block)">复制</el-button>
                 </div>
                 <pre class="code-block">{{ formatPromptBlock(block.prompt) }}</pre>
+                <div class="score-summary">
+                  <span>评分范围：{{ block.scoreMin ?? '-' }} - {{ block.scoreMax ?? '-' }}</span>
+                  <span>通过阈值：{{ block.passThreshold ?? '-' }}</span>
+                </div>
+              </template>
+              <template v-else-if="block.evaluatorType === 'exact_match'">
+                <div class="inline-detail-head">
+                  <span>ExactMatchMetric</span>
+                </div>
+                <p>不调用模型，Jiuwen 会比较 expected 与 actual，并将 0～1 结果映射到当前评分范围。</p>
                 <div class="score-summary">
                   <span>评分范围：{{ block.scoreMin ?? '-' }} - {{ block.scoreMax ?? '-' }}</span>
                   <span>通过阈值：{{ block.passThreshold ?? '-' }}</span>
