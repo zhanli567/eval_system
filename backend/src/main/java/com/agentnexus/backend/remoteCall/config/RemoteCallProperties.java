@@ -8,16 +8,10 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "remote-call")
 public class RemoteCallProperties {
-  private Mock mock = new Mock();
   private String agentChatUrl = "";
   private int connectTimeoutMs = 500000;
   private int readTimeoutMs = 6000000;
   private Iam iam = new Iam();
-
-  @Data
-  public static class Mock {
-    private boolean enabled = false;
-  }
 
   @Data
   public static class Iam {

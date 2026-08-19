@@ -67,9 +67,6 @@ public class RemoteCallService {
   private static final String STATUS_ACTIVE = "ACTIVE";
   private static final String THINK_END_TAG = "</think>";
   private static final String DEFAULT_AGENT_ALIAS = "router-agent";
-  private static final String MOCK_AGENT_MODEL = "local-mock-agent";
-  private static final String MOCK_CHAT_OBJECT = "chat.completion";
-  private static final String MOCK_EVALUATION_OUTPUT = "{\"score\":100,\"reason\":\"Local mock evaluation result\"}";
   private static final int DEFAULT_PAGE_SIZE = 10;
   private static final int DEFAULT_CUR_PAGE = 1;
   private static final TypeReference<List<ToolCallDelta>> TOOL_CALLS_TYPE = new TypeReference<>() {
@@ -166,16 +163,7 @@ public class RemoteCallService {
   }
 
   public ModelChatResult chatModel(String modelId, String modelName, String message) {
-    if (isMockEnabled()) {
-      return mockModelChatResult(modelId, modelName);
-    }
     return chatIamModel(modelId, modelName, message);
-  }
-
-  private ModelChatResult mockModelChatResult(String modelId, String modelName) {
-    String safeModelId = requireText(modelId, "Model ID cannot be blank");
-    requireText(modelName, "Model name cannot be blank");
-    return new ModelChatResult(safeModelId, MOCK_EVALUATION_OUTPUT, String.valueOf(System.currentTimeMillis()));
   }
 
   private ModelChatResult chatIamModel(String modelId, String modelName, String message) {
@@ -252,9 +240,6 @@ public class RemoteCallService {
         conversationId,
         request == null || request.messages() == null ? List.of() : request.messages(),
         Boolean.TRUE);
-    if (isMockEnabled()) {
-      return mockAgentResponse(safeAgentAlias, conversationId, startedAt, outboundRequest);
-    }
     String chatUrl = requireText(properties.getAgentChatUrl(), "Please configure agent chat API remoteCall.agent-chat-url");
 
     HttpURLConnection connection = null;
@@ -497,50 +482,6 @@ public class RemoteCallService {
         System.currentTimeMillis() - startedAt,
         errorMessage,
         errorMessage);
-  }
-
-  private AgentChatResponse mockAgentResponse(
-      String agentAlias,
-      String conversationId,
-      long startedAt,
-      AgentChatRequest request
-  ) {
-    String input = lastMessageContent(request);
-    String text = StringUtils.hasText(input)
-        ? "Local mock agent response for: " + truncate(input, 300)
-        : "Local mock agent response";
-    List<Choice> choices = List.of(choice(0, contentBlock("text", text)));
-    Map<String, String> outputs = buildAgentOutputs(choices);
-    return new AgentChatResponse(
-        UUID.randomUUID().toString().replace("-", ""),
-        conversationId,
-        agentAlias,
-        agentAlias,
-        "",
-        MOCK_CHAT_OBJECT,
-        System.currentTimeMillis(),
-        MOCK_AGENT_MODEL,
-        choices,
-        STATUS_COMPLETED,
-        outputs,
-        List.of(),
-        Map.of(),
-        System.currentTimeMillis() - startedAt,
-        "",
-        firstNonBlank(outputs.get("rawText"), text));
-  }
-
-  private String lastMessageContent(AgentChatRequest request) {
-    if (request == null || request.messages() == null || request.messages().isEmpty()) {
-      return "";
-    }
-    for (int index = request.messages().size() - 1; index >= 0; index--) {
-      AgentMessage message = request.messages().get(index);
-      if (message != null && StringUtils.hasText(message.content())) {
-        return message.content().trim();
-      }
-    }
-    return "";
   }
 
   private void mergeAgentPayload(RemoteAgentAggregate aggregate, String payload) throws IOException {
@@ -1013,10 +954,6 @@ public class RemoteCallService {
       throw new IllegalStateException(message);
     }
     return value.trim();
-  }
-
-  private boolean isMockEnabled() {
-    return properties.getMock() != null && properties.getMock().isEnabled();
   }
 
   private String truncate(String value, int maxLength) {

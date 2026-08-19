@@ -6,6 +6,7 @@ import com.agentnexus.backend.evaluation.EvaluationRequest;
 import com.openjiuwen.agent_evolving.dataset.EvaluatedCase;
 import com.openjiuwen.agent_evolving.evaluator.BaseEvaluator;
 
+/** 在 Eval-System 进程内调用 Jiuwen evaluator 的评测引擎。 */
 public final class JiuwenEvaluationEngine implements EvaluationEngine {
   private final JiuwenCaseAdapter caseAdapter;
   private final JiuwenEvaluatorFactory evaluatorFactory;
@@ -13,10 +14,6 @@ public final class JiuwenEvaluationEngine implements EvaluationEngine {
 
   public JiuwenEvaluationEngine() {
     this(new JiuwenCaseAdapter(), new JiuwenEvaluatorFactory(), new JiuwenResultMapper());
-  }
-
-  public JiuwenEvaluationEngine(EvaluationModelInvoker modelInvoker) {
-    this(new JiuwenCaseAdapter(), new JiuwenEvaluatorFactory(modelInvoker), new JiuwenResultMapper());
   }
 
   JiuwenEvaluationEngine(

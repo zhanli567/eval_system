@@ -3,12 +3,7 @@ agentnexus:
     service:
       url:
 
-server:
-  port: ${SERVER_PORT:18080}
-
 remoteCall:
-  mock:
-    enabled: true
   agent-chat-url:
   connect-timeout-ms: 500000
   read-timeout-ms: 6000000
