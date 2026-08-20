@@ -304,8 +304,13 @@ function isScoredEvaluatorResult(result) {
 function evaluatorResultLabel(result) {
     if (!result) {
         return '-';
+    } else if (result.passResult) {
+        return passResultLabel(result.passResult);
+    } else if (result.score != null) {
+        return '已评分';
+    } else {
+        return '-';
     }
-    return result.passResult ? passResultLabel(result.passResult) : (result.score != null ? '已评分' : '-');
 }
 function evaluatorColumnLabel(evaluator) {
     return formatNameVersion(evaluator.evaluatorName, evaluator.versionName);
